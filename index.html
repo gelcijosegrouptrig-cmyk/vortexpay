@@ -245,9 +245,34 @@ body{
 
   <!-- TELA PRINCIPAL -->
   <div id="tela-principal">
+
+    <!-- CPF DO PARTICIPANTE -->
+    <div id="bloco-cpf" style="margin-bottom:14px">
+      <div style="font-size:12px;color:#888;margin-bottom:6px">🎫 Seu CPF (para gerar bilhetes do sorteio)</div>
+      <input id="dep-cpf" type="text" inputmode="numeric" maxlength="14"
+        placeholder="000.000.000-00"
+        oninput="mascaraCPFDep(this)"
+        style="width:100%;background:#ffffff0e;border:1px solid #ffffff1a;border-radius:10px;padding:11px 14px;color:#fff;font-size:15px;outline:none;transition:border-color .2s"
+        onfocus="this.style.borderColor='#00d4ff'" onblur="this.style.borderColor='#ffffff1a'">
+      <div id="bloco-sorteio-preview" style="display:none;margin-top:8px;background:linear-gradient(135deg,#1a1200,#251a00);border:1px solid #FFD70033;border-radius:10px;padding:10px 12px">
+        <div style="font-size:11px;color:#888;margin-bottom:4px">🎰 Seu progresso no sorteio</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:13px;color:#FFD700;font-weight:700" id="dep-bilhetes-atual">0 bilhetes</div>
+            <div style="font-size:11px;color:#666" id="dep-depositado-atual">R$ 0,00 depositados</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:#888">Prêmio atual</div>
+            <div style="font-size:15px;color:#00d68f;font-weight:800" id="dep-premio-atual">R$ --</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="valor-section">
-      <div class="valor-label">Valor do pagamento</div>
+      <div class="valor-label">Valor do depósito</div>
       <div class="valor-display" id="valor-display">R$ 0,00</div>
+      <div id="dep-preview-bilhetes" style="display:none;font-size:12px;color:#FFD700;font-weight:700;margin-top:6px;text-align:center">🎫 +0 números da sorte</div>
     </div>
 
     <div class="numpad">
@@ -271,6 +296,7 @@ body{
       ⚡ Gerar QR Code Pix
     </button>
     <div class="valor-info">Mínimo R$ 5,00 • Máximo R$ 1.000.000,00</div>
+    <div style="font-size:11px;color:#444;text-align:center;margin-top:4px">A cada R$5 depositado = 🎫 1 número da sorte</div>
   </div>
 
   <!-- LOADING -->
@@ -341,6 +367,11 @@ function numpad(key) {
 }
 
 function atualizarDisplay() {
+  // Atualizar preview de bilhetes dinamicamente
+  const cpfEl = document.getElementById('dep-cpf');
+  const cpf = cpfEl ? cpfEl.value.replace(/\D/g,'') : '';
+  if (cpf.length === 11) atualizarPreviewBilhetes(5); // vp padrão, será sobrescrito
+
   const display = document.getElementById('valor-display');
   const btn = document.getElementById('gerar-btn');
 
@@ -392,10 +423,13 @@ async function gerarPix() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 70000);
 
+    // Pegar CPF para vincular ao sorteio
+    const cpfDep = document.getElementById('dep-cpf')?.value.replace(/\D/g,'') || '';
+
     const resp = await fetch('/api/pix', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({valor: num}),
+      body: JSON.stringify({valor: num, cliente_id: cpfDep || undefined}),
       signal: controller.signal
     });
 
@@ -501,6 +535,12 @@ function pagamentoConfirmado(data) {
   fill.style.background = '#00ff66';
   fill.style.animation = 'none';
 
+  // Atualizar dados do sorteio após confirmação
+  const cpfDep = document.getElementById('dep-cpf')?.value.replace(/\D/g,'') || '';
+  if (cpfDep.length >= 11) {
+    setTimeout(() => atualizarSorteioPreview(cpfDep, true), 1500);
+  }
+
   // Som de notificação (beep simples via Web Audio)
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -590,7 +630,92 @@ async function checarStatusSistema() {
 document.addEventListener('DOMContentLoaded', () => {
   checarStatusSistema();
   setInterval(checarStatusSistema, 30000);
+
+  // Restaurar CPF salvo
+  const cpfSalvo = localStorage.getItem('dep_cpf');
+  if (cpfSalvo) {
+    const el = document.getElementById('dep-cpf');
+    if (el) { el.value = cpfSalvo; atualizarSorteioPreview(cpfSalvo); }
+  }
 });
+
+// ======= MÁSCARA CPF =======
+function mascaraCPFDep(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/,'$1.$2.$3-$4');
+  else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/,'$1.$2.$3');
+  else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/,'$1.$2');
+  el.value = v;
+  const cpf = v.replace(/\D/g,'');
+  if (cpf.length === 11) {
+    localStorage.setItem('dep_cpf', cpf);
+    atualizarSorteioPreview(cpf);
+  } else {
+    document.getElementById('bloco-sorteio-preview').style.display = 'none';
+  }
+}
+
+// ======= PREVIEW SORTEIO NO DEPÓSITO =======
+async function atualizarSorteioPreview(cpf, aposDeposito = false) {
+  try {
+    const r = await fetch('/api/sorteio/info?cpf=' + cpf);
+    const d = await r.json();
+    const s = d.sorteio;
+    const p = d.participante;
+    const bloco = document.getElementById('bloco-sorteio-preview');
+
+    if (p && p.participando) {
+      bloco.style.display = 'block';
+      document.getElementById('dep-bilhetes-atual').textContent = (p.total_numeros || 0) + ' bilhete(s) 🎫';
+      document.getElementById('dep-depositado-atual').textContent = 'R$ ' + (p.total_depositado||0).toFixed(2).replace('.',',') + ' depositados';
+      document.getElementById('dep-premio-atual').textContent = 'R$ ' + (s.premio_estimado_total||0).toFixed(2).replace('.',',');
+
+      if (aposDeposito) {
+        // Mostrar celebração
+        bloco.style.borderColor = '#00d68f66';
+        bloco.style.background = 'linear-gradient(135deg,#001a0d,#002a14)';
+        const div = document.createElement('div');
+        div.style.cssText = 'font-size:13px;color:#00d68f;font-weight:700;margin-top:6px;text-align:center';
+        div.textContent = '🎉 Novos números gerados! Acesse /sorteio para ver.';
+        bloco.appendChild(div);
+        setTimeout(() => { div.remove(); bloco.style.borderColor=''; bloco.style.background=''; }, 5000);
+      }
+    } else if (p && !p.participando) {
+      // CPF válido mas não cadastrado no sorteio
+      bloco.style.display = 'block';
+      document.getElementById('dep-bilhetes-atual').textContent = 'Não cadastrado';
+      document.getElementById('dep-depositado-atual').textContent = 'Cadastre-se em /sorteio';
+      document.getElementById('dep-premio-atual').textContent = 'R$ ' + (s.premio_estimado_total||0).toFixed(2).replace('.',',');
+    } else {
+      bloco.style.display = 'none';
+    }
+
+    // Preview de bilhetes que vai ganhar com o valor atual
+    atualizarPreviewBilhetes(s.valor_por_numero || 5);
+
+  } catch(e) {
+    document.getElementById('bloco-sorteio-preview').style.display = 'none';
+  }
+}
+
+function atualizarPreviewBilhetes(vp) {
+  const num = parseInt(rawValue || '0') / 100;
+  const prev = document.getElementById('dep-preview-bilhetes');
+  if (!prev) return;
+  if (num >= vp && num % vp === 0) {
+    const qtd = Math.floor(num / vp);
+    prev.style.display = 'block';
+    prev.textContent = `🎫 +${qtd} número(s) da sorte`;
+    prev.style.color = '#FFD700';
+  } else if (num >= 5) {
+    const qtd = Math.floor(num / vp);
+    prev.style.display = 'block';
+    prev.textContent = qtd > 0 ? `🎫 +${qtd} número(s) da sorte` : '';
+    prev.style.color = '#888';
+  } else {
+    prev.style.display = 'none';
+  }
+}
 
 // ======= QR CODE =======
 function desenharQR(canvasId, text) {
