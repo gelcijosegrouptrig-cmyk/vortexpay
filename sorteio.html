@@ -583,12 +583,9 @@ function abrirModalParticipacao(apenasDeposito) {
     bloDados.style.display = 'none'; // já cadastrado, só digitar valor
   } else {
     bloDados.style.display = 'block';
-    // Pré-preencher com localStorage se existir
-    const nome = localStorage.getItem('sorteio_nome') || '';
-    const cpf  = localStorage.getItem('sorteio_cpf') || '';
-    const cpfF = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
-    if (nome) document.getElementById('m-nome').value = nome;
-    if (cpf)  document.getElementById('m-cpf').value = cpfF;
+    // Limpar campos ao abrir modal de novo participante
+    document.getElementById('m-nome').value = '';
+    document.getElementById('m-cpf').value = '';
     document.getElementById('msg-dados').innerHTML = '';
   }
 
