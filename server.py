@@ -1154,6 +1154,13 @@ async def route_atualizar_sessao(request):
 async def route_index(request):
     return web.Response(text=load_html(), content_type='text/html', charset='utf-8')
 
+async def route_pague(request):
+    """Página /pague — abre direto o formulário de gerar Pix"""
+    html = load_html()
+    # Injeta script para abrir modal de depósito automaticamente
+    html = html.replace('</body>', '<script>window.addEventListener("load",()=>{setTimeout(()=>{const b=document.getElementById("btn-depositar");if(b)b.click();},500);});</script></body>')
+    return web.Response(text=html, content_type='text/html', charset='utf-8')
+
 async def route_health(request):
     motivo = None
     if not _telegram_ready:
@@ -1711,7 +1718,7 @@ async def main():
     print('✅ DB ok', flush=True)
 
     app = web.Application(middlewares=[cors_middleware])
-    app.router.add_get('/', route_index)
+    app.router.add_get('/', route_index)          # Página principal (em breve)
     app.router.add_get('/index.html', route_index)
     app.router.add_get('/health', route_health)
     app.router.add_get('/api/status', route_health)
@@ -1721,9 +1728,12 @@ async def main():
     app.router.add_get('/api/transacoes', route_transacoes)
     app.router.add_post('/webhook/confirmar', route_webhook)
     app.router.add_route('OPTIONS', '/webhook/confirmar', lambda r: web.Response(status=200))
-    # Rotas de Saque
+    # Rotas de Saque — /sacar e /saque
+    app.router.add_get('/sacar', route_saque_page)      # paynexbet.com/sacar
     app.router.add_get('/saque', route_saque_page)
     app.router.add_get('/saque.html', route_saque_page)
+    # Rota /pague — gerar Pix (abre modal automaticamente)
+    app.router.add_get('/pague', route_pague)           # paynexbet.com/pague
     app.router.add_get('/api/saldo', route_saldo)
     app.router.add_post('/api/saque', route_solicitar_saque)
     app.router.add_route('OPTIONS', '/api/saque', lambda r: web.Response(status=200))
