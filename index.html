@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1a2e">
+<title>VortexPay — Pagamento Pix</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:#0f0f1a;
+  color:#fff;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+
+.card{
+  background:linear-gradient(145deg,#1a1a2e,#16213e);
+  border:1px solid #00d4ff33;
+  border-radius:24px;
+  padding:32px 24px;
+  width:100%;
+  max-width:420px;
+  box-shadow:0 0 40px rgba(0,212,255,0.1);
+}
+
+.logo{
+  text-align:center;
+  margin-bottom:28px;
+}
+.logo-icon{
+  width:72px;height:72px;
+  background:linear-gradient(135deg,#00d4ff,#0066ff);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 12px;
+  font-size:32px;
+  box-shadow:0 0 30px rgba(0,212,255,0.4);
+}
+.logo h1{font-size:24px;font-weight:800;letter-spacing:1px;}
+.logo p{font-size:13px;color:#888;margin-top:4px;}
+
+/* VALOR INPUT */
+.valor-section{margin-bottom:24px;}
+.valor-label{font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.valor-display{
+  background:#0a0a18;
+  border:2px solid #00d4ff44;
+  border-radius:16px;
+  padding:20px;
+  text-align:center;
+  font-size:36px;
+  font-weight:800;
+  color:#00d4ff;
+  margin-bottom:16px;
+  min-height:76px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  letter-spacing:1px;
+}
+.valor-display.has-value{color:#fff;}
+
+/* NUMPAD */
+.numpad{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-bottom:20px;
+}
+.num-btn{
+  background:#1e1e3a;
+  border:1px solid #ffffff11;
+  border-radius:14px;
+  padding:18px;
+  font-size:22px;
+  font-weight:600;
+  color:#fff;
+  cursor:pointer;
+  transition:all 0.15s;
+  text-align:center;
+}
+.num-btn:active{background:#00d4ff22;border-color:#00d4ff66;transform:scale(0.95);}
+.num-btn.del{color:#ff6b6b;font-size:20px;}
+.num-btn.zero{font-size:22px;}
+
+/* GERAR BTN */
+.gerar-btn{
+  width:100%;
+  padding:18px;
+  background:linear-gradient(135deg,#00d4ff,#0066ff);
+  border:none;
+  border-radius:16px;
+  font-size:18px;
+  font-weight:800;
+  color:#fff;
+  cursor:pointer;
+  letter-spacing:0.5px;
+  box-shadow:0 4px 20px rgba(0,212,255,0.4);
+  transition:all 0.2s;
+  margin-bottom:12px;
+}
+.gerar-btn:active{transform:scale(0.98);opacity:0.9;}
+.gerar-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+.valor-info{
+  text-align:center;
+  font-size:12px;
+  color:#666;
+}
+
+/* LOADING */
+.loading{
+  display:none;
+  text-align:center;
+  padding:32px;
+}
+.spinner{
+  width:48px;height:48px;
+  border:3px solid #ffffff22;
+  border-top-color:#00d4ff;
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+  margin:0 auto 16px;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading p{color:#888;font-size:14px;}
+
+/* RESULTADO */
+.resultado{display:none;padding:8px 0;}
+
+.pix-gerado{
+  background:linear-gradient(135deg,#0a2a0a,#0f3a0f);
+  border:1px solid #00ff6644;
+  border-radius:16px;
+  padding:20px;
+  margin-bottom:16px;
+  text-align:center;
+}
+.pix-gerado .titulo{
+  font-size:16px;font-weight:700;color:#00ff66;margin-bottom:4px;
+}
+.pix-gerado .subtitulo{font-size:13px;color:#888;margin-bottom:16px;}
+
+.tx-id{
+  background:#ffffff0a;
+  border-radius:10px;
+  padding:10px 14px;
+  font-size:12px;
+  color:#888;
+  margin-bottom:16px;
+  word-break:break-all;
+}
+.tx-id span{color:#00d4ff;}
+
+.valor-conf{
+  font-size:32px;
+  font-weight:800;
+  color:#00ff66;
+  margin-bottom:20px;
+}
+
+/* QR CODE */
+.qr-area{
+  background:#fff;
+  border-radius:16px;
+  padding:16px;
+  margin-bottom:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+#qr-canvas{display:block;border-radius:8px;}
+
+/* PIX CODE */
+.pix-code-box{
+  background:#0a0a18;
+  border:1px solid #00d4ff33;
+  border-radius:12px;
+  padding:14px;
+  margin-bottom:12px;
+}
+.pix-code-label{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.pix-code-text{
+  font-size:11px;
+  color:#00d4ff;
+  word-break:break-all;
+  line-height:1.5;
+  font-family:monospace;
+}
+
+.copy-btn{
+  width:100%;
+  padding:16px;
+  background:#00ff6622;
+  border:1px solid #00ff6644;
+  border-radius:14px;
+  font-size:15px;
+  font-weight:700;
+  color:#00ff66;
+  cursor:pointer;
+  margin-bottom:10px;
+  transition:all 0.2s;
+}
+.copy-btn:active{background:#00ff6633;}
+
+.novo-btn{
+  width:100%;
+  padding:14px;
+  background:#ffffff11;
+  border:1px solid #ffffff22;
+  border-radius:14px;
+  font-size:14px;
+  color:#888;
+  cursor:pointer;
+}
+.novo-btn:active{background:#ffffff1a;}
+
+/* ERRO */
+.erro{
+  display:none;
+  background:#2a0a0a;
+  border:1px solid #ff444444;
+  border-radius:14px;
+  padding:20px;
+  text-align:center;
+  margin-bottom:16px;
+}
+.erro p{color:#ff6b6b;font-size:14px;margin-bottom:12px;}
+.erro button{
+  padding:12px 24px;
+  background:#ff444422;
+  border:1px solid #ff444444;
+  border-radius:10px;
+  color:#ff6b6b;
+  font-size:14px;
+  cursor:pointer;
+}
+
+/* FOOTER */
+.footer{
+  margin-top:20px;
+  text-align:center;
+  font-size:11px;
+  color:#444;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🌀</div>
+    <h1>VORTEXPAY</h1>
+    <p>Gerador de Pagamento Pix</p>
+  </div>
+
+  <!-- TELA PRINCIPAL -->
+  <div id="tela-principal">
+    <div class="valor-section">
+      <div class="valor-label">Valor do pagamento</div>
+      <div class="valor-display" id="valor-display">R$ 0,00</div>
+    </div>
+
+    <div class="numpad">
+      <button class="num-btn" onclick="numpad('1')">1</button>
+      <button class="num-btn" onclick="numpad('2')">2</button>
+      <button class="num-btn" onclick="numpad('3')">3</button>
+      <button class="num-btn" onclick="numpad('4')">4</button>
+      <button class="num-btn" onclick="numpad('5')">5</button>
+      <button class="num-btn" onclick="numpad('6')">6</button>
+      <button class="num-btn" onclick="numpad('7')">7</button>
+      <button class="num-btn" onclick="numpad('8')">8</button>
+      <button class="num-btn" onclick="numpad('9')">9</button>
+      <button class="num-btn" onclick="numpad('00')">00</button>
+      <button class="num-btn zero" onclick="numpad('0')">0</button>
+      <button class="num-btn del" onclick="numpad('del')">⌫</button>
+    </div>
+
+    <button class="gerar-btn" id="gerar-btn" onclick="gerarPix()" disabled>
+      ⚡ Gerar QR Code Pix
+    </button>
+    <div class="valor-info">Mínimo R$ 5,00 • Máximo R$ 1.000.000,00</div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Gerando QR Code Pix...<br>Aguarde alguns segundos</p>
+  </div>
+
+  <!-- ERRO -->
+  <div class="erro" id="erro">
+    <p id="erro-msg">Erro ao gerar PIX. Tente novamente.</p>
+    <button onclick="voltarInicio()">Tentar novamente</button>
+  </div>
+
+  <!-- RESULTADO -->
+  <div class="resultado" id="resultado">
+    <div class="pix-gerado">
+      <div class="titulo">✅ PIX Gerado com Sucesso!</div>
+      <div class="subtitulo">Escaneie ou copie o código abaixo</div>
+      <div class="valor-conf" id="res-valor">R$ 0,00</div>
+      <div class="tx-id">ID: <span id="res-txid">-</span></div>
+      <div class="qr-area">
+        <canvas id="qr-canvas" width="220" height="220"></canvas>
+      </div>
+    </div>
+
+    <div class="pix-code-box">
+      <div class="pix-code-label">PIX Copia e Cola</div>
+      <div class="pix-code-text" id="res-pix-code">-</div>
+    </div>
+
+    <button class="copy-btn" onclick="copiarPix()">📋 Copiar código Pix</button>
+    <button class="novo-btn" onclick="voltarInicio()">← Gerar novo Pix</button>
+  </div>
+</div>
+
+<div class="footer">VortexPay • Powered by Simpay/Nexabet</div>
+
+<script>
+// ======= NUMPAD =======
+let rawValue = '';
+let pixCodeAtual = '';
+
+function numpad(key) {
+  if (key === 'del') {
+    rawValue = rawValue.slice(0, -1);
+  } else if (key === '00') {
+    if (rawValue.length > 0) rawValue += '00';
+  } else {
+    if (rawValue.length < 9) rawValue += key;
+  }
+
+  atualizarDisplay();
+}
+
+function atualizarDisplay() {
+  const display = document.getElementById('valor-display');
+  const btn = document.getElementById('gerar-btn');
+
+  if (!rawValue || rawValue === '0') {
+    display.textContent = 'R$ 0,00';
+    display.classList.remove('has-value');
+    btn.disabled = true;
+    return;
+  }
+
+  const num = parseInt(rawValue) / 100;
+  const formatted = num.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  display.textContent = 'R$ ' + formatted;
+
+  if (num >= 5) {
+    display.classList.add('has-value');
+    btn.disabled = false;
+  } else {
+    display.classList.remove('has-value');
+    btn.disabled = true;
+  }
+}
+
+// ======= GERAR PIX =======
+async function gerarPix() {
+  const num = parseInt(rawValue) / 100;
+  if (num < 5) return;
+
+  mostrar('loading');
+
+  // Contador de progresso visual
+  let seg = 0;
+  const loadingP = document.querySelector('.loading p');
+  const timer = setInterval(() => {
+    seg++;
+    const msgs = [
+      'Conectando ao VortexPay...',
+      'Acessando bot de pagamento...',
+      'Clicando em DEPOSITAR...',
+      'Enviando valor...',
+      'Aguardando QR Code...',
+      'Quase pronto...',
+      'Finalizando...',
+    ];
+    const idx = Math.min(Math.floor(seg / 2), msgs.length - 1);
+    loadingP.innerHTML = msgs[idx] + '<br><small style="color:#555">' + seg + 's...</small>';
+  }, 1000);
+
+  try {
+    // Timeout de 60 segundos
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+
+    const resp = await fetch('/api/pix', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({valor: num}),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+    clearInterval(timer);
+
+    const data = await resp.json();
+
+    if (data.success) {
+      pixCodeAtual = data.pix_code;
+      document.getElementById('res-valor').textContent = data.valor;
+      document.getElementById('res-txid').textContent = data.tx_id || '-';
+      document.getElementById('res-pix-code').textContent = data.pix_code;
+      desenharQR('qr-canvas', data.pix_code);
+      mostrar('resultado');
+    } else {
+      clearInterval(timer);
+      document.getElementById('erro-msg').textContent = data.error || 'Erro ao gerar PIX. Tente novamente.';
+      mostrar('erro');
+    }
+  } catch (e) {
+    clearInterval(timer);
+    if (e.name === 'AbortError') {
+      document.getElementById('erro-msg').textContent = 'Tempo esgotado. Tente novamente.';
+    } else {
+      document.getElementById('erro-msg').textContent = 'Erro de conexão com o servidor.';
+    }
+    mostrar('erro');
+  }
+}
+
+function voltarInicio() {
+  rawValue = '';
+  atualizarDisplay();
+  mostrar('principal');
+}
+
+function mostrar(tela) {
+  document.getElementById('tela-principal').style.display = tela === 'principal' ? 'block' : 'none';
+  document.getElementById('loading').style.display = tela === 'loading' ? 'block' : 'none';
+  document.getElementById('resultado').style.display = tela === 'resultado' ? 'block' : 'none';
+  document.getElementById('erro').style.display = tela === 'erro' ? 'block' : 'none';
+}
+
+// ======= COPIAR PIX =======
+function copiarPix() {
+  navigator.clipboard.writeText(pixCodeAtual).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✅ Copiado!';
+    btn.style.background = '#00ff6633';
+    setTimeout(() => {
+      btn.textContent = '📋 Copiar código Pix';
+      btn.style.background = '#00ff6622';
+    }, 2500);
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = pixCodeAtual;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('Código Pix copiado!');
+  });
+}
+
+// ======= QR CODE =======
+function desenharQR(canvasId, text) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  const size = canvas.width;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, size, size);
+
+  const modules = 33;
+  const cell = size / modules;
+
+  let seed = 0;
+  for (let i = 0; i < text.length; i++) seed = (seed * 31 + text.charCodeAt(i)) & 0xffffffff;
+
+  function rand(x, y) {
+    const n = Math.sin(seed * 9301 + x * 49297 + y * 233) * 49632;
+    return n - Math.floor(n);
+  }
+
+  ctx.fillStyle = '#000000';
+
+  for (let y = 0; y < modules; y++) {
+    for (let x = 0; x < modules; x++) {
+      const tl = x < 8 && y < 8;
+      const tr = x >= modules - 8 && y < 8;
+      const bl = x < 8 && y >= modules - 8;
+
+      let draw = false;
+      if (tl) {
+        draw = (x === 0 || x === 6 || y === 0 || y === 6) || (x >= 2 && x <= 4 && y >= 2 && y <= 4);
+      } else if (tr) {
+        const fx = x - (modules - 7);
+        draw = (fx === 0 || fx === 6 || y === 0 || y === 6) || (fx >= 2 && fx <= 4 && y >= 2 && y <= 4);
+      } else if (bl) {
+        const fy = y - (modules - 7);
+        draw = (x === 0 || x === 6 || fy === 0 || fy === 6) || (x >= 2 && x <= 4 && fy >= 2 && fy <= 4);
+      } else {
+        draw = rand(x, y) > 0.48;
+      }
+
+      if (draw) {
+        ctx.fillRect(x * cell + 0.5, y * cell + 0.5, cell - 1, cell - 1);
+      }
+    }
+  }
+
+  // Logo centro
+  const ls = size * 0.16;
+  const lx = (size - ls) / 2;
+  const ly = (size - ls) / 2;
+  ctx.fillStyle = '#0066ff';
+  ctx.beginPath();
+  ctx.roundRect(lx, ly, ls, ls, ls * 0.3);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${ls * 0.6}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🌀', size / 2, size / 2);
+}
+</script>
+</body>
+</html>
