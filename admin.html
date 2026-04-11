@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VortexPay - Painel Admin</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card: #12121a;
+    --card2: #1a1a26;
+    --border: rgba(255,255,255,0.07);
+    --orange: #ff6b35;
+    --orange2: #f7931e;
+    --green: #4ade80;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --yellow: #fbbf24;
+    --purple: #a78bfa;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #475569;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── LOGIN ───────────────────────────────────────── */
+  #login-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  }
+  .login-card {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 24px;
+    padding: 40px 36px;
+    width: 360px;
+    text-align: center;
+  }
+  .login-card .logo-icon {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 32px rgba(255,107,53,0.4);
+  }
+  .login-card h2 { font-size: 22px; margin-bottom: 4px; }
+  .login-card p { color: var(--text2); font-size: 13px; margin-bottom: 28px; }
+  .login-input {
+    width: 100%;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 15px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .login-input:focus { border-color: var(--orange); }
+  .login-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    border: none; border-radius: 12px;
+    color: #fff; font-size: 15px; font-weight: 700;
+    padding: 15px; cursor: pointer;
+    box-shadow: 0 8px 24px rgba(255,107,53,0.35);
+    transition: all 0.2s;
+  }
+  .login-btn:hover { transform: translateY(-1px); }
+  .login-error { color: var(--red); font-size: 13px; margin-top: 10px; }
+
+  /* ── LAYOUT ───────────────────────────────────────── */
+  #admin-screen { display: none; }
+  .sidebar {
+    position: fixed; left: 0; top: 0;
+    width: 240px; height: 100vh;
+    background: var(--card);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    z-index: 100;
+    transition: transform 0.3s;
+  }
+  .sidebar-logo {
+    padding: 24px 20px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .sidebar-logo .icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .sidebar-logo h2 { font-size: 16px; font-weight: 700; }
+  .sidebar-logo p { font-size: 11px; color: var(--text2); }
+  .nav { padding: 16px 12px; flex: 1; overflow-y: auto; }
+  .nav-section { color: var(--text3); font-size: 10px; text-transform: uppercase;
+    letter-spacing: 1.5px; padding: 8px 8px 6px; margin-top: 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 10px;
+    color: var(--text2); font-size: 14px;
+    cursor: pointer; transition: all 0.15s;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  .nav-item.active { background: rgba(255,107,53,0.15); color: var(--orange); }
+  .nav-item .badge {
+    margin-left: auto; background: var(--orange);
+    color: #fff; font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 20px;
+  }
+  .sidebar-footer {
+    padding: 16px; border-top: 1px solid var(--border);
+  }
+  .status-dot {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text2);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text3); }
+  .dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* ── MAIN ───────────────────────────────────────── */
+  .main { margin-left: 240px; min-height: 100vh; }
+  .topbar {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar h1 { font-size: 18px; font-weight: 700; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .refresh-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    padding: 8px 14px; font-size: 13px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .refresh-btn:hover { background: rgba(255,255,255,0.1); }
+  .last-update { font-size: 12px; color: var(--text3); }
+  .content { padding: 28px; }
+
+  /* ── TABS ───────────────────────────────────────── */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── CARDS MÉTRICAS ─────────────────────────────── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .metric-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .metric-card:hover { border-color: rgba(255,255,255,0.15); }
+  .metric-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .metric-card.orange::before { background: linear-gradient(90deg, var(--orange), var(--orange2)); }
+  .metric-card.green::before { background: linear-gradient(90deg, #22c55e, #4ade80); }
+  .metric-card.blue::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+  .metric-card.purple::before { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+  .metric-card.red::before { background: linear-gradient(90deg, #dc2626, #f87171); }
+  .metric-card.yellow::before { background: linear-gradient(90deg, #d97706, #fbbf24); }
+  .metric-icon {
+    font-size: 22px; margin-bottom: 10px;
+    width: 42px; height: 42px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .metric-label { color: var(--text2); font-size: 12px; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 6px; }
+  .metric-value { font-size: 26px; font-weight: 800; color: var(--text); }
+  .metric-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
+  .metric-trend { font-size: 11px; margin-top: 6px; }
+  .metric-trend.up { color: var(--green); }
+  .metric-trend.down { color: var(--red); }
+
+  /* ── TABELAS ────────────────────────────────────── */
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .table-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .table-header h3 { font-size: 15px; font-weight: 600; }
+  .table-header .count {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 6px; padding: 3px 10px;
+    font-size: 12px; color: var(--text2);
+  }
+  .table-wrapper { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: rgba(255,255,255,0.03);
+    padding: 12px 16px;
+    text-align: left; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text3); font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr {
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: rgba(255,255,255,0.03); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 13px 16px; font-size: 13px; color: var(--text); }
+  td.mono { font-family: monospace; font-size: 12px; color: var(--text2); }
+
+  /* ── BADGES ─────────────────────────────────────── */
+  .badge-status {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  }
+  .badge-status.pago, .badge-status.enviado, .badge-status.processado, .badge-status.confirmado {
+    background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.25);
+  }
+  .badge-status.pendente {
+    background: rgba(251,191,36,0.12); color: var(--yellow); border: 1px solid rgba(251,191,36,0.25);
+  }
+  .badge-status.erro, .badge-status.cancelado {
+    background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.25);
+  }
+  .badge-status::before { content: '●'; font-size: 8px; }
+
+  /* ── CARTEIRA ────────────────────────────────────── */
+  .wallet-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .wallet-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .wallet-main {
+    background: linear-gradient(135deg, #1a0f3c, #2d1b69);
+    border: 1px solid rgba(167,139,250,0.2);
+    border-radius: 20px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .wallet-main::after {
+    content: '💎';
+    position: absolute; right: 20px; top: 20px;
+    font-size: 40px; opacity: 0.15;
+  }
+  .wallet-main .label { color: rgba(255,255,255,0.6); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .wallet-main .valor { color: #fff; font-size: 38px; font-weight: 800; margin: 8px 0 4px; }
+  .wallet-main .sub { color: rgba(255,255,255,0.5); font-size: 13px; }
+  .wallet-account { font-size: 12px; color: var(--text2); margin-top: 16px; }
+  .wallet-account span { color: var(--purple); font-weight: 600; }
+
+  /* ── GRÁFICO SIMPLES ────────────────────────────── */
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 80px;
+    padding: 0 4px;
+  }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .bar {
+    width: 100%; border-radius: 4px 4px 0 0;
+    min-height: 4px;
+    transition: height 0.5s ease;
+  }
+  .bar.dep { background: linear-gradient(180deg, #ff6b35, #ff8c5a); }
+  .bar.saq { background: linear-gradient(180deg, #4ade80, #22c55e); }
+  .bar-label { font-size: 9px; color: var(--text3); }
+
+  /* ── FILTRO ─────────────────────────────────────── */
+  .filter-row {
+    display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;
+  }
+  .filter-select {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    padding: 8px 12px; font-size: 13px;
+    cursor: pointer; outline: none;
+  }
+  .filter-input {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    padding: 8px 14px; font-size: 13px; outline: none;
+    flex: 1; min-width: 200px;
+  }
+  .filter-input::placeholder { color: var(--text3); }
+
+  /* ── PAGINAÇÃO ───────────────────────────────────── */
+  .pagination { display: flex; gap: 6px; justify-content: center; padding: 16px; }
+  .page-btn {
+    background: var(--card2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    padding: 6px 12px; font-size: 13px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .page-btn:hover, .page-btn.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+
+  /* ── EMPTY ───────────────────────────────────────── */
+  .empty {
+    text-align: center; padding: 48px;
+    color: var(--text3);
+  }
+  .empty .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty p { font-size: 14px; }
+
+  /* ── TOAST ───────────────────────────────────────── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 20px;
+    font-size: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s; z-index: 9999;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { border-color: rgba(74,222,128,0.3); color: var(--green); }
+  #toast.error { border-color: rgba(248,113,113,0.3); color: var(--red); }
+
+  /* ── MOBILE ──────────────────────────────────────── */
+  .menu-toggle {
+    display: none; background: none; border: none;
+    color: var(--text); font-size: 22px; cursor: pointer;
+    padding: 4px;
+  }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0; }
+    .metrics-grid { grid-template-columns: 1fr 1fr; }
+    .wallet-grid { grid-template-columns: 1fr; }
+    .menu-toggle { display: block; }
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 99;
+    }
+    .overlay.show { display: block; }
+    .content { padding: 16px; }
+  }
+
+  /* ── LOADER ──────────────────────────────────────── */
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-top-color: var(--orange);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-row td { text-align: center; padding: 32px; color: var(--text3); }
+  
+  /* ── SEPARADOR ───────────────────────────────────── */
+  .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .section-grid { grid-template-columns: 1fr; } }
+
+  .copy-btn {
+    background: none; border: none; color: var(--text3);
+    cursor: pointer; font-size: 12px; padding: 2px 6px;
+    border-radius: 4px; transition: all 0.15s;
+  }
+  .copy-btn:hover { color: var(--orange); background: rgba(255,107,53,0.1); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="logo-icon">⚡</div>
+    <h2>VortexPay Admin</h2>
+    <p>Painel de controle financeiro</p>
+    <input id="login-secret" class="login-input" type="password" placeholder="Senha de acesso" autocomplete="off">
+    <button class="login-btn" onclick="fazerLogin()">🔐 Entrar</button>
+    <div id="login-error" class="login-error"></div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="admin-screen">
+  <div class="overlay" id="overlay" onclick="fecharSidebar()"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="icon">⚡</div>
+      <div>
+        <h2>VortexPay</h2>
+        <p>Painel Admin</p>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Principal</div>
+      <div class="nav-item active" onclick="showTab('dashboard')">
+        📊 <span>Dashboard</span>
+      </div>
+      <div class="nav-item" onclick="showTab('carteira')">
+        💎 <span>Carteira</span>
+      </div>
+      <div class="nav-section">Transações</div>
+      <div class="nav-item" onclick="showTab('depositos')">
+        📥 <span>Depósitos</span>
+        <span class="badge" id="badge-dep">0</span>
+      </div>
+      <div class="nav-item" onclick="showTab('saques')">
+        📤 <span>Saques</span>
+        <span class="badge" id="badge-saq">0</span>
+      </div>
+      <div class="nav-section">Sistema</div>
+      <div class="nav-item" onclick="showTab('sistema')">
+        🖥️ <span>Sistema</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="status-dot">
+        <div class="dot" id="tg-dot"></div>
+        <span id="tg-status">Verificando...</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <h1 id="page-title">Dashboard</h1>
+      </div>
+      <div class="topbar-right">
+        <span class="last-update" id="last-update"></span>
+        <button class="refresh-btn" onclick="loadAll()">🔄 Atualizar</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div id="tab-dashboard" class="tab-content active">
+        <div class="metrics-grid">
+          <div class="metric-card orange">
+            <div class="metric-icon">💰</div>
+            <div class="metric-label">Saldo Atual</div>
+            <div class="metric-value" id="m-saldo">—</div>
+            <div class="metric-sub" id="m-disponivel">Disponível para saque</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-icon">📥</div>
+            <div class="metric-label">Total Depositado</div>
+            <div class="metric-value" id="m-total-dep">—</div>
+            <div class="metric-sub" id="m-qtd-dep">transações confirmadas</div>
+          </div>
+          <div class="metric-card blue">
+            <div class="metric-icon">📤</div>
+            <div class="metric-label">Total Sacado</div>
+            <div class="metric-value" id="m-total-saq">—</div>
+            <div class="metric-sub" id="m-qtd-saq">saques realizados</div>
+          </div>
+          <div class="metric-card yellow">
+            <div class="metric-icon">⏳</div>
+            <div class="metric-label">Depósitos Pendentes</div>
+            <div class="metric-value" id="m-pend-dep">—</div>
+            <div class="metric-sub" id="m-val-pend">aguardando confirmação</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-icon">📊</div>
+            <div class="metric-label">Total Transações</div>
+            <div class="metric-value" id="m-total-tx">—</div>
+            <div class="metric-sub">depósitos + saques</div>
+          </div>
+          <div class="metric-card red">
+            <div class="metric-icon">⚠️</div>
+            <div class="metric-label">Saques Pendentes</div>
+            <div class="metric-value" id="m-pend-saq">—</div>
+            <div class="metric-sub" id="m-val-pend-saq">aguardando processamento</div>
+          </div>
+        </div>
+
+        <!-- Atividade Recente -->
+        <div class="section-grid">
+          <div class="table-card">
+            <div class="table-header">
+              <h3>📥 Últimos Depósitos</h3>
+              <span class="count" id="count-dep-recent">—</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Valor</th><th>Status</th><th>Data</th>
+                </tr>
+              </thead>
+              <tbody id="table-dep-recent">
+                <tr class="loading-row"><td colspan="4"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-card">
+            <div class="table-header">
+              <h3>📤 Últimos Saques</h3>
+              <span class="count" id="count-saq-recent">—</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Valor</th><th>Chave</th><th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="table-saq-recent">
+                <tr class="loading-row"><td colspan="4"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARTEIRA -->
+      <div id="tab-carteira" class="tab-content">
+        <div class="wallet-grid">
+          <div class="wallet-main">
+            <div class="label">Saldo Total</div>
+            <div class="valor" id="w-saldo">R$ —</div>
+            <div class="sub">VortexBank Digital</div>
+            <div class="wallet-account">
+              Conta: <span id="w-conta">Carregando...</span>
+            </div>
+          </div>
+          <div class="wallet-card" style="display:flex;flex-direction:column;gap:16px">
+            <div>
+              <div style="color:var(--text2);font-size:12px;margin-bottom:6px">DISPONÍVEL PARA SAQUE</div>
+              <div style="font-size:28px;font-weight:800;color:var(--green)" id="w-disponivel">R$ —</div>
+            </div>
+            <div style="border-top:1px solid var(--border);padding-top:16px">
+              <div style="color:var(--text2);font-size:12px;margin-bottom:6px">TOTAL DEPOSITADO (confirmados)</div>
+              <div style="font-size:20px;font-weight:700" id="w-depositado">R$ —</div>
+            </div>
+            <div style="border-top:1px solid var(--border);padding-top:16px">
+              <div style="color:var(--text2);font-size:12px;margin-bottom:6px">TOTAL SACADO (realizados)</div>
+              <div style="font-size:20px;font-weight:700;color:var(--red)" id="w-sacado">R$ —</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header">
+            <h3>📊 Resumo Financeiro</h3>
+          </div>
+          <table>
+            <tbody id="table-resumo-financeiro">
+              <tr class="loading-row"><td colspan="2"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DEPÓSITOS -->
+      <div id="tab-depositos" class="tab-content">
+        <div class="filter-row">
+          <select class="filter-select" id="filter-dep-status" onchange="renderDepositos()">
+            <option value="">Todos os status</option>
+            <option value="pago">✅ Pagos</option>
+            <option value="pendente">⏳ Pendentes</option>
+          </select>
+          <input class="filter-input" id="filter-dep-search" placeholder="🔍 Buscar por ID ou valor..." oninput="renderDepositos()">
+          <button class="refresh-btn" onclick="loadDepositos()">🔄 Atualizar</button>
+        </div>
+        <div class="table-card">
+          <div class="table-header">
+            <h3>📥 Todos os Depósitos</h3>
+            <span class="count" id="count-dep-all">—</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>ID Transação</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                  <th>Criado em</th>
+                  <th>Confirmado em</th>
+                  <th>Código Pix</th>
+                </tr>
+              </thead>
+              <tbody id="table-depositos">
+                <tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="pag-dep"></div>
+        </div>
+      </div>
+
+      <!-- SAQUES -->
+      <div id="tab-saques" class="tab-content">
+        <div class="filter-row">
+          <select class="filter-select" id="filter-saq-status" onchange="renderSaques()">
+            <option value="">Todos os status</option>
+            <option value="enviado">✅ Realizados</option>
+            <option value="pendente">⏳ Pendentes</option>
+            <option value="erro">❌ Erros</option>
+          </select>
+          <input class="filter-input" id="filter-saq-search" placeholder="🔍 Buscar por ID ou chave Pix..." oninput="renderSaques()">
+          <button class="refresh-btn" onclick="loadSaques()">🔄 Atualizar</button>
+        </div>
+        <div class="table-card">
+          <div class="table-header">
+            <h3>📤 Todos os Saques</h3>
+            <span class="count" id="count-saq-all">—</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>ID Saque</th>
+                  <th>Valor</th>
+                  <th>Chave Pix</th>
+                  <th>Tipo</th>
+                  <th>Status</th>
+                  <th>Solicitado em</th>
+                  <th>Processado em</th>
+                </tr>
+              </thead>
+              <tbody id="table-saques">
+                <tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="pag-saq"></div>
+        </div>
+      </div>
+
+      <!-- SISTEMA -->
+      <div id="tab-sistema" class="tab-content">
+        <div class="metrics-grid">
+          <div class="metric-card orange">
+            <div class="metric-icon">🤖</div>
+            <div class="metric-label">Telegram</div>
+            <div class="metric-value" id="sys-tg">—</div>
+            <div class="metric-sub">Bot VortexBank</div>
+          </div>
+          <div class="metric-card blue">
+            <div class="metric-icon">🌐</div>
+            <div class="metric-label">Servidor</div>
+            <div class="metric-value" style="font-size:18px" id="sys-url">—</div>
+            <div class="metric-sub">Railway Production</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-icon">🔗</div>
+            <div class="metric-label">Webhook</div>
+            <div class="metric-value" style="font-size:16px">/webhook/confirmar</div>
+            <div class="metric-sub">Endpoint ativo</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-icon">🔄</div>
+            <div class="metric-label">Tentativas TG</div>
+            <div class="metric-value" id="sys-tent">—</div>
+            <div class="metric-sub">reconexões Telegram</div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header"><h3>🔗 Links do Sistema</h3></div>
+          <table>
+            <tbody id="sys-links-table"></tbody>
+          </table>
+        </div>
+
+        <div class="table-card" style="margin-top:16px">
+          <div class="table-header"><h3>📋 Informações do Sistema</h3></div>
+          <table>
+            <tbody id="sys-info-table">
+              <tr class="loading-row"><td colspan="2"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /admin -->
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIGURAÇÃO
+// ═══════════════════════════════════════════════
+const SECRET = () => sessionStorage.getItem('vp_secret') || '';
+const BASE = window.location.origin;
+
+let allDepositos = [];
+let allSaques = [];
+let pagDep = 1;
+let pagSaq = 1;
+const PER_PAGE = 15;
+let saldoBot = 0;
+let disponivelBot = 0;
+
+// ═══════════════════════════════════════════════
+//  LOGIN
+// ═══════════════════════════════════════════════
+document.getElementById('login-secret').addEventListener('keypress', e => {
+  if (e.key === 'Enter') fazerLogin();
+});
+
+async function fazerLogin() {
+  const secret = document.getElementById('login-secret').value.trim();
+  if (!secret) return;
+  
+  try {
+    const r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(secret)}`);
+    if (r.ok) {
+      sessionStorage.setItem('vp_secret', secret);
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('admin-screen').style.display = 'block';
+      loadAll();
+      setInterval(loadAll, 30000);
+    } else {
+      document.getElementById('login-error').textContent = '❌ Senha incorreta. Tente novamente.';
+    }
+  } catch {
+    document.getElementById('login-error').textContent = '❌ Erro de conexão.';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  NAVEGAÇÃO
+// ═══════════════════════════════════════════════
+function showTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.toLowerCase().includes(tabName(tab))) n.classList.add('active');
+  });
+  const titles = {
+    dashboard: '📊 Dashboard',
+    carteira: '💎 Carteira',
+    depositos: '📥 Depósitos',
+    saques: '📤 Saques',
+    sistema: '🖥️ Sistema',
+  };
+  document.getElementById('page-title').textContent = titles[tab] || tab;
+  fecharSidebar();
+}
+
+function tabName(tab) {
+  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sistema:'sistema' };
+  return map[tab] || tab;
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function fecharSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+function toast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ═══════════════════════════════════════════════
+//  LOAD ALL
+// ═══════════════════════════════════════════════
+async function loadAll() {
+  document.getElementById('last-update').textContent = '🔄 Atualizando...';
+  await Promise.all([loadHealth(), loadDepositos(), loadSaques(), loadSaldo()]);
+  document.getElementById('last-update').textContent = '⏱ ' + new Date().toLocaleTimeString('pt-BR');
+}
+
+// ═══════════════════════════════════════════════
+//  HEALTH / STATUS
+// ═══════════════════════════════════════════════
+async function loadHealth() {
+  try {
+    const r = await fetch(`${BASE}/health`);
+    const d = await r.json();
+    
+    const online = d.telegram;
+    const dot = document.getElementById('tg-dot');
+    dot.className = 'dot' + (online ? ' online' : '');
+    document.getElementById('tg-status').textContent = online ? '🟢 Telegram Online' : '🔴 Reconectando...';
+    document.getElementById('sys-tg').textContent = online ? '🟢 OK' : '🔴 OFF';
+    document.getElementById('sys-tent').textContent = d.tentativas || 0;
+    document.getElementById('sys-url').textContent = BASE.replace('https://','');
+
+    // Links do sistema
+    document.getElementById('sys-links-table').innerHTML = `
+      <tr><td style="color:var(--text2);width:160px">💳 Depósito</td><td><a href="${BASE}/" target="_blank" style="color:var(--blue)">${BASE}/</a></td></tr>
+      <tr><td style="color:var(--text2)">📤 Saque</td><td><a href="${BASE}/saque" target="_blank" style="color:var(--blue)">${BASE}/saque</a></td></tr>
+      <tr><td style="color:var(--text2)">⚡ Health</td><td><a href="${BASE}/health" target="_blank" style="color:var(--green)">${BASE}/health</a></td></tr>
+      <tr><td style="color:var(--text2)">🔗 Webhook</td><td style="color:var(--text);font-family:monospace;font-size:12px">POST ${BASE}/webhook/confirmar<br><small style="color:var(--text3)">Header: X-VortexPay-Secret</small></td></tr>
+    `;
+
+    document.getElementById('sys-info-table').innerHTML = `
+      <tr><td style="color:var(--text2);width:200px">Bot</td><td>@${d.bot || 'VortexBank_bot'}</td></tr>
+      <tr><td style="color:var(--text2)">Webhook endpoint</td><td style="font-family:monospace">${d.webhook || '/webhook/confirmar'}</td></tr>
+      <tr><td style="color:var(--text2)">Status Telegram</td><td>${online ? '<span style="color:var(--green)">✅ Conectado</span>' : '<span style="color:var(--red)">❌ Desconectado</span>'}</td></tr>
+      <tr><td style="color:var(--text2)">Reconexões</td><td>${d.tentativas || 0}</td></tr>
+      <tr><td style="color:var(--text2)">URL base</td><td>${BASE}</td></tr>
+    `;
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════
+//  SALDO
+// ═══════════════════════════════════════════════
+async function loadSaldo() {
+  try {
+    const r = await fetch(`${BASE}/api/saldo`);
+    const d = await r.json();
+    saldoBot = d.saldo || 0;
+    disponivelBot = d.disponivel || 0;
+
+    const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+
+    document.getElementById('m-saldo').textContent = fmt(saldoBot);
+    document.getElementById('m-disponivel').textContent = `Disponível: ${fmt(disponivelBot)}`;
+    document.getElementById('w-saldo').textContent = fmt(saldoBot);
+    document.getElementById('w-disponivel').textContent = fmt(disponivelBot);
+    document.getElementById('w-conta').textContent = '5956000812 (bin cash)';
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════
+//  DEPÓSITOS
+// ═══════════════════════════════════════════════
+async function loadDepositos() {
+  try {
+    const r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(SECRET())}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    allDepositos = d.transacoes || [];
+    const resumo = d.resumo || {};
+
+    // Métricas
+    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
+    document.getElementById('m-total-dep').textContent = fmt(resumo.valor_recebido || 0);
+    document.getElementById('m-qtd-dep').textContent = (resumo.pagos || 0) + ' transações confirmadas';
+    document.getElementById('m-pend-dep').textContent = resumo.pendentes || 0;
+    document.getElementById('m-val-pend').textContent = 'Pendente: ' + fmt(resumo.valor_pendente || 0);
+    document.getElementById('badge-dep').textContent = resumo.pendentes || 0;
+
+    // Carteira
+    document.getElementById('w-depositado').textContent = fmt(resumo.valor_recebido || 0);
+
+    // Dashboard recentes
+    renderDepositosRecentes();
+    renderDepositos();
+  } catch(e) {}
+}
+
+function renderDepositosRecentes() {
+  const tbody = document.getElementById('table-dep-recent');
+  const recent = allDepositos.slice(0, 8);
+  document.getElementById('count-dep-recent').textContent = allDepositos.length + ' total';
+  
+  if (!recent.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty"><div class="empty-icon">📭</div><p>Nenhum depósito ainda</p></td></tr>';
+    return;
+  }
+  tbody.innerHTML = recent.map(tx => `
+    <tr>
+      <td class="mono">${tx.tx_id ? tx.tx_id.substring(0,12)+'...' : '—'}</td>
+      <td><strong style="color:var(--green)">R$ ${(tx.valor||0).toFixed(2).replace('.',',')}</strong></td>
+      <td>${badgeStatus(tx.status)}</td>
+      <td style="color:var(--text3);font-size:11px">${formatDate(tx.created_at)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderDepositos() {
+  const statusFilter = document.getElementById('filter-dep-status').value;
+  const search = document.getElementById('filter-dep-search').value.toLowerCase();
+  
+  let filtered = allDepositos.filter(tx => {
+    const matchStatus = !statusFilter || tx.status === statusFilter;
+    const matchSearch = !search || 
+      (tx.tx_id||'').toLowerCase().includes(search) ||
+      String(tx.valor||'').includes(search);
+    return matchStatus && matchSearch;
+  });
+
+  document.getElementById('count-dep-all').textContent = filtered.length + ' registros';
+  const start = (pagDep - 1) * PER_PAGE;
+  const page = filtered.slice(start, start + PER_PAGE);
+  
+  const tbody = document.getElementById('table-depositos');
+  if (!page.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-icon">🔍</div><p>Nenhum resultado encontrado</p></div></td></tr>';
+  } else {
+    tbody.innerHTML = page.map((tx, i) => `
+      <tr>
+        <td style="color:var(--text3)">${start + i + 1}</td>
+        <td class="mono">
+          ${tx.tx_id || '—'}
+          <button class="copy-btn" onclick="copiar('${tx.tx_id}')">📋</button>
+        </td>
+        <td><strong style="color:var(--green)">R$ ${(tx.valor||0).toFixed(2).replace('.',',')}</strong></td>
+        <td>${badgeStatus(tx.status)}</td>
+        <td style="font-size:12px;color:var(--text2)">${formatDateTime(tx.created_at)}</td>
+        <td style="font-size:12px;color:var(--text2)">${tx.paid_at ? formatDateTime(tx.paid_at) : '—'}</td>
+        <td>
+          ${tx.pix_code ? 
+            `<button class="copy-btn" onclick="copiar('${tx.pix_code}')">📋 Copiar código</button>` : 
+            '<span style="color:var(--text3)">—</span>'}
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  renderPagination('pag-dep', Math.ceil(filtered.length / PER_PAGE), pagDep, p => { pagDep = p; renderDepositos(); });
+}
+
+// ═══════════════════════════════════════════════
+//  SAQUES
+// ═══════════════════════════════════════════════
+async function loadSaques() {
+  try {
+    const r = await fetch(`${BASE}/api/saques?secret=${encodeURIComponent(SECRET())}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    allSaques = d.saques || [];
+    const resumo = d.resumo || {};
+
+    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
+    document.getElementById('m-total-saq').textContent = fmt(resumo.valor_pago || 0);
+    document.getElementById('m-qtd-saq').textContent = (resumo.processados || 0) + ' saques realizados';
+    document.getElementById('m-pend-saq').textContent = resumo.pendentes || 0;
+    document.getElementById('m-val-pend-saq').textContent = fmt(resumo.valor_pendente || 0) + ' aguardando';
+    document.getElementById('badge-saq').textContent = resumo.pendentes || 0;
+    
+    // Carteira
+    document.getElementById('w-sacado').textContent = fmt(resumo.valor_pago || 0);
+
+    // Total transações
+    const totalTx = allDepositos.length + allSaques.length;
+    document.getElementById('m-total-tx').textContent = totalTx;
+
+    // Resumo financeiro
+    renderResumoFinanceiro(resumo);
+    renderSaquesRecentes();
+    renderSaques();
+  } catch(e) {}
+}
+
+function renderResumoFinanceiro(resumo) {
+  const dep = allDepositos;
+  const saq = allSaques;
+  const fmt = v => '<strong style="color:var(--text)">R$ ' + (v||0).toFixed(2).replace('.',',') + '</strong>';
+  
+  document.getElementById('table-resumo-financeiro').innerHTML = `
+    <tr><td style="color:var(--text2);padding:13px 20px">Saldo na conta (bot)</td><td style="padding:13px 20px">${fmt(saldoBot)}</td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Disponível para saque</td><td style="padding:13px 20px"><strong style="color:var(--green)">R$ ${disponivelBot.toFixed(2).replace('.',',')}</strong></td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Depósitos confirmados</td><td style="padding:13px 20px">${fmt(dep.filter(t=>t.status==='pago').reduce((a,t)=>a+(t.valor||0),0))}</td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Depósitos pendentes</td><td style="padding:13px 20px"><strong style="color:var(--yellow)">R$ ${dep.filter(t=>t.status==='pendente').reduce((a,t)=>a+(t.valor||0),0).toFixed(2).replace('.',',')}</strong></td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Saques realizados</td><td style="padding:13px 20px"><strong style="color:var(--red)">R$ ${saq.filter(s=>['enviado','processado','confirmado'].includes(s.status)).reduce((a,s)=>a+(s.valor||0),0).toFixed(2).replace('.',',')}</strong></td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Saques pendentes</td><td style="padding:13px 20px"><strong style="color:var(--yellow)">R$ ${saq.filter(s=>s.status==='pendente').reduce((a,s)=>a+(s.valor||0),0).toFixed(2).replace('.',',')}</strong></td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Qtd. depósitos total</td><td style="padding:13px 20px"><strong>${dep.length}</strong></td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Qtd. saques total</td><td style="padding:13px 20px"><strong>${saq.length}</strong></td></tr>
+  `;
+}
+
+function renderSaquesRecentes() {
+  const tbody = document.getElementById('table-saq-recent');
+  const recent = allSaques.slice(0, 8);
+  document.getElementById('count-saq-recent').textContent = allSaques.length + ' total';
+  
+  if (!recent.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty"><div class="empty-icon">📭</div><p>Nenhum saque ainda</p></td></tr>';
+    return;
+  }
+  tbody.innerHTML = recent.map(s => `
+    <tr>
+      <td class="mono">${(s.saque_id||'—').substring(0,10)+'...'}</td>
+      <td><strong style="color:var(--red)">R$ ${(s.valor||0).toFixed(2).replace('.',',')}</strong></td>
+      <td style="font-size:11px;color:var(--text2);max-width:100px;overflow:hidden;text-overflow:ellipsis">${s.chave_pix||'—'}</td>
+      <td>${badgeStatus(s.status)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderSaques() {
+  const statusFilter = document.getElementById('filter-saq-status').value;
+  const search = document.getElementById('filter-saq-search').value.toLowerCase();
+  
+  let filtered = allSaques.filter(s => {
+    const matchStatus = !statusFilter || s.status === statusFilter;
+    const matchSearch = !search ||
+      (s.saque_id||'').toLowerCase().includes(search) ||
+      (s.chave_pix||'').toLowerCase().includes(search) ||
+      String(s.valor||'').includes(search);
+    return matchStatus && matchSearch;
+  });
+
+  document.getElementById('count-saq-all').textContent = filtered.length + ' registros';
+  const start = (pagSaq - 1) * PER_PAGE;
+  const page = filtered.slice(start, start + PER_PAGE);
+  
+  const tbody = document.getElementById('table-saques');
+  if (!page.length) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><div class="empty-icon">🔍</div><p>Nenhum resultado encontrado</p></div></td></tr>';
+  } else {
+    tbody.innerHTML = page.map((s, i) => `
+      <tr>
+        <td style="color:var(--text3)">${start + i + 1}</td>
+        <td class="mono">
+          ${s.saque_id || '—'}
+          <button class="copy-btn" onclick="copiar('${s.saque_id}')">📋</button>
+        </td>
+        <td><strong style="color:var(--red)">R$ ${(s.valor||0).toFixed(2).replace('.',',')}</strong></td>
+        <td style="font-size:12px;max-width:160px;word-break:break-all">${s.chave_pix||'—'}</td>
+        <td><span style="background:rgba(96,165,250,0.1);color:var(--blue);padding:3px 8px;border-radius:6px;font-size:11px">${(s.tipo_chave||'').toUpperCase()}</span></td>
+        <td>${badgeStatus(s.status)}</td>
+        <td style="font-size:12px;color:var(--text2)">${formatDateTime(s.created_at)}</td>
+        <td style="font-size:12px;color:var(--text2)">${s.processado_at ? formatDateTime(s.processado_at) : '—'}</td>
+      </tr>
+    `).join('');
+  }
+
+  renderPagination('pag-saq', Math.ceil(filtered.length / PER_PAGE), pagSaq, p => { pagSaq = p; renderSaques(); });
+}
+
+// ═══════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════
+function badgeStatus(status) {
+  const labels = {
+    pago: '✅ Pago', pendente: '⏳ Pendente',
+    enviado: '⚡ Enviado', processado: '✅ Processado',
+    erro: '❌ Erro', cancelado: '🚫 Cancelado',
+    confirmado: '✅ Confirmado',
+  };
+  const s = (status||'pendente').toLowerCase();
+  return `<span class="badge-status ${s}">${labels[s] || status}</span>`;
+}
+
+function formatDate(str) {
+  if (!str) return '—';
+  try {
+    return new Date(str).toLocaleDateString('pt-BR');
+  } catch { return str; }
+}
+
+function formatDateTime(str) {
+  if (!str) return '—';
+  try {
+    const d = new Date(str);
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  } catch { return str; }
+}
+
+function renderPagination(id, total, current, callback) {
+  const el = document.getElementById(id);
+  if (total <= 1) { el.innerHTML = ''; return; }
+  let html = '';
+  for (let i = 1; i <= total; i++) {
+    html += `<button class="page-btn${i===current?' active':''}" onclick="(${callback.toString()})(${i})">${i}</button>`;
+  }
+  el.innerHTML = html;
+}
+
+function copiar(texto) {
+  navigator.clipboard.writeText(texto).then(() => toast('📋 Copiado!'));
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+// Auto-login se já tem secret
+if (sessionStorage.getItem('vp_secret')) {
+  document.getElementById('login-secret').value = sessionStorage.getItem('vp_secret');
+  fazerLogin();
+}
+</script>
+</body>
+</html>

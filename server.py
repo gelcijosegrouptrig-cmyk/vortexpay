@@ -136,6 +136,11 @@ def load_saque_html():
         return open('saque.html', encoding='utf-8').read()
     return '<h1>VortexPay - Saque</h1>'
 
+def load_admin_html():
+    if os.path.exists('admin.html'):
+        return open('admin.html', encoding='utf-8').read()
+    return '<h1>VortexPay - Admin</h1>'
+
 # ─── TELEGRAM - Conectar com retry ─────────────────────────
 async def conectar_telegram():
     global _telegram_ready, _telegram_tentativas
@@ -409,6 +414,9 @@ async def route_transacoes(request):
 # ─── ROTA SAQUE ───────────────────────────────────────────
 async def route_saque_page(request):
     return web.Response(text=load_saque_html(), content_type='text/html', charset='utf-8')
+
+async def route_admin_page(request):
+    return web.Response(text=load_admin_html(), content_type='text/html', charset='utf-8')
 
 async def route_saldo(request):
     """Retorna saldo atual da conta via bot Telegram"""
@@ -717,6 +725,9 @@ async def main():
     app.router.add_post('/api/saque', route_solicitar_saque)
     app.router.add_route('OPTIONS', '/api/saque', lambda r: web.Response(status=200))
     app.router.add_get('/api/saques', route_saques_admin)
+    # Painel Admin
+    app.router.add_get('/admin', route_admin_page)
+    app.router.add_get('/admin.html', route_admin_page)
 
     runner = web.AppRunner(app)
     await runner.setup()
