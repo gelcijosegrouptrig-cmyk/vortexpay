@@ -160,39 +160,21 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
   <!-- ══ ABA: MEUS NÚMEROS ══ -->
   <div id="tab-meus">
 
-    <!-- FORM CADASTRO -->
-    <div id="bloco-cadastro">
+    <!-- INÍCIO: PARTICIPAR -->
+    <div id="bloco-inicio">
       <div class="card gold">
-        <div class="sec-title">📝 Cadastre-se para participar</div>
-        <div class="fgrp">
-          <label>Nome completo</label>
-          <input id="f-nome" type="text" placeholder="João da Silva">
+        <div class="sec-title" style="text-align:center;font-size:15px">🎰 Participe do Sorteio!</div>
+        <div style="text-align:center;color:#888;font-size:13px;margin-bottom:18px">
+          Pague via Pix e ganhe números da sorte.<br>
+          <strong style="color:#FFD700">Seus dados só são cadastrados após o pagamento.</strong>
         </div>
-        <div class="fgrp">
-          <label>CPF (somente números)</label>
-          <input id="f-cpf" type="text" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" oninput="mascaraCPF(this)">
-        </div>
-        <div class="fgrp">
-          <label>Tipo da Chave Pix</label>
-          <select id="f-tipo" onchange="atualizarPlaceholder()">
-            <option value="cpf">CPF</option>
-            <option value="telefone">Telefone</option>
-            <option value="email">E-mail</option>
-            <option value="aleatoria">Chave Aleatória</option>
-            <option value="cnpj">CNPJ</option>
-          </select>
-        </div>
-        <div class="fgrp">
-          <label>Chave Pix <span style="color:#ff6b6b">*</span> <small style="color:#555">para receber o prêmio</small></label>
-          <input id="f-chave" type="text" placeholder="000.000.000-00">
-          <div style="font-size:11px;color:#FFD700;margin-top:4px">🔒 Usada apenas para enviar o prêmio se você ganhar</div>
-        </div>
-        <button class="btn btn-gold" id="btn-cad" onclick="cadastrar()">✅ Confirmar Cadastro</button>
-        <div id="msg-cad"></div>
+        <button class="btn btn-gold" onclick="abrirModalParticipacao()" style="font-size:17px;font-weight:800;padding:16px">
+          💰 Quero Participar — Pagar via Pix
+        </button>
       </div>
-      <div style="text-align:center;margin-top:8px">
-        <button class="btn btn-outline" style="width:auto;padding:8px 20px" onclick="mostrarConsulta()">
-          🔍 Já cadastrei — ver meus números
+      <div style="text-align:center;margin-top:12px">
+        <button class="btn btn-outline" style="width:auto;padding:8px 22px" onclick="mostrarConsulta()">
+          🔍 Já paguei — ver meus números
         </button>
       </div>
     </div>
@@ -208,7 +190,7 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
         <button class="btn btn-gold" onclick="consultar()">🔍 Buscar</button>
         <div id="msg-cons"></div>
         <div style="text-align:center;margin-top:10px">
-          <button onclick="mostrarCadastro()" style="background:none;border:none;color:#666;font-size:12px;cursor:pointer">← Fazer novo cadastro</button>
+          <button onclick="mostrarInicio()" style="background:none;border:none;color:#666;font-size:12px;cursor:pointer">← Voltar</button>
         </div>
       </div>
     </div>
@@ -239,19 +221,19 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
         <div style="margin-top:16px">
           <div class="sec-title">🎫 Seus números da sorte (<span id="p-qtd">0</span>)</div>
           <div class="bilhetes-grid" id="p-bilhetes">
-            <div style="color:#555;font-size:13px">Faça depósitos para gerar seus números!</div>
+            <div style="color:#555;font-size:13px">Carregando...</div>
           </div>
         </div>
 
-        <!-- BOTÃO DEPOSITAR -->
-        <button class="btn btn-gold" onclick="abrirDeposito()" style="margin-top:16px;font-size:16px;font-weight:800">
-          💰 Depositar e Ganhar Números
+        <!-- BOTÃO DEPOSITAR MAIS -->
+        <button class="btn btn-gold" onclick="abrirModalParticipacao(true)" style="margin-top:16px;font-size:15px;font-weight:800">
+          ➕ Depositar mais e ganhar mais números
         </button>
       </div>
 
       <!-- Chave Pix cadastrada -->
       <div class="card">
-        <div class="sec-title">🔑 Chave Pix cadastrada</div>
+        <div class="sec-title">🔑 Chave Pix para receber prêmio</div>
         <div class="stat-row">
           <span class="lbl">Tipo</span>
           <span class="val" id="p-tipo-chave">-</span>
@@ -263,12 +245,9 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
         <div class="msg info" style="margin-top:12px;font-size:12px">
           💡 Se ganhar, o prêmio será enviado automaticamente para esta chave.
         </div>
-        <button class="btn btn-outline" onclick="mostrarCadastro()" style="margin-top:12px">
-          ✏️ Atualizar dados
-        </button>
       </div>
 
-      <button class="btn btn-outline" onclick="sair()" style="margin-bottom:8px">
+      <button class="btn btn-outline" onclick="mostrarInicio()" style="margin-bottom:8px">
         🔄 Consultar outro CPF
       </button>
     </div>
@@ -314,14 +293,45 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
 
 </div><!-- /wrap -->
 
-<!-- ══ MODAL DEPÓSITO ══ -->
+<!-- ══ MODAL PARTICIPAÇÃO ══ -->
 <div class="modal-overlay hidden" id="modal-deposito" onclick="fecharModalFora(event)">
   <div class="modal-box" id="modal-box">
     <div class="modal-handle"></div>
-    <div class="modal-title">💰 Depositar via Pix</div>
+    <div class="modal-title" id="modal-titulo">🎰 Participar do Sorteio</div>
 
-    <!-- ETAPA 1: VALOR -->
+    <!-- ETAPA 1: DADOS + VALOR -->
     <div id="etapa-valor">
+      <!-- Dados do participante (só aparece na primeira vez) -->
+      <div id="etapa-dados-part">
+        <div style="background:#FFD70010;border:1px solid #FFD70030;border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px;color:#FFD700;text-align:center">
+          🔒 Seus dados são salvos <strong>somente após o pagamento</strong>
+        </div>
+        <div class="fgrp">
+          <label>Nome completo</label>
+          <input id="m-nome" type="text" placeholder="João da Silva" autocomplete="name">
+        </div>
+        <div class="fgrp">
+          <label>CPF</label>
+          <input id="m-cpf" type="text" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" oninput="mascaraCPFModal(this)">
+        </div>
+        <div class="fgrp">
+          <label>Tipo da Chave Pix <small style="color:#ff6b6b">*para receber o prêmio</small></label>
+          <select id="m-tipo" onchange="atualizarPlaceholderModal()">
+            <option value="cpf">CPF</option>
+            <option value="telefone">Telefone</option>
+            <option value="email">E-mail</option>
+            <option value="aleatoria">Chave Aleatória</option>
+            <option value="cnpj">CNPJ</option>
+          </select>
+        </div>
+        <div class="fgrp">
+          <label>Chave Pix</label>
+          <input id="m-chave" type="text" placeholder="000.000.000-00">
+        </div>
+        <div id="msg-dados" style="margin-bottom:10px"></div>
+      </div>
+
+      <!-- Valor -->
       <div class="valor-display">
         <div><span class="cifrao">R$</span> <span class="valor" id="m-valor-display">0,00</span></div>
         <div class="hint" id="m-hint">Mínimo R$ 5,00 • Apenas múltiplos de R$ 5</div>
@@ -359,7 +369,7 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
       <div style="text-align:center;margin-bottom:12px">
         <div style="font-size:13px;color:#888">Valor a pagar</div>
         <div style="font-size:28px;font-weight:900;color:#FFD700" id="m-valor-conf">R$ --</div>
-        <div style="font-size:13px;color:#FFD700;margin-top:4px">🎫 <span id="m-nums-conf">-</span> número(s) serão gerados após confirmação</div>
+        <div style="font-size:13px;color:#FFD700;margin-top:4px">🎫 <span id="m-nums-conf">-</span> número(s) gerados após confirmação do pagamento</div>
       </div>
 
       <div class="qr-box">
@@ -375,7 +385,7 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
       </div>
 
       <button class="btn btn-outline" onclick="voltarValor()" style="padding:10px;font-size:13px">
-        ← Alterar valor
+        ← Alterar valor / dados
       </button>
     </div>
 
@@ -399,7 +409,11 @@ document.addEventListener('DOMContentLoaded', () => {
   carregarInfo();
   // Auto-consultar se CPF salvo
   const cpf = localStorage.getItem('sorteio_cpf');
-  if (cpf) { mostrarConsulta(); document.getElementById('c-cpf').value = cpf; consultar(); }
+  if (cpf) {
+    mostrarConsulta();
+    document.getElementById('c-cpf').value = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
+    consultar();
+  }
 });
 
 // ── PARTÍCULAS ──
@@ -435,7 +449,6 @@ async function carregarInfo() {
     document.getElementById('desc-sorteio').textContent = s.descricao;
     document.getElementById('st-part').textContent = s.total_participantes;
     document.getElementById('st-premio').textContent = 'R$ '+s.premio_estimado_total.toFixed(2).replace('.',',');
-    // Atualizar regras dinamicamente com valor_por_numero
     const vp = s.valor_por_numero || 5;
     const ri = document.getElementById('regra-itens');
     if (ri) ri.innerHTML = `
@@ -451,7 +464,7 @@ async function carregarInfo() {
   } catch(e) {}
 }
 
-// ── MÁSCARA CPF ──
+// ── UTILIDADES ──
 function mascaraCPF(el) {
   let v = el.value.replace(/\D/g,'').slice(0,11);
   if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/,'$1.$2.$3-$4');
@@ -459,50 +472,27 @@ function mascaraCPF(el) {
   else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/,'$1.$2');
   el.value = v;
 }
-
+function mascaraCPFModal(el) { mascaraCPF(el); }
 function cpfLimpo(v) { return v.replace(/\D/g,''); }
 
-// ── PLACEHOLDER CHAVE ──
-function atualizarPlaceholder() {
+function atualizarPlaceholderModal() {
   const m = {cpf:'000.000.000-00',telefone:'+55 (11) 99999-9999',email:'seuemail@exemplo.com',aleatoria:'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',cnpj:'00.000.000/0001-00'};
-  document.getElementById('f-chave').placeholder = m[document.getElementById('f-tipo').value]||'';
+  document.getElementById('m-chave').placeholder = m[document.getElementById('m-tipo').value]||'';
 }
 
-// ── CADASTRAR ──
-async function cadastrar() {
-  const nome  = document.getElementById('f-nome').value.trim();
-  const cpf   = cpfLimpo(document.getElementById('f-cpf').value);
-  const chave = document.getElementById('f-chave').value.trim();
-  const tipo  = document.getElementById('f-tipo').value;
-  const msg   = document.getElementById('msg-cad');
-
-  if (!nome)        { msg.innerHTML='<div class="msg err">❌ Informe seu nome</div>'; return; }
-  if (cpf.length<11){ msg.innerHTML='<div class="msg err">❌ CPF inválido</div>'; return; }
-  if (!chave)       { msg.innerHTML='<div class="msg err">❌ Informe sua chave Pix</div>'; return; }
-
-  const btn = document.getElementById('btn-cad');
-  btn.disabled = true; btn.textContent = '⏳ Salvando...'; msg.innerHTML = '';
-
-  try {
-    const r = await fetch(BASE+'/api/sorteio/cadastrar', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({nome, cpf, chave_pix: chave, tipo_chave: tipo})
-    });
-    const d = await r.json();
-    if (d.success) {
-      localStorage.setItem('sorteio_cpf', cpf);
-      mostrarParticipante(d);
-    } else {
-      msg.innerHTML = `<div class="msg err">❌ ${d.error}</div>`;
-    }
-  } catch(e) {
-    msg.innerHTML = '<div class="msg err">❌ Erro de conexão</div>';
-  } finally {
-    btn.disabled = false; btn.textContent = '✅ Confirmar Cadastro';
-  }
+// ── NAVEGAÇÃO DE BLOCOS ──
+function mostrarInicio() {
+  document.getElementById('bloco-inicio').classList.remove('hidden');
+  document.getElementById('bloco-consulta').classList.add('hidden');
+  document.getElementById('bloco-part').classList.add('hidden');
+}
+function mostrarConsulta() {
+  document.getElementById('bloco-inicio').classList.add('hidden');
+  document.getElementById('bloco-consulta').classList.remove('hidden');
+  document.getElementById('bloco-part').classList.add('hidden');
 }
 
-// ── CONSULTAR ──
+// ── CONSULTAR PARTICIPANTE ──
 async function consultar() {
   const cpf = cpfLimpo(document.getElementById('c-cpf').value);
   const msg = document.getElementById('msg-cons');
@@ -517,16 +507,16 @@ async function consultar() {
       mostrarParticipante(d.participante);
       msg.innerHTML = '';
     } else {
-      msg.innerHTML = '<div class="msg warn">⚠️ CPF não cadastrado. Faça seu cadastro!</div>';
+      msg.innerHTML = '<div class="msg warn">⚠️ CPF não encontrado como participante. Você precisa fazer um depósito Pix para participar!</div>';
     }
   } catch(e) {
     msg.innerHTML = '<div class="msg err">❌ Erro de conexão</div>';
   }
 }
 
-// ── MOSTRAR PARTICIPANTE ──
+// ── MOSTRAR PAINEL DO PARTICIPANTE ──
 function mostrarParticipante(p) {
-  document.getElementById('bloco-cadastro').classList.add('hidden');
+  document.getElementById('bloco-inicio').classList.add('hidden');
   document.getElementById('bloco-consulta').classList.add('hidden');
   document.getElementById('bloco-part').classList.remove('hidden');
 
@@ -543,21 +533,19 @@ function mostrarParticipante(p) {
   const falta = vp - depAtual;
 
   document.getElementById('p-dep').textContent  = `R$ ${dep.toFixed(2).replace('.',',')} depositados`;
-  document.getElementById('p-prox').textContent = qtd > 0 ? `Próximo número: faltam R$ ${falta.toFixed(2).replace('.',',')}` : `Deposite R$ ${vp.toFixed(2)} para ganhar 1 número`;
+  document.getElementById('p-prox').textContent = qtd > 0 ? `Próximo: faltam R$ ${falta.toFixed(2).replace('.',',')}` : `Deposite R$ ${vp.toFixed(0)} para 1 número`;
   document.getElementById('p-prog').style.width = pct.toFixed(0)+'%';
   document.getElementById('p-qtd').textContent  = qtd;
 
-  // Chave Pix (mascarada)
   const chave = p.chave_pix || '';
-  const mascarada = chave.length > 6 ? chave.slice(0,3)+'****'+chave.slice(-3) : chave || 'Não cadastrada';
+  const mascarada = chave.length > 6 ? chave.slice(0,3)+'****'+chave.slice(-3) : chave || '-';
   document.getElementById('p-tipo-chave').textContent = (p.tipo_chave||'').toUpperCase();
   document.getElementById('p-chave-pix').textContent  = mascarada;
 
-  // Bilhetes
   const nums = p.numeros_sorte || [];
   const grid = document.getElementById('p-bilhetes');
   if (nums.length === 0) {
-    grid.innerHTML = '<div style="color:#444;font-size:13px;padding:8px 0">Faça depósitos para gerar seus números!<br><br><strong style="color:#FFD700">R$ 5 = 1 número 🎫</strong></div>';
+    grid.innerHTML = '<div style="color:#444;font-size:13px;padding:8px 0">Nenhum número ainda. Faça mais depósitos!<br><br><strong style="color:#FFD700">R$ 5 = 1 número 🎫</strong></div>';
   } else {
     grid.innerHTML = nums.map(n => `
       <div class="bilhete">
@@ -567,34 +555,36 @@ function mostrarParticipante(p) {
   }
 }
 
-function mostrarConsulta() {
-  document.getElementById('bloco-cadastro').classList.add('hidden');
-  document.getElementById('bloco-consulta').classList.remove('hidden');
-  document.getElementById('bloco-part').classList.add('hidden');
-}
-function mostrarCadastro() {
-  document.getElementById('bloco-cadastro').classList.remove('hidden');
-  document.getElementById('bloco-consulta').classList.add('hidden');
-  document.getElementById('bloco-part').classList.add('hidden');
-}
-function sair() {
-  localStorage.removeItem('sorteio_cpf');
-  mostrarCadastro();
-}
-
-// ── MODAL DEPÓSITO ──────────────────────────────
+// ── MODAL PARTICIPAÇÃO ──────────────────────────────
 let rawDep = '';
 let pixCodeAtual = null;
 let txAtual = null;
 let pollingDep = null;
-let cpfAtual = null;
+let modoDeposito = false; // true = já é participante, só depositar mais
 
-function abrirDeposito() {
-  const cpf = localStorage.getItem('sorteio_cpf');
-  if (!cpf) { alert('Faça seu cadastro primeiro!'); return; }
-  cpfAtual = cpf;
+function abrirModalParticipacao(apenasDeposito) {
+  modoDeposito = !!apenasDeposito;
   rawDep = '';
-  // Atualizar hint com valor configurado
+
+  // Definir título
+  document.getElementById('modal-titulo').textContent = modoDeposito ? '➕ Depositar mais' : '🎰 Participar do Sorteio';
+
+  // Mostrar/ocultar formulário de dados
+  const bloDados = document.getElementById('etapa-dados-part');
+  if (modoDeposito) {
+    bloDados.style.display = 'none'; // já cadastrado, só digitar valor
+  } else {
+    bloDados.style.display = 'block';
+    // Pré-preencher com localStorage se existir
+    const nome = localStorage.getItem('sorteio_nome') || '';
+    const cpf  = localStorage.getItem('sorteio_cpf') || '';
+    const cpfF = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
+    if (nome) document.getElementById('m-nome').value = nome;
+    if (cpf)  document.getElementById('m-cpf').value = cpfF;
+    document.getElementById('msg-dados').innerHTML = '';
+  }
+
+  // Reset teclado e exibição
   const vp = info?.sorteio?.valor_por_numero || 5;
   const hint = document.getElementById('m-hint');
   if (hint) hint.textContent = `Mínimo R$ ${vp.toFixed(0)} • Apenas múltiplos de R$ ${vp.toFixed(0)}`;
@@ -639,28 +629,16 @@ function atualizarDisplayDep() {
   display.textContent = reais.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 
   if (reais === 0) {
-    // Zerado — neutro
-    btn.disabled = true;
-    prev.style.display = 'none';
-    aviso.style.display = 'none';
+    btn.disabled = true; prev.style.display = 'none'; aviso.style.display = 'none';
     display.style.color = '#FFD700';
   } else if (reais < vp) {
-    // Abaixo do mínimo
-    btn.disabled = true;
-    prev.style.display = 'none';
-    aviso.style.display = 'none';
+    btn.disabled = true; prev.style.display = 'none'; aviso.style.display = 'none';
     display.style.color = '#ff8888';
   } else if (reais % vp !== 0) {
-    // Não é múltiplo de vp
-    btn.disabled = true;
-    prev.style.display = 'none';
-    aviso.style.display = 'block';
+    btn.disabled = true; prev.style.display = 'none'; aviso.style.display = 'block';
     display.style.color = '#ff8888';
   } else {
-    // ✅ Válido e múltiplo de vp
-    btn.disabled = false;
-    aviso.style.display = 'none';
-    display.style.color = '#00d68f';
+    btn.disabled = false; aviso.style.display = 'none'; display.style.color = '#00d68f';
     const qtd = Math.floor(reais / vp);
     prev.style.display = 'block';
     document.getElementById('m-qtd-nums').textContent = qtd;
@@ -670,16 +648,52 @@ function atualizarDisplayDep() {
 async function gerarPixSorteio() {
   const num = parseInt(rawDep || '0');
   const valor = num / 100;
-  if (valor < 5) return;
+  const vp = info?.sorteio?.valor_por_numero || 5;
+  if (valor < vp || valor % vp !== 0) return;
+
+  // Validar dados do participante (se não for só depósito)
+  let participante_dados = null;
+  if (!modoDeposito) {
+    const nome  = document.getElementById('m-nome').value.trim();
+    const cpf   = cpfLimpo(document.getElementById('m-cpf').value);
+    const chave = document.getElementById('m-chave').value.trim();
+    const tipo  = document.getElementById('m-tipo').value;
+    const msgDados = document.getElementById('msg-dados');
+
+    if (!nome) { msgDados.innerHTML='<div class="msg err">❌ Informe seu nome</div>'; return; }
+    if (cpf.length < 11) { msgDados.innerHTML='<div class="msg err">❌ CPF inválido (11 dígitos)</div>'; return; }
+    if (!chave) { msgDados.innerHTML='<div class="msg err">❌ Informe sua chave Pix para receber o prêmio</div>'; return; }
+    msgDados.innerHTML = '';
+
+    participante_dados = {nome, cpf, chave_pix: chave, tipo_chave: tipo};
+
+    // Salvar para reutilizar
+    localStorage.setItem('sorteio_nome', nome);
+    localStorage.setItem('sorteio_cpf', cpf);
+  } else {
+    // Já participante — usar CPF salvo
+    const cpf = localStorage.getItem('sorteio_cpf');
+    if (!cpf) { alert('Erro: CPF não encontrado. Consulte seus dados.'); return; }
+    participante_dados = null; // será identificado pelo cliente_id
+  }
 
   document.getElementById('etapa-valor').style.display = 'none';
   document.getElementById('etapa-loading').classList.remove('hidden');
 
   try {
+    const body = {valor};
+    if (participante_dados) {
+      body.participante_dados = participante_dados;
+    } else {
+      // Depósito adicional: enviar cliente_id pelo CPF
+      const cpf = localStorage.getItem('sorteio_cpf');
+      body.cliente_id = `cli_${cpf}`;
+    }
+
     const r = await fetch(BASE + '/api/pix', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({valor, cliente_id: cpfAtual})
+      body: JSON.stringify(body)
     });
     const d = await r.json();
 
@@ -688,7 +702,6 @@ async function gerarPixSorteio() {
     if (d.success) {
       pixCodeAtual = d.pix_code;
       txAtual = d.tx_id;
-      const vp = info?.sorteio?.valor_por_numero || 5;
       const qtd = Math.floor(valor / vp);
 
       document.getElementById('m-valor-conf').textContent = `R$ ${valor.toFixed(2).replace('.',',')}`;
@@ -696,11 +709,8 @@ async function gerarPixSorteio() {
       document.getElementById('m-pix-code').textContent = d.pix_code;
       document.getElementById('etapa-pix').style.display = 'block';
 
-      // QR Code
       gerarQRCodeDep(d.pix_code);
-
-      // Iniciar polling
-      iniciarPollingDep(d.tx_id, valor);
+      iniciarPollingDep(d.tx_id, valor, participante_dados);
 
     } else {
       document.getElementById('etapa-valor').style.display = 'block';
@@ -718,7 +728,6 @@ function gerarQRCodeDep(code) {
   if (typeof QRCode !== 'undefined') {
     QRCode.toCanvas(canvas, code, {width:200, margin:1, color:{dark:'#000',light:'#fff'}}, ()=>{});
   } else {
-    // Fallback: usar API QR
     const img = document.createElement('img');
     img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(code)}`;
     img.style.cssText = 'width:200px;height:200px;border-radius:8px';
@@ -742,6 +751,15 @@ function copiarPix() {
       btn.style.borderColor = '';
       btn.style.color = '';
     }, 2500);
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = pixCodeAtual;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('✅ Pix copiado!');
   });
 }
 
@@ -751,7 +769,7 @@ function voltarValor() {
   document.getElementById('etapa-valor').style.display = 'block';
 }
 
-function iniciarPollingDep(txId, valor) {
+function iniciarPollingDep(txId, valor, participante_dados) {
   let tentativas = 0;
   const MAX = 60; // 2 minutos
   const statusEl = document.getElementById('m-status-pix');
@@ -763,7 +781,7 @@ function iniciarPollingDep(txId, valor) {
       statusEl.style.background = '#ff444415';
       statusEl.style.borderColor = '#ff444433';
       statusEl.style.color = '#ff8888';
-      statusEl.textContent = '⏱️ Tempo esgotado. Verifique seu comprovante.';
+      statusEl.textContent = '⏱️ Tempo esgotado. Contate o suporte com seu comprovante.';
       return;
     }
 
@@ -777,21 +795,32 @@ function iniciarPollingDep(txId, valor) {
         statusEl.style.color = '#00d68f';
         statusEl.textContent = '✅ Pagamento confirmado! Seus números foram gerados!';
 
-        // Recarregar dados do participante após 2s
+        // Determinar CPF para consultar
+        const cpfPart = participante_dados?.cpf || localStorage.getItem('sorteio_cpf');
+
         setTimeout(async () => {
           fecharDeposito();
-          // Atualizar painel
-          const cpf = localStorage.getItem('sorteio_cpf');
-          if (cpf) {
-            const ri = await fetch(BASE+'/api/sorteio/info?cpf='+cpf);
+          if (cpfPart) {
+            localStorage.setItem('sorteio_cpf', cpfPart);
+            // Aguardar backend processar (1s extra)
+            await new Promise(res => setTimeout(res, 1000));
+            const ri = await fetch(BASE+'/api/sorteio/info?cpf='+cpfPart);
             const di = await ri.json();
             if (di.participante && di.participante.participando) {
               mostrarParticipante(di.participante);
+            } else {
+              // Participante ainda sendo criado, aguardar mais
+              setTimeout(async () => {
+                const ri2 = await fetch(BASE+'/api/sorteio/info?cpf='+cpfPart);
+                const di2 = await ri2.json();
+                if (di2.participante && di2.participante.participando) {
+                  mostrarParticipante(di2.participante);
+                }
+              }, 3000);
             }
           }
-          // Atualizar info geral
           carregarInfo();
-        }, 2000);
+        }, 1500);
       }
     } catch(e) {}
   }, 2000);

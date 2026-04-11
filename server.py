@@ -126,12 +126,14 @@ def init_db():
         (datetime.now().isoformat(),))
     conn.commit(); conn.close()
 
-def salvar_transacao(tx_id, valor, pix_code, cliente_id=None, webhook_url=None):
+def salvar_transacao(tx_id, valor, pix_code, cliente_id=None, webhook_url=None, participante_dados=None):
+    import json as _json
+    extra = _json.dumps(participante_dados) if participante_dados else None
     conn = sqlite3.connect(DB_PATH)
     conn.execute('''INSERT OR REPLACE INTO transacoes
-        (tx_id,valor,pix_code,status,cliente_id,webhook_url,created_at)
-        VALUES (?,?,?,'pendente',?,?,?)''',
-        (tx_id, valor, pix_code, cliente_id, webhook_url, datetime.now().isoformat()))
+        (tx_id,valor,pix_code,status,cliente_id,webhook_url,created_at,extra)
+        VALUES (?,?,?,'pendente',?,?,?,?)''',
+        (tx_id, valor, pix_code, cliente_id, webhook_url, datetime.now().isoformat(), extra))
     conn.commit(); conn.close()
 
 def buscar_transacao(tx_id):
@@ -159,13 +161,25 @@ def confirmar_pagamento(tx_id):
     conn.close()
 
     if row:
+        import json as _json
         valor_pago, cliente_id = row
+        # Buscar dados extras (participante_dados) da transação
+        c2 = sqlite3.connect(DB_PATH)
+        c2cur = c2.cursor()
+        c2cur.execute('SELECT extra FROM transacoes WHERE tx_id=?', (tx_id,))
+        extra_row = c2cur.fetchone()
+        c2.close()
+        participante_dados = None
+        if extra_row and extra_row[0]:
+            try: participante_dados = _json.loads(extra_row[0])
+            except: pass
         if cliente_id and valor_pago and valor_pago >= 5:
             # Tenta creditar bilhetes ao participante do sorteio pelo cliente_id
-            _creditar_bilhetes_por_deposito(cliente_id, valor_pago, tx_id)
+            _creditar_bilhetes_por_deposito(cliente_id, valor_pago, tx_id, participante_dados)
 
-def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id):
+def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id, participante_dados=None):
     """Gera bilhetes do sorteio automaticamente quando um depósito é confirmado.
+    Se participante_dados fornecido e participante não existe, cria automaticamente.
     O cliente_id deve ser o CPF sem máscara (números apenas) ou 'cli_CPF'."""
     try:
         import json as _json
@@ -187,7 +201,32 @@ def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id):
         conn.close()
 
         if not row:
-            return  # Participante não cadastrado no sorteio
+            # Tentar criar participante automaticamente se temos os dados
+            if participante_dados and participante_dados.get('nome') and participante_dados.get('chave_pix'):
+                now = datetime.now().isoformat()
+                cli_id = f"cli_{cpf_tentativa}"
+                nome_p = str(participante_dados.get('nome', '')).strip()
+                chave_p = str(participante_dados.get('chave_pix', '')).strip()
+                tipo_p = str(participante_dados.get('tipo_chave', 'cpf')).strip()
+                conn2 = sqlite3.connect(DB_PATH)
+                conn2.execute('''INSERT OR IGNORE INTO sorteio_participantes
+                    (cliente_id, nome, cpf, chave_pix, tipo_chave,
+                     total_depositado, total_numeros, numeros_sorte, created_at, updated_at, sorteio_id)
+                    VALUES (?,?,?,?,?, 0, 0, '[]', ?, ?, 'atual')''',
+                    (cli_id, nome_p, cpf_tentativa, chave_p, tipo_p, now, now))
+                conn2.commit(); conn2.close()
+                print(f'✅ Sorteio: participante {nome_p} (CPF {cpf_tentativa}) criado automaticamente ao confirmar pagamento tx={tx_id}', flush=True)
+                # Re-buscar após criação
+                conn3 = sqlite3.connect(DB_PATH)
+                c3 = conn3.cursor()
+                c3.execute("SELECT id, cliente_id, total_depositado, total_numeros, numeros_sorte FROM sorteio_participantes WHERE cpf=? AND sorteio_id='atual'",
+                           (cpf_tentativa,))
+                row = c3.fetchone()
+                conn3.close()
+                if not row:
+                    return  # Falha inesperada
+            else:
+                return  # Participante não cadastrado e sem dados para criar
 
         _, cli_id, total_dep, total_num, numeros_json = row
         total_dep = float(total_dep or 0)
@@ -471,7 +510,7 @@ async def verificar_saldo_bot() -> float:
         pass
     return -1.0
 
-async def gerar_pix(valor, cliente_id=None, webhook_url=None):
+async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados=None):
     # Se Telegram não está pronto, tenta conectar e espera até 60s
     if not _telegram_ready:
         print('⏳ Aguardando Telegram ficar pronto...', flush=True)
@@ -534,7 +573,7 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None):
                     val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', text)
                     valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
                     if pix_code:
-                        salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url)
+                        salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
                         return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
                                 'valor': f"R$ {valor_conf}", 'status': 'pendente'}
 
@@ -1093,7 +1132,16 @@ async def route_pix(request):
         valor = float(data.get('valor', 0))
         if valor < 5:
             return web.json_response({'success': False, 'error': 'Valor mínimo R$ 5,00'})
-        result = await gerar_pix(valor, data.get('cliente_id'), data.get('webhook_url'))
+        if valor % 5 != 0:
+            return web.json_response({'success': False, 'error': 'Valor deve ser múltiplo de R$ 5'})
+        # Dados do participante do sorteio (enviados pelo sorteio.html)
+        participante_dados = data.get('participante_dados')  # {nome, cpf, chave_pix, tipo_chave}
+        cliente_id = data.get('cliente_id')
+        # Se vier dados do participante, usar CPF como cliente_id
+        if participante_dados and participante_dados.get('cpf'):
+            cpf_limpo = re.sub(r'\D', '', str(participante_dados['cpf']))
+            cliente_id = f"cli_{cpf_limpo}"
+        result = await gerar_pix(valor, cliente_id, data.get('webhook_url'), participante_dados)
         return web.json_response(result)
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)})
