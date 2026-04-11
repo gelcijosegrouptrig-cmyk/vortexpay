@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#1a1a2e">
+<meta name="theme-color" content="#0f0f1a">
 <title>VortexPay — Pagamento Pix</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -29,10 +29,7 @@ body{
   box-shadow:0 0 40px rgba(0,212,255,0.1);
 }
 
-.logo{
-  text-align:center;
-  margin-bottom:28px;
-}
+.logo{text-align:center;margin-bottom:28px;}
 .logo-icon{
   width:72px;height:72px;
   background:linear-gradient(135deg,#00d4ff,#0066ff);
@@ -45,7 +42,7 @@ body{
 .logo h1{font-size:24px;font-weight:800;letter-spacing:1px;}
 .logo p{font-size:13px;color:#888;margin-top:4px;}
 
-/* VALOR INPUT */
+/* VALOR */
 .valor-section{margin-bottom:24px;}
 .valor-label{font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
 .valor-display{
@@ -59,9 +56,7 @@ body{
   color:#00d4ff;
   margin-bottom:16px;
   min-height:76px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  display:flex;align-items:center;justify-content:center;
   letter-spacing:1px;
 }
 .valor-display.has-value{color:#fff;}
@@ -87,9 +82,8 @@ body{
 }
 .num-btn:active{background:#00d4ff22;border-color:#00d4ff66;transform:scale(0.95);}
 .num-btn.del{color:#ff6b6b;font-size:20px;}
-.num-btn.zero{font-size:22px;}
 
-/* GERAR BTN */
+/* BOTÃO GERAR */
 .gerar-btn{
   width:100%;
   padding:18px;
@@ -107,19 +101,10 @@ body{
 }
 .gerar-btn:active{transform:scale(0.98);opacity:0.9;}
 .gerar-btn:disabled{opacity:0.4;cursor:not-allowed;}
-
-.valor-info{
-  text-align:center;
-  font-size:12px;
-  color:#666;
-}
+.valor-info{text-align:center;font-size:12px;color:#666;}
 
 /* LOADING */
-.loading{
-  display:none;
-  text-align:center;
-  padding:32px;
-}
+.loading{display:none;text-align:center;padding:32px;}
 .spinner{
   width:48px;height:48px;
   border:3px solid #ffffff22;
@@ -142,113 +127,111 @@ body{
   margin-bottom:16px;
   text-align:center;
 }
-.pix-gerado .titulo{
-  font-size:16px;font-weight:700;color:#00ff66;margin-bottom:4px;
-}
+.pix-gerado .titulo{font-size:16px;font-weight:700;color:#00ff66;margin-bottom:4px;}
 .pix-gerado .subtitulo{font-size:13px;color:#888;margin-bottom:16px;}
 
 .tx-id{
-  background:#ffffff0a;
-  border-radius:10px;
-  padding:10px 14px;
-  font-size:12px;
-  color:#888;
-  margin-bottom:16px;
-  word-break:break-all;
+  background:#ffffff0a;border-radius:10px;
+  padding:10px 14px;font-size:12px;color:#888;
+  margin-bottom:16px;word-break:break-all;
 }
 .tx-id span{color:#00d4ff;}
 
-.valor-conf{
-  font-size:32px;
-  font-weight:800;
-  color:#00ff66;
-  margin-bottom:20px;
-}
+.valor-conf{font-size:32px;font-weight:800;color:#00ff66;margin-bottom:20px;}
 
 /* QR CODE */
 .qr-area{
-  background:#fff;
-  border-radius:16px;
-  padding:16px;
-  margin-bottom:16px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  background:#fff;border-radius:16px;padding:16px;
+  margin-bottom:16px;display:flex;align-items:center;justify-content:center;
 }
 #qr-canvas{display:block;border-radius:8px;}
 
 /* PIX CODE */
 .pix-code-box{
-  background:#0a0a18;
-  border:1px solid #00d4ff33;
-  border-radius:12px;
-  padding:14px;
-  margin-bottom:12px;
+  background:#0a0a18;border:1px solid #00d4ff33;
+  border-radius:12px;padding:14px;margin-bottom:12px;
 }
 .pix-code-label{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
 .pix-code-text{
-  font-size:11px;
-  color:#00d4ff;
-  word-break:break-all;
-  line-height:1.5;
-  font-family:monospace;
+  font-size:11px;color:#00d4ff;
+  word-break:break-all;line-height:1.5;font-family:monospace;
 }
 
 .copy-btn{
-  width:100%;
-  padding:16px;
-  background:#00ff6622;
-  border:1px solid #00ff6644;
-  border-radius:14px;
-  font-size:15px;
-  font-weight:700;
-  color:#00ff66;
-  cursor:pointer;
-  margin-bottom:10px;
+  width:100%;padding:16px;
+  background:#00ff6622;border:1px solid #00ff6644;
+  border-radius:14px;font-size:15px;font-weight:700;
+  color:#00ff66;cursor:pointer;margin-bottom:10px;
   transition:all 0.2s;
 }
 .copy-btn:active{background:#00ff6633;}
 
 .novo-btn{
-  width:100%;
-  padding:14px;
-  background:#ffffff11;
-  border:1px solid #ffffff22;
-  border-radius:14px;
-  font-size:14px;
-  color:#888;
-  cursor:pointer;
+  width:100%;padding:14px;
+  background:#ffffff11;border:1px solid #ffffff22;
+  border-radius:14px;font-size:14px;color:#888;cursor:pointer;
 }
-.novo-btn:active{background:#ffffff1a;}
 
 /* ERRO */
 .erro{
   display:none;
-  background:#2a0a0a;
-  border:1px solid #ff444444;
-  border-radius:14px;
-  padding:20px;
-  text-align:center;
-  margin-bottom:16px;
+  background:#2a0a0a;border:1px solid #ff444444;
+  border-radius:14px;padding:20px;text-align:center;margin-bottom:16px;
 }
 .erro p{color:#ff6b6b;font-size:14px;margin-bottom:12px;}
 .erro button{
-  padding:12px 24px;
-  background:#ff444422;
-  border:1px solid #ff444444;
-  border-radius:10px;
-  color:#ff6b6b;
-  font-size:14px;
-  cursor:pointer;
+  padding:12px 24px;background:#ff444422;
+  border:1px solid #ff444444;border-radius:10px;
+  color:#ff6b6b;font-size:14px;cursor:pointer;
 }
 
-/* FOOTER */
-.footer{
-  margin-top:20px;
+/* ====== CONFIRMAÇÃO DE PAGAMENTO ====== */
+.confirmacao-box{
+  display:none;
+  background:#0a0a18;
+  border:2px solid #00d4ff44;
+  border-radius:16px;
+  padding:20px;
+  margin-bottom:16px;
   text-align:center;
-  font-size:11px;
-  color:#444;
 }
+.confirmacao-box.aguardando{border-color:#ffaa0044;}
+.confirmacao-box.pago{border-color:#00ff6666;background:#0a2a0a;}
+
+.confirmacao-status{
+  font-size:14px;font-weight:600;
+  margin-bottom:8px;
+}
+.confirmacao-status.aguardando{color:#ffaa00;}
+.confirmacao-status.pago{color:#00ff66;}
+
+.confirmacao-desc{font-size:12px;color:#666;margin-bottom:12px;}
+
+.progresso-bar{
+  width:100%;height:4px;
+  background:#ffffff11;border-radius:2px;overflow:hidden;
+}
+.progresso-fill{
+  height:100%;background:#ffaa00;
+  border-radius:2px;
+  animation:progresso 30s linear infinite;
+}
+@keyframes progresso{
+  0%{width:0%;}
+  100%{width:100%;}
+}
+.progresso-fill.pausado{animation-play-state:paused;}
+
+/* Pulse verde quando pago */
+@keyframes pulsePago{
+  0%{box-shadow:0 0 0 0 rgba(0,255,102,0.4);}
+  70%{box-shadow:0 0 0 20px rgba(0,255,102,0);}
+  100%{box-shadow:0 0 0 0 rgba(0,255,102,0);}
+}
+.pago-pulse{animation:pulsePago 1s ease-out 3;}
+
+/* FOOTER */
+.footer{margin-top:20px;text-align:center;font-size:11px;color:#444;}
 </style>
 </head>
 <body>
@@ -278,7 +261,7 @@ body{
       <button class="num-btn" onclick="numpad('8')">8</button>
       <button class="num-btn" onclick="numpad('9')">9</button>
       <button class="num-btn" onclick="numpad('00')">00</button>
-      <button class="num-btn zero" onclick="numpad('0')">0</button>
+      <button class="num-btn" onclick="numpad('0')">0</button>
       <button class="num-btn del" onclick="numpad('del')">⌫</button>
     </div>
 
@@ -291,7 +274,7 @@ body{
   <!-- LOADING -->
   <div class="loading" id="loading">
     <div class="spinner"></div>
-    <p>Gerando QR Code Pix...<br>Aguarde alguns segundos</p>
+    <p id="loading-msg">Conectando ao VortexPay...</p>
   </div>
 
   <!-- ERRO -->
@@ -312,6 +295,17 @@ body{
       </div>
     </div>
 
+    <!-- CONFIRMAÇÃO DE PAGAMENTO -->
+    <div class="confirmacao-box aguardando" id="confirmacao-box">
+      <div class="confirmacao-status aguardando" id="conf-status">⏳ Aguardando pagamento...</div>
+      <div class="confirmacao-desc" id="conf-desc">
+        Verificando automaticamente a cada 15 segundos
+      </div>
+      <div class="progresso-bar">
+        <div class="progresso-fill" id="progresso-fill"></div>
+      </div>
+    </div>
+
     <div class="pix-code-box">
       <div class="pix-code-label">PIX Copia e Cola</div>
       <div class="pix-code-text" id="res-pix-code">-</div>
@@ -328,6 +322,10 @@ body{
 // ======= NUMPAD =======
 let rawValue = '';
 let pixCodeAtual = '';
+let txAtual = '';
+let pollingInterval = null;
+let tentativasPolling = 0;
+const MAX_TENTATIVAS = 20; // 5 minutos
 
 function numpad(key) {
   if (key === 'del') {
@@ -337,7 +335,6 @@ function numpad(key) {
   } else {
     if (rawValue.length < 9) rawValue += key;
   }
-
   atualizarDisplay();
 }
 
@@ -372,28 +369,26 @@ async function gerarPix() {
 
   mostrar('loading');
 
-  // Contador de progresso visual
   let seg = 0;
-  const loadingP = document.querySelector('.loading p');
+  const msgs = [
+    'Conectando ao VortexPay...',
+    'Acessando bot de pagamento...',
+    'Clicando em DEPOSITAR...',
+    'Enviando valor...',
+    'Aguardando QR Code...',
+    'Quase pronto...',
+    'Finalizando...',
+  ];
   const timer = setInterval(() => {
     seg++;
-    const msgs = [
-      'Conectando ao VortexPay...',
-      'Acessando bot de pagamento...',
-      'Clicando em DEPOSITAR...',
-      'Enviando valor...',
-      'Aguardando QR Code...',
-      'Quase pronto...',
-      'Finalizando...',
-    ];
     const idx = Math.min(Math.floor(seg / 2), msgs.length - 1);
-    loadingP.innerHTML = msgs[idx] + '<br><small style="color:#555">' + seg + 's...</small>';
+    document.getElementById('loading-msg').innerHTML =
+      msgs[idx] + '<br><small style="color:#555">' + seg + 's...</small>';
   }, 1000);
 
   try {
-    // Timeout de 60 segundos
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), 70000);
 
     const resp = await fetch('/api/pix', {
       method: 'POST',
@@ -409,14 +404,19 @@ async function gerarPix() {
 
     if (data.success) {
       pixCodeAtual = data.pix_code;
+      txAtual = data.tx_id;
+
       document.getElementById('res-valor').textContent = data.valor;
       document.getElementById('res-txid').textContent = data.tx_id || '-';
       document.getElementById('res-pix-code').textContent = data.pix_code;
       desenharQR('qr-canvas', data.pix_code);
       mostrar('resultado');
+
+      // Iniciar polling de confirmação
+      iniciarPolling(data.tx_id);
+
     } else {
-      clearInterval(timer);
-      document.getElementById('erro-msg').textContent = data.error || 'Erro ao gerar PIX. Tente novamente.';
+      document.getElementById('erro-msg').textContent = data.error || 'Erro ao gerar PIX.';
       mostrar('erro');
     }
   } catch (e) {
@@ -430,8 +430,99 @@ async function gerarPix() {
   }
 }
 
+// ======= POLLING DE CONFIRMAÇÃO =======
+function iniciarPolling(txId) {
+  tentativasPolling = 0;
+  pararPolling();
+
+  const box = document.getElementById('confirmacao-box');
+  const status = document.getElementById('conf-status');
+  const desc = document.getElementById('conf-desc');
+  box.style.display = 'block';
+  box.className = 'confirmacao-box aguardando';
+  status.className = 'confirmacao-status aguardando';
+  status.textContent = '⏳ Aguardando pagamento...';
+  desc.textContent = 'Verificando automaticamente a cada 15 segundos';
+
+  // Verificar imediatamente e depois a cada 15s
+  verificarStatus(txId);
+  pollingInterval = setInterval(() => {
+    tentativasPolling++;
+    if (tentativasPolling >= MAX_TENTATIVAS) {
+      pararPolling();
+      desc.textContent = 'Tempo de verificação esgotado. Pague e atualize a página.';
+      return;
+    }
+    verificarStatus(txId);
+  }, 15000);
+}
+
+async function verificarStatus(txId) {
+  try {
+    const resp = await fetch(`/api/status/${txId}`);
+    const data = await resp.json();
+
+    if (data.pago || data.status === 'pago') {
+      pagamentoConfirmado(data);
+    } else {
+      const desc = document.getElementById('conf-desc');
+      desc.textContent = `Verificando... (tentativa ${tentativasPolling + 1}/${MAX_TENTATIVAS})`;
+    }
+  } catch (e) {
+    // Silencioso - tentar novamente no próximo ciclo
+  }
+}
+
+function pagamentoConfirmado(data) {
+  pararPolling();
+
+  const box = document.getElementById('confirmacao-box');
+  const status = document.getElementById('conf-status');
+  const desc = document.getElementById('conf-desc');
+  const fill = document.getElementById('progresso-fill');
+
+  box.className = 'confirmacao-box pago pago-pulse';
+  status.className = 'confirmacao-status pago';
+  status.textContent = '✅ Pagamento Confirmado!';
+  
+  const valorFmt = data.valor ? 'R$ ' + data.valor.toFixed(2).replace('.', ',') : '';
+  desc.textContent = `Pagamento recebido com sucesso! ${valorFmt}`;
+  
+  fill.style.width = '100%';
+  fill.style.background = '#00ff66';
+  fill.style.animation = 'none';
+
+  // Som de notificação (beep simples via Web Audio)
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.5);
+  } catch(e) {}
+}
+
+function pararPolling() {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
+}
+
+// ======= NAVEGAÇÃO =======
 function voltarInicio() {
+  pararPolling();
   rawValue = '';
+  txAtual = '';
+  pixCodeAtual = '';
+  tentativasPolling = 0;
+  
+  document.getElementById('confirmacao-box').style.display = 'none';
   atualizarDisplay();
   mostrar('principal');
 }
@@ -454,7 +545,6 @@ function copiarPix() {
       btn.style.background = '#00ff6622';
     }, 2500);
   }).catch(() => {
-    // Fallback
     const ta = document.createElement('textarea');
     ta.value = pixCodeAtual;
     document.body.appendChild(ta);
@@ -495,36 +585,32 @@ function desenharQR(canvasId, text) {
 
       let draw = false;
       if (tl) {
-        draw = (x === 0 || x === 6 || y === 0 || y === 6) || (x >= 2 && x <= 4 && y >= 2 && y <= 4);
+        draw = (x===0||x===6||y===0||y===6)||(x>=2&&x<=4&&y>=2&&y<=4);
       } else if (tr) {
-        const fx = x - (modules - 7);
-        draw = (fx === 0 || fx === 6 || y === 0 || y === 6) || (fx >= 2 && fx <= 4 && y >= 2 && y <= 4);
+        const fx = x-(modules-7);
+        draw = (fx===0||fx===6||y===0||y===6)||(fx>=2&&fx<=4&&y>=2&&y<=4);
       } else if (bl) {
-        const fy = y - (modules - 7);
-        draw = (x === 0 || x === 6 || fy === 0 || fy === 6) || (x >= 2 && x <= 4 && fy >= 2 && fy <= 4);
+        const fy = y-(modules-7);
+        draw = (x===0||x===6||fy===0||fy===6)||(x>=2&&x<=4&&fy>=2&&fy<=4);
       } else {
-        draw = rand(x, y) > 0.48;
+        draw = rand(x,y) > 0.48;
       }
 
-      if (draw) {
-        ctx.fillRect(x * cell + 0.5, y * cell + 0.5, cell - 1, cell - 1);
-      }
+      if (draw) ctx.fillRect(x*cell+0.5, y*cell+0.5, cell-1, cell-1);
     }
   }
 
   // Logo centro
-  const ls = size * 0.16;
-  const lx = (size - ls) / 2;
-  const ly = (size - ls) / 2;
+  const ls = size*0.16, lx=(size-ls)/2, ly=(size-ls)/2;
   ctx.fillStyle = '#0066ff';
   ctx.beginPath();
-  ctx.roundRect(lx, ly, ls, ls, ls * 0.3);
+  ctx.roundRect(lx, ly, ls, ls, ls*0.3);
   ctx.fill();
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${ls * 0.6}px sans-serif`;
+  ctx.font = `bold ${ls*0.6}px sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('🌀', size / 2, size / 2);
+  ctx.fillText('🌀', size/2, size/2);
 }
 </script>
 </body>
