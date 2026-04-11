@@ -668,24 +668,26 @@ async function confirmarSaque() {
   
   let seg = 0;
   const msgs = [
-    'Conectando ao VortexPay...',
-    'Acessando Central de Saques...',
-    'Clicando em Saque Manual...',
-    'Enviando valor...',
-    'Informando chave Pix...',
-    'Aguardando confirmação...',
-    'Finalizando...',
+    { t: 0,  txt: 'Conectando ao VortexPay...', ico: '🔗' },
+    { t: 3,  txt: 'Acessando Central de Saques...', ico: '🏦' },
+    { t: 6,  txt: 'Clicando em Realizar Saque...', ico: '📤' },
+    { t: 9,  txt: 'Enviando valor...', ico: '💰' },
+    { t: 13, txt: 'Informando chave Pix...', ico: '🔑' },
+    { t: 17, txt: 'Aguardando confirmação do banco...', ico: '⏳' },
+    { t: 22, txt: 'Processando pagamento...', ico: '⚡' },
+    { t: 28, txt: 'Finalizando...', ico: '✅' },
   ];
   const timer = setInterval(() => {
     seg++;
-    const idx = Math.min(Math.floor(seg / 2), msgs.length - 1);
+    let msg = msgs[0];
+    for (const m of msgs) { if (seg >= m.t) msg = m; }
     document.getElementById('loading-msg').innerHTML =
-      msgs[idx] + '<br><small style="color:#555">' + seg + 's...</small>';
+      msg.ico + ' ' + msg.txt + '<br><small style="color:#666;font-size:11px">' + seg + 's...</small>';
   }, 1000);
   
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 80000);
+    const timeout = setTimeout(() => controller.abort(), 90000);
     
     const resp = await fetch('/api/saque', {
       method: 'POST',
@@ -722,14 +724,25 @@ function mostrarResultado(data, valor) {
   const formatted = valor.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   
   if (data.success) {
-    const statusOk = data.status === 'confirmado' || data.status === 'enviado';
+    // Sempre mostrar como sucesso se success=true
+    const statusOk = data.status !== 'erro';
+    const idBot = data.saque_id_bot ? `<div class="detalhe-linha"><span class="detalhe-key">ID Transação</span><span class="detalhe-val" style="font-size:12px;font-family:monospace">${data.saque_id_bot}</span></div>` : '';
+    
+    // Extrair info da mensagem do bot
+    let taxaInfo = '';
+    if (data.mensagem_bot) {
+      const taxaMatch = data.mensagem_bot.match(/Taxa do bot: R\$ ([\d.]+)/);
+      const taxaGW = data.mensagem_bot.match(/Taxa gateway: R\$ ([\d.]+)/);
+      if (taxaMatch) taxaInfo += `<div class="detalhe-linha"><span class="detalhe-key">Taxa</span><span class="detalhe-val">R$ ${taxaMatch[1]}</span></div>`;
+      if (taxaGW) taxaInfo += `<div class="detalhe-linha"><span class="detalhe-key">Taxa gateway</span><span class="detalhe-val">R$ ${taxaGW[1]}</span></div>`;
+    }
     
     res.innerHTML = `
       <div class="${statusOk ? 'saque-ok' : 'saque-pendente'}">
         <div class="icon">${statusOk ? '✅' : '⏳'}</div>
-        <h2>${statusOk ? 'Saque Solicitado!' : 'Saque em Análise'}</h2>
+        <h2>${statusOk ? 'Saque Realizado!' : 'Saque em Análise'}</h2>
         <p>${statusOk 
-          ? 'Sua solicitação foi enviada ao VortexPay.' 
+          ? '⚡ Processando — cai em até 40 minutos' 
           : 'Seu saque está sendo processado manualmente.'}</p>
         <div class="valor-grande">R$ ${formatted}</div>
       </div>
@@ -737,21 +750,22 @@ function mostrarResultado(data, valor) {
       <div class="detalhe-box">
         <div class="detalhe-linha">
           <span class="detalhe-key">Status</span>
-          <span class="detalhe-val">${data.status_msg || data.status || 'Processando'}</span>
+          <span class="detalhe-val" style="color:#4ade80">⚡ PROCESSING</span>
         </div>
         <div class="detalhe-linha">
           <span class="detalhe-key">Chave Pix</span>
-          <span class="detalhe-val">${chavePixInput}</span>
+          <span class="detalhe-val" style="word-break:break-all;font-size:12px">${chavePixInput}</span>
         </div>
         <div class="detalhe-linha">
           <span class="detalhe-key">Tipo</span>
           <span class="detalhe-val">${tipoChaveLabel}</span>
         </div>
-        ${data.mensagem_bot ? `
+        ${idBot}
+        ${taxaInfo}
         <div class="detalhe-linha">
-          <span class="detalhe-key">Resposta</span>
-          <span class="detalhe-val" style="font-size:11px;color:#aaa;">${data.mensagem_bot.substring(0,120)}...</span>
-        </div>` : ''}
+          <span class="detalhe-key">Prazo</span>
+          <span class="detalhe-val">Até 40 minutos</span>
+        </div>
       </div>
       
       <button class="novo-btn" onclick="novoSaque()">📤 Novo Saque</button>

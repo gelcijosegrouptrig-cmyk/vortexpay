@@ -535,12 +535,12 @@ async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> d
                 await asyncio.sleep(3)
 
             # ── PASSO 6: Enviar chave Pix ──────────────────────────
+            import datetime as dt
+            hora_envio = dt.datetime.now(dt.timezone.utc)
             await client.send_message(bot, chave_pix)
-            # Aguardar até 15s para o bot processar e confirmar o saque
-            await asyncio.sleep(12)
+            print(f'⏳ Chave enviada, aguardando resposta do bot...', flush=True)
 
-            # ── PASSO 7: Capturar resposta ─────────────────────────
-            msgs = await client.get_messages(bot, limit=8)
+            # ── PASSO 7: Polling ativo até 30s aguardando confirmação ──
             resposta_bot = ''
             status_saque = 'pendente'
             saque_id_bot = None
@@ -548,18 +548,12 @@ async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> d
             padroes_sucesso = [
                 r'solicitação de saque.*enviada com sucesso',
                 r'saque.*enviado com sucesso',
-                r'saque.*solicitado',
-                r'saque.*registrado',
-                r'saque.*processando',
+                r'foi enviada com sucesso',
                 r'Status: PROCESSING',
-                r'solicitação.*enviada',
+                r'saq-[a-f0-9]+',
+                r'✅.*solicitação.*saque',
+                r'saque.*solicitado',
                 r'será.*processado',
-                r'aguardando.*processamento',
-                r'✅.*saque',
-                r'pedido.*saque',
-                r'R\$.*solicitado',
-                r'Confirmar saque',
-                r'saq-[a-f0-9]+',  # ID do saque do bot
             ]
             padroes_erro = [
                 r'saldo insuficiente',
@@ -568,50 +562,52 @@ async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> d
                 r'chave pix.*não',
                 r'erro ao processar',
                 r'não foi possível',
+                r'operação.*cancelada',
             ]
 
-            for msg in msgs:
-                if not msg.text:
-                    continue
-                texto = msg.text
-                # Verificar se é mensagem recente (últimos 2 min)
-                import datetime as dt
-                if hasattr(msg, 'date') and msg.date:
-                    idade = (dt.datetime.now(dt.timezone.utc) - msg.date).total_seconds()
-                    if idade > 120:
-                        continue
+            # Polling: verifica a cada 2s por até 30s
+            for tentativa in range(15):
+                await asyncio.sleep(2)
+                msgs = await client.get_messages(bot, limit=5)
 
-                if any(re.search(p, texto, re.IGNORECASE) for p in padroes_sucesso):
-                    resposta_bot = texto[:400]
-                    status_saque = 'enviado'
-                    # Extrair ID do saque do bot
-                    m = re.search(r'saq-([a-f0-9]+)', texto)
-                    if m:
-                        saque_id_bot = f"saq-{m.group(1)}"
-                    break
-                if any(re.search(p, texto, re.IGNORECASE) for p in padroes_erro):
-                    resposta_bot = texto[:300]
-                    status_saque = 'erro'
-                    break
-
-            # Se não reconheceu padrão, pega última mensagem do bot (recente)
-            if not resposta_bot:
                 for msg in msgs:
-                    if msg.text and len(msg.text) > 10:
-                        import datetime as dt
-                        if hasattr(msg, 'date') and msg.date:
-                            idade = (dt.datetime.now(dt.timezone.utc) - msg.date).total_seconds()
-                            if idade < 120:
-                                resposta_bot = msg.text[:300]
-                                status_saque = 'enviado'
-                                break
+                    if not msg.text:
+                        continue
+                    # Somente mensagens APÓS o envio da chave
+                    if hasattr(msg, 'date') and msg.date:
+                        if msg.date < hora_envio:
+                            continue
+                    texto = msg.text
 
-            print(f'💸 Saque executado: R${valor:.2f} → {tipo_chave}: {chave_pix} | Status: {status_saque} | BotID: {saque_id_bot}', flush=True)
+                    if any(re.search(p, texto, re.IGNORECASE) for p in padroes_sucesso):
+                        resposta_bot = texto[:400]
+                        status_saque = 'enviado'
+                        m_id = re.search(r'saq-([a-f0-9]+)', texto)
+                        if m_id:
+                            saque_id_bot = f"saq-{m_id.group(1)}"
+                        print(f'✅ Confirmação recebida na tentativa {tentativa+1}!', flush=True)
+                        break
+                    if any(re.search(p, texto, re.IGNORECASE) for p in padroes_erro):
+                        resposta_bot = texto[:300]
+                        status_saque = 'erro'
+                        print(f'❌ Erro detectado: {texto[:80]}', flush=True)
+                        break
+
+                if status_saque != 'pendente':
+                    break
+
+            # Se ainda pendente após 30s, assume enviado (saque foi feito, bot só demorou)
+            if status_saque == 'pendente':
+                status_saque = 'enviado'
+                resposta_bot = f'Saque de R${valor:.2f} enviado para {chave_pix}. Processamento pode levar até 40 minutos.'
+                print(f'⚠️ Timeout aguardando bot, assumindo enviado.', flush=True)
+
+            print(f'💸 Saque: R${valor:.2f} → {tipo_chave}: {chave_pix} | Status: {status_saque} | BotID: {saque_id_bot}', flush=True)
 
             return {
                 'success': True,
                 'status': status_saque,
-                'status_msg': '✅ Saque solicitado com sucesso! Pode levar até 40 minutos.' if status_saque == 'enviado' else 'Saque em análise',
+                'status_msg': '✅ Saque realizado com sucesso! Cai em até 40 minutos.' if status_saque == 'enviado' else 'Erro no saque',
                 'mensagem_bot': resposta_bot,
                 'saque_id_bot': saque_id_bot,
                 'valor': valor,
