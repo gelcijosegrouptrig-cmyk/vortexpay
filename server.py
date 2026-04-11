@@ -55,41 +55,58 @@ def init_db():
     conn.execute('''CREATE TABLE IF NOT EXISTS sorteio_config (
         id INTEGER PRIMARY KEY,
         ativo INTEGER DEFAULT 1,
+        valor_por_numero REAL DEFAULT 5.0,
+        premio_fixo REAL DEFAULT 0,
         percentual REAL DEFAULT 50.0,
-        data_corte TEXT,
         usar_media INTEGER DEFAULT 0,
         dias_media INTEGER DEFAULT 30,
-        premio_fixo REAL DEFAULT 0,
         descricao TEXT DEFAULT 'Sorteio VortexPay',
         proximo_sorteio TEXT,
         updated_at TEXT
     )''')
+    # Migrações de colunas
+    for col in ["valor_por_numero REAL DEFAULT 5.0",
+                "usar_media INTEGER DEFAULT 0",
+                "dias_media INTEGER DEFAULT 30"]:
+        try: conn.execute(f'ALTER TABLE sorteio_config ADD COLUMN {col}')
+        except: pass
+
     conn.execute('''CREATE TABLE IF NOT EXISTS sorteio_participantes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        cliente_id TEXT NOT NULL,
+        cliente_id TEXT NOT NULL UNIQUE,
         nome TEXT,
-        saldo REAL DEFAULT 0,
-        saldo_medio REAL DEFAULT 0,
-        numero_sorte INTEGER,
-        premio_estimado REAL DEFAULT 0,
+        cpf TEXT,
         chave_pix TEXT,
         tipo_chave TEXT DEFAULT 'cpf',
+        total_depositado REAL DEFAULT 0,
+        total_numeros INTEGER DEFAULT 0,
+        numeros_sorte TEXT DEFAULT '[]',
         created_at TEXT,
+        updated_at TEXT,
         sorteio_id TEXT DEFAULT 'atual'
     )''')
-    # Adicionar colunas chave_pix/tipo_chave se tabela já existia
-    try:
-        conn.execute('ALTER TABLE sorteio_participantes ADD COLUMN chave_pix TEXT')
-    except: pass
-    try:
-        conn.execute("ALTER TABLE sorteio_participantes ADD COLUMN tipo_chave TEXT DEFAULT 'cpf'")
-    except: pass
+    # Migrações
+    for col in ['cpf TEXT', 'total_depositado REAL DEFAULT 0',
+                'total_numeros INTEGER DEFAULT 0', "numeros_sorte TEXT DEFAULT '[]'",
+                'updated_at TEXT']:
+        try: conn.execute(f'ALTER TABLE sorteio_participantes ADD COLUMN {col}')
+        except: pass
+
+    conn.execute('''CREATE TABLE IF NOT EXISTS sorteio_bilhetes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cliente_id TEXT NOT NULL,
+        numero INTEGER NOT NULL,
+        sorteio_id TEXT DEFAULT 'atual',
+        created_at TEXT
+    )''')
+
     conn.execute('''CREATE TABLE IF NOT EXISTS sorteio_historico (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sorteio_id TEXT UNIQUE NOT NULL,
         data_sorteio TEXT,
         ganhador_cliente_id TEXT,
         ganhador_nome TEXT,
+        ganhador_cpf TEXT,
         ganhador_numero INTEGER,
         ganhador_chave_pix TEXT,
         ganhador_tipo_chave TEXT,
@@ -97,18 +114,15 @@ def init_db():
         saque_id TEXT,
         saque_status TEXT DEFAULT 'pendente',
         total_participantes INTEGER,
-        total_saldo REAL,
+        total_bilhetes INTEGER,
+        total_depositado REAL,
         observacao TEXT
     )''')
-    # Adicionar colunas novas se tabela já existia
-    for col in ['ganhador_chave_pix TEXT','ganhador_tipo_chave TEXT',
-                'saque_id TEXT',"saque_status TEXT DEFAULT 'pendente'"]:
-        try: conn.execute(f'ALTER TABLE sorteio_historico ADD COLUMN {col}')
-        except: pass
-    # Config padrão se não existir
+
+    # Config padrão
     conn.execute('''INSERT OR IGNORE INTO sorteio_config
-        (id, ativo, percentual, usar_media, dias_media, descricao, proximo_sorteio, updated_at)
-        VALUES (1, 1, 50.0, 0, 30, 'Sorteio Semanal VortexPay', NULL, ?)''',
+        (id, ativo, valor_por_numero, premio_fixo, percentual, usar_media, dias_media, descricao, proximo_sorteio, updated_at)
+        VALUES (1, 1, 5.0, 0, 50.0, 0, 30, 'Sorteio VortexPay', NULL, ?)''',
         (datetime.now().isoformat(),))
     conn.commit(); conn.close()
 
@@ -132,10 +146,83 @@ def buscar_transacao(tx_id):
     return None
 
 def confirmar_pagamento(tx_id):
+    """Confirma pagamento e automaticamente gera bilhetes do sorteio para o cliente"""
     conn = sqlite3.connect(DB_PATH)
     conn.execute('UPDATE transacoes SET status=?,paid_at=? WHERE tx_id=?',
         ('pago', datetime.now().isoformat(), tx_id))
-    conn.commit(); conn.close()
+    conn.commit()
+
+    # Buscar dados da transação para gerar bilhetes
+    c = conn.cursor()
+    c.execute('SELECT valor, cliente_id FROM transacoes WHERE tx_id=?', (tx_id,))
+    row = c.fetchone()
+    conn.close()
+
+    if row:
+        valor_pago, cliente_id = row
+        if cliente_id and valor_pago and valor_pago >= 5:
+            # Tenta creditar bilhetes ao participante do sorteio pelo cliente_id
+            _creditar_bilhetes_por_deposito(cliente_id, valor_pago, tx_id)
+
+def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id):
+    """Gera bilhetes do sorteio automaticamente quando um depósito é confirmado.
+    O cliente_id deve ser o CPF sem máscara (números apenas) ou 'cli_CPF'."""
+    try:
+        import json as _json
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+
+        # Tentar encontrar participante por cliente_id ou por CPF embutido no cliente_id
+        cpf_tentativa = re.sub(r'\D', '', str(cliente_id or '')).strip()
+        if cliente_id and str(cliente_id).startswith('cli_'):
+            cpf_tentativa = str(cliente_id)[4:]
+
+        if not cpf_tentativa or len(cpf_tentativa) < 11:
+            conn.close()
+            return  # Sem CPF válido, não gera bilhetes
+
+        c.execute("SELECT id, cliente_id, total_depositado, total_numeros, numeros_sorte FROM sorteio_participantes WHERE cpf=? AND sorteio_id='atual'",
+                  (cpf_tentativa,))
+        row = c.fetchone()
+        conn.close()
+
+        if not row:
+            return  # Participante não cadastrado no sorteio
+
+        _, cli_id, total_dep, total_num, numeros_json = row
+        total_dep = float(total_dep or 0)
+        total_num = int(total_num or 0)
+        numeros_atuais = []
+        try: numeros_atuais = _json.loads(numeros_json or '[]')
+        except: pass
+
+        # Ler config do sorteio
+        cfg = get_sorteio_config()
+        vp = float(cfg.get('valor_por_numero') or 5.0)
+
+        novo_total = total_dep + float(valor)
+        novos_total_num = calcular_numeros(novo_total, vp)
+        novos = novos_total_num - total_num
+
+        novos_numeros = []
+        if novos > 0:
+            novos_numeros = gerar_bilhetes_unicos(cli_id, novos)
+            numeros_atuais.extend(novos_numeros)
+
+        conn2 = sqlite3.connect(DB_PATH)
+        conn2.execute('''UPDATE sorteio_participantes
+            SET total_depositado=?, total_numeros=?, numeros_sorte=?, updated_at=?
+            WHERE cpf=? AND sorteio_id='atual' ''',
+            (novo_total, novos_total_num, _json.dumps(numeros_atuais),
+             datetime.now().isoformat(), cpf_tentativa))
+        conn2.commit(); conn2.close()
+
+        if novos > 0:
+            print(f'🎫 Sorteio: {novos} bilhete(s) gerado(s) para CPF {cpf_tentativa} (depósito R${valor:.2f}, tx={tx_id})', flush=True)
+        else:
+            print(f'💰 Sorteio: R${valor:.2f} creditado para CPF {cpf_tentativa}, total R${novo_total:.2f}, aguardando R${vp - (novo_total % vp):.2f} para próximo bilhete', flush=True)
+    except Exception as e:
+        print(f'⚠️ Erro ao creditar bilhetes sorteio (tx={tx_id}): {e}', flush=True)
 
 def listar_transacoes(limit=50):
     conn = sqlite3.connect(DB_PATH)
@@ -213,38 +300,63 @@ def get_sorteio_config():
     c.execute('SELECT * FROM sorteio_config WHERE id=1')
     row = c.fetchone(); conn.close()
     if row:
-        cols = ['id','ativo','percentual','data_corte','usar_media','dias_media',
-                'premio_fixo','descricao','proximo_sorteio','updated_at']
-        return dict(zip(cols, row))
-    return {}
-
-def get_participante(cliente_id):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT * FROM sorteio_participantes WHERE cliente_id=? AND sorteio_id='atual'", (cliente_id,))
-    row = c.fetchone(); conn.close()
-    if row:
-        cols = ['id','cliente_id','nome','saldo','saldo_medio','numero_sorte',
-                'premio_estimado','chave_pix','tipo_chave','created_at','sorteio_id']
-        # Compatibilidade com rows sem as colunas novas
+        cols = ['id','ativo','valor_por_numero','premio_fixo','percentual',
+                'usar_media','dias_media','descricao','proximo_sorteio','updated_at']
         d = {}
         for i, col in enumerate(cols):
             d[col] = row[i] if i < len(row) else None
         return d
-    return None
+    return {}
 
-def calcular_premio(saldo, config):
-    """Calcula prêmio estimado baseado no saldo e configuração"""
-    if config.get('premio_fixo', 0) > 0:
-        return float(config['premio_fixo'])
-    base = saldo
-    return round(base * float(config.get('percentual', 50)) / 100, 2)
+def get_participante(cpf):
+    """Busca participante pelo CPF"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT * FROM sorteio_participantes WHERE cpf=? AND sorteio_id='atual'", (cpf,))
+    row = c.fetchone(); conn.close()
+    if not row: return None
+    cols = ['id','cliente_id','nome','cpf','chave_pix','tipo_chave',
+            'total_depositado','total_numeros','numeros_sorte','created_at','updated_at','sorteio_id']
+    d = {}
+    for i, col in enumerate(cols):
+        d[col] = row[i] if i < len(row) else None
+    import json as _json
+    try: d['numeros_sorte'] = _json.loads(d['numeros_sorte'] or '[]')
+    except: d['numeros_sorte'] = []
+    return d
 
-def gerar_numero_sorte(cliente_id, sorteio_id='atual'):
-    """Gera número da sorte único e determinístico por cliente"""
-    import hashlib
-    seed = hashlib.md5(f"{cliente_id}{sorteio_id}vortexpay".encode()).hexdigest()
-    return int(seed[:8], 16) % 900000 + 100000  # 6 dígitos: 100000-999999
+def calcular_numeros(total_depositado, valor_por_numero=5.0):
+    """Calcula quantos números a pessoa tem: R$5=1, R$10=2, R$15=3..."""
+    return max(0, int(total_depositado // valor_por_numero))
+
+def gerar_bilhetes_unicos(cliente_id, qtd, sorteio_id='atual'):
+    """Gera números únicos para o participante (sem repetir com outros)"""
+    import hashlib, json
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # Pegar todos os números já usados neste sorteio
+    c.execute('SELECT numero FROM sorteio_bilhetes WHERE sorteio_id=?', (sorteio_id,))
+    usados = set(r[0] for r in c.fetchall())
+
+    numeros = []
+    tentativa = 0
+    while len(numeros) < qtd:
+        seed = hashlib.md5(f"{cliente_id}{sorteio_id}{tentativa}vortex".encode()).hexdigest()
+        num = int(seed[:8], 16) % 900000 + 100000  # 100000–999999
+        if num not in usados:
+            usados.add(num)
+            numeros.append(num)
+        tentativa += 1
+        if tentativa > 9999999: break
+
+    # Salvar bilhetes
+    for num in numeros:
+        try:
+            conn.execute('INSERT INTO sorteio_bilhetes (cliente_id, numero, sorteio_id, created_at) VALUES (?,?,?,?)',
+                         (cliente_id, num, sorteio_id, datetime.now().isoformat()))
+        except: pass
+    conn.commit(); conn.close()
+    return numeros
 
 # ─── TELEGRAM - Conectar com retry ─────────────────────────
 async def conectar_telegram():
@@ -448,176 +560,290 @@ async def route_sorteio_page(request):
     return web.Response(text=load_sorteio_html(), content_type='text/html', charset='utf-8')
 
 async def route_sorteio_info(request):
-    """Info pública do sorteio + dados do participante se cliente_id fornecido"""
-    cliente_id = request.rel_url.query.get('cliente_id', '').strip()
+    """Info pública + dados do participante por CPF"""
+    import json as _json
+    cpf = request.rel_url.query.get('cpf', '').strip()
     config = get_sorteio_config()
-    
-    # Estatísticas gerais
+
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT COUNT(*), COALESCE(SUM(saldo),0) FROM sorteio_participantes WHERE sorteio_id='atual'")
-    total_part, total_saldo = c.fetchone()
-    c.execute("SELECT * FROM sorteio_historico ORDER BY data_sorteio DESC LIMIT 3")
+    c.execute("SELECT COUNT(*), COALESCE(SUM(total_depositado),0), COALESCE(SUM(total_numeros),0) FROM sorteio_participantes WHERE sorteio_id='atual'")
+    total_part, total_dep, total_bilhetes = c.fetchone()
+    c.execute("SELECT * FROM sorteio_historico ORDER BY data_sorteio DESC LIMIT 5")
     hist_rows = c.fetchall()
     conn.close()
 
     hist_cols = ['id','sorteio_id','data_sorteio','ganhador_cliente_id','ganhador_nome',
-                 'ganhador_numero','premio_pago','total_participantes','total_saldo','observacao']
-    historico = [dict(zip(hist_cols, r)) for r in hist_rows]
+                 'ganhador_cpf','ganhador_numero','ganhador_chave_pix','ganhador_tipo_chave',
+                 'premio_pago','saque_id','saque_status','total_participantes',
+                 'total_bilhetes','total_depositado','observacao']
+    historico = []
+    for r in hist_rows:
+        d = {}
+        for i, col in enumerate(hist_cols):
+            d[col] = r[i] if i < len(r) else None
+        historico.append(d)
 
-    # Prêmio atual estimado (50% do total em saldo ou fixo)
-    premio_atual = 0
-    if config.get('premio_fixo', 0) > 0:
-        premio_atual = float(config['premio_fixo'])
-    else:
-        premio_atual = round(total_saldo * float(config.get('percentual', 50)) / 100, 2)
+    vp = float(config.get('valor_por_numero') or 5.0)
+    premio = float(config.get('premio_fixo') or 0) or round(total_dep * float(config.get('percentual',50))/100, 2)
 
     resp = {
         'sorteio': {
             'ativo': bool(config.get('ativo', 1)),
             'descricao': config.get('descricao', 'Sorteio VortexPay'),
-            'percentual': config.get('percentual', 50),
-            'usar_media': bool(config.get('usar_media', 0)),
-            'dias_media': config.get('dias_media', 30),
+            'valor_por_numero': vp,
+            'percentual': float(config.get('percentual') or 50),
+            'premio_fixo': float(config.get('premio_fixo') or 0),
+            'usar_media': int(config.get('usar_media') or 0),
+            'dias_media': int(config.get('dias_media') or 30),
             'proximo_sorteio': config.get('proximo_sorteio'),
-            'total_participantes': total_part,
-            'total_saldo': round(total_saldo, 2),
-            'premio_estimado_total': premio_atual,
+            'total_participantes': int(total_part),
+            'total_bilhetes': int(total_bilhetes),
+            'total_depositado': round(total_dep, 2),
+            'premio_estimado_total': premio,
         },
         'historico': historico,
     }
 
-    # Dados do participante se informado
-    if cliente_id:
-        part = get_participante(cliente_id)
+    if cpf:
+        part = get_participante(cpf)
         if part:
             resp['participante'] = {
-                'cliente_id': part['cliente_id'],
+                'cpf': part['cpf'],
                 'nome': part['nome'],
-                'numero_sorte': part['numero_sorte'],
-                'saldo': part['saldo'],
-                'saldo_medio': part['saldo_medio'],
-                'premio_estimado': part['premio_estimado'],
+                'chave_pix': part['chave_pix'],
+                'tipo_chave': part['tipo_chave'],
+                'total_depositado': part['total_depositado'],
+                'total_numeros': part['total_numeros'],
+                'numeros_sorte': part['numeros_sorte'],
                 'participando': True,
             }
         else:
-            resp['participante'] = {'participando': False, 'cliente_id': cliente_id}
+            resp['participante'] = {'participando': False, 'cpf': cpf}
 
     return web.json_response(resp)
 
-async def route_sorteio_participar(request):
-    """Cadastrar ou atualizar participante no sorteio"""
+async def route_sorteio_cadastrar(request):
+    """Cadastrar participante com Nome, CPF e Chave Pix"""
+    import json as _json
     try:
         data = await request.json()
-        cliente_id = str(data.get('cliente_id', '')).strip()
-        nome = str(data.get('nome', 'Cliente')).strip()
-        saldo = float(data.get('saldo', 0))
-        saldo_medio = float(data.get('saldo_medio', saldo))
+        nome      = str(data.get('nome', '')).strip()
+        cpf       = re.sub(r'\D', '', str(data.get('cpf', ''))).strip()
         chave_pix = str(data.get('chave_pix', '')).strip()
-        tipo_chave = str(data.get('tipo_chave', 'cpf')).strip().lower()
+        tipo_chave= str(data.get('tipo_chave', 'cpf')).strip().lower()
 
-        if not cliente_id:
-            return web.json_response({'error': 'cliente_id obrigatório'}, status=400)
-        if saldo < 1:
-            return web.json_response({'error': 'Saldo mínimo de R$ 1,00 para participar'}, status=400)
-        if not chave_pix or len(chave_pix) < 5:
-            return web.json_response({'error': 'Chave Pix obrigatória para receber o prêmio'}, status=400)
+        if not nome:      return web.json_response({'error': 'Nome obrigatório'}, status=400)
+        if len(cpf) < 11: return web.json_response({'error': 'CPF inválido (informe 11 dígitos)'}, status=400)
+        if not chave_pix: return web.json_response({'error': 'Chave Pix obrigatória'}, status=400)
 
         config = get_sorteio_config()
         if not config.get('ativo', 1):
             return web.json_response({'error': 'Sorteio não está ativo no momento'}, status=400)
 
-        numero = gerar_numero_sorte(cliente_id)
-        base = saldo_medio if config.get('usar_media') else saldo
-        premio = calcular_premio(base, config)
+        # Verificar se já existe
+        existente = get_participante(cpf)
+        now = datetime.now().isoformat()
+        cliente_id = f"cli_{cpf}"
 
         conn = sqlite3.connect(DB_PATH)
-        conn.execute('''INSERT OR REPLACE INTO sorteio_participantes
-            (cliente_id, nome, saldo, saldo_medio, numero_sorte, premio_estimado,
-             chave_pix, tipo_chave, created_at, sorteio_id)
-            VALUES (?,?,?,?,?,?,?,?,?,'atual')''',
-            (cliente_id, nome, saldo, saldo_medio, numero, premio,
-             chave_pix, tipo_chave, datetime.now().isoformat()))
+        if existente:
+            # Atualizar dados (sem alterar depósitos e bilhetes)
+            conn.execute('''UPDATE sorteio_participantes
+                SET nome=?, chave_pix=?, tipo_chave=?, updated_at=?
+                WHERE cpf=? AND sorteio_id='atual' ''',
+                (nome, chave_pix, tipo_chave, now, cpf))
+            conn.commit(); conn.close()
+            part = get_participante(cpf)
+            return web.json_response({
+                'success': True,
+                'atualizado': True,
+                'cpf': cpf,
+                'nome': nome,
+                'chave_pix': chave_pix,
+                'tipo_chave': tipo_chave,
+                'total_depositado': part['total_depositado'],
+                'total_numeros': part['total_numeros'],
+                'numeros_sorte': part['numeros_sorte'],
+                'message': f'✅ Dados atualizados! Você tem {part["total_numeros"]} número(s) da sorte.',
+            })
+        else:
+            conn.execute('''INSERT INTO sorteio_participantes
+                (cliente_id, nome, cpf, chave_pix, tipo_chave,
+                 total_depositado, total_numeros, numeros_sorte, created_at, updated_at, sorteio_id)
+                VALUES (?,?,?,?,?, 0, 0, '[]', ?, ?, 'atual')''',
+                (cliente_id, nome, cpf, chave_pix, tipo_chave, now, now))
+            conn.commit(); conn.close()
+            return web.json_response({
+                'success': True,
+                'cadastrado': True,
+                'cpf': cpf,
+                'nome': nome,
+                'chave_pix': chave_pix,
+                'tipo_chave': tipo_chave,
+                'total_depositado': 0,
+                'total_numeros': 0,
+                'numeros_sorte': [],
+                'message': '✅ Cadastro realizado! Faça depósitos para gerar seus números da sorte.\nA cada R$5 depositado = 1 número!',
+            })
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
+async def route_sorteio_adicionar_deposito(request):
+    """ADMIN ou sistema: adicionar depósito e gerar bilhetes automaticamente"""
+    import json as _json
+    auth = (request.headers.get('X-VortexPay-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        cpf   = re.sub(r'\D', '', str(data.get('cpf', ''))).strip()
+        valor = float(data.get('valor', 0))
+
+        if not cpf:    return web.json_response({'error': 'CPF obrigatório'}, status=400)
+        if valor <= 0: return web.json_response({'error': 'Valor inválido'}, status=400)
+
+        part = get_participante(cpf)
+        if not part:
+            return web.json_response({'error': 'Participante não cadastrado. Cadastre-se primeiro em /sorteio'}, status=404)
+
+        config = get_sorteio_config()
+        vp = float(config.get('valor_por_numero') or 5.0)
+
+        novo_total = (part['total_depositado'] or 0) + valor
+        numeros_antes = int(part['total_numeros'] or 0)
+        numeros_total = calcular_numeros(novo_total, vp)
+        novos = numeros_total - numeros_antes
+
+        numeros_atuais = list(part['numeros_sorte'] or [])
+        novos_numeros = []
+        if novos > 0:
+            novos_numeros = gerar_bilhetes_unicos(part['cliente_id'], novos)
+            numeros_atuais.extend(novos_numeros)
+
+        import json as _json
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute('''UPDATE sorteio_participantes
+            SET total_depositado=?, total_numeros=?, numeros_sorte=?, updated_at=?
+            WHERE cpf=? AND sorteio_id='atual' ''',
+            (novo_total, numeros_total, _json.dumps(numeros_atuais),
+             datetime.now().isoformat(), cpf))
         conn.commit(); conn.close()
 
         return web.json_response({
             'success': True,
-            'cliente_id': cliente_id,
-            'nome': nome,
-            'numero_sorte': numero,
-            'saldo': saldo,
-            'premio_estimado': premio,
-            'chave_pix': chave_pix,
-            'tipo_chave': tipo_chave,
-            'message': f'✅ Você está participando! Número da sorte: {numero}',
+            'cpf': cpf,
+            'nome': part['nome'],
+            'valor_adicionado': valor,
+            'total_depositado': novo_total,
+            'numeros_gerados': novos,
+            'novos_numeros': novos_numeros,
+            'total_numeros': numeros_total,
+            'todos_numeros': numeros_atuais,
+            'message': f'✅ R${valor:.2f} adicionado! {novos} novo(s) número(s) gerado(s). Total: {numeros_total} bilhetes.',
+        })
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
+async def route_sorteio_participar(request):
+    """Alias público: buscar dados do participante por CPF"""
+    import json as _json
+    try:
+        data = await request.json()
+        cpf = re.sub(r'\D', '', str(data.get('cpf', ''))).strip()
+        if not cpf:
+            return web.json_response({'error': 'CPF obrigatório'}, status=400)
+        part = get_participante(cpf)
+        if not part:
+            return web.json_response({'success': False, 'participando': False,
+                                      'message': 'CPF não cadastrado. Faça seu cadastro!'})
+        return web.json_response({
+            'success': True, 'participando': True,
+            'cpf': part['cpf'], 'nome': part['nome'],
+            'chave_pix': part['chave_pix'], 'tipo_chave': part['tipo_chave'],
+            'total_depositado': part['total_depositado'],
+            'total_numeros': part['total_numeros'],
+            'numeros_sorte': part['numeros_sorte'],
         })
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
 
 async def _executar_sorteio_completo():
-    """Lógica central: sorteia ganhador e executa saque automático via bot"""
-    import random
+    """Lógica central: sorteia 1 bilhete vencedor e executa saque automático"""
+    import random, json as _json
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT * FROM sorteio_participantes WHERE sorteio_id='atual' AND saldo > 0")
+
+    # Buscar todos os bilhetes do sorteio atual
+    c.execute("SELECT cliente_id, numero FROM sorteio_bilhetes WHERE sorteio_id='atual'")
+    bilhetes = c.fetchall()  # [(cliente_id, numero), ...]
+
+    if not bilhetes:
+        conn.close()
+        return {'success': False, 'error': 'Nenhum bilhete no sorteio. Participantes precisam fazer depósitos.'}
+
+    # Buscar participantes
+    c.execute("SELECT * FROM sorteio_participantes WHERE sorteio_id='atual'")
     rows = c.fetchall()
-    cols_part = ['id','cliente_id','nome','saldo','saldo_medio','numero_sorte',
-                 'premio_estimado','chave_pix','tipo_chave','created_at','sorteio_id']
+    cols_part = ['id','cliente_id','nome','cpf','chave_pix','tipo_chave',
+                 'total_depositado','total_numeros','numeros_sorte','created_at','updated_at','sorteio_id']
     participantes = []
     for r in rows:
         d = {}
         for i, col in enumerate(cols_part):
             d[col] = r[i] if i < len(r) else None
+        try: d['numeros_sorte'] = _json.loads(d['numeros_sorte'] or '[]')
+        except: d['numeros_sorte'] = []
         participantes.append(d)
+    conn.close()
 
-    if not participantes:
-        conn.close()
-        return {'success': False, 'error': 'Nenhum participante no sorteio'}
+    part_map = {p['cliente_id']: p for p in participantes}
 
     config = get_sorteio_config()
 
-    # Filtrar apenas participantes com chave Pix cadastrada
-    com_pix = [p for p in participantes if p.get('chave_pix')]
-    sem_pix  = [p for p in participantes if not p.get('chave_pix')]
-    pool = com_pix if com_pix else participantes  # se ninguém tem pix, sorteia todos
+    # Sortear 1 bilhete aleatório (cada bilhete = igual chance)
+    bilhete_vencedor = random.choice(bilhetes)
+    cliente_id_vencedor, numero_vencedor = bilhete_vencedor
+    ganhador = part_map.get(cliente_id_vencedor)
 
-    # Sorteio ponderado pelo saldo
-    pesos = [p['saldo_medio'] if config.get('usar_media') else p['saldo'] for p in pool]
-    ganhador = random.choices(pool, weights=pesos, k=1)[0]
+    if not ganhador:
+        return {'success': False, 'error': 'Erro interno: participante do bilhete não encontrado'}
 
-    premio = ganhador['premio_estimado']
-    if premio < 1:
-        # Recalcular prêmio atual
-        total_saldo = sum(p['saldo'] for p in participantes)
-        if config.get('premio_fixo', 0) > 0:
-            premio = float(config['premio_fixo'])
-        else:
-            base = ganhador['saldo_medio'] if config.get('usar_media') else ganhador['saldo']
-            premio = calcular_premio(base, config)
+    total_depositado = sum(p['total_depositado'] or 0 for p in participantes)
+    total_bilhetes_count = len(bilhetes)
 
-    sorteio_id = f"sorteio_{int(time.time())}"
-    total_saldo = sum(p['saldo'] for p in participantes)
+    # Calcular prêmio
+    if float(config.get('premio_fixo') or 0) > 0:
+        premio = float(config['premio_fixo'])
+    else:
+        premio = round(total_depositado * float(config.get('percentual', 50)) / 100, 2)
+    premio = max(premio, 1.0)
 
+    sorteio_id  = f"sorteio_{int(time.time())}"
     chave_pix   = ganhador.get('chave_pix') or ''
     tipo_chave  = ganhador.get('tipo_chave') or 'cpf'
+    cpf_ganhador = ganhador.get('cpf') or ''
 
-    # Salvar no histórico (saque pendente)
-    conn.execute('''INSERT INTO sorteio_historico
-        (sorteio_id, data_sorteio, ganhador_cliente_id, ganhador_nome, ganhador_numero,
-         ganhador_chave_pix, ganhador_tipo_chave, premio_pago,
-         saque_status, total_participantes, total_saldo, observacao)
-        VALUES (?,?,?,?,?,?,?,?,'pendente',?,?,?)''',
+    # Salvar no histórico
+    conn2 = sqlite3.connect(DB_PATH)
+    conn2.execute('''INSERT INTO sorteio_historico
+        (sorteio_id, data_sorteio, ganhador_cliente_id, ganhador_nome, ganhador_cpf,
+         ganhador_numero, ganhador_chave_pix, ganhador_tipo_chave, premio_pago,
+         saque_status, total_participantes, total_bilhetes, total_depositado, observacao)
+        VALUES (?,?,?,?,?,?,?,?,?,'pendente',?,?,?,?)''',
         (sorteio_id, datetime.now().isoformat(),
-         ganhador['cliente_id'], ganhador['nome'], ganhador['numero_sorte'],
-         chave_pix, tipo_chave, premio,
-         len(participantes), total_saldo,
-         f'Sorteio automático - {len(participantes)} participantes ({len(sem_pix)} sem chave Pix)'))
+         ganhador['cliente_id'], ganhador['nome'], cpf_ganhador,
+         numero_vencedor, chave_pix, tipo_chave, premio,
+         len(participantes), total_bilhetes_count, total_depositado,
+         f'Bilhete {numero_vencedor} sorteado de {total_bilhetes_count} bilhetes'))
 
-    # Arquivar participantes
-    conn.execute("UPDATE sorteio_participantes SET sorteio_id=? WHERE sorteio_id='atual'", (sorteio_id,))
-    conn.commit(); conn.close()
+    # Arquivar participantes e bilhetes
+    conn2.execute("UPDATE sorteio_participantes SET sorteio_id=? WHERE sorteio_id='atual'", (sorteio_id,))
+    conn2.execute("UPDATE sorteio_bilhetes SET sorteio_id=? WHERE sorteio_id='atual'", (sorteio_id,))
+    conn2.commit(); conn2.close()
 
-    print(f'🎉 SORTEIO {sorteio_id}: {ganhador["nome"]} ganhou R${premio:.2f} → {tipo_chave}: {chave_pix}', flush=True)
+    print(f'🎉 SORTEIO {sorteio_id}: bilhete {numero_vencedor} → {ganhador["nome"]} ganhou R${premio:.2f} → {tipo_chave}: {chave_pix}', flush=True)
 
     # ── SAQUE AUTOMÁTICO ──────────────────────────────────────
     saque_result = {'success': False, 'error': 'Chave Pix não cadastrada'}
@@ -660,7 +886,8 @@ async def _executar_sorteio_completo():
         'ganhador': {
             'cliente_id': ganhador['cliente_id'],
             'nome': ganhador['nome'],
-            'numero_sorte': ganhador['numero_sorte'],
+            'cpf': cpf_ganhador,
+            'numero_sorte': numero_vencedor,
             'chave_pix': chave_pix,
             'tipo_chave': tipo_chave,
             'premio': premio,
@@ -669,9 +896,8 @@ async def _executar_sorteio_completo():
         'saque_id': saque_id_gerado,
         'estatisticas': {
             'total_participantes': len(participantes),
-            'com_chave_pix': len(com_pix),
-            'sem_chave_pix': len(sem_pix),
-            'total_saldo': round(total_saldo, 2),
+            'total_bilhetes': total_bilhetes_count,
+            'total_depositado': round(total_depositado, 2),
         }
     }
 
@@ -736,10 +962,11 @@ async def route_sorteio_config(request):
         data = await request.json()
         conn = sqlite3.connect(DB_PATH)
         conn.execute('''UPDATE sorteio_config SET
-            ativo=?, percentual=?, usar_media=?, dias_media=?,
+            ativo=?, valor_por_numero=?, percentual=?, usar_media=?, dias_media=?,
             premio_fixo=?, descricao=?, proximo_sorteio=?, updated_at=?
             WHERE id=1''', (
             int(data.get('ativo', 1)),
+            float(data.get('valor_por_numero', 5.0)),
             float(data.get('percentual', 50)),
             int(data.get('usar_media', 0)),
             int(data.get('dias_media', 30)),
@@ -759,24 +986,31 @@ async def route_sorteio_participantes(request):
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
+    import json as _json
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("""SELECT * FROM sorteio_participantes
-                 WHERE sorteio_id='atual' ORDER BY saldo DESC""")
+    c.execute("""SELECT id, cliente_id, nome, cpf, chave_pix, tipo_chave,
+                        total_depositado, total_numeros, numeros_sorte, created_at, updated_at, sorteio_id
+                 FROM sorteio_participantes
+                 WHERE sorteio_id='atual' ORDER BY total_depositado DESC""")
     rows = c.fetchall(); conn.close()
-    cols = ['id','cliente_id','nome','saldo','saldo_medio','numero_sorte',
-            'premio_estimado','chave_pix','tipo_chave','created_at','sorteio_id']
+    cols = ['id','cliente_id','nome','cpf','chave_pix','tipo_chave',
+            'total_depositado','total_numeros','numeros_sorte','created_at','updated_at','sorteio_id']
     participantes = []
     for r in rows:
         d = {}
         for i, col in enumerate(cols):
             d[col] = r[i] if i < len(r) else None
+        try: d['numeros_sorte'] = _json.loads(d['numeros_sorte'] or '[]')
+        except: d['numeros_sorte'] = []
         participantes.append(d)
-    total_saldo = sum(p['saldo'] for p in participantes)
+    total_dep = sum(p['total_depositado'] or 0 for p in participantes)
+    total_bill = sum(p['total_numeros'] or 0 for p in participantes)
     return web.json_response({
         'participantes': participantes,
         'total': len(participantes),
-        'total_saldo': round(total_saldo, 2),
+        'total_depositado': round(total_dep, 2),
+        'total_bilhetes': int(total_bill),
         'com_pix': len([p for p in participantes if p.get('chave_pix')]),
         'sem_pix': len([p for p in participantes if not p.get('chave_pix')]),
     })
@@ -1413,7 +1647,9 @@ async def main():
     app.router.add_get('/sorteio', route_sorteio_page)
     app.router.add_get('/sorteio.html', route_sorteio_page)
     app.router.add_get('/api/sorteio/info', route_sorteio_info)
+    app.router.add_post('/api/sorteio/cadastrar', route_sorteio_cadastrar)
     app.router.add_post('/api/sorteio/participar', route_sorteio_participar)
+    app.router.add_post('/api/sorteio/deposito', route_sorteio_adicionar_deposito)
     app.router.add_post('/api/sorteio/realizar', route_sorteio_realizar)
     app.router.add_post('/api/sorteio/config', route_sorteio_config)
     app.router.add_get('/api/sorteio/participantes', route_sorteio_participantes)
