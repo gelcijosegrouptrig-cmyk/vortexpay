@@ -685,22 +685,174 @@ async def route_solicitar_saque(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 async def route_saques_admin(request):
-    """Painel admin - listar todos os saques pendentes"""
+    """Painel admin - listar todos os saques"""
     auth = (request.headers.get('X-VortexPay-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
-    saques = listar_saques()
+    limit = int(request.rel_url.query.get('limit', 200))
+    saques = listar_saques(limit)
+    enviados = [s for s in saques if s['status'] in ('enviado','confirmado','processado')]
     return web.json_response({
         'saques': saques,
         'resumo': {
             'total': len(saques),
             'pendentes': len([s for s in saques if s['status'] == 'pendente']),
-            'processados': len([s for s in saques if s['status'] == 'processado']),
+            'processados': len(enviados),
+            'erros': len([s for s in saques if s['status'] == 'erro']),
             'valor_pendente': sum(s['valor'] for s in saques if s['status'] == 'pendente'),
-            'valor_pago': sum(s['valor'] for s in saques if s['status'] == 'processado'),
+            'valor_pago': sum(s['valor'] for s in enviados),
         }
     })
+
+async def route_stats(request):
+    """Dashboard completo com métricas consolidadas"""
+    auth = (request.headers.get('X-VortexPay-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+
+        # Depósitos
+        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE status='pago'")
+        dep_conf, val_dep_conf = c.fetchone()
+        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE status='pendente'")
+        dep_pend, val_dep_pend = c.fetchone()
+        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM transacoes")
+        dep_total, val_dep_total = c.fetchone()
+
+        # Saques
+        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status IN ('enviado','confirmado','processado')")
+        saq_conf, val_saq_conf = c.fetchone()
+        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status='pendente'")
+        saq_pend, val_saq_pend = c.fetchone()
+        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status='erro'")
+        saq_erro, _ = c.fetchone()
+        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques")
+        saq_total, val_saq_total = c.fetchone()
+
+        # Últimos 7 dias - depósitos por dia
+        c.execute("""SELECT date(created_at), COUNT(*), COALESCE(SUM(valor),0)
+                     FROM transacoes WHERE created_at >= date('now','-7 days')
+                     GROUP BY date(created_at) ORDER BY date(created_at)""")
+        dep_por_dia = [{'data': r[0], 'qtd': r[1], 'valor': round(r[2],2)} for r in c.fetchall()]
+
+        # Últimos 7 dias - saques por dia
+        c.execute("""SELECT date(created_at), COUNT(*), COALESCE(SUM(valor),0)
+                     FROM saques WHERE created_at >= date('now','-7 days')
+                     GROUP BY date(created_at) ORDER BY date(created_at)""")
+        saq_por_dia = [{'data': r[0], 'qtd': r[1], 'valor': round(r[2],2)} for r in c.fetchall()]
+
+        # Últimos depósitos e saques
+        c.execute("SELECT tx_id,valor,status,created_at,paid_at FROM transacoes ORDER BY created_at DESC LIMIT 10")
+        ult_dep = [{'tx_id':r[0],'valor':r[1],'status':r[2],'created_at':r[3],'paid_at':r[4]} for r in c.fetchall()]
+
+        c.execute("SELECT saque_id,valor,chave_pix,tipo_chave,status,created_at,processado_at FROM saques ORDER BY created_at DESC LIMIT 10")
+        ult_saq = [{'saque_id':r[0],'valor':r[1],'chave_pix':r[2],'tipo_chave':r[3],'status':r[4],'created_at':r[5],'processado_at':r[6]} for r in c.fetchall()]
+
+        conn.close()
+        return web.json_response({
+            'depositos': {
+                'total': dep_total, 'confirmados': dep_conf, 'pendentes': dep_pend,
+                'valor_recebido': round(val_dep_conf, 2),
+                'valor_pendente': round(val_dep_pend, 2),
+                'valor_total': round(val_dep_total, 2),
+                'por_dia': dep_por_dia,
+                'recentes': ult_dep,
+            },
+            'saques': {
+                'total': saq_total, 'realizados': saq_conf, 'pendentes': saq_pend, 'erros': saq_erro,
+                'valor_sacado': round(val_saq_conf, 2),
+                'valor_pendente': round(val_saq_pend, 2),
+                'valor_total': round(val_saq_total, 2),
+                'por_dia': saq_por_dia,
+                'recentes': ult_saq,
+            },
+            'telegram': _telegram_ready,
+            'timestamp': datetime.now().isoformat(),
+        })
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
+async def route_cancelar_saque(request):
+    """Cancelar um saque pendente"""
+    auth = (request.headers.get('X-VortexPay-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    saque_id = request.match_info.get('saque_id')
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT status FROM saques WHERE saque_id=?", (saque_id,))
+        row = c.fetchone()
+        if not row:
+            conn.close()
+            return web.json_response({'error': 'Saque não encontrado'}, status=404)
+        if row[0] not in ('pendente', 'erro'):
+            conn.close()
+            return web.json_response({'error': f'Não é possível cancelar saque com status "{row[0]}"'}, status=400)
+        conn.execute("UPDATE saques SET status='cancelado', processado_at=? WHERE saque_id=?",
+                     (datetime.now().isoformat(), saque_id))
+        conn.commit(); conn.close()
+        return web.json_response({'success': True, 'message': f'Saque {saque_id} cancelado.'})
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
+async def route_confirmar_deposito_admin(request):
+    """Confirmar manualmente um depósito pendente"""
+    auth = (request.headers.get('X-VortexPay-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        tx_id = data.get('tx_id', '').strip()
+        if not tx_id:
+            return web.json_response({'error': 'tx_id obrigatório'}, status=400)
+        tx = buscar_transacao(tx_id)
+        if not tx:
+            return web.json_response({'error': 'Transação não encontrada'}, status=404)
+        if tx['status'] == 'pago':
+            return web.json_response({'success': True, 'message': 'Já estava confirmada.'})
+        confirmar_pagamento(tx_id)
+        return web.json_response({'success': True, 'message': f'Depósito {tx_id} confirmado manualmente.'})
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
+async def route_exportar_csv(request):
+    """Exportar depósitos ou saques em CSV"""
+    auth = (request.headers.get('X-VortexPay-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    tipo = request.rel_url.query.get('tipo', 'depositos')
+    try:
+        import io
+        output = io.StringIO()
+        if tipo == 'saques':
+            rows = listar_saques(1000)
+            output.write('saque_id,valor,chave_pix,tipo_chave,status,created_at,processado_at,observacao\n')
+            for r in rows:
+                output.write(f"{r.get('saque_id','')},{r.get('valor','')},{r.get('chave_pix','')},{r.get('tipo_chave','')},{r.get('status','')},{r.get('created_at','')},{r.get('processado_at','') or ''},{(r.get('observacao','') or '').replace(',',';')[:80]}\n")
+            filename = 'saques.csv'
+        else:
+            rows = listar_transacoes(1000)
+            output.write('tx_id,valor,status,cliente_id,created_at,paid_at\n')
+            for r in rows:
+                output.write(f"{r.get('tx_id','')},{r.get('valor','')},{r.get('status','')},{r.get('cliente_id','') or ''},{r.get('created_at','')},{r.get('paid_at','') or ''}\n")
+            filename = 'depositos.csv'
+        csv_content = output.getvalue()
+        return web.Response(
+            text=csv_content,
+            content_type='text/csv',
+            charset='utf-8',
+            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+        )
+    except Exception as e:
+        return web.Response(text=f'Erro: {e}', status=500)
 
 # ─── MAIN ─────────────────────────────────────────────────
 async def main():
@@ -728,6 +880,11 @@ async def main():
     # Painel Admin
     app.router.add_get('/admin', route_admin_page)
     app.router.add_get('/admin.html', route_admin_page)
+    # APIs adicionais
+    app.router.add_get('/api/stats', route_stats)
+    app.router.add_post('/api/saque/{saque_id}/cancelar', route_cancelar_saque)
+    app.router.add_post('/api/deposito/confirmar', route_confirmar_deposito_admin)
+    app.router.add_get('/api/exportar', route_exportar_csv)
 
     runner = web.AppRunner(app)
     await runner.setup()

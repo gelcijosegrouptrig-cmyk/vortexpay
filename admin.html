@@ -385,6 +385,90 @@
     .content { padding: 16px; }
   }
 
+  /* ── API DOCS ───────────────────────────────────── */
+  .api-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .api-card:hover { border-color: rgba(255,255,255,0.12); }
+  .api-card-header {
+    padding: 14px 20px;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    cursor: pointer;
+  }
+  .api-card-body { padding: 20px; }
+  .api-cols {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  }
+  @media(max-width:700px) { .api-cols { grid-template-columns: 1fr; } }
+  .method-badge {
+    padding: 4px 10px; border-radius: 6px;
+    font-size: 11px; font-weight: 800; letter-spacing: 0.5px;
+    font-family: monospace; white-space: nowrap;
+  }
+  .method-badge.get { background: rgba(74,222,128,0.15); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+  .method-badge.post { background: rgba(255,107,53,0.15); color: var(--orange); border: 1px solid rgba(255,107,53,0.3); }
+  .method-badge.delete { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+  .endpoint {
+    font-family: monospace; font-size: 14px; color: var(--text);
+    background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 6px;
+  }
+  .api-desc { color: var(--text2); font-size: 13px; flex: 1; }
+  .test-btn {
+    background: linear-gradient(135deg,#ff6b35,#f7931e);
+    border: none; border-radius: 8px; color: #fff;
+    font-size: 12px; font-weight: 700; padding: 6px 14px;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .test-btn:hover { transform: scale(1.03); }
+  .test-btn.loading { opacity: 0.6; cursor: not-allowed; }
+  .api-section-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--text3); margin-bottom: 8px; font-weight: 600;
+  }
+  .code-block {
+    background: #0d0d14; border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 14px; font-family: monospace;
+    font-size: 12px; color: #a5f3fc; line-height: 1.6;
+    overflow-x: auto; white-space: pre;
+  }
+  .auth-note {
+    background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2);
+    border-radius: 8px; padding: 8px 12px;
+    font-size: 12px; color: var(--green);
+  }
+  .param-table { width: 100%; border-collapse: collapse; }
+  .param-table td { padding: 6px 10px; font-size: 12px; border-bottom: 1px solid var(--border); }
+  .param-name { font-family: monospace; color: var(--orange); }
+  .param-type { color: var(--purple); font-size: 11px; }
+  .tag {
+    background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.2);
+    color: var(--blue); font-size: 11px; padding: 3px 10px;
+    border-radius: 20px; font-family: monospace;
+  }
+  .test-result {
+    margin-top: 16px; background: #0d0d14;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 14px;
+    font-family: monospace; font-size: 12px; line-height: 1.6;
+    max-height: 300px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .test-result.ok { border-color: rgba(74,222,128,0.3); color: #a5f3fc; }
+  .test-result.err { border-color: rgba(248,113,113,0.3); color: #fca5a5; }
+  .test-input-row { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .api-url-box {
+    background: #0d0d14; border: 1px solid rgba(255,107,53,0.3);
+    border-radius: 10px; padding: 14px 18px;
+    font-family: monospace; font-size: 15px; color: var(--orange);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+
   /* ── LOADER ──────────────────────────────────────── */
   .spinner {
     width: 20px; height: 20px;
@@ -407,6 +491,50 @@
     border-radius: 4px; transition: all 0.15s;
   }
   .copy-btn:hover { color: var(--orange); background: rgba(255,107,53,0.1); }
+
+  /* ── AÇÕES ──────────────────────────────────────── */
+  .action-btn {
+    background: none; border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text2);
+    cursor: pointer; font-size: 11px; padding: 3px 9px;
+    transition: all 0.15s;
+  }
+  .action-btn:hover { border-color: var(--orange); color: var(--orange); }
+  .action-btn.danger:hover { border-color: var(--red); color: var(--red); }
+  .action-btn.ok-btn:hover { border-color: var(--green); color: var(--green); }
+
+  /* ── GRÁFICO ─────────────────────────────────────── */
+  .chart-section {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px; margin-bottom: 24px;
+  }
+  .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+  .chart-legend { display: flex; gap: 16px; margin-bottom: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+  .chart-bars-new {
+    display: flex; align-items: flex-end; gap: 6px;
+    height: 120px; padding: 0 4px;
+  }
+  .bar-group { flex: 1; display: flex; align-items: flex-end; gap: 2px; }
+  .bar-new {
+    flex: 1; border-radius: 3px 3px 0 0;
+    min-height: 2px; transition: height 0.5s ease;
+    cursor: default; position: relative;
+  }
+  .bar-new.dep { background: linear-gradient(180deg, #ff6b35, rgba(255,107,53,0.3)); }
+  .bar-new.saq { background: linear-gradient(180deg, #4ade80, rgba(74,222,128,0.3)); }
+  .bar-dates { display: flex; gap: 6px; margin-top: 4px; }
+  .bar-date { flex: 1; text-align: center; font-size: 9px; color: var(--text3); }
+
+  /* ── EXPORT ─────────────────────────────────────── */
+  .export-btn {
+    background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.3);
+    border-radius: 8px; color: var(--blue);
+    font-size: 12px; font-weight: 600; padding: 7px 14px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .export-btn:hover { background: rgba(96,165,250,0.2); }
 </style>
 </head>
 <body>
@@ -453,6 +581,10 @@
         📤 <span>Saques</span>
         <span class="badge" id="badge-saq">0</span>
       </div>
+      <div class="nav-section">Desenvolvedores</div>
+      <div class="nav-item" onclick="showTab('api')">
+        🔌 <span>API & Webhooks</span>
+      </div>
       <div class="nav-section">Sistema</div>
       <div class="nav-item" onclick="showTab('sistema')">
         🖥️ <span>Sistema</span>
@@ -483,6 +615,18 @@
 
       <!-- DASHBOARD -->
       <div id="tab-dashboard" class="tab-content active">
+
+        <!-- Gráfico 7 dias -->
+        <div class="chart-section" id="chart-section" style="display:none">
+          <div class="chart-title">📈 Atividade dos Últimos 7 Dias</div>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#ff6b35"></div>Depósitos</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>Saques</div>
+          </div>
+          <div class="chart-bars-new" id="chart-bars"></div>
+          <div class="bar-dates" id="chart-dates"></div>
+        </div>
+
         <div class="metrics-grid">
           <div class="metric-card orange">
             <div class="metric-icon">💰</div>
@@ -609,6 +753,7 @@
           </select>
           <input class="filter-input" id="filter-dep-search" placeholder="🔍 Buscar por ID ou valor..." oninput="renderDepositos()">
           <button class="refresh-btn" onclick="loadDepositos()">🔄 Atualizar</button>
+          <button class="export-btn" onclick="exportarCSV('depositos')">📥 CSV</button>
         </div>
         <div class="table-card">
           <div class="table-header">
@@ -626,6 +771,7 @@
                   <th>Criado em</th>
                   <th>Confirmado em</th>
                   <th>Código Pix</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="table-depositos">
@@ -643,11 +789,14 @@
           <select class="filter-select" id="filter-saq-status" onchange="renderSaques()">
             <option value="">Todos os status</option>
             <option value="enviado">✅ Realizados</option>
+            <option value="confirmado">✅ Confirmados</option>
             <option value="pendente">⏳ Pendentes</option>
             <option value="erro">❌ Erros</option>
+            <option value="cancelado">🚫 Cancelados</option>
           </select>
           <input class="filter-input" id="filter-saq-search" placeholder="🔍 Buscar por ID ou chave Pix..." oninput="renderSaques()">
           <button class="refresh-btn" onclick="loadSaques()">🔄 Atualizar</button>
+          <button class="export-btn" onclick="exportarCSV('saques')">📥 CSV</button>
         </div>
         <div class="table-card">
           <div class="table-header">
@@ -666,10 +815,11 @@
                   <th>Status</th>
                   <th>Solicitado em</th>
                   <th>Processado em</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="table-saques">
-                <tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>
+                <tr class="loading-row"><td colspan="9"><div class="spinner"></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -722,6 +872,354 @@
           </table>
         </div>
       </div>
+
+      <!-- API & WEBHOOKS -->
+      <div id="tab-api" class="tab-content">
+
+        <!-- Chave de API -->
+        <div class="table-card" style="margin-bottom:20px">
+          <div class="table-header">
+            <h3>🔑 Sua Chave de API</h3>
+            <span class="count">Secret Key</span>
+          </div>
+          <div style="padding:20px">
+            <div style="background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">API Secret Key</div>
+                <code id="api-key-display" style="font-family:monospace;font-size:14px;color:var(--orange);word-break:break-all">••••••••••••••••••••</code>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="refresh-btn" onclick="toggleApiKey()">👁️ Mostrar</button>
+                <button class="refresh-btn" onclick="copiar(SECRET())" style="color:var(--orange)">📋 Copiar</button>
+              </div>
+            </div>
+            <p style="font-size:12px;color:var(--text3);margin-top:10px">⚠️ Nunca compartilhe sua chave de API publicamente. Use-a no header <code style="color:var(--orange)">X-VortexPay-Secret</code> em todas as requisições autenticadas.</p>
+          </div>
+        </div>
+
+        <!-- Base URL -->
+        <div class="table-card" style="margin-bottom:20px">
+          <div class="table-header"><h3>🌐 Base URL</h3></div>
+          <div style="padding:16px 20px">
+            <div class="api-url-box" id="api-base-url"></div>
+          </div>
+        </div>
+
+        <!-- Endpoints -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- Gerar Pix -->
+          <div class="api-card">
+            <div class="api-card-header">
+              <span class="method-badge post">POST</span>
+              <code class="endpoint">/api/pix</code>
+              <span class="api-desc">Gerar cobrança Pix</span>
+              <button class="test-btn" onclick="testEndpoint('pix')">▶ Testar</button>
+            </div>
+            <div class="api-card-body">
+              <div class="api-cols">
+                <div>
+                  <div class="api-section-label">📥 Request Body</div>
+                  <pre class="code-block">{
+  "valor": 50.00,
+  "cliente_id": "user_123",
+  "webhook_url": "https://seusite.com/webhook"
+}</pre>
+                  <div class="api-section-label" style="margin-top:12px">🔐 Auth</div>
+                  <div class="auth-note">Não requer autenticação</div>
+                </div>
+                <div>
+                  <div class="api-section-label">📤 Response</div>
+                  <pre class="code-block">{
+  "success": true,
+  "pix_code": "00020101021226940014br...",
+  "tx_id": "txn_abc123",
+  "valor": "R$ 50.00",
+  "status": "pendente"
+}</pre>
+                </div>
+              </div>
+              <div id="test-result-pix" class="test-result" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- Status Transação -->
+          <div class="api-card">
+            <div class="api-card-header">
+              <span class="method-badge get">GET</span>
+              <code class="endpoint">/api/status/{tx_id}</code>
+              <span class="api-desc">Verificar status do pagamento</span>
+              <button class="test-btn" onclick="testEndpoint('status')">▶ Testar</button>
+            </div>
+            <div class="api-card-body">
+              <div class="api-cols">
+                <div>
+                  <div class="api-section-label">📌 Parâmetros URL</div>
+                  <table class="param-table">
+                    <tr><td class="param-name">tx_id</td><td class="param-type">string</td><td>ID da transação gerada</td></tr>
+                  </table>
+                  <div class="api-section-label" style="margin-top:12px">🔐 Auth</div>
+                  <div class="auth-note">Não requer autenticação</div>
+                </div>
+                <div>
+                  <div class="api-section-label">📤 Response</div>
+                  <pre class="code-block">{
+  "tx_id": "txn_abc123",
+  "valor": 50.0,
+  "status": "pago",
+  "created_at": "2024-04-11T13:00:00",
+  "paid_at": "2024-04-11T13:05:00",
+  "pago": true
+}</pre>
+                </div>
+              </div>
+              <div class="test-input-row">
+                <input id="test-txid-input" class="filter-input" placeholder="Digite o tx_id para testar..." style="max-width:400px">
+              </div>
+              <div id="test-result-status" class="test-result" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- Solicitar Saque -->
+          <div class="api-card">
+            <div class="api-card-header">
+              <span class="method-badge post">POST</span>
+              <code class="endpoint">/api/saque</code>
+              <span class="api-desc">Solicitar saque via Pix</span>
+              <button class="test-btn" onclick="testEndpoint('saque')">▶ Testar</button>
+            </div>
+            <div class="api-card-body">
+              <div class="api-cols">
+                <div>
+                  <div class="api-section-label">📥 Request Body</div>
+                  <pre class="code-block">{
+  "valor": 30.00,
+  "chave_pix": "email@exemplo.com",
+  "tipo_chave": "email"
+}</pre>
+                  <div class="api-section-label" style="margin-top:12px">📌 tipo_chave aceitos</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+                    <span class="tag">cpf</span><span class="tag">telefone</span><span class="tag">email</span><span class="tag">aleatoria</span><span class="tag">cnpj</span>
+                  </div>
+                  <div class="api-section-label" style="margin-top:12px">🔐 Auth</div>
+                  <div class="auth-note">Não requer autenticação</div>
+                </div>
+                <div>
+                  <div class="api-section-label">📤 Response</div>
+                  <pre class="code-block">{
+  "success": true,
+  "saque_id": "saq_abc123",
+  "saque_id_bot": "saq-xyz789",
+  "valor": 30.0,
+  "chave_pix": "email@exemplo.com",
+  "tipo_chave": "email",
+  "status": "enviado",
+  "status_msg": "✅ Saque realizado!"
+}</pre>
+                </div>
+              </div>
+              <div id="test-result-saque" class="test-result" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- Consultar Saldo -->
+          <div class="api-card">
+            <div class="api-card-header">
+              <span class="method-badge get">GET</span>
+              <code class="endpoint">/api/saldo</code>
+              <span class="api-desc">Consultar saldo da conta</span>
+              <button class="test-btn" onclick="testEndpoint('saldo')">▶ Testar</button>
+            </div>
+            <div class="api-card-body">
+              <div class="api-cols">
+                <div>
+                  <div class="api-section-label">🔐 Auth</div>
+                  <div class="auth-note">Não requer autenticação</div>
+                  <div class="api-section-label" style="margin-top:12px">📌 Nota</div>
+                  <p style="font-size:12px;color:var(--text2)">Consulta o saldo diretamente no bot VortexBank via Telegram. Pode levar 3–5 segundos.</p>
+                </div>
+                <div>
+                  <div class="api-section-label">📤 Response</div>
+                  <pre class="code-block">{
+  "saldo": 37.92,
+  "disponivel": 34.89
+}</pre>
+                </div>
+              </div>
+              <div id="test-result-saldo" class="test-result" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- Webhook Confirmar -->
+          <div class="api-card">
+            <div class="api-card-header">
+              <span class="method-badge post">POST</span>
+              <code class="endpoint">/webhook/confirmar</code>
+              <span class="api-desc">Confirmar pagamento externamente</span>
+              <button class="test-btn" onclick="testEndpoint('webhook')">▶ Testar</button>
+            </div>
+            <div class="api-card-body">
+              <div class="api-cols">
+                <div>
+                  <div class="api-section-label">🔐 Auth — Header obrigatório</div>
+                  <pre class="code-block">X-VortexPay-Secret: {sua_secret_key}</pre>
+                  <div class="api-section-label" style="margin-top:12px">📥 Request Body</div>
+                  <pre class="code-block">{
+  "tx_id": "txn_abc123",
+  "status": "pago"
+}</pre>
+                </div>
+                <div>
+                  <div class="api-section-label">📤 Response</div>
+                  <pre class="code-block">{
+  "success": true,
+  "message": "Pagamento txn_abc123 confirmado"
+}</pre>
+                  <div class="api-section-label" style="margin-top:12px">💡 Uso</div>
+                  <p style="font-size:12px;color:var(--text2)">Use para confirmar pagamentos manualmente ou via integração com outros gateways de pagamento.</p>
+                </div>
+              </div>
+              <div class="test-input-row">
+                <input id="test-webhook-txid" class="filter-input" placeholder="tx_id para confirmar..." style="max-width:300px">
+              </div>
+              <div id="test-result-webhook" class="test-result" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- Listar Transações -->
+          <div class="api-card">
+            <div class="api-card-header">
+              <span class="method-badge get">GET</span>
+              <code class="endpoint">/api/transacoes</code>
+              <span class="api-desc">Listar todos os depósitos</span>
+              <button class="test-btn" onclick="testEndpoint('transacoes')">▶ Testar</button>
+            </div>
+            <div class="api-card-body">
+              <div class="api-cols">
+                <div>
+                  <div class="api-section-label">🔐 Auth — Query param</div>
+                  <pre class="code-block">GET /api/transacoes?secret={sua_secret_key}</pre>
+                  <div class="api-section-label" style="margin-top:12px">🔐 Auth — Header alternativo</div>
+                  <pre class="code-block">X-VortexPay-Secret: {sua_secret_key}</pre>
+                </div>
+                <div>
+                  <div class="api-section-label">📤 Response</div>
+                  <pre class="code-block">{
+  "transacoes": [...],
+  "resumo": {
+    "total": 10,
+    "pendentes": 2,
+    "pagos": 8,
+    "valor_pendente": 50.0,
+    "valor_recebido": 320.0
+  }
+}</pre>
+                </div>
+              </div>
+              <div id="test-result-transacoes" class="test-result" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- Listar Saques -->
+          <div class="api-card">
+            <div class="api-card-header">
+              <span class="method-badge get">GET</span>
+              <code class="endpoint">/api/saques</code>
+              <span class="api-desc">Listar todos os saques</span>
+              <button class="test-btn" onclick="testEndpoint('saques')">▶ Testar</button>
+            </div>
+            <div class="api-card-body">
+              <div class="api-cols">
+                <div>
+                  <div class="api-section-label">🔐 Auth — Query param</div>
+                  <pre class="code-block">GET /api/saques?secret={sua_secret_key}</pre>
+                </div>
+                <div>
+                  <div class="api-section-label">📤 Response</div>
+                  <pre class="code-block">{
+  "saques": [...],
+  "resumo": {
+    "total": 5,
+    "pendentes": 1,
+    "processados": 4,
+    "valor_pendente": 10.0,
+    "valor_pago": 120.0
+  }
+}</pre>
+                </div>
+              </div>
+              <div id="test-result-saques" class="test-result" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- Health -->
+          <div class="api-card">
+            <div class="api-card-header">
+              <span class="method-badge get">GET</span>
+              <code class="endpoint">/health</code>
+              <span class="api-desc">Status do servidor</span>
+              <button class="test-btn" onclick="testEndpoint('health')">▶ Testar</button>
+            </div>
+            <div class="api-card-body">
+              <div class="api-cols">
+                <div>
+                  <div class="api-section-label">🔐 Auth</div>
+                  <div class="auth-note">Não requer autenticação</div>
+                </div>
+                <div>
+                  <div class="api-section-label">📤 Response</div>
+                  <pre class="code-block">{
+  "status": "online",
+  "telegram": true,
+  "tentativas": 1,
+  "bot": "VortexBank_bot",
+  "webhook": "/webhook/confirmar"
+}</pre>
+                </div>
+              </div>
+              <div id="test-result-health" class="test-result" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- Exemplo de Integração -->
+          <div class="api-card">
+            <div class="api-card-header" style="cursor:default">
+              <span class="method-badge" style="background:rgba(167,139,250,0.2);color:var(--purple);border:1px solid rgba(167,139,250,0.3)">💡</span>
+              <code class="endpoint">Exemplo de Integração</code>
+              <span class="api-desc">Fluxo completo de pagamento</span>
+            </div>
+            <div class="api-card-body">
+              <div class="api-section-label">JavaScript — Fluxo completo</div>
+              <pre class="code-block" style="font-size:11px">const BASE = 'https://web-production-9f54e.up.railway.app';
+
+// 1. Gerar cobrança Pix
+const pix = await fetch(`${BASE}/api/pix`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ valor: 50.00 })
+}).then(r => r.json());
+
+console.log('Código Pix:', pix.pix_code);
+console.log('TX ID:', pix.tx_id);
+
+// 2. Verificar pagamento (polling)
+const verificar = async (tx_id) => {
+  const status = await fetch(`${BASE}/api/status/${tx_id}`).then(r => r.json());
+  if (status.pago) {
+    console.log('✅ Pago!');
+  } else {
+    setTimeout(() => verificar(tx_id), 15000); // retry em 15s
+  }
+};
+verificar(pix.tx_id);</pre>
+
+              <div class="api-section-label" style="margin-top:16px">cURL — Confirmar pagamento</div>
+              <pre class="code-block" id="curl-example" style="font-size:11px"></pre>
+            </div>
+          </div>
+
+        </div><!-- /endpoints -->
+      </div><!-- /tab-api -->
 
     </div><!-- /content -->
   </div><!-- /main -->
@@ -788,13 +1286,17 @@ function showTab(tab) {
     depositos: '📥 Depósitos',
     saques: '📤 Saques',
     sistema: '🖥️ Sistema',
+    api: '🔌 API & Webhooks',
   };
   document.getElementById('page-title').textContent = titles[tab] || tab;
   fecharSidebar();
+  if (tab === 'api') initApiTab();
+  if (tab === 'depositos' && allDepositos.length === 0) loadDepositos();
+  if (tab === 'saques' && allSaques.length === 0) loadSaques();
 }
 
 function tabName(tab) {
-  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sistema:'sistema' };
+  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sistema:'sistema', api:'api' };
   return map[tab] || tab;
 }
 
@@ -822,7 +1324,7 @@ function toast(msg, type = 'success') {
 // ═══════════════════════════════════════════════
 async function loadAll() {
   document.getElementById('last-update').textContent = '🔄 Atualizando...';
-  await Promise.all([loadHealth(), loadDepositos(), loadSaques(), loadSaldo()]);
+  await Promise.all([loadHealth(), loadStats(), loadSaldo()]);
   document.getElementById('last-update').textContent = '⏱ ' + new Date().toLocaleTimeString('pt-BR');
 }
 
@@ -881,29 +1383,106 @@ async function loadSaldo() {
 }
 
 // ═══════════════════════════════════════════════
+//  STATS - API UNIFICADA
+// ═══════════════════════════════════════════════
+async function loadStats() {
+  try {
+    const r = await fetch(`${BASE}/api/stats?secret=${encodeURIComponent(SECRET())}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    const dep = d.depositos || {};
+    const saq = d.saques || {};
+    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
+
+    // Preencher depósitos globais
+    allDepositos = dep.recentes || [];
+    allSaques = saq.recentes || [];
+
+    // Métricas dashboard
+    document.getElementById('m-total-dep').textContent = fmt(dep.valor_recebido || 0);
+    document.getElementById('m-qtd-dep').textContent = (dep.confirmados || 0) + ' transações confirmadas';
+    document.getElementById('m-pend-dep').textContent = dep.pendentes || 0;
+    document.getElementById('m-val-pend').textContent = 'Pendente: ' + fmt(dep.valor_pendente || 0);
+    document.getElementById('badge-dep').textContent = dep.pendentes || 0;
+
+    document.getElementById('m-total-saq').textContent = fmt(saq.valor_sacado || 0);
+    document.getElementById('m-qtd-saq').textContent = (saq.realizados || 0) + ' saques realizados';
+    document.getElementById('m-pend-saq').textContent = saq.pendentes || 0;
+    document.getElementById('m-val-pend-saq').textContent = fmt(saq.valor_pendente || 0) + ' aguardando';
+    document.getElementById('badge-saq').textContent = saq.pendentes || 0;
+
+    document.getElementById('m-total-tx').textContent = (dep.total || 0) + (saq.total || 0);
+
+    // Carteira
+    document.getElementById('w-depositado').textContent = fmt(dep.valor_recebido || 0);
+    document.getElementById('w-sacado').textContent = fmt(saq.valor_sacado || 0);
+
+    // Gráfico
+    renderGrafico(dep.por_dia || [], saq.por_dia || []);
+
+    // Resumo financeiro carteira
+    renderResumoFinanceiro(dep, saq);
+
+    // Tabelas recentes dashboard
+    renderDepositosRecentes();
+    renderSaquesRecentes();
+
+    // Carregar todas as transações para as tabelas completas
+    await Promise.all([loadDepositos(), loadSaques()]);
+  } catch(e) { console.error('loadStats:', e); }
+}
+
+// ═══════════════════════════════════════════════
+//  GRÁFICO 7 DIAS
+// ═══════════════════════════════════════════════
+function renderGrafico(depDias, saqDias) {
+  // Montar mapa por data
+  const today = new Date();
+  const dias = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dias.push(d.toISOString().slice(0,10));
+  }
+
+  const depMap = {};
+  depDias.forEach(r => { depMap[r.data] = r.valor; });
+  const saqMap = {};
+  saqDias.forEach(r => { saqMap[r.data] = r.valor; });
+
+  const maxVal = Math.max(1, ...dias.map(d => Math.max(depMap[d]||0, saqMap[d]||0)));
+
+  const barsEl = document.getElementById('chart-bars');
+  const datesEl = document.getElementById('chart-dates');
+  if (!barsEl) return;
+
+  barsEl.innerHTML = dias.map(data => {
+    const dH = Math.round(((depMap[data]||0) / maxVal) * 110);
+    const sH = Math.round(((saqMap[data]||0) / maxVal) * 110);
+    const fmt = v => 'R$' + (v||0).toFixed(2);
+    return `<div class="bar-group">
+      <div class="bar-new dep" style="height:${dH}px" title="Dep: ${fmt(depMap[data]||0)}"></div>
+      <div class="bar-new saq" style="height:${sH}px" title="Saq: ${fmt(saqMap[data]||0)}"></div>
+    </div>`;
+  }).join('');
+
+  datesEl.innerHTML = dias.map(d => {
+    const parts = d.split('-');
+    return `<div class="bar-date">${parts[2]}/${parts[1]}</div>`;
+  }).join('');
+
+  document.getElementById('chart-section').style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════
 //  DEPÓSITOS
 // ═══════════════════════════════════════════════
 async function loadDepositos() {
   try {
-    const r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(SECRET())}`);
+    const r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(SECRET())}&limit=200`);
     if (!r.ok) return;
     const d = await r.json();
     allDepositos = d.transacoes || [];
-    const resumo = d.resumo || {};
-
-    // Métricas
-    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
-    document.getElementById('m-total-dep').textContent = fmt(resumo.valor_recebido || 0);
-    document.getElementById('m-qtd-dep').textContent = (resumo.pagos || 0) + ' transações confirmadas';
-    document.getElementById('m-pend-dep').textContent = resumo.pendentes || 0;
-    document.getElementById('m-val-pend').textContent = 'Pendente: ' + fmt(resumo.valor_pendente || 0);
-    document.getElementById('badge-dep').textContent = resumo.pendentes || 0;
-
-    // Carteira
-    document.getElementById('w-depositado').textContent = fmt(resumo.valor_recebido || 0);
-
-    // Dashboard recentes
-    renderDepositosRecentes();
     renderDepositos();
   } catch(e) {}
 }
@@ -951,7 +1530,7 @@ function renderDepositos() {
       <tr>
         <td style="color:var(--text3)">${start + i + 1}</td>
         <td class="mono">
-          ${tx.tx_id || '—'}
+          ${tx.tx_id ? tx.tx_id.substring(0,14)+'...' : '—'}
           <button class="copy-btn" onclick="copiar('${tx.tx_id}')">📋</button>
         </td>
         <td><strong style="color:var(--green)">R$ ${(tx.valor||0).toFixed(2).replace('.',',')}</strong></td>
@@ -960,14 +1539,19 @@ function renderDepositos() {
         <td style="font-size:12px;color:var(--text2)">${tx.paid_at ? formatDateTime(tx.paid_at) : '—'}</td>
         <td>
           ${tx.pix_code ? 
-            `<button class="copy-btn" onclick="copiar('${tx.pix_code}')">📋 Copiar código</button>` : 
+            `<button class="copy-btn" onclick="copiar('${tx.pix_code}')">📋 Copiar</button>` : 
             '<span style="color:var(--text3)">—</span>'}
+        </td>
+        <td>
+          ${tx.status === 'pendente' ? 
+            `<button class="action-btn ok-btn" onclick="confirmarDeposito('${tx.tx_id}')">✅ Confirmar</button>` : 
+            '<span style="color:var(--text3);font-size:11px">—</span>'}
         </td>
       </tr>
     `).join('');
   }
 
-  renderPagination('pag-dep', Math.ceil(filtered.length / PER_PAGE), pagDep, p => { pagDep = p; renderDepositos(); });
+  renderPagination('pag-dep', Math.ceil(filtered.length / PER_PAGE), pagDep, 'dep');
 }
 
 // ═══════════════════════════════════════════════
@@ -975,47 +1559,25 @@ function renderDepositos() {
 // ═══════════════════════════════════════════════
 async function loadSaques() {
   try {
-    const r = await fetch(`${BASE}/api/saques?secret=${encodeURIComponent(SECRET())}`);
+    const r = await fetch(`${BASE}/api/saques?secret=${encodeURIComponent(SECRET())}&limit=200`);
     if (!r.ok) return;
     const d = await r.json();
     allSaques = d.saques || [];
-    const resumo = d.resumo || {};
-
-    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
-    document.getElementById('m-total-saq').textContent = fmt(resumo.valor_pago || 0);
-    document.getElementById('m-qtd-saq').textContent = (resumo.processados || 0) + ' saques realizados';
-    document.getElementById('m-pend-saq').textContent = resumo.pendentes || 0;
-    document.getElementById('m-val-pend-saq').textContent = fmt(resumo.valor_pendente || 0) + ' aguardando';
-    document.getElementById('badge-saq').textContent = resumo.pendentes || 0;
-    
-    // Carteira
-    document.getElementById('w-sacado').textContent = fmt(resumo.valor_pago || 0);
-
-    // Total transações
-    const totalTx = allDepositos.length + allSaques.length;
-    document.getElementById('m-total-tx').textContent = totalTx;
-
-    // Resumo financeiro
-    renderResumoFinanceiro(resumo);
-    renderSaquesRecentes();
     renderSaques();
   } catch(e) {}
 }
 
-function renderResumoFinanceiro(resumo) {
-  const dep = allDepositos;
-  const saq = allSaques;
+function renderResumoFinanceiro(dep, saq) {
   const fmt = v => '<strong style="color:var(--text)">R$ ' + (v||0).toFixed(2).replace('.',',') + '</strong>';
-  
   document.getElementById('table-resumo-financeiro').innerHTML = `
     <tr><td style="color:var(--text2);padding:13px 20px">Saldo na conta (bot)</td><td style="padding:13px 20px">${fmt(saldoBot)}</td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Disponível para saque</td><td style="padding:13px 20px"><strong style="color:var(--green)">R$ ${disponivelBot.toFixed(2).replace('.',',')}</strong></td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Depósitos confirmados</td><td style="padding:13px 20px">${fmt(dep.filter(t=>t.status==='pago').reduce((a,t)=>a+(t.valor||0),0))}</td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Depósitos pendentes</td><td style="padding:13px 20px"><strong style="color:var(--yellow)">R$ ${dep.filter(t=>t.status==='pendente').reduce((a,t)=>a+(t.valor||0),0).toFixed(2).replace('.',',')}</strong></td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Saques realizados</td><td style="padding:13px 20px"><strong style="color:var(--red)">R$ ${saq.filter(s=>['enviado','processado','confirmado'].includes(s.status)).reduce((a,s)=>a+(s.valor||0),0).toFixed(2).replace('.',',')}</strong></td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Saques pendentes</td><td style="padding:13px 20px"><strong style="color:var(--yellow)">R$ ${saq.filter(s=>s.status==='pendente').reduce((a,s)=>a+(s.valor||0),0).toFixed(2).replace('.',',')}</strong></td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Qtd. depósitos total</td><td style="padding:13px 20px"><strong>${dep.length}</strong></td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Qtd. saques total</td><td style="padding:13px 20px"><strong>${saq.length}</strong></td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Disponível para saque</td><td style="padding:13px 20px"><strong style="color:var(--green)">R$ ${(disponivelBot||0).toFixed(2).replace('.',',')}</strong></td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Depósitos confirmados</td><td style="padding:13px 20px">${fmt(dep.valor_recebido||0)}</td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Depósitos pendentes</td><td style="padding:13px 20px"><strong style="color:var(--yellow)">R$ ${(dep.valor_pendente||0).toFixed(2).replace('.',',')}</strong></td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Saques realizados</td><td style="padding:13px 20px"><strong style="color:var(--red)">R$ ${(saq.valor_sacado||0).toFixed(2).replace('.',',')}</strong></td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Saques pendentes</td><td style="padding:13px 20px"><strong style="color:var(--yellow)">R$ ${(saq.valor_pendente||0).toFixed(2).replace('.',',')}</strong></td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Qtd. depósitos total</td><td style="padding:13px 20px"><strong>${dep.total||0}</strong></td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">Qtd. saques total</td><td style="padding:13px 20px"><strong>${saq.total||0}</strong></td></tr>
   `;
 }
 
@@ -1063,20 +1625,28 @@ function renderSaques() {
       <tr>
         <td style="color:var(--text3)">${start + i + 1}</td>
         <td class="mono">
-          ${s.saque_id || '—'}
+          ${(s.saque_id||'—').substring(0,12)+'...'}
           <button class="copy-btn" onclick="copiar('${s.saque_id}')">📋</button>
         </td>
         <td><strong style="color:var(--red)">R$ ${(s.valor||0).toFixed(2).replace('.',',')}</strong></td>
-        <td style="font-size:12px;max-width:160px;word-break:break-all">${s.chave_pix||'—'}</td>
+        <td style="font-size:11px;max-width:140px;word-break:break-all">
+          ${s.chave_pix||'—'}
+          ${s.chave_pix ? `<button class="copy-btn" onclick="copiar('${s.chave_pix}')">📋</button>` : ''}
+        </td>
         <td><span style="background:rgba(96,165,250,0.1);color:var(--blue);padding:3px 8px;border-radius:6px;font-size:11px">${(s.tipo_chave||'').toUpperCase()}</span></td>
         <td>${badgeStatus(s.status)}</td>
         <td style="font-size:12px;color:var(--text2)">${formatDateTime(s.created_at)}</td>
         <td style="font-size:12px;color:var(--text2)">${s.processado_at ? formatDateTime(s.processado_at) : '—'}</td>
+        <td>
+          ${(s.status === 'pendente' || s.status === 'erro') ? 
+            `<button class="action-btn danger" onclick="cancelarSaque('${s.saque_id}')">🚫 Cancelar</button>` : 
+            '<span style="color:var(--text3);font-size:11px">—</span>'}
+        </td>
       </tr>
     `).join('');
   }
 
-  renderPagination('pag-saq', Math.ceil(filtered.length / PER_PAGE), pagSaq, p => { pagSaq = p; renderSaques(); });
+  renderPagination('pag-saq', Math.ceil(filtered.length / PER_PAGE), pagSaq, 'saq');
 }
 
 // ═══════════════════════════════════════════════
@@ -1108,18 +1678,194 @@ function formatDateTime(str) {
   } catch { return str; }
 }
 
-function renderPagination(id, total, current, callback) {
+function renderPagination(id, total, current, tipo) {
   const el = document.getElementById(id);
+  if (!el) return;
   if (total <= 1) { el.innerHTML = ''; return; }
+  const max = Math.min(total, 10);
   let html = '';
-  for (let i = 1; i <= total; i++) {
-    html += `<button class="page-btn${i===current?' active':''}" onclick="(${callback.toString()})(${i})">${i}</button>`;
+  // Mostrar no máximo 10 páginas ao redor da atual
+  let start = Math.max(1, current - 4);
+  let end = Math.min(total, start + 9);
+  if (end - start < 9) start = Math.max(1, end - 9);
+  for (let i = start; i <= end; i++) {
+    html += `<button class="page-btn${i===current?' active':''}" onclick="irParaPag('${tipo}',${i})">${i}</button>`;
   }
   el.innerHTML = html;
 }
 
+function irParaPag(tipo, p) {
+  if (tipo === 'dep') { pagDep = p; renderDepositos(); }
+  else if (tipo === 'saq') { pagSaq = p; renderSaques(); }
+}
+
 function copiar(texto) {
   navigator.clipboard.writeText(texto).then(() => toast('📋 Copiado!'));
+}
+
+// ═══════════════════════════════════════════════
+//  API DOCS
+// ═══════════════════════════════════════════════
+let apiKeyVisible = false;
+function toggleApiKey() {
+  apiKeyVisible = !apiKeyVisible;
+  const el = document.getElementById('api-key-display');
+  el.textContent = apiKeyVisible ? SECRET() : '•'.repeat(20);
+  document.querySelector('[onclick="toggleApiKey()"]').textContent = apiKeyVisible ? '🙈 Ocultar' : '👁️ Mostrar';
+}
+
+function initApiTab() {
+  // Base URL
+  const urlEl = document.getElementById('api-base-url');
+  if (urlEl) urlEl.innerHTML = `<span>${BASE}</span><button class="copy-btn" onclick="copiar('${BASE}')" style="color:var(--orange)">📋 Copiar</button>`;
+  // cURL exemplo
+  const curl = document.getElementById('curl-example');
+  if (curl) curl.textContent = `curl -X POST ${BASE}/webhook/confirmar \\\n  -H "Content-Type: application/json" \\\n  -H "X-VortexPay-Secret: ${SECRET()}" \\\n  -d '{"tx_id":"txn_abc123","status":"pago"}'`;
+}
+
+function showResult(id, data, ok) {
+  const el = document.getElementById('test-result-' + id);
+  el.style.display = 'block';
+  el.className = 'test-result ' + (ok ? 'ok' : 'err');
+  el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+}
+
+async function testEndpoint(tipo) {
+  const btn = event.target;
+  btn.classList.add('loading');
+  btn.textContent = '⏳ ...';
+
+  try {
+    let r, data;
+    switch(tipo) {
+      case 'pix':
+        r = await fetch(`${BASE}/api/pix`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({valor: 10})
+        });
+        data = await r.json();
+        showResult('pix', data, data.success);
+        break;
+
+      case 'status': {
+        const txid = document.getElementById('test-txid-input').value.trim();
+        if (!txid) { toast('⚠️ Digite um tx_id', 'error'); break; }
+        r = await fetch(`${BASE}/api/status/${txid}`);
+        data = await r.json();
+        showResult('status', data, !data.error);
+        break;
+      }
+
+      case 'saldo':
+        r = await fetch(`${BASE}/api/saldo`);
+        data = await r.json();
+        showResult('saldo', data, data.saldo !== undefined);
+        break;
+
+      case 'saque': {
+        const val = prompt('Valor do saque (mín R$10):');
+        const chave = prompt('Chave Pix:');
+        const tipo_chave = prompt('Tipo (cpf/email/telefone/aleatoria/cnpj):') || 'email';
+        if (!val || !chave) break;
+        r = await fetch(`${BASE}/api/saque`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({valor: parseFloat(val), chave_pix: chave, tipo_chave})
+        });
+        data = await r.json();
+        showResult('saque', data, data.success);
+        break;
+      }
+
+      case 'webhook': {
+        const txid = document.getElementById('test-webhook-txid').value.trim();
+        if (!txid) { toast('⚠️ Digite um tx_id', 'error'); break; }
+        r = await fetch(`${BASE}/webhook/confirmar`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-VortexPay-Secret': SECRET()},
+          body: JSON.stringify({tx_id: txid, status:'pago'})
+        });
+        data = await r.json();
+        showResult('webhook', data, data.success);
+        break;
+      }
+
+      case 'transacoes':
+        r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(SECRET())}`);
+        data = await r.json();
+        showResult('transacoes', {resumo: data.resumo, total_registros: (data.transacoes||[]).length}, r.ok);
+        break;
+
+      case 'saques':
+        r = await fetch(`${BASE}/api/saques?secret=${encodeURIComponent(SECRET())}`);
+        data = await r.json();
+        showResult('saques', {resumo: data.resumo, total_registros: (data.saques||[]).length}, r.ok);
+        break;
+
+      case 'health':
+        r = await fetch(`${BASE}/health`);
+        data = await r.json();
+        showResult('health', data, data.status === 'online');
+        break;
+    }
+    toast('✅ Requisição enviada!');
+  } catch(e) {
+    toast('❌ Erro: ' + e.message, 'error');
+  } finally {
+    btn.classList.remove('loading');
+    btn.textContent = '▶ Testar';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  AÇÕES
+// ═══════════════════════════════════════════════
+async function confirmarDeposito(txId) {
+  if (!confirm(`Confirmar depósito ${txId} manualmente?`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/deposito/confirmar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-VortexPay-Secret': SECRET() },
+      body: JSON.stringify({ tx_id: txId })
+    });
+    const d = await r.json();
+    if (d.success) {
+      toast('✅ Depósito confirmado!');
+      await loadDepositos();
+    } else {
+      toast('❌ ' + (d.error || 'Erro'), 'error');
+    }
+  } catch(e) { toast('❌ Erro de conexão', 'error'); }
+}
+
+async function cancelarSaque(saqueId) {
+  if (!confirm(`Cancelar saque ${saqueId}?`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/saque/${encodeURIComponent(saqueId)}/cancelar`, {
+      method: 'POST',
+      headers: { 'X-VortexPay-Secret': SECRET() }
+    });
+    const d = await r.json();
+    if (d.success) {
+      toast('🚫 Saque cancelado!');
+      await loadSaques();
+    } else {
+      toast('❌ ' + (d.error || 'Erro'), 'error');
+    }
+  } catch(e) { toast('❌ Erro de conexão', 'error'); }
+}
+
+// ═══════════════════════════════════════════════
+//  EXPORTAR CSV
+// ═══════════════════════════════════════════════
+function exportarCSV(tipo) {
+  const url = `${BASE}/api/exportar?tipo=${tipo}&secret=${encodeURIComponent(SECRET())}`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = tipo + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  toast('📥 Exportando ' + tipo + '...');
 }
 
 // ═══════════════════════════════════════════════
