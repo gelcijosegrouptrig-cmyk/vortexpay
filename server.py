@@ -38,6 +38,17 @@ def init_db():
         cliente_id TEXT, webhook_url TEXT,
         created_at TEXT, paid_at TEXT, extra TEXT
     )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS saques (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        saque_id TEXT UNIQUE NOT NULL,
+        valor REAL NOT NULL,
+        chave_pix TEXT NOT NULL,
+        tipo_chave TEXT NOT NULL,
+        status TEXT DEFAULT 'pendente',
+        created_at TEXT,
+        processado_at TEXT,
+        observacao TEXT
+    )''')
     conn.commit(); conn.close()
 
 def salvar_transacao(tx_id, valor, pix_code, cliente_id=None, webhook_url=None):
@@ -74,11 +85,55 @@ def listar_transacoes(limit=50):
             'webhook_url','created_at','paid_at','extra']
     return [dict(zip(cols, r)) for r in rows]
 
+def salvar_saque(saque_id, valor, chave_pix, tipo_chave):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('''CREATE TABLE IF NOT EXISTS saques (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        saque_id TEXT UNIQUE NOT NULL,
+        valor REAL NOT NULL,
+        chave_pix TEXT NOT NULL,
+        tipo_chave TEXT NOT NULL,
+        status TEXT DEFAULT 'pendente',
+        created_at TEXT,
+        processado_at TEXT,
+        observacao TEXT
+    )''')
+    conn.execute('''INSERT OR REPLACE INTO saques
+        (saque_id, valor, chave_pix, tipo_chave, status, created_at)
+        VALUES (?,?,?,?,'pendente',?)''',
+        (saque_id, valor, chave_pix, tipo_chave, datetime.now().isoformat()))
+    conn.commit(); conn.close()
+
+def listar_saques(limit=50):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('''CREATE TABLE IF NOT EXISTS saques (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        saque_id TEXT UNIQUE NOT NULL,
+        valor REAL NOT NULL,
+        chave_pix TEXT NOT NULL,
+        tipo_chave TEXT NOT NULL,
+        status TEXT DEFAULT 'pendente',
+        created_at TEXT,
+        processado_at TEXT,
+        observacao TEXT
+    )''')
+    c = conn.cursor()
+    c.execute('SELECT * FROM saques ORDER BY created_at DESC LIMIT ?', (limit,))
+    rows = c.fetchall(); conn.close()
+    cols = ['id','saque_id','valor','chave_pix','tipo_chave','status',
+            'created_at','processado_at','observacao']
+    return [dict(zip(cols, r)) for r in rows]
+
 # ─── HTML ───────────────────────────────────────────────────
 def load_html():
     if os.path.exists('index.html'):
         return open('index.html', encoding='utf-8').read()
     return '<h1>VortexPay</h1>'
+
+def load_saque_html():
+    if os.path.exists('saque.html'):
+        return open('saque.html', encoding='utf-8').read()
+    return '<h1>VortexPay - Saque</h1>'
 
 # ─── TELEGRAM - Conectar com retry ─────────────────────────
 async def conectar_telegram():
@@ -350,6 +405,97 @@ async def route_transacoes(request):
         }
     })
 
+# ─── ROTA SAQUE ───────────────────────────────────────────
+async def route_saque_page(request):
+    return web.Response(text=load_saque_html(), content_type='text/html', charset='utf-8')
+
+async def route_saldo(request):
+    """Retorna saldo atual da conta via bot Telegram"""
+    if not _telegram_ready:
+        return web.json_response({'saldo': 0, 'disponivel': 0, 'error': 'Telegram não conectado'})
+    try:
+        bot = await client.get_entity(BOT_USERNAME)
+        await client.send_message(bot, '/start')
+        await asyncio.sleep(3)
+        msgs = await client.get_messages(bot, limit=5)
+        for msg in msgs:
+            if not msg.text:
+                continue
+            # Padrão: "Saldo Disponível: `R$ 37,92`" ou "Saldo: R$37,92"
+            m = re.search(r'Saldo[^`\n]*`R\$\s*([\d,.]+)`', msg.text)
+            if not m:
+                m = re.search(r'Saldo[:\s*]+R\$\s*([\d,.]+)', msg.text)
+            if m:
+                saldo = float(m.group(1).replace(',', '.'))
+                # Disponível para saque (pode ter taxa)
+                m2 = re.search(r'[Dd]ispon[íi]vel[^`\n]*`R\$\s*([\d,.]+)`', msg.text)
+                if not m2:
+                    m2 = re.search(r'[Ss]aque[:\s]+R\$\s*([\d,.]+)', msg.text)
+                disponivel = float(m2.group(1).replace(',', '.')) if m2 else saldo
+                return web.json_response({'saldo': saldo, 'disponivel': disponivel})
+        return web.json_response({'saldo': 0, 'disponivel': 0, 'error': 'Saldo não encontrado'})
+    except Exception as e:
+        return web.json_response({'saldo': 0, 'disponivel': 0, 'error': str(e)})
+
+async def route_solicitar_saque(request):
+    """Registra solicitação de saque manual"""
+    try:
+        data = await request.json()
+        valor = float(data.get('valor', 0))
+        chave_pix = str(data.get('chave_pix', '')).strip()
+        tipo_chave = str(data.get('tipo_chave', 'cpf')).strip()
+
+        if valor < 10:
+            return web.json_response({'success': False, 'error': 'Valor mínimo para saque é R$ 10,00'})
+        if not chave_pix or len(chave_pix) < 5:
+            return web.json_response({'success': False, 'error': 'Chave Pix inválida'})
+
+        # Gerar ID único para o saque
+        import hashlib, time as t
+        saque_id = 'saq_' + hashlib.md5(f"{chave_pix}{valor}{t.time()}".encode()).hexdigest()[:12]
+
+        # Salvar no banco
+        salvar_saque(saque_id, valor, chave_pix, tipo_chave)
+
+        # Notificar via Telegram (opcional - log interno)
+        if _telegram_ready:
+            try:
+                bot = await client.get_entity(BOT_USERNAME)
+                # Somente log, não envia mensagem ao bot de pagamento
+                print(f'💸 Saque solicitado: {saque_id} R${valor:.2f} → {tipo_chave}: {chave_pix}', flush=True)
+            except:
+                pass
+
+        return web.json_response({
+            'success': True,
+            'saque_id': saque_id,
+            'valor': valor,
+            'chave_pix': chave_pix,
+            'tipo_chave': tipo_chave,
+            'status': 'pendente',
+            'mensagem': 'Saque registrado! Será processado manualmente em até 24h úteis.'
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+async def route_saques_admin(request):
+    """Painel admin - listar todos os saques pendentes"""
+    auth = (request.headers.get('X-VortexPay-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    saques = listar_saques()
+    return web.json_response({
+        'saques': saques,
+        'resumo': {
+            'total': len(saques),
+            'pendentes': len([s for s in saques if s['status'] == 'pendente']),
+            'processados': len([s for s in saques if s['status'] == 'processado']),
+            'valor_pendente': sum(s['valor'] for s in saques if s['status'] == 'pendente'),
+            'valor_pago': sum(s['valor'] for s in saques if s['status'] == 'processado'),
+        }
+    })
+
 # ─── MAIN ─────────────────────────────────────────────────
 async def main():
     init_db()
@@ -366,6 +512,13 @@ async def main():
     app.router.add_get('/api/transacoes', route_transacoes)
     app.router.add_post('/webhook/confirmar', route_webhook)
     app.router.add_route('OPTIONS', '/webhook/confirmar', lambda r: web.Response(status=200))
+    # Rotas de Saque
+    app.router.add_get('/saque', route_saque_page)
+    app.router.add_get('/saque.html', route_saque_page)
+    app.router.add_get('/api/saldo', route_saldo)
+    app.router.add_post('/api/saque', route_solicitar_saque)
+    app.router.add_route('OPTIONS', '/api/saque', lambda r: web.Response(status=200))
+    app.router.add_get('/api/saques', route_saques_admin)
 
     runner = web.AppRunner(app)
     await runner.setup()

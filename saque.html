@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>VortexPay - Saque</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 24px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .logo {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .logo-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 10px;
+    box-shadow: 0 8px 24px rgba(255,107,53,0.4);
+  }
+  .logo h1 {
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .logo p {
+    color: rgba(255,255,255,0.5);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  /* Saldo */
+  .saldo-box {
+    background: linear-gradient(135deg, rgba(255,107,53,0.15), rgba(247,147,30,0.1));
+    border: 1px solid rgba(255,107,53,0.3);
+    border-radius: 16px;
+    padding: 18px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .saldo-label {
+    color: rgba(255,255,255,0.6);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .saldo-valor {
+    color: #fff;
+    font-size: 32px;
+    font-weight: 700;
+  }
+  .saldo-disponivel {
+    color: rgba(255,255,255,0.5);
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .saldo-disponivel span {
+    color: #4ade80;
+    font-weight: 600;
+  }
+
+  /* Valor display */
+  .valor-display {
+    background: rgba(0,0,0,0.3);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 8px;
+    transition: border-color 0.3s;
+  }
+  .valor-display.active {
+    border-color: rgba(255,107,53,0.6);
+  }
+  .valor-label {
+    color: rgba(255,255,255,0.5);
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+  .valor-numero {
+    color: #fff;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .valor-numero .cifrao { 
+    font-size: 20px; 
+    opacity: 0.7; 
+    margin-right: 4px;
+  }
+
+  /* Teclado numérico */
+  .numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .numpad-btn {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 20px;
+    font-weight: 600;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    user-select: none;
+  }
+  .numpad-btn:active, .numpad-btn:hover {
+    background: rgba(255,107,53,0.25);
+    border-color: rgba(255,107,53,0.5);
+    transform: scale(0.97);
+  }
+  .numpad-btn.del {
+    background: rgba(255,59,59,0.1);
+    border-color: rgba(255,59,59,0.2);
+    font-size: 16px;
+  }
+
+  /* Campo chave Pix */
+  .campo-label {
+    color: rgba(255,255,255,0.7);
+    font-size: 13px;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .tipo-pix {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .tipo-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    color: rgba(255,255,255,0.6);
+    font-size: 11px;
+    padding: 8px 4px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .tipo-btn.selected {
+    background: rgba(255,107,53,0.2);
+    border-color: rgba(255,107,53,0.6);
+    color: #fff;
+  }
+  .input-chave {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 15px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-chave:focus {
+    border-color: rgba(255,107,53,0.6);
+  }
+  .input-chave::placeholder {
+    color: rgba(255,255,255,0.3);
+  }
+
+  /* Botão sacar */
+  .sacar-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 18px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    box-shadow: 0 8px 24px rgba(255,107,53,0.35);
+    transition: all 0.2s;
+    margin-bottom: 12px;
+  }
+  .sacar-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 32px rgba(255,107,53,0.45); }
+  .sacar-btn:active { transform: scale(0.99); }
+  .sacar-btn:disabled {
+    background: rgba(255,255,255,0.1);
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .link-deposito {
+    text-align: center;
+    color: rgba(255,255,255,0.4);
+    font-size: 13px;
+  }
+  .link-deposito a {
+    color: #ff6b35;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  /* Status do saque */
+  .status-box {
+    display: none;
+    background: rgba(0,0,0,0.3);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .status-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+  }
+  .status-title {
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .status-sub {
+    color: rgba(255,255,255,0.6);
+    font-size: 13px;
+  }
+  .status-detalhe {
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 12px;
+    text-align: left;
+  }
+  .status-detalhe div {
+    display: flex;
+    justify-content: space-between;
+    color: rgba(255,255,255,0.7);
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .status-detalhe div:last-child { border-bottom: none; }
+  .status-detalhe span { color: #fff; font-weight: 600; }
+
+  /* Novo saque btn */
+  .novo-saque-btn {
+    width: 100%;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 14px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .novo-saque-btn:hover { background: rgba(255,255,255,0.12); }
+
+  /* Loading dots */
+  .loading-dots span {
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: #ff6b35;
+    border-radius: 50%;
+    margin: 0 3px;
+    animation: bounce 1.4s ease-in-out infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Notice */
+  .notice {
+    background: rgba(255,193,7,0.1);
+    border: 1px solid rgba(255,193,7,0.3);
+    border-radius: 10px;
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .notice strong { color: #ffc107; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">📤</div>
+    <h1>VortexPay</h1>
+    <p>Saque via Pix</p>
+  </div>
+
+  <!-- Saldo -->
+  <div class="saldo-box" id="saldo-box">
+    <div class="saldo-label">Saldo da Conta</div>
+    <div class="saldo-valor" id="saldo-valor">Carregando...</div>
+    <div class="saldo-disponivel" id="saldo-disponivel"></div>
+  </div>
+
+  <!-- Formulário de saque -->
+  <div id="form-saque">
+    <div class="valor-display" id="valor-display">
+      <div class="valor-label">Valor do saque</div>
+      <div class="valor-numero">
+        <span class="cifrao">R$</span>
+        <span id="valor-texto">0,00</span>
+      </div>
+    </div>
+
+    <div class="numpad">
+      <button class="numpad-btn" onclick="addDigit('1')">1</button>
+      <button class="numpad-btn" onclick="addDigit('2')">2</button>
+      <button class="numpad-btn" onclick="addDigit('3')">3</button>
+      <button class="numpad-btn" onclick="addDigit('4')">4</button>
+      <button class="numpad-btn" onclick="addDigit('5')">5</button>
+      <button class="numpad-btn" onclick="addDigit('6')">6</button>
+      <button class="numpad-btn" onclick="addDigit('7')">7</button>
+      <button class="numpad-btn" onclick="addDigit('8')">8</button>
+      <button class="numpad-btn" onclick="addDigit('9')">9</button>
+      <button class="numpad-btn" onclick="addDigit('00')">00</button>
+      <button class="numpad-btn" onclick="addDigit('0')">0</button>
+      <button class="numpad-btn del" onclick="delDigit()">⌫</button>
+    </div>
+
+    <div class="notice">
+      <strong>⚠️ Saque Manual</strong> — Processado em até 24h úteis
+    </div>
+
+    <div class="campo-label">Tipo de chave Pix</div>
+    <div class="tipo-pix">
+      <div class="tipo-btn selected" onclick="selectTipo(this,'cpf')">CPF</div>
+      <div class="tipo-btn" onclick="selectTipo(this,'telefone')">Telefone</div>
+      <div class="tipo-btn" onclick="selectTipo(this,'email')">E-mail</div>
+      <div class="tipo-btn" onclick="selectTipo(this,'aleatoria')">Aleatória</div>
+      <div class="tipo-btn" onclick="selectTipo(this,'cnpj')">CNPJ</div>
+    </div>
+
+    <input 
+      id="chave-pix" 
+      class="input-chave" 
+      type="text" 
+      placeholder="Digite sua chave CPF"
+      maxlength="80"
+    >
+
+    <button class="sacar-btn" id="sacar-btn" onclick="solicitarSaque()" disabled>
+      📤 Solicitar Saque
+    </button>
+
+    <div class="link-deposito">
+      Quer depositar? <a href="/">Ir para Depósito</a>
+    </div>
+  </div>
+
+  <!-- Status do saque -->
+  <div class="status-box" id="status-box">
+    <div class="status-icon" id="status-icon">⏳</div>
+    <div class="status-title" id="status-title">Solicitação Enviada!</div>
+    <div class="status-sub" id="status-sub">Seu saque foi registrado com sucesso.</div>
+    <div class="status-detalhe" id="status-detalhe"></div>
+    <br>
+    <button class="novo-saque-btn" onclick="novoSaque()">↩ Novo Saque</button>
+  </div>
+</div>
+
+<script>
+let valorCentavos = 0;
+let tipoSelecionado = 'cpf';
+let saldoDisponivel = 0;
+
+// Placeholders por tipo
+const placeholders = {
+  cpf: 'Digite seu CPF (000.000.000-00)',
+  telefone: 'Digite seu telefone (+55 11 99999-9999)',
+  email: 'Digite seu e-mail',
+  aleatoria: 'Cole sua chave aleatória (UUID)',
+  cnpj: 'Digite seu CNPJ (00.000.000/0000-00)',
+};
+
+function addDigit(d) {
+  const s = (valorCentavos.toString() + d).replace(/^0+/, '') || '0';
+  valorCentavos = parseInt(s.slice(-10));
+  atualizarDisplay();
+}
+
+function delDigit() {
+  valorCentavos = Math.floor(valorCentavos / 10);
+  atualizarDisplay();
+}
+
+function atualizarDisplay() {
+  const reais = (valorCentavos / 100).toFixed(2).replace('.', ',');
+  document.getElementById('valor-texto').textContent = reais;
+  const display = document.getElementById('valor-display');
+  const btn = document.getElementById('sacar-btn');
+  const valorReal = valorCentavos / 100;
+  const chave = document.getElementById('chave-pix').value.trim();
+
+  if (valorCentavos > 0) {
+    display.classList.add('active');
+  } else {
+    display.classList.remove('active');
+  }
+
+  const valido = valorReal >= 10 && valorReal <= saldoDisponivel && chave.length > 5;
+  btn.disabled = !valido;
+
+  if (valorReal > saldoDisponivel && saldoDisponivel > 0) {
+    btn.textContent = '⚠️ Saldo Insuficiente';
+  } else if (valorReal < 10 && valorReal > 0) {
+    btn.textContent = '📤 Mínimo R$ 10,00';
+  } else {
+    btn.textContent = `📤 Solicitar Saque de R$ ${(valorCentavos/100).toFixed(2).replace('.',',')}`;
+  }
+}
+
+function selectTipo(el, tipo) {
+  document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  tipoSelecionado = tipo;
+  document.getElementById('chave-pix').placeholder = placeholders[tipo] || 'Digite sua chave Pix';
+  atualizarDisplay();
+}
+
+document.getElementById('chave-pix').addEventListener('input', atualizarDisplay);
+
+async function carregarSaldo() {
+  try {
+    const r = await fetch('/api/saldo');
+    const d = await r.json();
+    if (d.saldo !== undefined) {
+      saldoDisponivel = d.disponivel || d.saldo;
+      document.getElementById('saldo-valor').textContent = `R$ ${d.saldo.toFixed(2).replace('.', ',')}`;
+      document.getElementById('saldo-disponivel').innerHTML = `Disponível para saque: <span>R$ ${saldoDisponivel.toFixed(2).replace('.', ',')}</span>`;
+    } else {
+      document.getElementById('saldo-valor').textContent = 'Indisponível';
+      document.getElementById('saldo-disponivel').textContent = 'Conectando ao servidor...';
+    }
+  } catch {
+    document.getElementById('saldo-valor').textContent = 'Indisponível';
+  }
+}
+
+async function solicitarSaque() {
+  const btn = document.getElementById('sacar-btn');
+  const chave = document.getElementById('chave-pix').value.trim();
+  const valor = valorCentavos / 100;
+
+  if (valor < 10) return;
+  if (!chave || chave.length < 5) {
+    alert('Digite uma chave Pix válida!');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div> Enviando...';
+
+  try {
+    const r = await fetch('/api/saque', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        valor: valor,
+        chave_pix: chave,
+        tipo_chave: tipoSelecionado
+      })
+    });
+
+    const d = await r.json();
+
+    if (d.success) {
+      mostrarSucesso(d);
+    } else {
+      alert('Erro: ' + (d.error || 'Tente novamente'));
+      btn.disabled = false;
+      atualizarDisplay();
+    }
+  } catch (e) {
+    alert('Erro de conexão. Tente novamente.');
+    btn.disabled = false;
+    atualizarDisplay();
+  }
+}
+
+function mostrarSucesso(d) {
+  document.getElementById('form-saque').style.display = 'none';
+  const sb = document.getElementById('status-box');
+  sb.style.display = 'block';
+
+  document.getElementById('status-icon').textContent = '✅';
+  document.getElementById('status-title').textContent = 'Saque Solicitado!';
+  document.getElementById('status-sub').textContent = 'Será processado manualmente em até 24h úteis.';
+
+  const det = document.getElementById('status-detalhe');
+  det.innerHTML = `
+    <div><span>ID:</span> <span>${d.saque_id || '---'}</span></div>
+    <div><span>Valor:</span> <span>R$ ${(d.valor||0).toFixed(2).replace('.',',')}</span></div>
+    <div><span>Chave Pix:</span> <span>${d.chave_pix || '---'}</span></div>
+    <div><span>Tipo:</span> <span>${(d.tipo_chave||'').toUpperCase()}</span></div>
+    <div><span>Status:</span> <span>⏳ Pendente</span></div>
+    <div><span>Prazo:</span> <span>Até 24h úteis</span></div>
+  `;
+}
+
+function novoSaque() {
+  document.getElementById('status-box').style.display = 'none';
+  document.getElementById('form-saque').style.display = 'block';
+  valorCentavos = 0;
+  document.getElementById('chave-pix').value = '';
+  atualizarDisplay();
+  carregarSaldo();
+}
+
+// Inicializar
+carregarSaldo();
+atualizarDisplay();
+</script>
+</body>
+</html>
