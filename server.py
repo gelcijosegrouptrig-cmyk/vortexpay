@@ -1,6 +1,6 @@
 """
 VortexPay - Servidor Railway 24/7
-Inicia HTTP imediatamente, conecta Telegram em background
+HTTP imediato + Telegram background com retry automático
 """
 import asyncio, re, json, os, sqlite3, time, hashlib, hmac
 from datetime import datetime
@@ -14,7 +14,6 @@ BOT_USERNAME = 'VortexBank_bot'
 PORT = int(os.environ.get('PORT', 8080))
 WEBHOOK_SECRET = os.environ.get('WEBHOOK_SECRET', 'vortex_webhook_2024')
 
-# Session via env var ou arquivo
 SESSION_STR = os.environ.get('SESSION_STR', '')
 if not SESSION_STR:
     try:
@@ -25,9 +24,10 @@ if not SESSION_STR:
 client = TelegramClient(StringSession(SESSION_STR), API_ID, API_HASH)
 _lock = asyncio.Lock()
 _telegram_ready = False
+_telegram_tentativas = 0
 
 # ─── BANCO DE DADOS ──────────────────────────────────────────
-DB_PATH = os.environ.get('DB_PATH', '/tmp/transacoes.db')
+DB_PATH = '/tmp/transacoes.db'
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -37,10 +37,6 @@ def init_db():
         pix_code TEXT, status TEXT DEFAULT 'pendente',
         cliente_id TEXT, webhook_url TEXT,
         created_at TEXT, paid_at TEXT, extra TEXT
-    )''')
-    conn.execute('''CREATE TABLE IF NOT EXISTS webhook_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        tx_id TEXT, evento TEXT, payload TEXT, sent_at TEXT, status_code INTEGER
     )''')
     conn.commit(); conn.close()
 
@@ -58,7 +54,8 @@ def buscar_transacao(tx_id):
     c.execute('SELECT * FROM transacoes WHERE tx_id=?', (tx_id,))
     row = c.fetchone(); conn.close()
     if row:
-        cols = ['id','tx_id','valor','pix_code','status','cliente_id','webhook_url','created_at','paid_at','extra']
+        cols = ['id','tx_id','valor','pix_code','status','cliente_id',
+                'webhook_url','created_at','paid_at','extra']
         return dict(zip(cols, row))
     return None
 
@@ -73,58 +70,79 @@ def listar_transacoes(limit=50):
     c = conn.cursor()
     c.execute('SELECT * FROM transacoes ORDER BY created_at DESC LIMIT ?', (limit,))
     rows = c.fetchall(); conn.close()
-    cols = ['id','tx_id','valor','pix_code','status','cliente_id','webhook_url','created_at','paid_at','extra']
+    cols = ['id','tx_id','valor','pix_code','status','cliente_id',
+            'webhook_url','created_at','paid_at','extra']
     return [dict(zip(cols, r)) for r in rows]
 
 # ─── HTML ───────────────────────────────────────────────────
 def load_html():
-    for f in ['index.html']:
-        if os.path.exists(f):
-            return open(f, encoding='utf-8').read()
-    return '''<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>VortexPay</title>
-<style>body{background:#0f0f1a;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}
-.box{text-align:center;padding:40px;}h1{color:#00d4ff;font-size:2em;}p{color:#888;}</style>
-</head><body><div class="box"><h1>🌀 VortexPay</h1><p>Servidor iniciando...</p></div></body></html>'''
+    if os.path.exists('index.html'):
+        return open('index.html', encoding='utf-8').read()
+    return '<h1>VortexPay</h1>'
 
-# ─── TELEGRAM ──────────────────────────────────────────────
+# ─── TELEGRAM - Conectar com retry ─────────────────────────
 async def conectar_telegram():
-    global _telegram_ready
-    try:
-        print('🔄 Conectando ao Telegram...', flush=True)
-        await client.connect()
-        if not await client.is_user_authorized():
-            print('❌ Sessão inválida!', flush=True)
-            return
-        me = await client.get_me()
-        print(f'✅ Telegram: {me.first_name} ({me.id})', flush=True)
-        _telegram_ready = True
+    global _telegram_ready, _telegram_tentativas
+    while True:
+        _telegram_tentativas += 1
+        try:
+            print(f'🔄 Tentativa {_telegram_tentativas} - Conectando Telegram...', flush=True)
 
-        @client.on(events.NewMessage(from_users=BOT_USERNAME))
-        async def handler(event):
-            texto = event.message.text or ''
-            padroes = [r'pagamento.*confirmado', r'depósito.*recebido',
-                       r'✅.*depositado', r'recebemos.*R\$', r'depósito aprovado']
-            if any(re.search(p, texto, re.IGNORECASE) for p in padroes):
-                tx_match = re.search(r'txn_([a-f0-9]+)', texto)
-                if tx_match:
-                    tx_id = f"txn_{tx_match.group(1)}"
-                    confirmar_pagamento(tx_id)
-                    print(f'✅ Pago: {tx_id}', flush=True)
+            # Desconectar se já estava conectado
+            if client.is_connected():
+                await client.disconnect()
+            await asyncio.sleep(1)
 
-        print('✅ Listener ativo!', flush=True)
-        await client.run_until_disconnected()
-    except Exception as e:
-        print(f'❌ Telegram erro: {e}', flush=True)
+            await client.connect()
+
+            if not await client.is_user_authorized():
+                print('❌ Sessão inválida!', flush=True)
+                await asyncio.sleep(30)
+                continue
+
+            me = await client.get_me()
+            print(f'✅ Telegram OK: {me.first_name} ({me.id})', flush=True)
+            _telegram_ready = True
+
+            @client.on(events.NewMessage(from_users=BOT_USERNAME))
+            async def handler(event):
+                texto = event.message.text or ''
+                padroes = [r'pagamento.*confirmado', r'depósito.*recebido',
+                           r'✅.*depositado', r'recebemos.*R\$', r'depósito aprovado']
+                if any(re.search(p, texto, re.IGNORECASE) for p in padroes):
+                    tx_match = re.search(r'txn_([a-f0-9]+)', texto)
+                    if tx_match:
+                        tx_id = f"txn_{tx_match.group(1)}"
+                        confirmar_pagamento(tx_id)
+                        print(f'✅ Pago confirmado: {tx_id}', flush=True)
+
+            print('✅ Listener ativo, mantendo conexão...', flush=True)
+            await client.run_until_disconnected()
+
+        except Exception as e:
+            print(f'❌ Erro Telegram: {e}', flush=True)
+
         _telegram_ready = False
+        espera = min(30, _telegram_tentativas * 5)
+        print(f'🔄 Reconectando em {espera}s...', flush=True)
+        await asyncio.sleep(espera)
 
-# ─── GERAR PIX ────────────────────────────────────────────
+# ─── GERAR PIX - Garante conexão antes de gerar ────────────
 async def gerar_pix(valor, cliente_id=None, webhook_url=None):
+    # Se Telegram não está pronto, tenta conectar e espera até 60s
     if not _telegram_ready:
-        return {'success': False, 'error': 'Servidor ainda conectando ao Telegram. Aguarde 30s e tente novamente.'}
+        print('⏳ Aguardando Telegram ficar pronto...', flush=True)
+        for _ in range(30):  # espera até 30s (verificando a cada 1s)
+            await asyncio.sleep(1)
+            if _telegram_ready:
+                break
+        if not _telegram_ready:
+            return {'success': False, 'error': 'Serviço temporariamente indisponível. Tente novamente.'}
+
     async with _lock:
         try:
             bot = await client.get_entity(BOT_USERNAME)
+
             # Clicar DEPOSITAR
             messages = await client.get_messages(bot, limit=15)
             clicou = False
@@ -133,23 +151,31 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None):
                     for row in msg.buttons:
                         for btn in row:
                             if 'DEPOSITAR' in btn.text:
-                                await btn.click(); await asyncio.sleep(3)
+                                await btn.click()
+                                await asyncio.sleep(3)
                                 clicou = True; break
                         if clicou: break
                 if clicou: break
+
             if not clicou:
-                await client.send_message(bot, '/start'); await asyncio.sleep(2)
+                await client.send_message(bot, '/start')
+                await asyncio.sleep(2)
                 messages = await client.get_messages(bot, limit=5)
                 for msg in messages:
                     if msg.buttons:
                         for row in msg.buttons:
                             for btn in row:
                                 if 'DEPOSITAR' in btn.text:
-                                    await btn.click(); await asyncio.sleep(3)
+                                    await btn.click()
+                                    await asyncio.sleep(3)
                                     clicou = True; break
+
+            # Enviar valor
             valor_str = str(int(valor)) if valor == int(valor) else f"{valor:.2f}"
             await client.send_message(bot, valor_str)
-            await asyncio.sleep(8)
+            await asyncio.sleep(9)
+
+            # Capturar resposta
             msgs = await client.get_messages(bot, limit=5)
             for msg in msgs:
                 if msg.text and 'PIX Copia e Cola' in msg.text:
@@ -164,7 +190,8 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None):
                         salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url)
                         return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
                                 'valor': f"R$ {valor_conf}", 'status': 'pendente'}
-            return {'success': False, 'error': 'Bot não respondeu. Tente novamente em alguns segundos.'}
+
+            return {'success': False, 'error': 'Bot não respondeu. Tente novamente.'}
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
@@ -187,10 +214,11 @@ async def route_index(request):
 
 async def route_health(request):
     return web.json_response({
-        'status': 'online' if _telegram_ready else 'iniciando',
+        'status': 'online',
         'telegram': _telegram_ready,
+        'tentativas': _telegram_tentativas,
         'bot': BOT_USERNAME,
-        'webhook': '/webhook/confirmar'
+        'webhook': '/webhook/confirmar',
     })
 
 async def route_pix(request):
@@ -230,7 +258,8 @@ async def route_webhook(request):
         return web.json_response({'error': str(e)}, status=500)
 
 async def route_transacoes(request):
-    auth = request.headers.get('X-VortexPay-Secret', '') or request.rel_url.query.get('secret', '')
+    auth = (request.headers.get('X-VortexPay-Secret', '') or
+            request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     txs = listar_transacoes()
@@ -250,7 +279,6 @@ async def main():
     init_db()
     print('✅ DB ok', flush=True)
 
-    # Inicia HTTP IMEDIATAMENTE (Railway não pode esperar)
     app = web.Application(middlewares=[cors_middleware])
     app.router.add_get('/', route_index)
     app.router.add_get('/index.html', route_index)
@@ -267,12 +295,11 @@ async def main():
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
-    print(f'✅ HTTP na porta {PORT}', flush=True)
+    print(f'✅ HTTP porta {PORT}', flush=True)
 
-    # Conectar Telegram em background (não bloqueia o HTTP)
+    # Telegram em background com retry automático
     asyncio.create_task(conectar_telegram())
 
-    # Manter rodando
     await asyncio.Event().wait()
 
 if __name__ == '__main__':
