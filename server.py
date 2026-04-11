@@ -51,6 +51,47 @@ def init_db():
         processado_at TEXT,
         observacao TEXT
     )''')
+    # ─── TABELAS DE SORTEIO ──────────────────────────────────
+    conn.execute('''CREATE TABLE IF NOT EXISTS sorteio_config (
+        id INTEGER PRIMARY KEY,
+        ativo INTEGER DEFAULT 1,
+        percentual REAL DEFAULT 50.0,
+        data_corte TEXT,
+        usar_media INTEGER DEFAULT 0,
+        dias_media INTEGER DEFAULT 30,
+        premio_fixo REAL DEFAULT 0,
+        descricao TEXT DEFAULT 'Sorteio VortexPay',
+        proximo_sorteio TEXT,
+        updated_at TEXT
+    )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS sorteio_participantes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cliente_id TEXT NOT NULL,
+        nome TEXT,
+        saldo REAL DEFAULT 0,
+        saldo_medio REAL DEFAULT 0,
+        numero_sorte INTEGER,
+        premio_estimado REAL DEFAULT 0,
+        created_at TEXT,
+        sorteio_id TEXT DEFAULT 'atual'
+    )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS sorteio_historico (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sorteio_id TEXT UNIQUE NOT NULL,
+        data_sorteio TEXT,
+        ganhador_cliente_id TEXT,
+        ganhador_nome TEXT,
+        ganhador_numero INTEGER,
+        premio_pago REAL,
+        total_participantes INTEGER,
+        total_saldo REAL,
+        observacao TEXT
+    )''')
+    # Config padrão se não existir
+    conn.execute('''INSERT OR IGNORE INTO sorteio_config
+        (id, ativo, percentual, usar_media, dias_media, descricao, proximo_sorteio, updated_at)
+        VALUES (1, 1, 50.0, 0, 30, 'Sorteio Semanal VortexPay', NULL, ?)''',
+        (datetime.now().isoformat(),))
     conn.commit(); conn.close()
 
 def salvar_transacao(tx_id, valor, pix_code, cliente_id=None, webhook_url=None):
@@ -141,6 +182,47 @@ def load_admin_html():
     if os.path.exists('admin.html'):
         return open('admin.html', encoding='utf-8').read()
     return '<h1>VortexPay - Admin</h1>'
+
+def load_sorteio_html():
+    if os.path.exists('sorteio.html'):
+        return open('sorteio.html', encoding='utf-8').read()
+    return '<h1>VortexPay - Sorteio</h1>'
+
+# ─── HELPERS SORTEIO ────────────────────────────────────────
+def get_sorteio_config():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT * FROM sorteio_config WHERE id=1')
+    row = c.fetchone(); conn.close()
+    if row:
+        cols = ['id','ativo','percentual','data_corte','usar_media','dias_media',
+                'premio_fixo','descricao','proximo_sorteio','updated_at']
+        return dict(zip(cols, row))
+    return {}
+
+def get_participante(cliente_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT * FROM sorteio_participantes WHERE cliente_id=? AND sorteio_id='atual'", (cliente_id,))
+    row = c.fetchone(); conn.close()
+    if row:
+        cols = ['id','cliente_id','nome','saldo','saldo_medio','numero_sorte',
+                'premio_estimado','created_at','sorteio_id']
+        return dict(zip(cols, row))
+    return None
+
+def calcular_premio(saldo, config):
+    """Calcula prêmio estimado baseado no saldo e configuração"""
+    if config.get('premio_fixo', 0) > 0:
+        return float(config['premio_fixo'])
+    base = saldo
+    return round(base * float(config.get('percentual', 50)) / 100, 2)
+
+def gerar_numero_sorte(cliente_id, sorteio_id='atual'):
+    """Gera número da sorte único e determinístico por cliente"""
+    import hashlib
+    seed = hashlib.md5(f"{cliente_id}{sorteio_id}vortexpay".encode()).hexdigest()
+    return int(seed[:8], 16) % 900000 + 100000  # 6 dígitos: 100000-999999
 
 # ─── TELEGRAM - Conectar com retry ─────────────────────────
 async def conectar_telegram():
@@ -338,6 +420,219 @@ async def cors_middleware(request, handler):
     r = await handler(request)
     r.headers['Access-Control-Allow-Origin'] = '*'
     return r
+
+# ─── ROTAS SORTEIO ────────────────────────────────────────
+async def route_sorteio_page(request):
+    return web.Response(text=load_sorteio_html(), content_type='text/html', charset='utf-8')
+
+async def route_sorteio_info(request):
+    """Info pública do sorteio + dados do participante se cliente_id fornecido"""
+    cliente_id = request.rel_url.query.get('cliente_id', '').strip()
+    config = get_sorteio_config()
+    
+    # Estatísticas gerais
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*), COALESCE(SUM(saldo),0) FROM sorteio_participantes WHERE sorteio_id='atual'")
+    total_part, total_saldo = c.fetchone()
+    c.execute("SELECT * FROM sorteio_historico ORDER BY data_sorteio DESC LIMIT 3")
+    hist_rows = c.fetchall()
+    conn.close()
+
+    hist_cols = ['id','sorteio_id','data_sorteio','ganhador_cliente_id','ganhador_nome',
+                 'ganhador_numero','premio_pago','total_participantes','total_saldo','observacao']
+    historico = [dict(zip(hist_cols, r)) for r in hist_rows]
+
+    # Prêmio atual estimado (50% do total em saldo ou fixo)
+    premio_atual = 0
+    if config.get('premio_fixo', 0) > 0:
+        premio_atual = float(config['premio_fixo'])
+    else:
+        premio_atual = round(total_saldo * float(config.get('percentual', 50)) / 100, 2)
+
+    resp = {
+        'sorteio': {
+            'ativo': bool(config.get('ativo', 1)),
+            'descricao': config.get('descricao', 'Sorteio VortexPay'),
+            'percentual': config.get('percentual', 50),
+            'usar_media': bool(config.get('usar_media', 0)),
+            'dias_media': config.get('dias_media', 30),
+            'proximo_sorteio': config.get('proximo_sorteio'),
+            'total_participantes': total_part,
+            'total_saldo': round(total_saldo, 2),
+            'premio_estimado_total': premio_atual,
+        },
+        'historico': historico,
+    }
+
+    # Dados do participante se informado
+    if cliente_id:
+        part = get_participante(cliente_id)
+        if part:
+            resp['participante'] = {
+                'cliente_id': part['cliente_id'],
+                'nome': part['nome'],
+                'numero_sorte': part['numero_sorte'],
+                'saldo': part['saldo'],
+                'saldo_medio': part['saldo_medio'],
+                'premio_estimado': part['premio_estimado'],
+                'participando': True,
+            }
+        else:
+            resp['participante'] = {'participando': False, 'cliente_id': cliente_id}
+
+    return web.json_response(resp)
+
+async def route_sorteio_participar(request):
+    """Cadastrar ou atualizar participante no sorteio"""
+    try:
+        data = await request.json()
+        cliente_id = str(data.get('cliente_id', '')).strip()
+        nome = str(data.get('nome', 'Cliente')).strip()
+        saldo = float(data.get('saldo', 0))
+        saldo_medio = float(data.get('saldo_medio', saldo))
+
+        if not cliente_id:
+            return web.json_response({'error': 'cliente_id obrigatório'}, status=400)
+        if saldo < 1:
+            return web.json_response({'error': 'Saldo mínimo de R$ 1,00 para participar'}, status=400)
+
+        config = get_sorteio_config()
+        if not config.get('ativo', 1):
+            return web.json_response({'error': 'Sorteio não está ativo no momento'}, status=400)
+
+        numero = gerar_numero_sorte(cliente_id)
+        base = saldo_medio if config.get('usar_media') else saldo
+        premio = calcular_premio(base, config)
+
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute('''INSERT OR REPLACE INTO sorteio_participantes
+            (cliente_id, nome, saldo, saldo_medio, numero_sorte, premio_estimado, created_at, sorteio_id)
+            VALUES (?,?,?,?,?,?,?,'atual')''',
+            (cliente_id, nome, saldo, saldo_medio, numero, premio, datetime.now().isoformat()))
+        conn.commit(); conn.close()
+
+        return web.json_response({
+            'success': True,
+            'cliente_id': cliente_id,
+            'nome': nome,
+            'numero_sorte': numero,
+            'saldo': saldo,
+            'premio_estimado': premio,
+            'message': f'✅ Você está participando! Número da sorte: {numero}',
+        })
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
+async def route_sorteio_realizar(request):
+    """ADMIN - Realizar o sorteio e escolher ganhador"""
+    auth = (request.headers.get('X-VortexPay-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        import random
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT * FROM sorteio_participantes WHERE sorteio_id='atual' AND saldo > 0")
+        rows = c.fetchall()
+        cols = ['id','cliente_id','nome','saldo','saldo_medio','numero_sorte',
+                'premio_estimado','created_at','sorteio_id']
+        participantes = [dict(zip(cols, r)) for r in rows]
+
+        if not participantes:
+            conn.close()
+            return web.json_response({'error': 'Nenhum participante no sorteio'}, status=400)
+
+        config = get_sorteio_config()
+
+        # Sorteio ponderado pelo saldo (quem tem mais saldo tem mais chance)
+        pesos = [p['saldo_medio'] if config.get('usar_media') else p['saldo'] for p in participantes]
+        ganhador = random.choices(participantes, weights=pesos, k=1)[0]
+
+        premio = ganhador['premio_estimado']
+        sorteio_id = f"sorteio_{int(time.time())}"
+        total_saldo = sum(p['saldo'] for p in participantes)
+
+        # Salvar no histórico
+        conn.execute('''INSERT INTO sorteio_historico
+            (sorteio_id, data_sorteio, ganhador_cliente_id, ganhador_nome, ganhador_numero,
+             premio_pago, total_participantes, total_saldo, observacao)
+            VALUES (?,?,?,?,?,?,?,?,?)''',
+            (sorteio_id, datetime.now().isoformat(), ganhador['cliente_id'], ganhador['nome'],
+             ganhador['numero_sorte'], premio, len(participantes), total_saldo,
+             f'Sorteio automático - {len(participantes)} participantes'))
+
+        # Arquivar participantes do sorteio atual
+        conn.execute("UPDATE sorteio_participantes SET sorteio_id=? WHERE sorteio_id='atual'", (sorteio_id,))
+        conn.commit(); conn.close()
+
+        print(f'🎉 SORTEIO {sorteio_id}: {ganhador["nome"]} ganhou R${premio:.2f}!', flush=True)
+
+        return web.json_response({
+            'success': True,
+            'sorteio_id': sorteio_id,
+            'ganhador': {
+                'cliente_id': ganhador['cliente_id'],
+                'nome': ganhador['nome'],
+                'numero_sorte': ganhador['numero_sorte'],
+                'premio': premio,
+            },
+            'estatisticas': {
+                'total_participantes': len(participantes),
+                'total_saldo': round(total_saldo, 2),
+            }
+        })
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
+async def route_sorteio_config(request):
+    """ADMIN - Configurar parâmetros do sorteio"""
+    auth = (request.headers.get('X-VortexPay-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute('''UPDATE sorteio_config SET
+            ativo=?, percentual=?, usar_media=?, dias_media=?,
+            premio_fixo=?, descricao=?, proximo_sorteio=?, updated_at=?
+            WHERE id=1''', (
+            int(data.get('ativo', 1)),
+            float(data.get('percentual', 50)),
+            int(data.get('usar_media', 0)),
+            int(data.get('dias_media', 30)),
+            float(data.get('premio_fixo', 0)),
+            str(data.get('descricao', 'Sorteio VortexPay')),
+            data.get('proximo_sorteio'),
+            datetime.now().isoformat(),
+        ))
+        conn.commit(); conn.close()
+        return web.json_response({'success': True, 'message': 'Configuração salva!'})
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
+async def route_sorteio_participantes(request):
+    """ADMIN - Listar todos os participantes"""
+    auth = (request.headers.get('X-VortexPay-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""SELECT * FROM sorteio_participantes
+                 WHERE sorteio_id='atual' ORDER BY saldo DESC""")
+    rows = c.fetchall(); conn.close()
+    cols = ['id','cliente_id','nome','saldo','saldo_medio','numero_sorte',
+            'premio_estimado','created_at','sorteio_id']
+    participantes = [dict(zip(cols, r)) for r in rows]
+    total_saldo = sum(p['saldo'] for p in participantes)
+    return web.json_response({
+        'participantes': participantes,
+        'total': len(participantes),
+        'total_saldo': round(total_saldo, 2),
+    })
 
 # ─── ROTAS ────────────────────────────────────────────────
 async def route_atualizar_sessao(request):
@@ -967,6 +1262,14 @@ async def main():
     app.router.add_post('/api/deposito/confirmar', route_confirmar_deposito_admin)
     app.router.add_get('/api/exportar', route_exportar_csv)
     app.router.add_post('/api/atualizar-sessao', route_atualizar_sessao)
+    # Sorteio
+    app.router.add_get('/sorteio', route_sorteio_page)
+    app.router.add_get('/sorteio.html', route_sorteio_page)
+    app.router.add_get('/api/sorteio/info', route_sorteio_info)
+    app.router.add_post('/api/sorteio/participar', route_sorteio_participar)
+    app.router.add_post('/api/sorteio/realizar', route_sorteio_realizar)
+    app.router.add_post('/api/sorteio/config', route_sorteio_config)
+    app.router.add_get('/api/sorteio/participantes', route_sorteio_participantes)
 
     runner = web.AppRunner(app)
     await runner.setup()

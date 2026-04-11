@@ -581,6 +581,10 @@
         📤 <span>Saques</span>
         <span class="badge" id="badge-saq">0</span>
       </div>
+      <div class="nav-section">Promoções</div>
+      <div class="nav-item" onclick="showTab('sorteio')">
+        🎲 <span>Sorteio</span>
+      </div>
       <div class="nav-section">Desenvolvedores</div>
       <div class="nav-item" onclick="showTab('api')">
         🔌 <span>API & Webhooks</span>
@@ -872,6 +876,129 @@
           </table>
         </div>
       </div>
+
+      <!-- ═══ SORTEIO ═══ -->
+      <div id="tab-sorteio" class="tab-content">
+
+        <!-- Stats do sorteio -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-value" id="s-total-part">-</div>
+            <div class="stat-label">Participantes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-value" id="s-total-saldo">-</div>
+            <div class="stat-label">Total em jogo</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🏆</div>
+            <div class="stat-value" id="s-premio" style="color:#00d68f">-</div>
+            <div class="stat-label">Prêmio estimado</div>
+          </div>
+        </div>
+
+        <!-- Configurar sorteio -->
+        <div class="table-card" style="margin-bottom:20px">
+          <div class="table-header">
+            <h3>⚙️ Configurar Sorteio</h3>
+          </div>
+          <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Descrição</label>
+              <input id="sc-descricao" type="text" value="Sorteio Semanal VortexPay"
+                style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px">
+            </div>
+            <div>
+              <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Percentual do prêmio (%)</label>
+              <input id="sc-percentual" type="number" value="50" min="1" max="100"
+                style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px">
+            </div>
+            <div>
+              <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Prêmio fixo (0 = usar %)</label>
+              <input id="sc-premio-fixo" type="number" value="0" min="0" step="0.01"
+                style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px">
+            </div>
+            <div>
+              <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Próximo sorteio (data/hora)</label>
+              <input id="sc-proximo" type="datetime-local"
+                style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px">
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding-top:20px">
+              <input type="checkbox" id="sc-usar-media" style="width:18px;height:18px;cursor:pointer">
+              <label for="sc-usar-media" style="font-size:14px;color:#ccc;cursor:pointer">Usar saldo médio (30 dias)</label>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding-top:20px">
+              <input type="checkbox" id="sc-ativo" checked style="width:18px;height:18px;cursor:pointer">
+              <label for="sc-ativo" style="font-size:14px;color:#ccc;cursor:pointer">Sorteio ativo</label>
+            </div>
+          </div>
+          <div style="padding:0 20px 20px;display:flex;gap:10px">
+            <button onclick="salvarConfigSorteio()" class="action-btn confirm-btn" style="flex:1">
+              💾 Salvar Configuração
+            </button>
+            <a href="/sorteio" target="_blank" class="action-btn" style="flex:1;text-align:center;text-decoration:none;padding:8px 0;display:flex;align-items:center;justify-content:center;background:#FFD70022;color:#FFD700;border:1px solid #FFD70044;border-radius:8px;font-size:13px;font-weight:600">
+              👁️ Ver Página do Sorteio
+            </a>
+          </div>
+        </div>
+
+        <!-- Realizar sorteio -->
+        <div class="table-card" style="margin-bottom:20px;border:1px solid #FFD70033">
+          <div class="table-header" style="background:linear-gradient(135deg,#1a1500,#2a2000)">
+            <h3>🎰 Realizar Sorteio Agora</h3>
+          </div>
+          <div style="padding:20px">
+            <p style="color:#888;font-size:14px;margin-bottom:16px">
+              ⚠️ Esta ação escolhe um ganhador aleatório (ponderado pelo saldo) e arquiva os participantes atuais.
+            </p>
+            <button onclick="realizarSorteio()" class="action-btn confirm-btn"
+              style="background:linear-gradient(135deg,#FFD700,#FF8C00);color:#000;font-weight:800;font-size:15px;padding:14px">
+              🎲 REALIZAR SORTEIO
+            </button>
+            <div id="resultado-sorteio" style="margin-top:16px"></div>
+          </div>
+        </div>
+
+        <!-- Lista de participantes -->
+        <div class="table-card" style="margin-bottom:20px">
+          <div class="table-header">
+            <h3>👥 Participantes Atuais</h3>
+            <button onclick="carregarParticipantes()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead><tr>
+                <th>#</th><th>Cliente ID</th><th>Nome</th>
+                <th>Saldo</th><th>Nº Sorte</th><th>Prêmio Est.</th><th>Cadastro</th>
+              </tr></thead>
+              <tbody id="participantes-tbody">
+                <tr><td colspan="7" style="text-align:center;color:#666;padding:20px">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Histórico de sorteios -->
+        <div class="table-card">
+          <div class="table-header">
+            <h3>📋 Histórico de Sorteios</h3>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead><tr>
+                <th>Data</th><th>Ganhador</th><th>Nº Sorte</th>
+                <th>Prêmio</th><th>Participantes</th><th>Total Saldo</th>
+              </tr></thead>
+              <tbody id="historico-sorteio-tbody">
+                <tr><td colspan="6" style="text-align:center;color:#666;padding:20px">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /tab-sorteio -->
 
       <!-- API & WEBHOOKS -->
       <div id="tab-api" class="tab-content">
@@ -1285,6 +1412,7 @@ function showTab(tab) {
     carteira: '💎 Carteira',
     depositos: '📥 Depósitos',
     saques: '📤 Saques',
+    sorteio: '🎲 Sorteio',
     sistema: '🖥️ Sistema',
     api: '🔌 API & Webhooks',
   };
@@ -1293,10 +1421,11 @@ function showTab(tab) {
   if (tab === 'api') initApiTab();
   if (tab === 'depositos' && allDepositos.length === 0) loadDepositos();
   if (tab === 'saques' && allSaques.length === 0) loadSaques();
+  if (tab === 'sorteio') carregarSorteioAdmin();
 }
 
 function tabName(tab) {
-  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sistema:'sistema', api:'api' };
+  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api' };
   return map[tab] || tab;
 }
 
@@ -1866,6 +1995,148 @@ function exportarCSV(tipo) {
   a.click();
   document.body.removeChild(a);
   toast('📥 Exportando ' + tipo + '...');
+}
+
+// ═══════════════════════════════════════════════
+//  SORTEIO ADMIN
+// ═══════════════════════════════════════════════
+async function carregarSorteioAdmin() {
+  const secret = sessionStorage.getItem('vp_secret');
+  try {
+    // Info geral
+    const r = await fetch(`${BASE}/api/sorteio/info`);
+    const data = await r.json();
+    const s = data.sorteio;
+
+    document.getElementById('s-total-part').textContent = s.total_participantes;
+    document.getElementById('s-total-saldo').textContent = `R$ ${s.total_saldo.toFixed(2).replace('.',',')}`;
+    document.getElementById('s-premio').textContent = `R$ ${s.premio_estimado_total.toFixed(2).replace('.',',')}`;
+
+    // Preencher config
+    document.getElementById('sc-descricao').value = s.descricao || '';
+    document.getElementById('sc-percentual').value = s.percentual || 50;
+    document.getElementById('sc-usar-media').checked = !!s.usar_media;
+
+    if (s.proximo_sorteio) {
+      const d = new Date(s.proximo_sorteio);
+      const local = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+      document.getElementById('sc-proximo').value = local;
+    }
+
+    // Histórico
+    renderHistoricoSorteio(data.historico || []);
+
+  } catch(e) { console.error(e); }
+
+  // Participantes
+  await carregarParticipantes();
+}
+
+function renderHistoricoSorteio(hist) {
+  const tbody = document.getElementById('historico-sorteio-tbody');
+  if (!hist.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;padding:20px">Nenhum sorteio realizado ainda</td></tr>';
+    return;
+  }
+  tbody.innerHTML = hist.map(h => `
+    <tr>
+      <td>${new Date(h.data_sorteio).toLocaleString('pt-BR')}</td>
+      <td><strong>${h.ganhador_nome || '-'}</strong><br><small style="color:#666">${h.ganhador_cliente_id||''}</small></td>
+      <td style="font-family:monospace;color:#FFD700">${h.ganhador_numero || '-'}</td>
+      <td style="color:#00d68f;font-weight:700">R$ ${(h.premio_pago||0).toFixed(2).replace('.',',')}</td>
+      <td>${h.total_participantes || 0}</td>
+      <td>R$ ${(h.total_saldo||0).toFixed(2).replace('.',',')}</td>
+    </tr>
+  `).join('');
+}
+
+async function carregarParticipantes() {
+  const secret = sessionStorage.getItem('vp_secret');
+  const tbody = document.getElementById('participantes-tbody');
+  try {
+    const r = await fetch(`${BASE}/api/sorteio/participantes?secret=${encodeURIComponent(secret)}`);
+    const data = await r.json();
+    const lista = data.participantes || [];
+
+    if (!lista.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;padding:20px">Nenhum participante ainda</td></tr>';
+      return;
+    }
+    tbody.innerHTML = lista.map((p, i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis">${p.cliente_id}</td>
+        <td>${p.nome || '-'}</td>
+        <td style="color:#00d68f;font-weight:700">R$ ${(p.saldo||0).toFixed(2).replace('.',',')}</td>
+        <td style="font-family:monospace;color:#FFD700;font-weight:700">${p.numero_sorte}</td>
+        <td style="color:#00d68f">R$ ${(p.premio_estimado||0).toFixed(2).replace('.',',')}</td>
+        <td style="font-size:11px;color:#666">${new Date(p.created_at).toLocaleDateString('pt-BR')}</td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#f66;padding:20px">Erro ao carregar</td></tr>';
+  }
+}
+
+async function salvarConfigSorteio() {
+  const secret = sessionStorage.getItem('vp_secret');
+  const proxVal = document.getElementById('sc-proximo').value;
+  const body = {
+    descricao: document.getElementById('sc-descricao').value,
+    percentual: parseFloat(document.getElementById('sc-percentual').value) || 50,
+    premio_fixo: parseFloat(document.getElementById('sc-premio-fixo').value) || 0,
+    usar_media: document.getElementById('sc-usar-media').checked ? 1 : 0,
+    ativo: document.getElementById('sc-ativo').checked ? 1 : 0,
+    proximo_sorteio: proxVal ? new Date(proxVal).toISOString() : null,
+  };
+  try {
+    const r = await fetch(`${BASE}/api/sorteio/config`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-VortexPay-Secret': secret},
+      body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    if (data.success) toast('✅ Configuração salva!');
+    else toast('❌ ' + (data.error||'Erro'), 'error');
+  } catch(e) { toast('❌ Erro de conexão', 'error'); }
+}
+
+async function realizarSorteio() {
+  const secret = sessionStorage.getItem('vp_secret');
+  const el = document.getElementById('resultado-sorteio');
+
+  if (!confirm('⚠️ Confirmar realização do sorteio agora?\nEsta ação é irreversível!')) return;
+
+  el.innerHTML = '<div style="text-align:center;padding:10px"><div class="spinner"></div><p style="margin-top:8px;color:#888">Realizando sorteio...</p></div>';
+
+  try {
+    const r = await fetch(`${BASE}/api/sorteio/realizar`, {
+      method: 'POST',
+      headers: {'X-VortexPay-Secret': secret}
+    });
+    const data = await r.json();
+
+    if (data.success) {
+      const g = data.ganhador;
+      const e = data.estatisticas;
+      el.innerHTML = `
+        <div style="background:linear-gradient(135deg,#1a1500,#2a2000);border:2px solid #FFD700;border-radius:16px;padding:24px;text-align:center;margin-top:8px">
+          <div style="font-size:48px;margin-bottom:8px">🎉</div>
+          <div style="font-size:22px;font-weight:800;color:#FFD700;margin-bottom:4px">${g.nome || 'Ganhador'}</div>
+          <div style="font-size:13px;color:#888;margin-bottom:12px">${g.cliente_id}</div>
+          <div style="font-size:32px;font-weight:900;font-family:monospace;color:#FFD700;letter-spacing:6px;margin-bottom:12px">${g.numero_sorte}</div>
+          <div style="font-size:28px;font-weight:800;color:#00d68f;margin-bottom:8px">R$ ${(g.premio||0).toFixed(2).replace('.',',')}</div>
+          <div style="font-size:12px;color:#666">${e.total_participantes} participantes • R$ ${(e.total_saldo||0).toFixed(2).replace('.',',')} em jogo</div>
+        </div>
+      `;
+      toast('🎉 Sorteio realizado com sucesso!');
+      await carregarSorteioAdmin();
+    } else {
+      el.innerHTML = `<div style="background:#ff444422;border:1px solid #ff4444;border-radius:10px;padding:16px;color:#ff8888">❌ ${data.error}</div>`;
+    }
+  } catch(e) {
+    el.innerHTML = `<div style="background:#ff444422;border:1px solid #ff4444;border-radius:10px;padding:16px;color:#ff8888">❌ Erro de conexão</div>`;
+  }
 }
 
 // ═══════════════════════════════════════════════

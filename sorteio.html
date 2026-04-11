@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎲 Sorteio VortexPay</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: #0a0a0f;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── BACKGROUND ANIMADO ── */
+.bg-particles {
+  position: fixed; inset: 0; z-index: 0; overflow: hidden;
+}
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: float linear infinite;
+  opacity: 0.15;
+}
+@keyframes float {
+  0%   { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.15; }
+  90%  { opacity: 0.15; }
+  100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+}
+
+/* ── CONTAINER ── */
+.container {
+  position: relative; z-index: 1;
+  max-width: 480px; margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+
+/* ── HEADER ── */
+.header {
+  text-align: center;
+  padding: 30px 0 20px;
+}
+.header .logo {
+  font-size: 56px;
+  animation: bounce 2s ease-in-out infinite;
+}
+@keyframes bounce {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.header h1 {
+  font-size: 26px; font-weight: 800;
+  background: linear-gradient(135deg, #FFD700, #FF8C00, #FFD700);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-size: 200% auto;
+  animation: shimmer 3s linear infinite;
+  margin: 8px 0 4px;
+}
+@keyframes shimmer {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+.header p { color: #888; font-size: 14px; }
+
+/* ── CARD PRINCIPAL ── */
+.card {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid #ffffff15;
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.card.gold {
+  background: linear-gradient(135deg, #1a1500 0%, #2a2000 100%);
+  border-color: #FFD70033;
+}
+.card.purple {
+  background: linear-gradient(135deg, #130024 0%, #1e0035 100%);
+  border-color: #9945ff33;
+}
+
+/* ── NUMERO DA SORTE ── */
+.numero-sorte-label {
+  font-size: 12px; color: #888;
+  text-transform: uppercase; letter-spacing: 2px;
+  margin-bottom: 8px; text-align: center;
+}
+.numero-sorte {
+  font-size: 52px; font-weight: 900;
+  text-align: center; letter-spacing: 8px;
+  font-family: 'Courier New', monospace;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  margin: 8px 0;
+  animation: glow-num 2s ease-in-out infinite;
+}
+@keyframes glow-num {
+  0%,100% { filter: drop-shadow(0 0 8px #FFD70066); }
+  50%      { filter: drop-shadow(0 0 20px #FFD700aa); }
+}
+.numero-sorte.loading {
+  animation: roll 0.1s linear infinite;
+}
+@keyframes roll {
+  0% { filter: none; }
+  50% { opacity: 0.5; }
+}
+
+/* ── PREMIO ── */
+.premio-box {
+  background: #ffffff08;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  margin-top: 16px;
+}
+.premio-label {
+  font-size: 12px; color: #888;
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.premio-valor {
+  font-size: 36px; font-weight: 800;
+  color: #00ff88;
+  font-family: 'Courier New', monospace;
+}
+.premio-desc { font-size: 12px; color: #666; margin-top: 4px; }
+
+/* ── SALDO ── */
+.saldo-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0; border-bottom: 1px solid #ffffff10;
+}
+.saldo-row:last-child { border-bottom: none; }
+.saldo-row .label { font-size: 13px; color: #888; }
+.saldo-row .value { font-size: 15px; font-weight: 700; color: #fff; }
+.saldo-row .value.green { color: #00ff88; }
+
+/* ── COUNTDOWN ── */
+.countdown-box {
+  display: flex; gap: 12px; justify-content: center;
+  margin: 16px 0;
+}
+.countdown-item {
+  background: #ffffff10;
+  border-radius: 10px;
+  padding: 10px 14px;
+  text-align: center;
+  min-width: 60px;
+}
+.countdown-num {
+  font-size: 28px; font-weight: 800;
+  color: #FFD700;
+  font-family: 'Courier New', monospace;
+  display: block;
+}
+.countdown-lbl { font-size: 10px; color: #666; text-transform: uppercase; }
+
+/* ── RANKING ── */
+.ranking-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  background: #ffffff05;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  border: 1px solid #ffffff08;
+}
+.ranking-pos {
+  font-size: 18px; font-weight: 800;
+  min-width: 32px; text-align: center;
+}
+.ranking-pos.gold { color: #FFD700; }
+.ranking-pos.silver { color: #C0C0C0; }
+.ranking-pos.bronze { color: #CD7F32; }
+.ranking-info { flex: 1; }
+.ranking-nome { font-size: 14px; font-weight: 600; }
+.ranking-saldo { font-size: 12px; color: #888; }
+.ranking-num { font-size: 12px; color: #FFD700; font-family: monospace; }
+
+/* ── PARTICIPAR FORM ── */
+.form-group { margin-bottom: 14px; }
+.form-group label { font-size: 12px; color: #888; display: block; margin-bottom: 6px; }
+.form-group input {
+  width: 100%;
+  background: #ffffff10;
+  border: 1px solid #ffffff20;
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-group input:focus { border-color: #FFD700; }
+.form-group input::placeholder { color: #555; }
+
+.btn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px; font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-gold {
+  background: linear-gradient(135deg, #FFD700, #FF8C00);
+  color: #000;
+}
+.btn-gold:hover { transform: translateY(-2px); box-shadow: 0 8px 24px #FFD70044; }
+.btn-gold:active { transform: scale(0.98); }
+.btn-gold:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #FFD70044;
+  color: #FFD700;
+  padding: 10px;
+  font-size: 14px;
+}
+
+/* ── HISTORICO ── */
+.hist-item {
+  background: #ffffff05;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border-left: 3px solid #FFD700;
+}
+.hist-data { font-size: 11px; color: #666; }
+.hist-ganhador { font-size: 14px; font-weight: 700; margin: 4px 0; }
+.hist-premio { font-size: 13px; color: #00ff88; }
+.hist-stats { font-size: 11px; color: #666; margin-top: 2px; }
+
+/* ── TABS ── */
+.tabs {
+  display: flex; gap: 8px; margin-bottom: 16px;
+  background: #ffffff08; border-radius: 12px; padding: 4px;
+}
+.tab {
+  flex: 1; padding: 10px 8px;
+  border: none; background: transparent;
+  color: #666; font-size: 13px; font-weight: 600;
+  border-radius: 9px; cursor: pointer; transition: all 0.2s;
+}
+.tab.active { background: #FFD700; color: #000; }
+
+/* ── BADGE ── */
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+  background: #FFD70022; color: #FFD700;
+  border: 1px solid #FFD70044;
+}
+
+/* ── MESSAGES ── */
+.msg { padding: 12px 14px; border-radius: 10px; margin-top: 12px; font-size: 14px; }
+.msg.success { background: #00ff8822; border: 1px solid #00ff8844; color: #00ff88; }
+.msg.error   { background: #ff444422; border: 1px solid #ff444444; color: #ff8888; }
+.msg.info    { background: #0066ff22; border: 1px solid #0066ff44; color: #6699ff; }
+
+/* ── SECTION TITLE ── */
+.section-title {
+  font-size: 14px; font-weight: 700; color: #888;
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid #ffffff22;
+  border-top-color: #FFD700;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- Partículas animadas -->
+<div class="bg-particles" id="particles"></div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">🎰</div>
+    <h1>Sorteio VortexPay</h1>
+    <p id="sorteio-descricao">Carregando...</p>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('meu')">🎲 Meu Sorteio</button>
+    <button class="tab" onclick="showTab('ranking')">🏆 Ranking</button>
+    <button class="tab" onclick="showTab('historico')">📋 Histórico</button>
+  </div>
+
+  <!-- ═══ ABA: MEU SORTEIO ═══ -->
+  <div id="tab-meu">
+
+    <!-- Cadastro se não participando -->
+    <div id="tela-cadastro">
+      <div class="card gold">
+        <div class="section-title">🎫 Participar do Sorteio</div>
+        <div class="msg info" style="margin-bottom:14px">
+          💡 Informe seu ID e saldo atual para gerar seu número da sorte!
+        </div>
+        <div class="form-group">
+          <label>Seu ID (CPF, e-mail ou identificador)</label>
+          <input type="text" id="input-cliente-id" placeholder="ex: 123.456.789-00" />
+        </div>
+        <div class="form-group">
+          <label>Seu Nome</label>
+          <input type="text" id="input-nome" placeholder="ex: João Silva" />
+        </div>
+        <div class="form-group">
+          <label>Seu Saldo Atual (R$)</label>
+          <input type="number" id="input-saldo" placeholder="0,00" min="1" step="0.01" />
+        </div>
+        <button class="btn btn-gold" id="btn-participar" onclick="participar()">
+          🎲 Gerar Meu Número da Sorte
+        </button>
+        <div id="msg-cadastro"></div>
+      </div>
+    </div>
+
+    <!-- Card do participante -->
+    <div id="tela-participante" class="hidden">
+
+      <!-- Número da Sorte -->
+      <div class="card gold">
+        <div class="numero-sorte-label">🎫 Seu Número da Sorte</div>
+        <div class="numero-sorte" id="num-sorte">------</div>
+        <div style="text-align:center;margin-top:4px">
+          <span class="badge">✅ Participando</span>
+        </div>
+
+        <!-- Prêmio estimado -->
+        <div class="premio-box">
+          <div class="premio-label">🏆 Se o sorteio fosse agora, você ganharia</div>
+          <div class="premio-valor" id="premio-val">R$ 0,00</div>
+          <div class="premio-desc" id="premio-desc">Baseado no seu saldo atual</div>
+        </div>
+      </div>
+
+      <!-- Detalhes do saldo -->
+      <div class="card">
+        <div class="section-title">💰 Seus Dados</div>
+        <div class="saldo-row">
+          <span class="label">ID</span>
+          <span class="value" id="detalhe-id">-</span>
+        </div>
+        <div class="saldo-row">
+          <span class="label">Saldo atual</span>
+          <span class="value green" id="detalhe-saldo">R$ 0,00</span>
+        </div>
+        <div class="saldo-row" id="row-media">
+          <span class="label">Saldo médio (30 dias)</span>
+          <span class="value" id="detalhe-media">-</span>
+        </div>
+      </div>
+
+      <button class="btn btn-outline" onclick="resetarParticipante()" style="margin-bottom:16px">
+        🔄 Usar outro ID
+      </button>
+    </div>
+
+    <!-- Próximo sorteio -->
+    <div class="card purple" id="card-countdown">
+      <div class="section-title">⏳ Próximo Sorteio</div>
+      <div class="countdown-box" id="countdown-box">
+        <div class="countdown-item">
+          <span class="countdown-num" id="cd-days">--</span>
+          <span class="countdown-lbl">Dias</span>
+        </div>
+        <div class="countdown-item">
+          <span class="countdown-num" id="cd-hours">--</span>
+          <span class="countdown-lbl">Horas</span>
+        </div>
+        <div class="countdown-item">
+          <span class="countdown-num" id="cd-mins">--</span>
+          <span class="countdown-lbl">Min</span>
+        </div>
+        <div class="countdown-item">
+          <span class="countdown-num" id="cd-secs">--</span>
+          <span class="countdown-lbl">Seg</span>
+        </div>
+      </div>
+      <p style="text-align:center;color:#666;font-size:13px" id="proximo-data">Aguardando configuração do admin</p>
+    </div>
+
+    <!-- Stats gerais -->
+    <div class="card">
+      <div class="section-title">📊 Estatísticas do Sorteio</div>
+      <div class="saldo-row">
+        <span class="label">👥 Participantes</span>
+        <span class="value" id="stat-participantes">-</span>
+      </div>
+      <div class="saldo-row">
+        <span class="label">💰 Total em jogo</span>
+        <span class="value" id="stat-total-saldo">-</span>
+      </div>
+      <div class="saldo-row">
+        <span class="label">🏆 Prêmio estimado</span>
+        <span class="value green" id="stat-premio">-</span>
+      </div>
+    </div>
+
+  </div><!-- /tab-meu -->
+
+  <!-- ═══ ABA: RANKING ═══ -->
+  <div id="tab-ranking" class="hidden">
+    <div class="card">
+      <div class="section-title">🏆 Top Participantes</div>
+      <div id="ranking-list">
+        <div style="text-align:center;padding:20px;color:#666">
+          <div class="spinner"></div>
+          <p style="margin-top:8px">Carregando...</p>
+        </div>
+      </div>
+    </div>
+    <p style="text-align:center;color:#555;font-size:12px;margin-top:8px">
+      💡 Maior saldo = maior chance de ganhar
+    </p>
+  </div>
+
+  <!-- ═══ ABA: HISTÓRICO ═══ -->
+  <div id="tab-historico" class="hidden">
+    <div class="card">
+      <div class="section-title">📋 Últimos Sorteios</div>
+      <div id="historico-list">
+        <div style="text-align:center;padding:20px;color:#666">
+          <div class="spinner"></div>
+          <p style="margin-top:8px">Carregando...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+const BASE = window.location.origin;
+let sorteioInfo = null;
+let participanteAtual = null;
+let countdownInterval = null;
+let numRolling = null;
+
+// ════ INICIALIZAÇÃO ════
+document.addEventListener('DOMContentLoaded', () => {
+  criarParticulas();
+  carregarInfo();
+
+  // Verificar se já tem ID salvo
+  const savedId = localStorage.getItem('vortex_cliente_id');
+  const savedNome = localStorage.getItem('vortex_nome');
+  if (savedId) {
+    document.getElementById('input-cliente-id').value = savedId;
+    document.getElementById('input-nome').value = savedNome || '';
+    verificarParticipante(savedId);
+  }
+});
+
+// ════ CRIAR PARTÍCULAS ════
+function criarParticulas() {
+  const container = document.getElementById('particles');
+  const cores = ['#FFD700', '#FF8C00', '#9945FF', '#00ff88', '#0066ff'];
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 6 + 2;
+    const cor = cores[Math.floor(Math.random() * cores.length)];
+    p.style.cssText = `
+      width:${size}px; height:${size}px;
+      background:${cor};
+      left:${Math.random()*100}%;
+      animation-duration:${Math.random()*15+10}s;
+      animation-delay:${Math.random()*10}s;
+    `;
+    container.appendChild(p);
+  }
+}
+
+// ════ TABS ════
+function showTab(tab) {
+  ['meu','ranking','historico'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tab);
+  });
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    el.classList.toggle('active', ['meu','ranking','historico'][i] === tab);
+  });
+  if (tab === 'ranking') carregarRanking();
+  if (tab === 'historico') carregarHistorico();
+}
+
+// ════ CARREGAR INFO GERAL ════
+async function carregarInfo() {
+  try {
+    const clienteId = localStorage.getItem('vortex_cliente_id') || '';
+    const url = BASE + '/api/sorteio/info' + (clienteId ? `?cliente_id=${encodeURIComponent(clienteId)}` : '');
+    const r = await fetch(url);
+    const data = await r.json();
+    sorteioInfo = data;
+
+    const s = data.sorteio;
+    document.getElementById('sorteio-descricao').textContent = s.descricao;
+
+    // Stats
+    document.getElementById('stat-participantes').textContent = s.total_participantes;
+    document.getElementById('stat-total-saldo').textContent = `R$ ${s.total_saldo.toFixed(2).replace('.',',')}`;
+    document.getElementById('stat-premio').textContent = `R$ ${s.premio_estimado_total.toFixed(2).replace('.',',')}`;
+
+    // Countdown
+    if (s.proximo_sorteio) {
+      iniciarCountdown(new Date(s.proximo_sorteio));
+      document.getElementById('proximo-data').textContent =
+        new Date(s.proximo_sorteio).toLocaleString('pt-BR');
+    }
+
+    // Participante
+    if (data.participante && data.participante.participando) {
+      mostrarParticipante(data.participante);
+    }
+
+  } catch(e) {
+    console.error('Erro ao carregar info:', e);
+  }
+}
+
+// ════ PARTICIPAR ════
+async function participar() {
+  const clienteId = document.getElementById('input-cliente-id').value.trim();
+  const nome = document.getElementById('input-nome').value.trim() || 'Participante';
+  const saldo = parseFloat(document.getElementById('input-saldo').value) || 0;
+  const msgEl = document.getElementById('msg-cadastro');
+
+  if (!clienteId) { msgEl.innerHTML = '<div class="msg error">❌ Informe seu ID</div>'; return; }
+  if (saldo < 1) { msgEl.innerHTML = '<div class="msg error">❌ Saldo mínimo R$ 1,00</div>'; return; }
+
+  const btn = document.getElementById('btn-participar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando...';
+  msgEl.innerHTML = '';
+
+  try {
+    const r = await fetch(BASE + '/api/sorteio/participar', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({cliente_id: clienteId, nome, saldo})
+    });
+    const data = await r.json();
+
+    if (data.success) {
+      localStorage.setItem('vortex_cliente_id', clienteId);
+      localStorage.setItem('vortex_nome', nome);
+      mostrarParticipante(data);
+      // Atualizar stats
+      await carregarInfo();
+    } else {
+      msgEl.innerHTML = `<div class="msg error">❌ ${data.error}</div>`;
+    }
+  } catch(e) {
+    msgEl.innerHTML = '<div class="msg error">❌ Erro de conexão</div>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🎲 Gerar Meu Número da Sorte';
+  }
+}
+
+// ════ MOSTRAR PARTICIPANTE ════
+function mostrarParticipante(p) {
+  participanteAtual = p;
+  document.getElementById('tela-cadastro').classList.add('hidden');
+  document.getElementById('tela-participante').classList.remove('hidden');
+
+  // Animar número da sorte
+  animarNumero(p.numero_sorte || p.numero_sorte);
+  document.getElementById('detalhe-id').textContent = p.cliente_id;
+  document.getElementById('detalhe-saldo').textContent = `R$ ${(p.saldo||0).toFixed(2).replace('.',',')}`;
+
+  const premio = p.premio_estimado || p.premio || 0;
+  document.getElementById('premio-val').textContent = `R$ ${premio.toFixed(2).replace('.',',')}`;
+
+  if (sorteioInfo && sorteioInfo.sorteio.usar_media) {
+    document.getElementById('detalhe-media').textContent =
+      `R$ ${(p.saldo_medio||p.saldo||0).toFixed(2).replace('.',',')}`;
+    document.getElementById('premio-desc').textContent =
+      `Baseado na média dos últimos ${sorteioInfo.sorteio.dias_media} dias`;
+  } else {
+    document.getElementById('row-media').style.display = 'none';
+    document.getElementById('premio-desc').textContent = `${sorteioInfo?.sorteio?.percentual||50}% do seu saldo atual`;
+  }
+}
+
+// ════ ANIMAR NÚMERO ════
+function animarNumero(numero) {
+  const el = document.getElementById('num-sorte');
+  let count = 0;
+  const total = 25;
+  el.classList.add('loading');
+
+  const interval = setInterval(() => {
+    el.textContent = String(Math.floor(Math.random() * 900000 + 100000));
+    count++;
+    if (count >= total) {
+      clearInterval(interval);
+      el.classList.remove('loading');
+      el.textContent = String(numero);
+    }
+  }, 60);
+}
+
+// ════ VERIFICAR PARTICIPANTE EXISTENTE ════
+async function verificarParticipante(clienteId) {
+  try {
+    const r = await fetch(BASE + `/api/sorteio/info?cliente_id=${encodeURIComponent(clienteId)}`);
+    const data = await r.json();
+    if (data.participante && data.participante.participando) {
+      mostrarParticipante(data.participante);
+    }
+  } catch(e) {}
+}
+
+function resetarParticipante() {
+  localStorage.removeItem('vortex_cliente_id');
+  localStorage.removeItem('vortex_nome');
+  document.getElementById('tela-cadastro').classList.remove('hidden');
+  document.getElementById('tela-participante').classList.add('hidden');
+  document.getElementById('input-cliente-id').value = '';
+  document.getElementById('input-saldo').value = '';
+  document.getElementById('msg-cadastro').innerHTML = '';
+}
+
+// ════ COUNTDOWN ════
+function iniciarCountdown(dataAlvo) {
+  if (countdownInterval) clearInterval(countdownInterval);
+
+  function atualizar() {
+    const diff = dataAlvo - new Date();
+    if (diff <= 0) {
+      document.getElementById('cd-days').textContent = '00';
+      document.getElementById('cd-hours').textContent = '00';
+      document.getElementById('cd-mins').textContent = '00';
+      document.getElementById('cd-secs').textContent = '00';
+      clearInterval(countdownInterval);
+      return;
+    }
+    const dias  = Math.floor(diff / 86400000);
+    const horas = Math.floor((diff % 86400000) / 3600000);
+    const mins  = Math.floor((diff % 3600000) / 60000);
+    const segs  = Math.floor((diff % 60000) / 1000);
+    document.getElementById('cd-days').textContent  = String(dias).padStart(2,'0');
+    document.getElementById('cd-hours').textContent = String(horas).padStart(2,'0');
+    document.getElementById('cd-mins').textContent  = String(mins).padStart(2,'0');
+    document.getElementById('cd-secs').textContent  = String(segs).padStart(2,'0');
+  }
+  atualizar();
+  countdownInterval = setInterval(atualizar, 1000);
+}
+
+// ════ RANKING ════
+async function carregarRanking() {
+  const el = document.getElementById('ranking-list');
+  try {
+    // Usa info pública (top por saldo)
+    if (!sorteioInfo) await carregarInfo();
+    // Simulação com dados do info (não expõe lista completa publicamente)
+    el.innerHTML = `
+      <div class="msg info">
+        🔒 O ranking completo é visível apenas para o administrador.<br>
+        Seu número da sorte garante sua participação!
+      </div>
+      <div style="margin-top:12px">
+        <div class="saldo-row">
+          <span class="label">👥 Total de participantes</span>
+          <span class="value">${sorteioInfo?.sorteio?.total_participantes || 0}</span>
+        </div>
+        <div class="saldo-row">
+          <span class="label">💰 Volume total</span>
+          <span class="value">R$ ${(sorteioInfo?.sorteio?.total_saldo || 0).toFixed(2).replace('.',',')}</span>
+        </div>
+        <div class="saldo-row">
+          <span class="label">🏆 Prêmio estimado</span>
+          <span class="value green">R$ ${(sorteioInfo?.sorteio?.premio_estimado_total || 0).toFixed(2).replace('.',',')}</span>
+        </div>
+      </div>
+      <div class="msg" style="background:#FFD70011;border:1px solid #FFD70033;color:#FFD700;margin-top:12px">
+        ⚖️ O sorteio é ponderado pelo saldo — quem tem mais saldo tem maior probabilidade de ganhar!
+      </div>
+    `;
+  } catch(e) {
+    el.innerHTML = '<div class="msg error">Erro ao carregar ranking</div>';
+  }
+}
+
+// ════ HISTÓRICO ════
+async function carregarHistorico() {
+  const el = document.getElementById('historico-list');
+  try {
+    if (!sorteioInfo) await carregarInfo();
+    const hist = sorteioInfo?.historico || [];
+    if (!hist.length) {
+      el.innerHTML = '<div style="text-align:center;padding:20px;color:#666">Nenhum sorteio realizado ainda 🎲</div>';
+      return;
+    }
+    el.innerHTML = hist.map((h, i) => `
+      <div class="hist-item">
+        <div class="hist-data">📅 ${new Date(h.data_sorteio).toLocaleString('pt-BR')}</div>
+        <div class="hist-ganhador">🎉 ${h.ganhador_nome || 'Vencedor'}</div>
+        <div class="hist-premio">💰 Prêmio: R$ ${(h.premio_pago||0).toFixed(2).replace('.',',')}</div>
+        <div class="hist-stats">
+          🎫 Nº ${h.ganhador_numero} • 
+          👥 ${h.total_participantes} participantes • 
+          💼 R$ ${(h.total_saldo||0).toFixed(2).replace('.',',')} em jogo
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="msg error">Erro ao carregar histórico</div>';
+  }
+}
+</script>
+</body>
+</html>
