@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🎲 Sorteio VortexPay</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
@@ -22,6 +23,31 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
 .hdr h1{font-size:24px;font-weight:900;background:linear-gradient(135deg,#FFD700,#FF8C00,#FFD700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-size:200%;animation:shine 3s linear infinite}
 @keyframes shine{0%{background-position:0%}100%{background-position:200%}}
 .hdr p{color:#666;font-size:13px;margin-top:4px}
+
+/* MODAL DEPÓSITO */
+.modal-overlay{position:fixed;inset:0;background:#000000cc;z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.modal-box{background:#0e0e1a;border-radius:24px 24px 0 0;width:100%;max-width:460px;padding:24px 20px 40px;max-height:92vh;overflow-y:auto}
+.modal-handle{width:40px;height:4px;background:#ffffff22;border-radius:2px;margin:0 auto 20px}
+.modal-title{font-size:18px;font-weight:800;text-align:center;margin-bottom:20px;color:#FFD700}
+
+/* TECLADO */
+.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.key{padding:16px 8px;background:#ffffff0e;border:1px solid #ffffff15;border-radius:12px;font-size:20px;font-weight:700;color:#fff;cursor:pointer;text-align:center;transition:all .15s;user-select:none}
+.key:active{background:#FFD70033;border-color:#FFD700}
+.key.del{color:#ff6b6b}
+.valor-display{background:#ffffff08;border:1px solid #ffffff15;border-radius:14px;padding:16px;text-align:center;margin-bottom:8px}
+.valor-display .cifrao{font-size:18px;color:#666;font-weight:600}
+.valor-display .valor{font-size:40px;font-weight:900;color:#FFD700;font-family:monospace}
+.valor-display .hint{font-size:12px;color:#444;margin-top:4px}
+.numeros-preview{background:#FFD70015;border:1px solid #FFD70033;border-radius:10px;padding:10px;text-align:center;margin-bottom:14px;font-size:14px;font-weight:700;color:#FFD700}
+
+/* PIX RESULT */
+.pix-result{display:none}
+.qr-box{background:#fff;border-radius:16px;padding:16px;text-align:center;margin-bottom:14px}
+.pix-code-area{background:#0a0a18;border:1px solid #00d4ff33;border-radius:12px;padding:12px;margin-bottom:10px;word-break:break-all;font-size:11px;color:#00d4ff;font-family:monospace;line-height:1.5;max-height:80px;overflow:hidden}
+.copy-pix-btn{width:100%;padding:14px;background:#00ff6622;border:1px solid #00ff6644;border-radius:12px;font-size:15px;font-weight:700;color:#00ff66;cursor:pointer;margin-bottom:8px}
+.copy-pix-btn:active{background:#00ff6644}
+.status-pix{padding:10px;border-radius:10px;text-align:center;font-size:13px;margin-bottom:8px}
 
 /* REGRA DESTAQUE */
 .regra-box{background:linear-gradient(135deg,#1a1200,#251a00);border:1px solid #FFD70044;border-radius:14px;padding:14px 16px;margin-bottom:14px;text-align:center}
@@ -216,6 +242,11 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
             <div style="color:#555;font-size:13px">Faça depósitos para gerar seus números!</div>
           </div>
         </div>
+
+        <!-- BOTÃO DEPOSITAR -->
+        <button class="btn btn-gold" onclick="abrirDeposito()" style="margin-top:16px;font-size:16px;font-weight:800">
+          💰 Depositar e Ganhar Números
+        </button>
       </div>
 
       <!-- Chave Pix cadastrada -->
@@ -282,6 +313,78 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
   </div>
 
 </div><!-- /wrap -->
+
+<!-- ══ MODAL DEPÓSITO ══ -->
+<div class="modal-overlay hidden" id="modal-deposito" onclick="fecharModalFora(event)">
+  <div class="modal-box" id="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💰 Depositar via Pix</div>
+
+    <!-- ETAPA 1: VALOR -->
+    <div id="etapa-valor">
+      <div class="valor-display">
+        <div><span class="cifrao">R$</span> <span class="valor" id="m-valor-display">0,00</span></div>
+        <div class="hint">Mínimo R$ 5,00</div>
+      </div>
+      <div class="numeros-preview" id="m-numeros-preview" style="display:none">
+        🎫 Você vai ganhar <strong id="m-qtd-nums">0</strong> número(s) da sorte!
+      </div>
+      <div class="teclado">
+        <div class="key" onclick="tecla('1')">1</div>
+        <div class="key" onclick="tecla('2')">2</div>
+        <div class="key" onclick="tecla('3')">3</div>
+        <div class="key" onclick="tecla('4')">4</div>
+        <div class="key" onclick="tecla('5')">5</div>
+        <div class="key" onclick="tecla('6')">6</div>
+        <div class="key" onclick="tecla('7')">7</div>
+        <div class="key" onclick="tecla('8')">8</div>
+        <div class="key" onclick="tecla('9')">9</div>
+        <div class="key" onclick="tecla('00')">00</div>
+        <div class="key" onclick="tecla('0')">0</div>
+        <div class="key del" onclick="tecla('del')">⌫</div>
+      </div>
+      <button class="btn btn-gold" id="m-btn-gerar" onclick="gerarPixSorteio()" disabled>
+        ⚡ Gerar QR Code Pix
+      </button>
+      <button class="btn btn-outline" onclick="fecharDeposito()" style="margin-top:8px;padding:10px">
+        ✕ Cancelar
+      </button>
+    </div>
+
+    <!-- ETAPA 2: PIX GERADO -->
+    <div class="pix-result" id="etapa-pix">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:13px;color:#888">Valor a pagar</div>
+        <div style="font-size:28px;font-weight:900;color:#FFD700" id="m-valor-conf">R$ --</div>
+        <div style="font-size:13px;color:#FFD700;margin-top:4px">🎫 <span id="m-nums-conf">-</span> número(s) serão gerados após confirmação</div>
+      </div>
+
+      <div class="qr-box">
+        <canvas id="m-qr-canvas" width="200" height="200"></canvas>
+      </div>
+
+      <div style="font-size:12px;color:#888;margin-bottom:6px;text-align:center">📋 Pix Copia e Cola</div>
+      <div class="pix-code-area" id="m-pix-code">-</div>
+      <button class="copy-pix-btn" onclick="copiarPix()">📋 Copiar código Pix</button>
+
+      <div class="status-pix" id="m-status-pix" style="background:#FFD70015;border:1px solid #FFD70033;color:#FFD700">
+        ⏳ Aguardando pagamento...
+      </div>
+
+      <button class="btn btn-outline" onclick="voltarValor()" style="padding:10px;font-size:13px">
+        ← Alterar valor
+      </button>
+    </div>
+
+    <!-- LOADING -->
+    <div id="etapa-loading" class="hidden" style="text-align:center;padding:40px 0">
+      <div class="spin" style="width:36px;height:36px;border-width:3px"></div>
+      <div style="margin-top:16px;color:#888;font-size:14px">Gerando Pix...</div>
+    </div>
+
+  </div>
+</div>
+
 <script>
 const BASE = location.origin;
 let info = null;
@@ -474,6 +577,195 @@ function mostrarCadastro() {
 function sair() {
   localStorage.removeItem('sorteio_cpf');
   mostrarCadastro();
+}
+
+// ── MODAL DEPÓSITO ──────────────────────────────
+let rawDep = '';
+let pixCodeAtual = null;
+let txAtual = null;
+let pollingDep = null;
+let cpfAtual = null;
+
+function abrirDeposito() {
+  const cpf = localStorage.getItem('sorteio_cpf');
+  if (!cpf) { alert('Faça seu cadastro primeiro!'); return; }
+  cpfAtual = cpf;
+  rawDep = '';
+  atualizarDisplayDep();
+  document.getElementById('etapa-valor').style.display = 'block';
+  document.getElementById('etapa-pix').style.display = 'none';
+  document.getElementById('etapa-loading').classList.add('hidden');
+  document.getElementById('modal-deposito').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function fecharDeposito() {
+  document.getElementById('modal-deposito').classList.add('hidden');
+  document.body.style.overflow = '';
+  if (pollingDep) { clearInterval(pollingDep); pollingDep = null; }
+}
+
+function fecharModalFora(e) {
+  if (e.target === document.getElementById('modal-deposito')) fecharDeposito();
+}
+
+function tecla(v) {
+  if (v === 'del') {
+    rawDep = rawDep.slice(0, -1);
+  } else if (v === '00') {
+    if (rawDep.length < 7) rawDep += '00';
+  } else {
+    if (rawDep.length < 7) rawDep += v;
+  }
+  atualizarDisplayDep();
+}
+
+function atualizarDisplayDep() {
+  const num = parseInt(rawDep || '0');
+  const reais = num / 100;
+  document.getElementById('m-valor-display').textContent = reais.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const btn = document.getElementById('m-btn-gerar');
+  const vp = info?.sorteio?.valor_por_numero || 5;
+  if (reais >= 5) {
+    btn.disabled = false;
+    const qtd = Math.floor(reais / vp);
+    const prev = document.getElementById('m-numeros-preview');
+    prev.style.display = 'block';
+    document.getElementById('m-qtd-nums').textContent = qtd;
+  } else {
+    btn.disabled = true;
+    document.getElementById('m-numeros-preview').style.display = 'none';
+  }
+}
+
+async function gerarPixSorteio() {
+  const num = parseInt(rawDep || '0');
+  const valor = num / 100;
+  if (valor < 5) return;
+
+  document.getElementById('etapa-valor').style.display = 'none';
+  document.getElementById('etapa-loading').classList.remove('hidden');
+
+  try {
+    const r = await fetch(BASE + '/api/pix', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({valor, cliente_id: cpfAtual})
+    });
+    const d = await r.json();
+
+    document.getElementById('etapa-loading').classList.add('hidden');
+
+    if (d.success) {
+      pixCodeAtual = d.pix_code;
+      txAtual = d.tx_id;
+      const vp = info?.sorteio?.valor_por_numero || 5;
+      const qtd = Math.floor(valor / vp);
+
+      document.getElementById('m-valor-conf').textContent = `R$ ${valor.toFixed(2).replace('.',',')}`;
+      document.getElementById('m-nums-conf').textContent = qtd;
+      document.getElementById('m-pix-code').textContent = d.pix_code;
+      document.getElementById('etapa-pix').style.display = 'block';
+
+      // QR Code
+      gerarQRCodeDep(d.pix_code);
+
+      // Iniciar polling
+      iniciarPollingDep(d.tx_id, valor);
+
+    } else {
+      document.getElementById('etapa-valor').style.display = 'block';
+      alert('❌ ' + (d.error || 'Erro ao gerar Pix. Tente novamente.'));
+    }
+  } catch(e) {
+    document.getElementById('etapa-loading').classList.add('hidden');
+    document.getElementById('etapa-valor').style.display = 'block';
+    alert('❌ Erro de conexão. Tente novamente.');
+  }
+}
+
+function gerarQRCodeDep(code) {
+  const canvas = document.getElementById('m-qr-canvas');
+  if (typeof QRCode !== 'undefined') {
+    QRCode.toCanvas(canvas, code, {width:200, margin:1, color:{dark:'#000',light:'#fff'}}, ()=>{});
+  } else {
+    // Fallback: usar API QR
+    const img = document.createElement('img');
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(code)}`;
+    img.style.cssText = 'width:200px;height:200px;border-radius:8px';
+    const box = canvas.parentElement;
+    box.innerHTML = '';
+    box.appendChild(img);
+  }
+}
+
+function copiarPix() {
+  if (!pixCodeAtual) return;
+  navigator.clipboard.writeText(pixCodeAtual).then(() => {
+    const btn = document.querySelector('.copy-pix-btn');
+    btn.textContent = '✅ Copiado!';
+    btn.style.background = '#00d68f22';
+    btn.style.borderColor = '#00d68f44';
+    btn.style.color = '#00d68f';
+    setTimeout(() => {
+      btn.textContent = '📋 Copiar código Pix';
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
+  });
+}
+
+function voltarValor() {
+  if (pollingDep) { clearInterval(pollingDep); pollingDep = null; }
+  document.getElementById('etapa-pix').style.display = 'none';
+  document.getElementById('etapa-valor').style.display = 'block';
+}
+
+function iniciarPollingDep(txId, valor) {
+  let tentativas = 0;
+  const MAX = 60; // 2 minutos
+  const statusEl = document.getElementById('m-status-pix');
+
+  pollingDep = setInterval(async () => {
+    tentativas++;
+    if (tentativas > MAX) {
+      clearInterval(pollingDep); pollingDep = null;
+      statusEl.style.background = '#ff444415';
+      statusEl.style.borderColor = '#ff444433';
+      statusEl.style.color = '#ff8888';
+      statusEl.textContent = '⏱️ Tempo esgotado. Verifique seu comprovante.';
+      return;
+    }
+
+    try {
+      const r = await fetch(BASE + '/api/status/' + txId);
+      const d = await r.json();
+      if (d.pago) {
+        clearInterval(pollingDep); pollingDep = null;
+        statusEl.style.background = '#00d68f22';
+        statusEl.style.borderColor = '#00d68f44';
+        statusEl.style.color = '#00d68f';
+        statusEl.textContent = '✅ Pagamento confirmado! Seus números foram gerados!';
+
+        // Recarregar dados do participante após 2s
+        setTimeout(async () => {
+          fecharDeposito();
+          // Atualizar painel
+          const cpf = localStorage.getItem('sorteio_cpf');
+          if (cpf) {
+            const ri = await fetch(BASE+'/api/sorteio/info?cpf='+cpf);
+            const di = await ri.json();
+            if (di.participante && di.participante.participando) {
+              mostrarParticipante(di.participante);
+            }
+          }
+          // Atualizar info geral
+          carregarInfo();
+        }, 2000);
+      }
+    } catch(e) {}
+  }, 2000);
 }
 
 // ── HISTÓRICO ──
