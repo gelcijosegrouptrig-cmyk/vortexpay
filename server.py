@@ -536,17 +536,22 @@ async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> d
 
             # ── PASSO 6: Enviar chave Pix ──────────────────────────
             await client.send_message(bot, chave_pix)
-            await asyncio.sleep(6)
+            # Aguardar até 15s para o bot processar e confirmar o saque
+            await asyncio.sleep(12)
 
             # ── PASSO 7: Capturar resposta ─────────────────────────
             msgs = await client.get_messages(bot, limit=8)
             resposta_bot = ''
             status_saque = 'pendente'
+            saque_id_bot = None
 
             padroes_sucesso = [
+                r'solicitação de saque.*enviada com sucesso',
+                r'saque.*enviado com sucesso',
                 r'saque.*solicitado',
                 r'saque.*registrado',
                 r'saque.*processando',
+                r'Status: PROCESSING',
                 r'solicitação.*enviada',
                 r'será.*processado',
                 r'aguardando.*processamento',
@@ -554,43 +559,61 @@ async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> d
                 r'pedido.*saque',
                 r'R\$.*solicitado',
                 r'Confirmar saque',
+                r'saq-[a-f0-9]+',  # ID do saque do bot
             ]
             padroes_erro = [
                 r'saldo insuficiente',
                 r'valor.*inválido',
                 r'chave.*inválida',
-                r'erro',
-                r'cancelado',
+                r'chave pix.*não',
+                r'erro ao processar',
+                r'não foi possível',
             ]
 
             for msg in msgs:
                 if not msg.text:
                     continue
                 texto = msg.text
+                # Verificar se é mensagem recente (últimos 2 min)
+                import datetime as dt
+                if hasattr(msg, 'date') and msg.date:
+                    idade = (dt.datetime.now(dt.timezone.utc) - msg.date).total_seconds()
+                    if idade > 120:
+                        continue
+
                 if any(re.search(p, texto, re.IGNORECASE) for p in padroes_sucesso):
-                    resposta_bot = texto[:300]
+                    resposta_bot = texto[:400]
                     status_saque = 'enviado'
+                    # Extrair ID do saque do bot
+                    m = re.search(r'saq-([a-f0-9]+)', texto)
+                    if m:
+                        saque_id_bot = f"saq-{m.group(1)}"
                     break
                 if any(re.search(p, texto, re.IGNORECASE) for p in padroes_erro):
                     resposta_bot = texto[:300]
                     status_saque = 'erro'
                     break
 
-            # Se não reconheceu padrão, pega última mensagem do bot
+            # Se não reconheceu padrão, pega última mensagem do bot (recente)
             if not resposta_bot:
                 for msg in msgs:
                     if msg.text and len(msg.text) > 10:
-                        resposta_bot = msg.text[:300]
-                        status_saque = 'enviado'  # assume enviado
-                        break
+                        import datetime as dt
+                        if hasattr(msg, 'date') and msg.date:
+                            idade = (dt.datetime.now(dt.timezone.utc) - msg.date).total_seconds()
+                            if idade < 120:
+                                resposta_bot = msg.text[:300]
+                                status_saque = 'enviado'
+                                break
 
-            print(f'💸 Saque executado: R${valor:.2f} → {tipo_chave}: {chave_pix} | Status: {status_saque}', flush=True)
+            print(f'💸 Saque executado: R${valor:.2f} → {tipo_chave}: {chave_pix} | Status: {status_saque} | BotID: {saque_id_bot}', flush=True)
 
             return {
                 'success': True,
                 'status': status_saque,
-                'status_msg': 'Saque solicitado com sucesso!' if status_saque == 'enviado' else 'Saque em análise',
+                'status_msg': '✅ Saque solicitado com sucesso! Pode levar até 40 minutos.' if status_saque == 'enviado' else 'Saque em análise',
                 'mensagem_bot': resposta_bot,
+                'saque_id_bot': saque_id_bot,
                 'valor': valor,
                 'tipo_chave': tipo_chave,
                 'chave_pix': chave_pix,
