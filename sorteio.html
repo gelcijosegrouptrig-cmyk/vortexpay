@@ -273,7 +273,9 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
     <div class="card" style="text-align:center;background:linear-gradient(135deg,#0d1a00,#142800);border-color:#00d68f44">
       <div class="sec-title" style="text-align:center;color:#00d68f">🏆 Prêmio do Sorteio</div>
       <div id="st-premio" style="font-size:52px;font-weight:900;color:#00d68f;font-family:monospace;margin:12px 0;text-shadow:0 0 30px #00d68f55">-</div>
-      <div style="font-size:13px;color:#555;margin-bottom:4px">👥 <span id="st-part">-</span> participantes</div>
+      <div style="font-size:11px;color:#00d68f88;margin-bottom:6px">💸 Valor exato que será sacado ao ganhador via Pix</div>
+      <div style="font-size:13px;color:#555;margin-bottom:4px">👥 <span id="st-part">-</span> participantes · 🎟️ <span id="st-bilhetes">-</span> bilhetes</div>
+      <div id="st-percentual" style="font-size:11px;color:#444;margin-top:4px"></div>
     </div>
 
     <div class="msg info">
@@ -448,7 +450,21 @@ async function carregarInfo() {
     const s = info.sorteio;
     document.getElementById('desc-sorteio').textContent = s.descricao;
     document.getElementById('st-part').textContent = s.total_participantes;
-    document.getElementById('st-premio').textContent = 'R$ '+s.premio_estimado_total.toFixed(2).replace('.',',');
+    // Exibe exatamente o valor que será sacado (calculado igual ao backend no sorteio)
+    const premioExato = s.premio_estimado_total || 0;
+    document.getElementById('st-premio').textContent = 'R$ '+premioExato.toFixed(2).replace('.',',');
+    // Bilhetes totais
+    const elBilhetes = document.getElementById('st-bilhetes');
+    if (elBilhetes) elBilhetes.textContent = s.total_bilhetes || 0;
+    // Mostrar composição do prêmio
+    const elPerc = document.getElementById('st-percentual');
+    if (elPerc) {
+      if (s.premio_fixo > 0) {
+        elPerc.textContent = '🔒 Prêmio fixo configurado pelo admin';
+      } else {
+        elPerc.textContent = `📊 ${s.percentual || 50}% do total depositado (R$ ${(s.total_depositado||0).toFixed(2).replace('.',',')})`;
+      }
+    }
     const vp = s.valor_por_numero || 5;
     const ri = document.getElementById('regra-itens');
     if (ri) ri.innerHTML = `

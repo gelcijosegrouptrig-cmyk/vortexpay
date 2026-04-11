@@ -622,7 +622,11 @@ async def route_sorteio_info(request):
         historico.append(d)
 
     vp = float(config.get('valor_por_numero') or 5.0)
-    premio = float(config.get('premio_fixo') or 0) or round(total_dep * float(config.get('percentual',50))/100, 2)
+    # Cálculo idêntico ao usado no sorteio real (max R$1,00 mínimo)
+    _premio_fixo = float(config.get('premio_fixo') or 0)
+    _percentual  = float(config.get('percentual') or 50)
+    premio = _premio_fixo if _premio_fixo > 0 else round(total_dep * _percentual / 100, 2)
+    premio = max(premio, 1.0)  # mínimo R$1,00 — igual ao _executar_sorteio_completo
 
     resp = {
         'sorteio': {
