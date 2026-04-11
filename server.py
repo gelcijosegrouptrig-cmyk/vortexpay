@@ -149,33 +149,31 @@ def buscar_transacao(tx_id):
 
 def confirmar_pagamento(tx_id):
     """Confirma pagamento e automaticamente gera bilhetes do sorteio para o cliente"""
+    import json as _json
     conn = sqlite3.connect(DB_PATH)
     conn.execute('UPDATE transacoes SET status=?,paid_at=? WHERE tx_id=?',
         ('pago', datetime.now().isoformat(), tx_id))
     conn.commit()
 
-    # Buscar dados da transação para gerar bilhetes
+    # Buscar dados completos da transação (valor, cliente_id e extra) em uma única query
     c = conn.cursor()
-    c.execute('SELECT valor, cliente_id FROM transacoes WHERE tx_id=?', (tx_id,))
+    c.execute('SELECT valor, cliente_id, extra FROM transacoes WHERE tx_id=?', (tx_id,))
     row = c.fetchone()
     conn.close()
 
     if row:
-        import json as _json
-        valor_pago, cliente_id = row
-        # Buscar dados extras (participante_dados) da transação
-        c2 = sqlite3.connect(DB_PATH)
-        c2cur = c2.cursor()
-        c2cur.execute('SELECT extra FROM transacoes WHERE tx_id=?', (tx_id,))
-        extra_row = c2cur.fetchone()
-        c2.close()
+        valor_pago, cliente_id, extra_json = row
         participante_dados = None
-        if extra_row and extra_row[0]:
-            try: participante_dados = _json.loads(extra_row[0])
+        if extra_json:
+            try: participante_dados = _json.loads(extra_json)
             except: pass
         if cliente_id and valor_pago and valor_pago >= 5:
             # Tenta creditar bilhetes ao participante do sorteio pelo cliente_id
             _creditar_bilhetes_por_deposito(cliente_id, valor_pago, tx_id, participante_dados)
+        elif valor_pago and valor_pago >= 5 and participante_dados and participante_dados.get('cpf'):
+            # Fallback: sem cliente_id mas temos cpf nos dados extras
+            cpf_extra = re.sub(r'\D', '', str(participante_dados['cpf']))
+            _creditar_bilhetes_por_deposito(f'cli_{cpf_extra}', valor_pago, tx_id, participante_dados)
 
 def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id, participante_dados=None):
     """Gera bilhetes do sorteio automaticamente quando um depósito é confirmado.
@@ -954,10 +952,12 @@ async def route_sorteio_realizar(request):
 
 # ─── AGENDADOR AUTOMÁTICO DE SORTEIO ─────────────────────
 async def agendador_sorteio():
-    """Verifica a cada minuto se chegou a hora do sorteio e executa automaticamente"""
-    print('⏰ Agendador de sorteio iniciado', flush=True)
+    """Verifica a cada 30s se chegou a hora do sorteio e executa automaticamente.
+    Dispara se a hora configurada JÁ PASSOU (sem janela máxima), garantindo
+    que o sorteio sempre aconteça mesmo após reinícios do processo."""
+    print('⏰ Agendador de sorteio iniciado (intervalo: 30s)', flush=True)
     while True:
-        await asyncio.sleep(60)  # Verifica a cada 1 minuto
+        await asyncio.sleep(30)  # Verifica a cada 30 segundos
         try:
             config = get_sorteio_config()
             proximo = config.get('proximo_sorteio')
@@ -966,30 +966,72 @@ async def agendador_sorteio():
 
             import datetime as dt
             agora = dt.datetime.now(dt.timezone.utc)
-            alvo = dt.datetime.fromisoformat(proximo.replace('Z', '+00:00'))
+            try:
+                alvo = dt.datetime.fromisoformat(proximo.replace('Z', '+00:00'))
+            except Exception:
+                continue
             if alvo.tzinfo is None:
                 alvo = alvo.replace(tzinfo=dt.timezone.utc)
 
-            # Se passou da hora do sorteio (com tolerância de 2 min)
+            # Dispara se a hora alvo já passou (qualquer atraso é OK)
             diff = (agora - alvo).total_seconds()
-            if 0 <= diff <= 120:
-                print(f'🎰 HORA DO SORTEIO AUTOMÁTICO! diff={diff:.0f}s', flush=True)
+            if diff >= 0:
+                print(f'🎰 SORTEIO AUTOMÁTICO DISPARADO! Atraso: {diff:.0f}s | Alvo: {proximo}', flush=True)
 
-                # Verificar se já não foi feito (limpar proximo_sorteio para não repetir)
+                # Limpar proximo_sorteio PRIMEIRO para evitar re-disparo em caso de falha
                 conn = sqlite3.connect(DB_PATH)
                 conn.execute("UPDATE sorteio_config SET proximo_sorteio=NULL, updated_at=? WHERE id=1",
                              (datetime.now().isoformat(),))
                 conn.commit(); conn.close()
 
                 resultado = await _executar_sorteio_completo()
-                if resultado['success']:
+                if resultado.get('success'):
                     g = resultado['ganhador']
                     print(f'🎉 SORTEIO AUTO CONCLUÍDO: {g["nome"]} ganhou R${g["premio"]:.2f}!', flush=True)
                 else:
                     print(f'❌ Sorteio auto falhou: {resultado.get("error")}', flush=True)
+                    # Se falhou por falta de participantes, não precisa restaurar a data
 
         except Exception as e:
             print(f'❌ Agendador erro: {e}', flush=True)
+
+async def reprocessar_saques_pendentes_sorteio():
+    """Verifica a cada 5min se há saques de sorteio aguardando Telegram e tenta reprocessar"""
+    print('🔄 Monitor de saques pendentes iniciado', flush=True)
+    while True:
+        await asyncio.sleep(300)  # 5 minutos
+        try:
+            if not _telegram_ready:
+                continue
+            # Buscar saques de sorteio aguardando telegram
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("""SELECT h.sorteio_id, h.ganhador_nome, h.ganhador_chave_pix,
+                                h.ganhador_tipo_chave, h.premio_pago, h.saque_id
+                         FROM sorteio_historico h
+                         WHERE h.saque_status='aguardando_telegram'
+                         ORDER BY h.data_sorteio DESC LIMIT 5""")
+            pendentes = c.fetchall()
+            conn.close()
+
+            for row in pendentes:
+                sorteio_id, nome, chave_pix, tipo_chave, premio, saque_id = row
+                if not chave_pix:
+                    continue
+                print(f'💸 Reprocessando saque sorteio {sorteio_id}: R${premio:.2f} → {tipo_chave}:{chave_pix}', flush=True)
+                result = await executar_saque_bot(premio, tipo_chave, chave_pix)
+                novo_status = result.get('status', 'erro') if result.get('success') else 'erro'
+                obs = result.get('mensagem_bot', result.get('error', ''))[:500]
+                conn2 = sqlite3.connect(DB_PATH)
+                conn2.execute('UPDATE sorteio_historico SET saque_status=? WHERE sorteio_id=?',
+                              (novo_status, sorteio_id))
+                if saque_id:
+                    conn2.execute('UPDATE saques SET status=?, processado_at=?, observacao=? WHERE saque_id=?',
+                                  (novo_status, datetime.now().isoformat(), obs, saque_id))
+                conn2.commit(); conn2.close()
+                print(f'💸 Saque reprocessado: {novo_status} | {obs[:60]}', flush=True)
+        except Exception as e:
+            print(f'❌ Monitor saques erro: {e}', flush=True)
 
 async def route_sorteio_config(request):
     """ADMIN - Configurar parâmetros do sorteio"""
@@ -1713,6 +1755,9 @@ async def main():
 
     # Agendador de sorteio automático
     asyncio.create_task(agendador_sorteio())
+
+    # Monitor de saques pendentes (reprocessa quando Telegram voltar)
+    asyncio.create_task(reprocessar_saques_pendentes_sorteio())
 
     await asyncio.Event().wait()
 
