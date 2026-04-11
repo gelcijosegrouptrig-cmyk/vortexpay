@@ -1,5 +1,5 @@
 """
-VortexPay - Servidor Railway 24/7
+PaynexBet - Servidor Railway 24/7
 HTTP imediato + Telegram background com retry automático
 """
 import asyncio, re, json, os, sqlite3, time, hashlib, hmac
@@ -60,7 +60,7 @@ def init_db():
         percentual REAL DEFAULT 50.0,
         usar_media INTEGER DEFAULT 0,
         dias_media INTEGER DEFAULT 30,
-        descricao TEXT DEFAULT 'Sorteio VortexPay',
+        descricao TEXT DEFAULT 'Sorteio PaynexBet',
         proximo_sorteio TEXT,
         updated_at TEXT
     )''')
@@ -122,7 +122,7 @@ def init_db():
     # Config padrão
     conn.execute('''INSERT OR IGNORE INTO sorteio_config
         (id, ativo, valor_por_numero, premio_fixo, percentual, usar_media, dias_media, descricao, proximo_sorteio, updated_at)
-        VALUES (1, 1, 5.0, 0, 50.0, 0, 30, 'Sorteio VortexPay', NULL, ?)''',
+        VALUES (1, 1, 5.0, 0, 50.0, 0, 30, 'Sorteio PaynexBet', NULL, ?)''',
         (datetime.now().isoformat(),))
     conn.commit(); conn.close()
 
@@ -313,22 +313,22 @@ def listar_saques(limit=50):
 def load_html():
     if os.path.exists('index.html'):
         return open('index.html', encoding='utf-8').read()
-    return '<h1>VortexPay</h1>'
+    return '<h1>PaynexBet</h1>'
 
 def load_saque_html():
     if os.path.exists('saque.html'):
         return open('saque.html', encoding='utf-8').read()
-    return '<h1>VortexPay - Saque</h1>'
+    return '<h1>PaynexBet - Saque</h1>'
 
 def load_admin_html():
     if os.path.exists('admin.html'):
         return open('admin.html', encoding='utf-8').read()
-    return '<h1>VortexPay - Admin</h1>'
+    return '<h1>PaynexBet - Admin</h1>'
 
 def load_sorteio_html():
     if os.path.exists('sorteio.html'):
         return open('sorteio.html', encoding='utf-8').read()
-    return '<h1>VortexPay - Sorteio</h1>'
+    return '<h1>PaynexBet - Sorteio</h1>'
 
 # ─── HELPERS SORTEIO ────────────────────────────────────────
 def get_sorteio_config():
@@ -430,7 +430,7 @@ async def conectar_telegram():
             @client.on(events.NewMessage(from_users=BOT_USERNAME))
             async def handler(event):
                 texto = event.message.text or ''
-                # Padrões exatos que o VortexPay envia ao confirmar depósito
+                # Padrões exatos que o PaynexBet envia ao confirmar depósito
                 padroes = [
                     r'Depósito de R\$.*recebido com sucesso',
                     r'✅ Depósito de',
@@ -586,7 +586,7 @@ async def cors_middleware(request, handler):
         return web.Response(status=200, headers={
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type,X-VortexPay-Secret',
+            'Access-Control-Allow-Headers': 'Content-Type,X-PaynexBet-Secret',
         })
     r = await handler(request)
     r.headers['Access-Control-Allow-Origin'] = '*'
@@ -631,7 +631,7 @@ async def route_sorteio_info(request):
     resp = {
         'sorteio': {
             'ativo': bool(config.get('ativo', 1)),
-            'descricao': config.get('descricao', 'Sorteio VortexPay'),
+            'descricao': config.get('descricao', 'Sorteio PaynexBet'),
             'valor_por_numero': vp,
             'percentual': float(config.get('percentual') or 50),
             'premio_fixo': float(config.get('premio_fixo') or 0),
@@ -733,7 +733,7 @@ async def route_sorteio_cadastrar(request):
 async def route_sorteio_adicionar_deposito(request):
     """ADMIN ou sistema: adicionar depósito e gerar bilhetes automaticamente"""
     import json as _json
-    auth = (request.headers.get('X-VortexPay-Secret', '') or
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -944,7 +944,7 @@ async def _executar_sorteio_completo():
 
 async def route_sorteio_realizar(request):
     """ADMIN - Realizar o sorteio e executar saque automático"""
-    auth = (request.headers.get('X-VortexPay-Secret', '') or
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -1039,7 +1039,7 @@ async def reprocessar_saques_pendentes_sorteio():
 
 async def route_sorteio_config(request):
     """ADMIN - Configurar parâmetros do sorteio"""
-    auth = (request.headers.get('X-VortexPay-Secret', '') or
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -1056,7 +1056,7 @@ async def route_sorteio_config(request):
             int(data.get('usar_media', 0)),
             int(data.get('dias_media', 30)),
             float(data.get('premio_fixo', 0)),
-            str(data.get('descricao', 'Sorteio VortexPay')),
+            str(data.get('descricao', 'Sorteio PaynexBet')),
             data.get('proximo_sorteio'),
             datetime.now().isoformat(),
         ))
@@ -1067,7 +1067,7 @@ async def route_sorteio_config(request):
 
 async def route_sorteio_participantes(request):
     """ADMIN - Listar todos os participantes"""
-    auth = (request.headers.get('X-VortexPay-Secret', '') or
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -1104,7 +1104,7 @@ async def route_sorteio_participantes(request):
 async def route_atualizar_sessao(request):
     """Atualiza SESSION_STRING em runtime sem reiniciar o servidor"""
     global client, _telegram_ready, _telegram_session_invalida
-    auth = (request.headers.get('X-VortexPay-Secret', '') or
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -1232,7 +1232,7 @@ async def route_status_tx(request):
     })
 
 async def route_webhook(request):
-    secret = request.headers.get('X-VortexPay-Secret', '')
+    secret = request.headers.get('X-PaynexBet-Secret', '')
     if secret != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
@@ -1246,7 +1246,7 @@ async def route_webhook(request):
         return web.json_response({'error': str(e)}, status=500)
 
 async def route_transacoes(request):
-    auth = (request.headers.get('X-VortexPay-Secret', '') or
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -1537,7 +1537,7 @@ async def route_solicitar_saque(request):
 
 async def route_saques_admin(request):
     """Painel admin - listar todos os saques"""
-    auth = (request.headers.get('X-VortexPay-Secret', '') or
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -1558,7 +1558,7 @@ async def route_saques_admin(request):
 
 async def route_stats(request):
     """Dashboard completo com métricas consolidadas"""
-    auth = (request.headers.get('X-VortexPay-Secret', '') or
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -1629,7 +1629,7 @@ async def route_stats(request):
 
 async def route_cancelar_saque(request):
     """Cancelar um saque pendente"""
-    auth = (request.headers.get('X-VortexPay-Secret', '') or
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -1654,7 +1654,7 @@ async def route_cancelar_saque(request):
 
 async def route_confirmar_deposito_admin(request):
     """Confirmar manualmente um depósito pendente"""
-    auth = (request.headers.get('X-VortexPay-Secret', '') or
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -1675,7 +1675,7 @@ async def route_confirmar_deposito_admin(request):
 
 async def route_exportar_csv(request):
     """Exportar depósitos ou saques em CSV"""
-    auth = (request.headers.get('X-VortexPay-Secret', '') or
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.Response(text='Não autorizado', status=401)

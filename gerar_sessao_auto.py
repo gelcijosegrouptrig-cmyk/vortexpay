@@ -58,7 +58,7 @@ async def main():
             r = await http.post(
                 f'{RAILWAY_URL}/api/atualizar-sessao',
                 json={'session_string': session_str},
-                headers={'X-VortexPay-Secret': WEBHOOK_SECRET}
+                headers={'X-PaynexBet-Secret': WEBHOOK_SECRET}
             )
             result = r.json()
             if result.get('success'):

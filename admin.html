@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VortexPay - Painel Admin</title>
+<title>PaynexBet - Painel Admin</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -543,7 +543,7 @@
 <div id="login-screen">
   <div class="login-card">
     <div class="logo-icon">⚡</div>
-    <h2>VortexPay Admin</h2>
+    <h2>PaynexBet Admin</h2>
     <p>Painel de controle financeiro</p>
     <input id="login-secret" class="login-input" type="password" placeholder="Senha de acesso" autocomplete="off">
     <button class="login-btn" onclick="fazerLogin()">🔐 Entrar</button>
@@ -560,7 +560,7 @@
     <div class="sidebar-logo">
       <div class="icon">⚡</div>
       <div>
-        <h2>VortexPay</h2>
+        <h2>PaynexBet</h2>
         <p>Painel Admin</p>
       </div>
     </div>
@@ -912,7 +912,7 @@
           <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
             <div>
               <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Descrição</label>
-              <input id="sc-descricao" type="text" value="Sorteio Semanal VortexPay"
+              <input id="sc-descricao" type="text" value="Sorteio Semanal PaynexBet"
                 style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px">
             </div>
             <div>
@@ -1037,7 +1037,7 @@
                 <button class="refresh-btn" onclick="copiar(SECRET())" style="color:var(--orange)">📋 Copiar</button>
               </div>
             </div>
-            <p style="font-size:12px;color:var(--text3);margin-top:10px">⚠️ Nunca compartilhe sua chave de API publicamente. Use-a no header <code style="color:var(--orange)">X-VortexPay-Secret</code> em todas as requisições autenticadas.</p>
+            <p style="font-size:12px;color:var(--text3);margin-top:10px">⚠️ Nunca compartilhe sua chave de API publicamente. Use-a no header <code style="color:var(--orange)">X-PaynexBet-Secret</code> em todas as requisições autenticadas.</p>
           </div>
         </div>
 
@@ -1206,7 +1206,7 @@
               <div class="api-cols">
                 <div>
                   <div class="api-section-label">🔐 Auth — Header obrigatório</div>
-                  <pre class="code-block">X-VortexPay-Secret: {sua_secret_key}</pre>
+                  <pre class="code-block">X-PaynexBet-Secret: {sua_secret_key}</pre>
                   <div class="api-section-label" style="margin-top:12px">📥 Request Body</div>
                   <pre class="code-block">{
   "tx_id": "txn_abc123",
@@ -1244,7 +1244,7 @@
                   <div class="api-section-label">🔐 Auth — Query param</div>
                   <pre class="code-block">GET /api/transacoes?secret={sua_secret_key}</pre>
                   <div class="api-section-label" style="margin-top:12px">🔐 Auth — Header alternativo</div>
-                  <pre class="code-block">X-VortexPay-Secret: {sua_secret_key}</pre>
+                  <pre class="code-block">X-PaynexBet-Secret: {sua_secret_key}</pre>
                 </div>
                 <div>
                   <div class="api-section-label">📤 Response</div>
@@ -1495,7 +1495,7 @@ async function loadHealth() {
       <tr><td style="color:var(--text2);width:160px">💳 Depósito</td><td><a href="${BASE}/" target="_blank" style="color:var(--blue)">${BASE}/</a></td></tr>
       <tr><td style="color:var(--text2)">📤 Saque</td><td><a href="${BASE}/saque" target="_blank" style="color:var(--blue)">${BASE}/saque</a></td></tr>
       <tr><td style="color:var(--text2)">⚡ Health</td><td><a href="${BASE}/health" target="_blank" style="color:var(--green)">${BASE}/health</a></td></tr>
-      <tr><td style="color:var(--text2)">🔗 Webhook</td><td style="color:var(--text);font-family:monospace;font-size:12px">POST ${BASE}/webhook/confirmar<br><small style="color:var(--text3)">Header: X-VortexPay-Secret</small></td></tr>
+      <tr><td style="color:var(--text2)">🔗 Webhook</td><td style="color:var(--text);font-family:monospace;font-size:12px">POST ${BASE}/webhook/confirmar<br><small style="color:var(--text3)">Header: X-PaynexBet-Secret</small></td></tr>
     `;
 
     document.getElementById('sys-info-table').innerHTML = `
@@ -1866,7 +1866,7 @@ function initApiTab() {
   if (urlEl) urlEl.innerHTML = `<span>${BASE}</span><button class="copy-btn" onclick="copiar('${BASE}')" style="color:var(--orange)">📋 Copiar</button>`;
   // cURL exemplo
   const curl = document.getElementById('curl-example');
-  if (curl) curl.textContent = `curl -X POST ${BASE}/webhook/confirmar \\\n  -H "Content-Type: application/json" \\\n  -H "X-VortexPay-Secret: ${SECRET()}" \\\n  -d '{"tx_id":"txn_abc123","status":"pago"}'`;
+  if (curl) curl.textContent = `curl -X POST ${BASE}/webhook/confirmar \\\n  -H "Content-Type: application/json" \\\n  -H "X-PaynexBet-Secret: ${SECRET()}" \\\n  -d '{"tx_id":"txn_abc123","status":"pago"}'`;
 }
 
 function showResult(id, data, ok) {
@@ -1927,7 +1927,7 @@ async function testEndpoint(tipo) {
         if (!txid) { toast('⚠️ Digite um tx_id', 'error'); break; }
         r = await fetch(`${BASE}/webhook/confirmar`, {
           method:'POST',
-          headers:{'Content-Type':'application/json','X-VortexPay-Secret': SECRET()},
+          headers:{'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
           body: JSON.stringify({tx_id: txid, status:'pago'})
         });
         data = await r.json();
@@ -1970,7 +1970,7 @@ async function confirmarDeposito(txId) {
   try {
     const r = await fetch(`${BASE}/api/deposito/confirmar`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-VortexPay-Secret': SECRET() },
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
       body: JSON.stringify({ tx_id: txId })
     });
     const d = await r.json();
@@ -1988,7 +1988,7 @@ async function cancelarSaque(saqueId) {
   try {
     const r = await fetch(`${BASE}/api/saque/${encodeURIComponent(saqueId)}/cancelar`, {
       method: 'POST',
-      headers: { 'X-VortexPay-Secret': SECRET() }
+      headers: { 'X-PaynexBet-Secret': SECRET() }
     });
     const d = await r.json();
     if (d.success) {
@@ -2136,7 +2136,7 @@ async function salvarConfigSorteio() {
   try {
     const r = await fetch(`${BASE}/api/sorteio/config`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-VortexPay-Secret': secret},
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
       body: JSON.stringify(body)
     });
     const data = await r.json();
@@ -2156,7 +2156,7 @@ async function realizarSorteio() {
   try {
     const r = await fetch(`${BASE}/api/sorteio/realizar`, {
       method: 'POST',
-      headers: {'X-VortexPay-Secret': secret}
+      headers: {'X-PaynexBet-Secret': secret}
     });
     const data = await r.json();
 
