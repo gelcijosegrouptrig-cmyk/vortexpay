@@ -265,6 +265,8 @@ body{
       <button class="num-btn del" onclick="numpad('del')">⌫</button>
     </div>
 
+    <div id="aviso-manutencao" style="display:none;background:#ff6b6b22;border:1px solid #ff6b6b55;border-radius:8px;padding:10px 14px;margin-bottom:12px;color:#ff9999;font-size:13px;text-align:center;"></div>
+
     <button class="gerar-btn" id="gerar-btn" onclick="gerarPix()" disabled>
       ⚡ Gerar QR Code Pix
     </button>
@@ -416,15 +418,22 @@ async function gerarPix() {
       iniciarPolling(data.tx_id);
 
     } else {
-      document.getElementById('erro-msg').textContent = data.error || 'Erro ao gerar PIX.';
+      // Mensagem de erro amigável
+      let errMsg = data.error || 'Erro ao gerar PIX.';
+      if (errMsg.includes('manutenção') || errMsg.includes('reconectando') || errMsg.includes('indisponível')) {
+        errMsg = '🔧 Sistema em manutenção temporária.\nTente novamente em alguns minutos.';
+      } else if (errMsg.includes('Telegram')) {
+        errMsg = '⚠️ Serviço temporariamente indisponível.\nAguarde alguns instantes e tente novamente.';
+      }
+      document.getElementById('erro-msg').textContent = errMsg;
       mostrar('erro');
     }
   } catch (e) {
     clearInterval(timer);
     if (e.name === 'AbortError') {
-      document.getElementById('erro-msg').textContent = 'Tempo esgotado. Tente novamente.';
+      document.getElementById('erro-msg').textContent = '⏱️ Tempo esgotado. O sistema pode estar sobrecarregado.\nTente novamente em alguns minutos.';
     } else {
-      document.getElementById('erro-msg').textContent = 'Erro de conexão com o servidor.';
+      document.getElementById('erro-msg').textContent = '❌ Erro de conexão com o servidor.\nVerifique sua internet e tente novamente.';
     }
     mostrar('erro');
   }
@@ -554,6 +563,34 @@ function copiarPix() {
     alert('Código Pix copiado!');
   });
 }
+
+// ======= STATUS CHECK AO CARREGAR =======
+async function checarStatusSistema() {
+  try {
+    const resp = await fetch('/health');
+    const data = await resp.json();
+    const aviso = document.getElementById('aviso-manutencao');
+    if (data.telegram === false) {
+      aviso.style.display = 'block';
+      aviso.textContent = '⚠️ Sistema em manutenção. Depósitos temporariamente indisponíveis.';
+      document.getElementById('gerar-btn').disabled = true;
+      document.querySelector('.valor-info').textContent = '⚙️ Sistema em reconexão. Aguarde...';
+    } else {
+      aviso.style.display = 'none';
+      // Reabilitar botão se valor válido
+      const num = parseInt(rawValue || '0') / 100;
+      if (num >= 5) document.getElementById('gerar-btn').disabled = false;
+    }
+  } catch(e) {
+    // Silencioso - não bloquear se health falhar
+  }
+}
+
+// Verificar status ao carregar e a cada 30s
+document.addEventListener('DOMContentLoaded', () => {
+  checarStatusSistema();
+  setInterval(checarStatusSistema, 30000);
+});
 
 // ======= QR CODE =======
 function desenharQR(canvasId, text) {

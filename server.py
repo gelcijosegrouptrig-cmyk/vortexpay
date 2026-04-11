@@ -26,6 +26,7 @@ _lock = asyncio.Lock()
 _saque_lock = asyncio.Lock()
 _telegram_ready = False
 _telegram_tentativas = 0
+_telegram_session_invalida = False  # True quando sessão foi revogada (AuthKeyDuplicatedError)
 
 # ─── BANCO DE DADOS ──────────────────────────────────────────
 DB_PATH = '/tmp/transacoes.db'
@@ -143,8 +144,15 @@ def load_admin_html():
 
 # ─── TELEGRAM - Conectar com retry ─────────────────────────
 async def conectar_telegram():
-    global _telegram_ready, _telegram_tentativas
+    global _telegram_ready, _telegram_tentativas, _telegram_session_invalida
     while True:
+        # Se sessão foi revogada, espera longa (evita flood) mas segue tentando
+        if _telegram_session_invalida:
+            print('⚠️ Sessão inválida/revogada. Aguardando 5min antes de tentar nova sessão...', flush=True)
+            await asyncio.sleep(300)
+            _telegram_session_invalida = False  # Tenta novamente
+            continue
+
         _telegram_tentativas += 1
         try:
             print(f'🔄 Tentativa {_telegram_tentativas} - Conectando Telegram...', flush=True)
@@ -157,7 +165,8 @@ async def conectar_telegram():
             await client.connect()
 
             if not await client.is_user_authorized():
-                print('❌ Sessão inválida!', flush=True)
+                print('❌ Sessão inválida/não autorizada!', flush=True)
+                _telegram_session_invalida = True
                 await asyncio.sleep(30)
                 continue
 
@@ -213,10 +222,19 @@ async def conectar_telegram():
             await client.run_until_disconnected()
 
         except Exception as e:
-            print(f'❌ Erro Telegram: {e}', flush=True)
+            nome_erro = type(e).__name__
+            print(f'❌ Erro Telegram ({nome_erro}): {e}', flush=True)
+            
+            # AuthKeyDuplicatedError: sessão revogada, não adianta tentar com mesma session
+            if 'AuthKeyDuplicated' in nome_erro or 'AuthKeyDuplicated' in str(e):
+                print('🚫 Sessão revogada (usada em dois IPs). Pausando 5min...', flush=True)
+                _telegram_session_invalida = True
+                _telegram_ready = False
+                await asyncio.sleep(300)
+                continue
 
         _telegram_ready = False
-        espera = min(30, _telegram_tentativas * 5)
+        espera = min(60, _telegram_tentativas * 5)
         print(f'🔄 Reconectando em {espera}s...', flush=True)
         await asyncio.sleep(espera)
 
@@ -250,6 +268,10 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None):
 
     async with _lock:
         try:
+            # Verificar novamente dentro do lock
+            if not _telegram_ready:
+                return {'success': False, 'error': '⚠️ Sistema em manutenção. O bot Telegram está sendo reconectado. Tente novamente em alguns minutos.'}
+
             bot = await client.get_entity(BOT_USERNAME)
 
             # Clicar DEPOSITAR
@@ -318,13 +340,72 @@ async def cors_middleware(request, handler):
     return r
 
 # ─── ROTAS ────────────────────────────────────────────────
+async def route_atualizar_sessao(request):
+    """Atualiza SESSION_STRING em runtime sem reiniciar o servidor"""
+    global client, _telegram_ready, _telegram_session_invalida
+    auth = (request.headers.get('X-VortexPay-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        nova_sessao = str(data.get('session_string', '')).strip()
+        if not nova_sessao or len(nova_sessao) < 50:
+            return web.json_response({'error': 'session_string inválida (muito curta)'}, status=400)
+
+        # Salvar nova sessão no arquivo
+        with open('session_string.txt', 'w') as f:
+            f.write(nova_sessao)
+        print(f'🔑 Nova sessão recebida via API ({len(nova_sessao)} chars)', flush=True)
+
+        # Reinicializar cliente com nova sessão
+        try:
+            if client.is_connected():
+                await client.disconnect()
+        except:
+            pass
+
+        from telethon.sessions import StringSession as SS
+        client.__init__(SS(nova_sessao), API_ID, API_HASH)
+        _telegram_ready = False
+        _telegram_session_invalida = False
+
+        # Tentar conectar imediatamente
+        try:
+            await client.connect()
+            if await client.is_user_authorized():
+                me = await client.get_me()
+                _telegram_ready = True
+                print(f'✅ Nova sessão OK: {me.first_name} ({me.id})', flush=True)
+                return web.json_response({
+                    'success': True,
+                    'message': f'Sessão atualizada! Conectado como {me.first_name}',
+                    'user': me.first_name,
+                })
+            else:
+                return web.json_response({'success': False, 'error': 'Sessão não autorizada'})
+        except Exception as e:
+            return web.json_response({'success': False, 'error': f'Erro ao conectar: {e}'})
+
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
 async def route_index(request):
     return web.Response(text=load_html(), content_type='text/html', charset='utf-8')
 
 async def route_health(request):
+    motivo = None
+    if not _telegram_ready:
+        if _telegram_session_invalida:
+            motivo = 'sessao_invalida'
+        elif _telegram_tentativas > 0:
+            motivo = 'reconectando'
+        else:
+            motivo = 'iniciando'
     return web.json_response({
         'status': 'online',
         'telegram': _telegram_ready,
+        'telegram_motivo': motivo,
         'tentativas': _telegram_tentativas,
         'bot': BOT_USERNAME,
         'webhook': '/webhook/confirmar',
@@ -885,6 +966,7 @@ async def main():
     app.router.add_post('/api/saque/{saque_id}/cancelar', route_cancelar_saque)
     app.router.add_post('/api/deposito/confirmar', route_confirmar_deposito_admin)
     app.router.add_get('/api/exportar', route_exportar_csv)
+    app.router.add_post('/api/atualizar-sessao', route_atualizar_sessao)
 
     runner = web.AppRunner(app)
     await runner.setup()
