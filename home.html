@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="description" content="PaynexBet — Depósito Pix instantâneo, Saque rápido e Sorteios exclusivos.">
+<title>PaynexBet — Plataforma de Pagamentos</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --gold:#FFD700;
+  --gold2:#FFA500;
+  --green:#00d68f;
+  --blue:#00d4ff;
+  --bg:#0a0a0f;
+  --card:#111118;
+  --card2:#16161f;
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg);
+  color:#fff;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ── PARTÍCULAS ── */
+#particles{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden}
+.particle{position:absolute;border-radius:50%;animation:float linear infinite;opacity:.4}
+@keyframes float{0%{transform:translateY(100vh) scale(0)}100%{transform:translateY(-100px) scale(1);opacity:0}}
+
+/* ── HERO ── */
+.hero{
+  position:relative;z-index:1;
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;
+  padding:40px 20px 60px;
+  background:radial-gradient(ellipse at 50% 0%, #FFD70015 0%, transparent 70%);
+}
+.logo-wrap{margin-bottom:24px}
+.logo-icon{
+  font-size:64px;
+  display:block;
+  animation:pulse 2.5s ease-in-out infinite;
+  filter:drop-shadow(0 0 20px #FFD70088);
+}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.logo-name{
+  font-size:42px;font-weight:900;letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2),#fff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-shadow:none;
+  line-height:1;
+}
+.logo-sub{
+  font-size:13px;color:#aaa;letter-spacing:3px;
+  text-transform:uppercase;margin-top:4px;
+}
+.hero-title{
+  font-size:28px;font-weight:800;line-height:1.2;
+  margin-bottom:14px;
+  max-width:340px;
+}
+.hero-title span{color:var(--gold)}
+.hero-desc{
+  font-size:15px;color:#999;line-height:1.6;
+  max-width:320px;margin-bottom:36px;
+}
+
+/* ── BOTÕES HERO ── */
+.hero-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px}
+.btn-hero{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:16px 24px;border-radius:14px;
+  font-size:16px;font-weight:700;
+  text-decoration:none;border:none;cursor:pointer;
+  transition:all .2s;
+  position:relative;overflow:hidden;
+}
+.btn-hero::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);
+  opacity:0;transition:.2s;
+}
+.btn-hero:active::after{opacity:1}
+.btn-pix{
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:#000;
+  box-shadow:0 4px 24px #FFD70044;
+}
+.btn-pix:active{transform:scale(.97)}
+.btn-saque{
+  background:linear-gradient(135deg,#00d68f22,#00d68f11);
+  border:1.5px solid #00d68f55;
+  color:var(--green);
+}
+.btn-saque:active{transform:scale(.97)}
+.btn-sorteio{
+  background:linear-gradient(135deg,#8b5cf622,#8b5cf611);
+  border:1.5px solid #8b5cf655;
+  color:#a78bfa;
+}
+.btn-sorteio:active{transform:scale(.97)}
+
+/* ── BADGE ONLINE ── */
+.badge-online{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#00d68f15;border:1px solid #00d68f44;
+  border-radius:999px;padding:6px 14px;
+  font-size:12px;color:var(--green);font-weight:600;
+  margin-bottom:28px;
+}
+.dot-online{width:7px;height:7px;background:var(--green);border-radius:50%;animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* ── CARDS FEATURES ── */
+.features{
+  position:relative;z-index:1;
+  padding:0 16px 60px;
+  max-width:480px;margin:0 auto;
+}
+.features-title{
+  text-align:center;font-size:18px;font-weight:700;
+  color:#fff;margin-bottom:16px;
+}
+.feat-grid{display:flex;flex-direction:column;gap:12px}
+.feat-card{
+  background:var(--card);
+  border:1px solid #ffffff0f;
+  border-radius:16px;
+  padding:20px;
+  display:flex;align-items:center;gap:16px;
+  transition:border-color .2s;
+}
+.feat-card:active{border-color:#FFD70044}
+.feat-icon{
+  font-size:36px;min-width:48px;text-align:center;
+  filter:drop-shadow(0 0 10px #FFD70066);
+}
+.feat-info h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.feat-info p{font-size:12px;color:#666;line-height:1.5}
+.feat-badge{
+  display:inline-block;
+  font-size:10px;font-weight:700;
+  padding:2px 8px;border-radius:999px;
+  margin-top:6px;
+}
+.feat-badge.instant{background:#00d68f22;color:var(--green);border:1px solid #00d68f44}
+.feat-badge.fast{background:#FFD70022;color:var(--gold);border:1px solid #FFD70044}
+.feat-badge.hot{background:#ff4d4d22;color:#ff6b6b;border:1px solid #ff4d4d44}
+
+/* ── STATS ── */
+.stats{
+  position:relative;z-index:1;
+  padding:0 16px 60px;
+  max-width:480px;margin:0 auto;
+}
+.stats-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+.stat-card{
+  background:var(--card);
+  border:1px solid #ffffff0f;
+  border-radius:14px;
+  padding:18px 14px;
+  text-align:center;
+}
+.stat-val{font-size:26px;font-weight:900;color:var(--gold)}
+.stat-lbl{font-size:11px;color:#555;margin-top:4px}
+
+/* ── FOOTER ── */
+.footer{
+  position:relative;z-index:1;
+  text-align:center;padding:24px 16px 40px;
+  font-size:11px;color:#333;
+}
+.footer a{color:#555;text-decoration:none}
+
+/* ── DIVIDER ── */
+.divider{
+  position:relative;z-index:1;
+  display:flex;align-items:center;gap:12px;
+  padding:0 16px;max-width:480px;margin:0 auto 24px;
+}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#ffffff0a}
+.divider span{font-size:11px;color:#333;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<!-- Partículas -->
+<div id="particles"></div>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+  <div class="logo-wrap">
+    <span class="logo-icon">🎰</span>
+    <div class="logo-name">PaynexBet</div>
+    <div class="logo-sub">Plataforma de Pagamentos</div>
+  </div>
+
+  <div class="badge-online">
+    <span class="dot-online"></span>
+    Sistema online agora
+  </div>
+
+  <h1 class="hero-title">
+    Depósito <span>Pix</span> instantâneo.<br>
+    Saque na hora.
+  </h1>
+  <p class="hero-desc">
+    Plataforma rápida, segura e confiável.<br>
+    Pague via Pix e receba seus números da sorte!
+  </p>
+
+  <div class="hero-btns">
+    <a href="/pague" class="btn-hero btn-pix">
+      ⚡ Gerar Pix — Depositar agora
+    </a>
+    <a href="/sacar" class="btn-hero btn-saque">
+      💸 Solicitar Saque
+    </a>
+    <a href="/sorteio" class="btn-hero btn-sorteio">
+      🎲 Participar do Sorteio
+    </a>
+  </div>
+</section>
+
+<!-- ══ FEATURES ══ -->
+<section class="features">
+  <div class="divider"><span>O que oferecemos</span></div>
+
+  <div class="feat-grid">
+
+    <div class="feat-card">
+      <div class="feat-icon">⚡</div>
+      <div class="feat-info">
+        <h3>Depósito Pix</h3>
+        <p>Gere seu QR Code Pix em segundos e deposite de forma rápida e segura.</p>
+        <span class="feat-badge instant">Instantâneo</span>
+      </div>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">💸</div>
+      <div class="feat-info">
+        <h3>Saque Rápido</h3>
+        <p>Solicite seu saque via Pix e receba direto na sua chave cadastrada.</p>
+        <span class="feat-badge fast">Rápido</span>
+      </div>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🎲</div>
+      <div class="feat-info">
+        <h3>Sorteio Exclusivo</h3>
+        <p>A cada R$5 depositado você ganha 1 número da sorte. Mais depósito = mais chances!</p>
+        <span class="feat-badge hot">🔥 Ao vivo</span>
+      </div>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🔒</div>
+      <div class="feat-info">
+        <h3>100% Seguro</h3>
+        <p>Seus dados são protegidos. Cadastro só após confirmação do pagamento.</p>
+        <span class="feat-badge instant">Protegido</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ STATS ══ -->
+<section class="stats">
+  <div class="divider"><span>Números da plataforma</span></div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-val" id="s-part">--</div>
+      <div class="stat-lbl">Participantes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="s-premio">--</div>
+      <div class="stat-lbl">Prêmio acumulado</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="s-bil">--</div>
+      <div class="stat-lbl">Bilhetes ativos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val">R$5</div>
+      <div class="stat-lbl">Por número da sorte</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CTA FINAL ══ -->
+<section style="position:relative;z-index:1;padding:0 16px 40px;max-width:480px;margin:0 auto;width:100%">
+  <a href="/pague" class="btn-hero btn-pix" style="font-size:18px;padding:18px">
+    🚀 Começar agora — Gerar Pix
+  </a>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer class="footer">
+  <div style="margin-bottom:8px">🎰 <strong style="color:#555">PaynexBet</strong></div>
+  <div>Plataforma de pagamentos Pix instantâneo</div>
+  <div style="margin-top:12px;display:flex;justify-content:center;gap:20px">
+    <a href="/pague">💳 Pagar</a>
+    <a href="/sacar">💸 Sacar</a>
+    <a href="/sorteio">🎲 Sorteio</a>
+  </div>
+</footer>
+
+<script>
+// Partículas
+(function(){
+  const c = document.getElementById('particles');
+  const colors = ['#FFD700','#FFA500','#00d68f','#a78bfa','#00d4ff'];
+  for(let i=0;i<20;i++){
+    const el = document.createElement('div');
+    el.className = 'particle';
+    const size = Math.random()*4+2;
+    el.style.cssText = `
+      width:${size}px;height:${size}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      left:${Math.random()*100}%;
+      animation-duration:${Math.random()*15+10}s;
+      animation-delay:${Math.random()*10}s;
+    `;
+    c.appendChild(el);
+  }
+})();
+
+// Carregar stats do sorteio
+(async function(){
+  try{
+    const r = await fetch('/api/sorteio/info');
+    const d = await r.json();
+    const s = d.sorteio;
+    document.getElementById('s-part').textContent   = s.total_participantes || 0;
+    document.getElementById('s-bil').textContent    = s.total_bilhetes || 0;
+    const p = s.premio_estimado_total || 0;
+    document.getElementById('s-premio').textContent = 'R$'+p.toFixed(0);
+  }catch(e){}
+})();
+</script>
+</body>
+</html>

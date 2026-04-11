@@ -310,6 +310,11 @@ def listar_saques(limit=50):
     return [dict(zip(cols, r)) for r in rows]
 
 # ─── HTML ───────────────────────────────────────────────────
+def load_home_html():
+    if os.path.exists('home.html'):
+        return open('home.html', encoding='utf-8').read()
+    return '<h1>PaynexBet</h1>'
+
 def load_html():
     if os.path.exists('index.html'):
         return open('index.html', encoding='utf-8').read()
@@ -1151,6 +1156,10 @@ async def route_atualizar_sessao(request):
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
 
+async def route_home(request):
+    """Página principal — paynexbet.com"""
+    return web.Response(text=load_home_html(), content_type='text/html', charset='utf-8')
+
 async def route_index(request):
     return web.Response(text=load_html(), content_type='text/html', charset='utf-8')
 
@@ -1718,7 +1727,8 @@ async def main():
     print('✅ DB ok', flush=True)
 
     app = web.Application(middlewares=[cors_middleware])
-    app.router.add_get('/', route_index)          # Página principal (em breve)
+    app.router.add_get('/', route_home)            # Página principal PaynexBet
+    app.router.add_get('/home', route_home)
     app.router.add_get('/index.html', route_index)
     app.router.add_get('/health', route_health)
     app.router.add_get('/api/status', route_health)
