@@ -23,6 +23,7 @@ if not SESSION_STR:
 
 client = TelegramClient(StringSession(SESSION_STR), API_ID, API_HASH)
 _lock = asyncio.Lock()
+_saque_lock = asyncio.Lock()
 _telegram_ready = False
 _telegram_tentativas = 0
 
@@ -412,7 +413,7 @@ async def route_saque_page(request):
 async def route_saldo(request):
     """Retorna saldo atual da conta via bot Telegram"""
     if not _telegram_ready:
-        return web.json_response({'saldo': 0, 'disponivel': 0, 'error': 'Telegram não conectado'})
+        return web.json_response({'success': False, 'saldo': 0, 'disponivel': 0, 'error': 'Telegram não conectado'})
     try:
         bot = await client.get_entity(BOT_USERNAME)
         await client.send_message(bot, '/start')
@@ -432,13 +433,176 @@ async def route_saldo(request):
                 if not m2:
                     m2 = re.search(r'[Ss]aque[:\s]+R\$\s*([\d,.]+)', msg.text)
                 disponivel = float(m2.group(1).replace(',', '.')) if m2 else saldo
-                return web.json_response({'saldo': saldo, 'disponivel': disponivel})
-        return web.json_response({'saldo': 0, 'disponivel': 0, 'error': 'Saldo não encontrado'})
+                return web.json_response({'success': True, 'saldo': saldo, 'disponivel': disponivel})
+        return web.json_response({'success': False, 'saldo': 0, 'disponivel': 0, 'error': 'Saldo não encontrado'})
     except Exception as e:
-        return web.json_response({'saldo': 0, 'disponivel': 0, 'error': str(e)})
+        return web.json_response({'success': False, 'saldo': 0, 'disponivel': 0, 'error': str(e)})
+
+async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> dict:
+    """
+    Executa o fluxo de saque manual no bot VortexBank:
+    1. Abre menu SACAR
+    2. Clica em 'Realizar Saque (Manual)'
+    3. Envia o valor
+    4. Seleciona tipo de chave Pix
+    5. Envia a chave Pix
+    6. Captura resposta do bot
+    """
+    if not _telegram_ready:
+        for _ in range(30):
+            await asyncio.sleep(1)
+            if _telegram_ready:
+                break
+        if not _telegram_ready:
+            return {'success': False, 'error': 'Serviço temporariamente indisponível. Tente novamente.'}
+
+    async with _saque_lock:
+        try:
+            bot = await client.get_entity(BOT_USERNAME)
+
+            # ── PASSO 1: Abrir menu principal ──────────────────────
+            await client.send_message(bot, '/start')
+            await asyncio.sleep(2)
+
+            # ── PASSO 2: Clicar em SACAR ──────────────────────────
+            msgs = await client.get_messages(bot, limit=5)
+            clicou_sacar = False
+            for msg in msgs:
+                if msg.buttons:
+                    for row in msg.buttons:
+                        for btn in row:
+                            if 'SACAR' in btn.text:
+                                await btn.click()
+                                await asyncio.sleep(3)
+                                clicou_sacar = True
+                                break
+                        if clicou_sacar: break
+                if clicou_sacar: break
+
+            if not clicou_sacar:
+                return {'success': False, 'error': 'Botão SACAR não encontrado no bot.'}
+
+            # ── PASSO 3: Clicar em 'Realizar Saque (Manual)' ──────
+            msgs = await client.get_messages(bot, limit=5)
+            clicou_manual = False
+            for msg in msgs:
+                if msg.buttons:
+                    for row in msg.buttons:
+                        for btn in row:
+                            if 'Manual' in btn.text or 'Saque' in btn.text:
+                                await btn.click()
+                                await asyncio.sleep(3)
+                                clicou_manual = True
+                                break
+                        if clicou_manual: break
+                if clicou_manual: break
+
+            if not clicou_manual:
+                return {'success': False, 'error': 'Botão Saque Manual não encontrado.'}
+
+            # ── PASSO 4: Enviar valor ──────────────────────────────
+            valor_str = str(int(valor)) if valor == int(valor) else f"{valor:.2f}"
+            await client.send_message(bot, valor_str)
+            await asyncio.sleep(4)
+
+            # ── PASSO 5: Selecionar tipo de chave ─────────────────
+            mapa_tipo = {
+                'cpf': 'CPF',
+                'telefone': 'Telefone',
+                'email': 'E-mail',
+                'aleatoria': 'Aleatória',
+                'cnpj': 'CNPJ',
+            }
+            texto_tipo = mapa_tipo.get(tipo_chave.lower(), 'CPF')
+
+            msgs = await client.get_messages(bot, limit=5)
+            clicou_tipo = False
+            for msg in msgs:
+                if msg.buttons:
+                    for row in msg.buttons:
+                        for btn in row:
+                            if texto_tipo.lower() in btn.text.lower():
+                                await btn.click()
+                                await asyncio.sleep(3)
+                                clicou_tipo = True
+                                break
+                        if clicou_tipo: break
+                if clicou_tipo: break
+
+            if not clicou_tipo:
+                # Tentar enviar como texto se não achou botão
+                await client.send_message(bot, texto_tipo)
+                await asyncio.sleep(3)
+
+            # ── PASSO 6: Enviar chave Pix ──────────────────────────
+            await client.send_message(bot, chave_pix)
+            await asyncio.sleep(6)
+
+            # ── PASSO 7: Capturar resposta ─────────────────────────
+            msgs = await client.get_messages(bot, limit=8)
+            resposta_bot = ''
+            status_saque = 'pendente'
+
+            padroes_sucesso = [
+                r'saque.*solicitado',
+                r'saque.*registrado',
+                r'saque.*processando',
+                r'solicitação.*enviada',
+                r'será.*processado',
+                r'aguardando.*processamento',
+                r'✅.*saque',
+                r'pedido.*saque',
+                r'R\$.*solicitado',
+                r'Confirmar saque',
+            ]
+            padroes_erro = [
+                r'saldo insuficiente',
+                r'valor.*inválido',
+                r'chave.*inválida',
+                r'erro',
+                r'cancelado',
+            ]
+
+            for msg in msgs:
+                if not msg.text:
+                    continue
+                texto = msg.text
+                if any(re.search(p, texto, re.IGNORECASE) for p in padroes_sucesso):
+                    resposta_bot = texto[:300]
+                    status_saque = 'enviado'
+                    break
+                if any(re.search(p, texto, re.IGNORECASE) for p in padroes_erro):
+                    resposta_bot = texto[:300]
+                    status_saque = 'erro'
+                    break
+
+            # Se não reconheceu padrão, pega última mensagem do bot
+            if not resposta_bot:
+                for msg in msgs:
+                    if msg.text and len(msg.text) > 10:
+                        resposta_bot = msg.text[:300]
+                        status_saque = 'enviado'  # assume enviado
+                        break
+
+            print(f'💸 Saque executado: R${valor:.2f} → {tipo_chave}: {chave_pix} | Status: {status_saque}', flush=True)
+
+            return {
+                'success': True,
+                'status': status_saque,
+                'status_msg': 'Saque solicitado com sucesso!' if status_saque == 'enviado' else 'Saque em análise',
+                'mensagem_bot': resposta_bot,
+                'valor': valor,
+                'tipo_chave': tipo_chave,
+                'chave_pix': chave_pix,
+            }
+
+        except Exception as e:
+            print(f'❌ Erro ao executar saque: {e}', flush=True)
+            return {'success': False, 'error': f'Erro interno: {str(e)}'}
+
 
 async def route_solicitar_saque(request):
-    """Registra solicitação de saque manual"""
+    """Endpoint principal de saque manual - executa fluxo completo no bot"""
     try:
         data = await request.json()
         valor = float(data.get('valor', 0))
@@ -448,33 +612,48 @@ async def route_solicitar_saque(request):
         if valor < 10:
             return web.json_response({'success': False, 'error': 'Valor mínimo para saque é R$ 10,00'})
         if not chave_pix or len(chave_pix) < 5:
-            return web.json_response({'success': False, 'error': 'Chave Pix inválida'})
+            return web.json_response({'success': False, 'error': 'Chave Pix inválida. Verifique e tente novamente.'})
 
         # Gerar ID único para o saque
-        import hashlib, time as t
-        saque_id = 'saq_' + hashlib.md5(f"{chave_pix}{valor}{t.time()}".encode()).hexdigest()[:12]
+        saque_id = 'saq_' + hashlib.md5(f"{chave_pix}{valor}{time.time()}".encode()).hexdigest()[:12]
 
-        # Salvar no banco
+        # Salvar no banco como pendente
         salvar_saque(saque_id, valor, chave_pix, tipo_chave)
 
-        # Notificar via Telegram (opcional - log interno)
-        if _telegram_ready:
-            try:
-                bot = await client.get_entity(BOT_USERNAME)
-                # Somente log, não envia mensagem ao bot de pagamento
-                print(f'💸 Saque solicitado: {saque_id} R${valor:.2f} → {tipo_chave}: {chave_pix}', flush=True)
-            except:
-                pass
+        # Executar fluxo no bot Telegram
+        resultado = await executar_saque_bot(valor, tipo_chave, chave_pix)
 
-        return web.json_response({
-            'success': True,
-            'saque_id': saque_id,
-            'valor': valor,
-            'chave_pix': chave_pix,
-            'tipo_chave': tipo_chave,
-            'status': 'pendente',
-            'mensagem': 'Saque registrado! Será processado manualmente em até 24h úteis.'
-        })
+        if resultado['success']:
+            # Atualizar status no banco
+            conn = sqlite3.connect(DB_PATH)
+            conn.execute(
+                'UPDATE saques SET status=?, processado_at=?, observacao=? WHERE saque_id=?',
+                (resultado['status'], datetime.now().isoformat(),
+                 resultado.get('mensagem_bot', '')[:500], saque_id)
+            )
+            conn.commit(); conn.close()
+
+            return web.json_response({
+                'success': True,
+                'saque_id': saque_id,
+                'valor': valor,
+                'chave_pix': chave_pix,
+                'tipo_chave': tipo_chave,
+                'status': resultado['status'],
+                'status_msg': resultado.get('status_msg', 'Saque solicitado!'),
+                'mensagem_bot': resultado.get('mensagem_bot', ''),
+            })
+        else:
+            # Marcar como erro no banco
+            conn = sqlite3.connect(DB_PATH)
+            conn.execute(
+                'UPDATE saques SET status=?, observacao=? WHERE saque_id=?',
+                ('erro', resultado.get('error', ''), saque_id)
+            )
+            conn.commit(); conn.close()
+
+            return web.json_response({'success': False, 'error': resultado.get('error', 'Erro desconhecido')})
+
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)})
 

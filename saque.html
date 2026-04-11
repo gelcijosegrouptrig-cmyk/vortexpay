@@ -2,549 +2,804 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>VortexPay - Saque</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f0f1a">
+<title>VortexPay — Saque Pix</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    min-height: 100vh;
-    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-    font-family: 'Segoe UI', sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  }
-  .card {
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 24px;
-    padding: 32px 28px;
-    width: 100%;
-    max-width: 400px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-  .logo {
-    text-align: center;
-    margin-bottom: 24px;
-  }
-  .logo-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, #ff6b35, #f7931e);
-    border-radius: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    margin-bottom: 10px;
-    box-shadow: 0 8px 24px rgba(255,107,53,0.4);
-  }
-  .logo h1 {
-    color: #fff;
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 1px;
-  }
-  .logo p {
-    color: rgba(255,255,255,0.5);
-    font-size: 12px;
-    margin-top: 2px;
-  }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:#0f0f1a;
+  color:#fff;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
 
-  /* Saldo */
-  .saldo-box {
-    background: linear-gradient(135deg, rgba(255,107,53,0.15), rgba(247,147,30,0.1));
-    border: 1px solid rgba(255,107,53,0.3);
-    border-radius: 16px;
-    padding: 18px;
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  .saldo-label {
-    color: rgba(255,255,255,0.6);
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 6px;
-  }
-  .saldo-valor {
-    color: #fff;
-    font-size: 32px;
-    font-weight: 700;
-  }
-  .saldo-disponivel {
-    color: rgba(255,255,255,0.5);
-    font-size: 12px;
-    margin-top: 4px;
-  }
-  .saldo-disponivel span {
-    color: #4ade80;
-    font-weight: 600;
-  }
+.card{
+  background:linear-gradient(145deg,#1a1a2e,#16213e);
+  border:1px solid #ff6b3333;
+  border-radius:24px;
+  padding:32px 24px;
+  width:100%;
+  max-width:420px;
+  box-shadow:0 0 40px rgba(255,107,51,0.1);
+}
 
-  /* Valor display */
-  .valor-display {
-    background: rgba(0,0,0,0.3);
-    border: 2px solid rgba(255,255,255,0.1);
-    border-radius: 16px;
-    padding: 20px;
-    text-align: center;
-    margin-bottom: 8px;
-    transition: border-color 0.3s;
-  }
-  .valor-display.active {
-    border-color: rgba(255,107,53,0.6);
-  }
-  .valor-label {
-    color: rgba(255,255,255,0.5);
-    font-size: 12px;
-    margin-bottom: 4px;
-  }
-  .valor-numero {
-    color: #fff;
-    font-size: 36px;
-    font-weight: 700;
-    letter-spacing: 1px;
-  }
-  .valor-numero .cifrao { 
-    font-size: 20px; 
-    opacity: 0.7; 
-    margin-right: 4px;
-  }
+.logo{text-align:center;margin-bottom:28px;}
+.logo-icon{
+  width:72px;height:72px;
+  background:linear-gradient(135deg,#ff6b33,#ff3366);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 12px;
+  font-size:32px;
+  box-shadow:0 0 30px rgba(255,107,51,0.4);
+}
+.logo h1{font-size:24px;font-weight:800;letter-spacing:1px;}
+.logo p{font-size:13px;color:#888;margin-top:4px;}
 
-  /* Teclado numérico */
-  .numpad {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-  .numpad-btn {
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px;
-    color: #fff;
-    font-size: 20px;
-    font-weight: 600;
-    padding: 16px;
-    cursor: pointer;
-    transition: all 0.15s;
-    text-align: center;
-    user-select: none;
-  }
-  .numpad-btn:active, .numpad-btn:hover {
-    background: rgba(255,107,53,0.25);
-    border-color: rgba(255,107,53,0.5);
-    transform: scale(0.97);
-  }
-  .numpad-btn.del {
-    background: rgba(255,59,59,0.1);
-    border-color: rgba(255,59,59,0.2);
-    font-size: 16px;
-  }
+/* SALDO BADGE */
+.saldo-badge{
+  background:#ffffff08;
+  border:1px solid #ffffff15;
+  border-radius:12px;
+  padding:12px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:24px;
+}
+.saldo-label{font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;}
+.saldo-valor{font-size:20px;font-weight:800;color:#ff6b33;}
+.saldo-btn{
+  background:none;border:none;
+  font-size:18px;cursor:pointer;
+  padding:4px 8px;
+  border-radius:8px;
+  transition:all 0.2s;
+}
+.saldo-btn:active{background:#ffffff11;}
 
-  /* Campo chave Pix */
-  .campo-label {
-    color: rgba(255,255,255,0.7);
-    font-size: 13px;
-    margin-bottom: 8px;
-    font-weight: 500;
-  }
-  .tipo-pix {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-    margin-bottom: 12px;
-  }
-  .tipo-btn {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 10px;
-    color: rgba(255,255,255,0.6);
-    font-size: 11px;
-    padding: 8px 4px;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.2s;
-  }
-  .tipo-btn.selected {
-    background: rgba(255,107,53,0.2);
-    border-color: rgba(255,107,53,0.6);
-    color: #fff;
-  }
-  .input-chave {
-    width: 100%;
-    background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 12px;
-    color: #fff;
-    font-size: 15px;
-    padding: 14px 16px;
-    margin-bottom: 16px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .input-chave:focus {
-    border-color: rgba(255,107,53,0.6);
-  }
-  .input-chave::placeholder {
-    color: rgba(255,255,255,0.3);
-  }
+/* STEP INDICATOR */
+.steps{
+  display:flex;align-items:center;
+  justify-content:center;
+  margin-bottom:28px;
+  gap:8px;
+}
+.step{
+  width:32px;height:32px;
+  border-radius:50%;
+  border:2px solid #333;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:#666;
+  transition:all 0.3s;
+}
+.step.ativo{border-color:#ff6b33;color:#ff6b33;background:#ff6b3311;}
+.step.feito{border-color:#00ff66;color:#00ff66;background:#00ff6611;}
+.step-linha{width:32px;height:2px;background:#333;transition:background 0.3s;}
+.step-linha.feita{background:#00ff66;}
 
-  /* Botão sacar */
-  .sacar-btn {
-    width: 100%;
-    background: linear-gradient(135deg, #ff6b35, #f7931e);
-    border: none;
-    border-radius: 14px;
-    color: #fff;
-    font-size: 16px;
-    font-weight: 700;
-    padding: 18px;
-    cursor: pointer;
-    letter-spacing: 0.5px;
-    box-shadow: 0 8px 24px rgba(255,107,53,0.35);
-    transition: all 0.2s;
-    margin-bottom: 12px;
-  }
-  .sacar-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 32px rgba(255,107,53,0.45); }
-  .sacar-btn:active { transform: scale(0.99); }
-  .sacar-btn:disabled {
-    background: rgba(255,255,255,0.1);
-    box-shadow: none;
-    cursor: not-allowed;
-    transform: none;
-  }
-  .link-deposito {
-    text-align: center;
-    color: rgba(255,255,255,0.4);
-    font-size: 13px;
-  }
-  .link-deposito a {
-    color: #ff6b35;
-    text-decoration: none;
-    font-weight: 600;
-  }
+/* VALOR */
+.valor-section{margin-bottom:24px;}
+.secao-titulo{
+  font-size:13px;font-weight:700;
+  color:#ff6b33;
+  text-transform:uppercase;letter-spacing:1px;
+  margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+}
+.valor-display{
+  background:#0a0a18;
+  border:2px solid #ff6b3344;
+  border-radius:16px;
+  padding:20px;
+  text-align:center;
+  font-size:36px;
+  font-weight:800;
+  color:#ff6b33;
+  margin-bottom:16px;
+  min-height:76px;
+  display:flex;align-items:center;justify-content:center;
+  letter-spacing:1px;
+}
+.valor-display.has-value{color:#fff;}
 
-  /* Status do saque */
-  .status-box {
-    display: none;
-    background: rgba(0,0,0,0.3);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
-    text-align: center;
-  }
-  .status-icon {
-    font-size: 40px;
-    margin-bottom: 10px;
-  }
-  .status-title {
-    color: #fff;
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
-  .status-sub {
-    color: rgba(255,255,255,0.6);
-    font-size: 13px;
-  }
-  .status-detalhe {
-    background: rgba(255,255,255,0.05);
-    border-radius: 10px;
-    padding: 12px;
-    margin-top: 12px;
-    text-align: left;
-  }
-  .status-detalhe div {
-    display: flex;
-    justify-content: space-between;
-    color: rgba(255,255,255,0.7);
-    font-size: 13px;
-    padding: 4px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-  }
-  .status-detalhe div:last-child { border-bottom: none; }
-  .status-detalhe span { color: #fff; font-weight: 600; }
+/* NUMPAD */
+.numpad{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-bottom:20px;
+}
+.num-btn{
+  background:#1e1e3a;
+  border:1px solid #ffffff11;
+  border-radius:14px;
+  padding:18px;
+  font-size:22px;
+  font-weight:600;
+  color:#fff;
+  cursor:pointer;
+  transition:all 0.15s;
+  text-align:center;
+}
+.num-btn:active{background:#ff6b3322;border-color:#ff6b3366;transform:scale(0.95);}
+.num-btn.del{color:#ff6b6b;font-size:20px;}
 
-  /* Novo saque btn */
-  .novo-saque-btn {
-    width: 100%;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 12px;
-    color: #fff;
-    font-size: 14px;
-    padding: 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .novo-saque-btn:hover { background: rgba(255,255,255,0.12); }
+/* BOTÃO PRÓXIMO */
+.prox-btn{
+  width:100%;
+  padding:18px;
+  background:linear-gradient(135deg,#ff6b33,#ff3366);
+  border:none;
+  border-radius:16px;
+  font-size:18px;
+  font-weight:800;
+  color:#fff;
+  cursor:pointer;
+  letter-spacing:0.5px;
+  box-shadow:0 4px 20px rgba(255,107,51,0.4);
+  transition:all 0.2s;
+  margin-bottom:12px;
+}
+.prox-btn:active{transform:scale(0.98);opacity:0.9;}
+.prox-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.valor-info{text-align:center;font-size:12px;color:#666;}
 
-  /* Loading dots */
-  .loading-dots span {
-    display: inline-block;
-    width: 8px; height: 8px;
-    background: #ff6b35;
-    border-radius: 50%;
-    margin: 0 3px;
-    animation: bounce 1.4s ease-in-out infinite;
-  }
-  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
-  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce {
-    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-    40% { transform: scale(1); opacity: 1; }
-  }
+/* TIPOS DE CHAVE PIX */
+.tipos-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:20px;
+}
+.tipo-btn{
+  background:#1e1e3a;
+  border:2px solid #ffffff11;
+  border-radius:14px;
+  padding:16px 12px;
+  cursor:pointer;
+  text-align:center;
+  transition:all 0.2s;
+}
+.tipo-btn:active,.tipo-btn.selecionado{
+  background:#ff6b3322;
+  border-color:#ff6b33;
+}
+.tipo-icon{font-size:24px;margin-bottom:6px;}
+.tipo-nome{font-size:13px;font-weight:600;color:#fff;}
+.tipo-desc{font-size:11px;color:#666;margin-top:3px;}
 
-  /* Notice */
-  .notice {
-    background: rgba(255,193,7,0.1);
-    border: 1px solid rgba(255,193,7,0.3);
-    border-radius: 10px;
-    color: rgba(255,255,255,0.7);
-    font-size: 12px;
-    padding: 10px 14px;
-    margin-bottom: 16px;
-    text-align: center;
-  }
-  .notice strong { color: #ffc107; }
+/* INPUT CHAVE */
+.input-chave-wrap{
+  position:relative;
+  margin-bottom:16px;
+}
+.input-chave{
+  width:100%;
+  background:#0a0a18;
+  border:2px solid #ff6b3344;
+  border-radius:14px;
+  padding:18px 16px;
+  font-size:16px;
+  color:#fff;
+  outline:none;
+  transition:border-color 0.2s;
+}
+.input-chave:focus{border-color:#ff6b33;}
+.input-chave::placeholder{color:#444;}
+.input-label{
+  font-size:12px;color:#888;
+  text-transform:uppercase;letter-spacing:1px;
+  margin-bottom:8px;
+}
+.input-hint{
+  font-size:11px;color:#666;
+  margin-top:6px;
+  padding-left:4px;
+}
+
+/* RESUMO */
+.resumo-box{
+  background:#0a0a18;
+  border:1px solid #ffffff15;
+  border-radius:16px;
+  padding:20px;
+  margin-bottom:20px;
+}
+.resumo-linha{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 0;
+  border-bottom:1px solid #ffffff08;
+}
+.resumo-linha:last-child{border-bottom:none;}
+.resumo-key{font-size:13px;color:#888;}
+.resumo-val{font-size:14px;font-weight:700;color:#fff;}
+.resumo-val.destaque{color:#ff6b33;font-size:18px;}
+.resumo-val.chave{color:#00d4ff;font-size:12px;word-break:break-all;text-align:right;max-width:60%;}
+
+.aviso{
+  background:#2a1a0a;
+  border:1px solid #ff6b3344;
+  border-radius:12px;
+  padding:12px 16px;
+  margin-bottom:20px;
+  font-size:12px;
+  color:#ff9966;
+  text-align:center;
+}
+
+/* LOADING */
+.loading{display:none;text-align:center;padding:32px;}
+.spinner{
+  width:56px;height:56px;
+  border:3px solid #ffffff22;
+  border-top-color:#ff6b33;
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+  margin:0 auto 16px;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading p{color:#888;font-size:14px;}
+.loading .status-msg{font-size:13px;color:#ff6b33;margin-top:8px;}
+
+/* RESULTADO */
+.resultado{display:none;padding:8px 0;}
+
+.saque-ok{
+  background:linear-gradient(135deg,#0a2a0a,#0f3a0f);
+  border:1px solid #00ff6644;
+  border-radius:16px;
+  padding:28px 20px;
+  text-align:center;
+  margin-bottom:20px;
+}
+.saque-ok .icon{font-size:56px;margin-bottom:12px;}
+.saque-ok h2{font-size:22px;font-weight:800;color:#00ff66;margin-bottom:6px;}
+.saque-ok p{font-size:14px;color:#888;margin-bottom:16px;}
+.saque-ok .valor-grande{font-size:36px;font-weight:800;color:#fff;margin:12px 0;}
+
+.saque-pendente{
+  background:linear-gradient(135deg,#2a1a0a,#3a2a0f);
+  border:1px solid #ffaa0044;
+  border-radius:16px;
+  padding:28px 20px;
+  text-align:center;
+  margin-bottom:20px;
+}
+.saque-pendente .icon{font-size:56px;margin-bottom:12px;}
+.saque-pendente h2{font-size:22px;font-weight:800;color:#ffaa00;margin-bottom:6px;}
+.saque-pendente p{font-size:14px;color:#888;margin-bottom:16px;}
+
+.detalhe-box{
+  background:#0a0a18;
+  border:1px solid #ffffff15;
+  border-radius:12px;
+  padding:16px;
+  margin-bottom:16px;
+  text-align:left;
+}
+.detalhe-linha{
+  display:flex;justify-content:space-between;
+  font-size:13px;padding:6px 0;
+  border-bottom:1px solid #ffffff08;
+}
+.detalhe-linha:last-child{border-bottom:none;}
+.detalhe-key{color:#666;}
+.detalhe-val{color:#fff;font-weight:600;text-align:right;max-width:65%;word-break:break-all;}
+
+/* ERRO */
+.erro{
+  display:none;
+  background:#2a0a0a;border:1px solid #ff444444;
+  border-radius:14px;padding:24px;text-align:center;margin-bottom:16px;
+}
+.erro .icon{font-size:40px;margin-bottom:12px;}
+.erro p{color:#ff6b6b;font-size:14px;margin-bottom:16px;line-height:1.5;}
+.erro button{
+  padding:12px 28px;background:#ff444422;
+  border:1px solid #ff444444;border-radius:10px;
+  color:#ff6b6b;font-size:14px;cursor:pointer;
+  font-weight:600;
+}
+
+/* BOTÕES AÇÃO */
+.novo-btn{
+  width:100%;padding:16px;
+  background:#ffffff11;border:1px solid #ffffff22;
+  border-radius:14px;font-size:15px;font-weight:600;
+  color:#aaa;cursor:pointer;margin-bottom:10px;
+  transition:all 0.2s;
+}
+.novo-btn:active{background:#ffffff1a;}
+
+.voltar-btn{
+  width:100%;padding:14px;
+  background:none;border:1px solid #ffffff11;
+  border-radius:12px;font-size:13px;color:#666;cursor:pointer;
+  transition:all 0.2s;
+}
+.voltar-btn:active{background:#ffffff08;}
+
+/* FOOTER */
+.footer{margin-top:20px;text-align:center;font-size:11px;color:#444;}
+.footer a{color:#ff6b33;text-decoration:none;}
 </style>
 </head>
 <body>
+
 <div class="card">
   <div class="logo">
     <div class="logo-icon">📤</div>
-    <h1>VortexPay</h1>
-    <p>Saque via Pix</p>
+    <h1>VORTEXPAY</h1>
+    <p>Saque Manual via Pix</p>
   </div>
 
-  <!-- Saldo -->
-  <div class="saldo-box" id="saldo-box">
-    <div class="saldo-label">Saldo da Conta</div>
-    <div class="saldo-valor" id="saldo-valor">Carregando...</div>
-    <div class="saldo-disponivel" id="saldo-disponivel"></div>
+  <!-- SALDO -->
+  <div class="saldo-badge" id="saldo-badge">
+    <div>
+      <div class="saldo-label">Saldo Disponível</div>
+      <div class="saldo-valor" id="saldo-valor">Carregando...</div>
+    </div>
+    <button class="saldo-btn" onclick="carregarSaldo()" title="Atualizar saldo">🔄</button>
   </div>
 
-  <!-- Formulário de saque -->
-  <div id="form-saque">
-    <div class="valor-display" id="valor-display">
-      <div class="valor-label">Valor do saque</div>
-      <div class="valor-numero">
-        <span class="cifrao">R$</span>
-        <span id="valor-texto">0,00</span>
-      </div>
+  <!-- STEPS -->
+  <div class="steps">
+    <div class="step ativo" id="step1">1</div>
+    <div class="step-linha" id="linha1"></div>
+    <div class="step" id="step2">2</div>
+    <div class="step-linha" id="linha2"></div>
+    <div class="step" id="step3">3</div>
+  </div>
+
+  <!-- TELA 1: VALOR -->
+  <div id="tela-valor">
+    <div class="secao-titulo">💰 Valor do Saque</div>
+    <div class="valor-section">
+      <div class="valor-display" id="valor-display">R$ 0,00</div>
     </div>
 
     <div class="numpad">
-      <button class="numpad-btn" onclick="addDigit('1')">1</button>
-      <button class="numpad-btn" onclick="addDigit('2')">2</button>
-      <button class="numpad-btn" onclick="addDigit('3')">3</button>
-      <button class="numpad-btn" onclick="addDigit('4')">4</button>
-      <button class="numpad-btn" onclick="addDigit('5')">5</button>
-      <button class="numpad-btn" onclick="addDigit('6')">6</button>
-      <button class="numpad-btn" onclick="addDigit('7')">7</button>
-      <button class="numpad-btn" onclick="addDigit('8')">8</button>
-      <button class="numpad-btn" onclick="addDigit('9')">9</button>
-      <button class="numpad-btn" onclick="addDigit('00')">00</button>
-      <button class="numpad-btn" onclick="addDigit('0')">0</button>
-      <button class="numpad-btn del" onclick="delDigit()">⌫</button>
+      <button class="num-btn" onclick="numpad('1')">1</button>
+      <button class="num-btn" onclick="numpad('2')">2</button>
+      <button class="num-btn" onclick="numpad('3')">3</button>
+      <button class="num-btn" onclick="numpad('4')">4</button>
+      <button class="num-btn" onclick="numpad('5')">5</button>
+      <button class="num-btn" onclick="numpad('6')">6</button>
+      <button class="num-btn" onclick="numpad('7')">7</button>
+      <button class="num-btn" onclick="numpad('8')">8</button>
+      <button class="num-btn" onclick="numpad('9')">9</button>
+      <button class="num-btn" onclick="numpad('00')">00</button>
+      <button class="num-btn" onclick="numpad('0')">0</button>
+      <button class="num-btn del" onclick="numpad('del')">⌫</button>
     </div>
 
-    <div class="notice">
-      <strong>⚠️ Saque Manual</strong> — Processado em até 24h úteis
-    </div>
-
-    <div class="campo-label">Tipo de chave Pix</div>
-    <div class="tipo-pix">
-      <div class="tipo-btn selected" onclick="selectTipo(this,'cpf')">CPF</div>
-      <div class="tipo-btn" onclick="selectTipo(this,'telefone')">Telefone</div>
-      <div class="tipo-btn" onclick="selectTipo(this,'email')">E-mail</div>
-      <div class="tipo-btn" onclick="selectTipo(this,'aleatoria')">Aleatória</div>
-      <div class="tipo-btn" onclick="selectTipo(this,'cnpj')">CNPJ</div>
-    </div>
-
-    <input 
-      id="chave-pix" 
-      class="input-chave" 
-      type="text" 
-      placeholder="Digite sua chave CPF"
-      maxlength="80"
-    >
-
-    <button class="sacar-btn" id="sacar-btn" onclick="solicitarSaque()" disabled>
-      📤 Solicitar Saque
+    <button class="prox-btn" id="btn-prox1" onclick="irParaChave()" disabled>
+      Continuar →
     </button>
-
-    <div class="link-deposito">
-      Quer depositar? <a href="/">Ir para Depósito</a>
-    </div>
+    <div class="valor-info">Mínimo R$ 10,00 • Saldo disponível para saque</div>
   </div>
 
-  <!-- Status do saque -->
-  <div class="status-box" id="status-box">
-    <div class="status-icon" id="status-icon">⏳</div>
-    <div class="status-title" id="status-title">Solicitação Enviada!</div>
-    <div class="status-sub" id="status-sub">Seu saque foi registrado com sucesso.</div>
-    <div class="status-detalhe" id="status-detalhe"></div>
-    <br>
-    <button class="novo-saque-btn" onclick="novoSaque()">↩ Novo Saque</button>
+  <!-- TELA 2: TIPO + CHAVE PIX -->
+  <div id="tela-chave" style="display:none;">
+    <div class="secao-titulo">🔑 Chave Pix para Receber</div>
+
+    <div class="tipos-grid">
+      <div class="tipo-btn" onclick="selecionarTipo('cpf','🆔','CPF','123.456.789-01')">
+        <div class="tipo-icon">🆔</div>
+        <div class="tipo-nome">CPF</div>
+        <div class="tipo-desc">11 dígitos</div>
+      </div>
+      <div class="tipo-btn" onclick="selecionarTipo('telefone','📱','Telefone','(11) 99999-9999')">
+        <div class="tipo-icon">📱</div>
+        <div class="tipo-nome">Telefone</div>
+        <div class="tipo-desc">Com DDD</div>
+      </div>
+      <div class="tipo-btn" onclick="selecionarTipo('email','📧','E-mail','email@exemplo.com')">
+        <div class="tipo-icon">📧</div>
+        <div class="tipo-nome">E-mail</div>
+        <div class="tipo-desc">Seu e-mail</div>
+      </div>
+      <div class="tipo-btn" onclick="selecionarTipo('aleatoria','🔑','Chave Aleatória','xxxxxxxx-xxxx-xxxx')">
+        <div class="tipo-icon">🔑</div>
+        <div class="tipo-nome">Aleatória</div>
+        <div class="tipo-desc">UUID</div>
+      </div>
+    </div>
+
+    <div id="input-chave-area" style="display:none;">
+      <div class="input-label" id="input-chave-label">Digite sua chave Pix:</div>
+      <div class="input-chave-wrap">
+        <input type="text" class="input-chave" id="input-chave"
+               placeholder="—"
+               oninput="validarChave()"
+               autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="input-hint" id="input-hint"></div>
+    </div>
+
+    <button class="prox-btn" id="btn-prox2" onclick="irParaResumo()" disabled style="margin-top:16px;">
+      Continuar →
+    </button>
+    <button class="voltar-btn" onclick="voltarParaValor()">← Alterar valor</button>
+  </div>
+
+  <!-- TELA 3: RESUMO E CONFIRMAÇÃO -->
+  <div id="tela-resumo" style="display:none;">
+    <div class="secao-titulo">✅ Confirmar Saque</div>
+
+    <div class="resumo-box">
+      <div class="resumo-linha">
+        <span class="resumo-key">Valor do saque</span>
+        <span class="resumo-val destaque" id="res-valor">R$ 0,00</span>
+      </div>
+      <div class="resumo-linha">
+        <span class="resumo-key">Tipo da chave</span>
+        <span class="resumo-val" id="res-tipo">—</span>
+      </div>
+      <div class="resumo-linha">
+        <span class="resumo-key">Chave Pix</span>
+        <span class="resumo-val chave" id="res-chave">—</span>
+      </div>
+    </div>
+
+    <div class="aviso">
+      ⚠️ Verifique os dados antes de confirmar. <strong>Saques não podem ser cancelados.</strong>
+    </div>
+
+    <button class="prox-btn" id="btn-confirmar" onclick="confirmarSaque()">
+      📤 Confirmar Saque
+    </button>
+    <button class="voltar-btn" onclick="voltarParaChave()">← Alterar chave Pix</button>
+  </div>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Processando saque...</p>
+    <div class="status-msg" id="loading-msg">Conectando ao VortexPay...</div>
+  </div>
+
+  <!-- ERRO -->
+  <div class="erro" id="erro">
+    <div class="icon">❌</div>
+    <p id="erro-msg">Erro ao processar saque. Tente novamente.</p>
+    <button onclick="voltarParaResumo()">Tentar novamente</button>
+  </div>
+
+  <!-- RESULTADO -->
+  <div class="resultado" id="resultado">
+    <!-- preenchido dinamicamente -->
   </div>
 </div>
 
+<div class="footer">
+  VortexPay • <a href="/">💳 Depósito</a>
+</div>
+
 <script>
-let valorCentavos = 0;
-let tipoSelecionado = 'cpf';
-let saldoDisponivel = 0;
+// ======= STATE =======
+let rawValue = '';
+let tipoChave = '';
+let tipoChaveLabel = '';
+let chavePixInput = '';
+let saldoAtual = 0;
+let saqueAtual = {};
 
-// Placeholders por tipo
-const placeholders = {
-  cpf: 'Digite seu CPF (000.000.000-00)',
-  telefone: 'Digite seu telefone (+55 11 99999-9999)',
-  email: 'Digite seu e-mail',
-  aleatoria: 'Cole sua chave aleatória (UUID)',
-  cnpj: 'Digite seu CNPJ (00.000.000/0000-00)',
-};
-
-function addDigit(d) {
-  const s = (valorCentavos.toString() + d).replace(/^0+/, '') || '0';
-  valorCentavos = parseInt(s.slice(-10));
-  atualizarDisplay();
+// ======= SALDO =======
+async function carregarSaldo() {
+  const el = document.getElementById('saldo-valor');
+  el.textContent = '...';
+  try {
+    const r = await fetch('/api/saldo');
+    const d = await r.json();
+    if (d.success) {
+      saldoAtual = d.saldo;
+      el.textContent = `R$ ${saldoAtual.toFixed(2).replace('.',',')}`;
+    } else {
+      el.textContent = '—';
+    }
+  } catch(e) {
+    el.textContent = '—';
+  }
 }
 
-function delDigit() {
-  valorCentavos = Math.floor(valorCentavos / 10);
+// ======= NUMPAD =======
+function numpad(key) {
+  if (key === 'del') {
+    rawValue = rawValue.slice(0, -1);
+  } else if (key === '00') {
+    if (rawValue.length > 0) rawValue += '00';
+  } else {
+    if (rawValue.length < 9) rawValue += key;
+  }
   atualizarDisplay();
 }
 
 function atualizarDisplay() {
-  const reais = (valorCentavos / 100).toFixed(2).replace('.', ',');
-  document.getElementById('valor-texto').textContent = reais;
   const display = document.getElementById('valor-display');
-  const btn = document.getElementById('sacar-btn');
-  const valorReal = valorCentavos / 100;
-  const chave = document.getElementById('chave-pix').value.trim();
+  const btn = document.getElementById('btn-prox1');
 
-  if (valorCentavos > 0) {
-    display.classList.add('active');
-  } else {
-    display.classList.remove('active');
-  }
-
-  const valido = valorReal >= 10 && valorReal <= saldoDisponivel && chave.length > 5;
-  btn.disabled = !valido;
-
-  if (valorReal > saldoDisponivel && saldoDisponivel > 0) {
-    btn.textContent = '⚠️ Saldo Insuficiente';
-  } else if (valorReal < 10 && valorReal > 0) {
-    btn.textContent = '📤 Mínimo R$ 10,00';
-  } else {
-    btn.textContent = `📤 Solicitar Saque de R$ ${(valorCentavos/100).toFixed(2).replace('.',',')}`;
-  }
-}
-
-function selectTipo(el, tipo) {
-  document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('selected'));
-  el.classList.add('selected');
-  tipoSelecionado = tipo;
-  document.getElementById('chave-pix').placeholder = placeholders[tipo] || 'Digite sua chave Pix';
-  atualizarDisplay();
-}
-
-document.getElementById('chave-pix').addEventListener('input', atualizarDisplay);
-
-async function carregarSaldo() {
-  try {
-    const r = await fetch('/api/saldo');
-    const d = await r.json();
-    if (d.saldo !== undefined) {
-      saldoDisponivel = d.disponivel || d.saldo;
-      document.getElementById('saldo-valor').textContent = `R$ ${d.saldo.toFixed(2).replace('.', ',')}`;
-      document.getElementById('saldo-disponivel').innerHTML = `Disponível para saque: <span>R$ ${saldoDisponivel.toFixed(2).replace('.', ',')}</span>`;
-    } else {
-      document.getElementById('saldo-valor').textContent = 'Indisponível';
-      document.getElementById('saldo-disponivel').textContent = 'Conectando ao servidor...';
-    }
-  } catch {
-    document.getElementById('saldo-valor').textContent = 'Indisponível';
-  }
-}
-
-async function solicitarSaque() {
-  const btn = document.getElementById('sacar-btn');
-  const chave = document.getElementById('chave-pix').value.trim();
-  const valor = valorCentavos / 100;
-
-  if (valor < 10) return;
-  if (!chave || chave.length < 5) {
-    alert('Digite uma chave Pix válida!');
+  if (!rawValue || rawValue === '0') {
+    display.textContent = 'R$ 0,00';
+    display.classList.remove('has-value');
+    btn.disabled = true;
     return;
   }
 
-  btn.disabled = true;
-  btn.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div> Enviando...';
+  const num = parseInt(rawValue) / 100;
+  const formatted = num.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  display.textContent = 'R$ ' + formatted;
 
-  try {
-    const r = await fetch('/api/saque', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        valor: valor,
-        chave_pix: chave,
-        tipo_chave: tipoSelecionado
-      })
-    });
-
-    const d = await r.json();
-
-    if (d.success) {
-      mostrarSucesso(d);
-    } else {
-      alert('Erro: ' + (d.error || 'Tente novamente'));
-      btn.disabled = false;
-      atualizarDisplay();
-    }
-  } catch (e) {
-    alert('Erro de conexão. Tente novamente.');
+  if (num >= 10) {
+    display.classList.add('has-value');
     btn.disabled = false;
-    atualizarDisplay();
+  } else {
+    display.classList.remove('has-value');
+    btn.disabled = true;
   }
 }
 
-function mostrarSucesso(d) {
-  document.getElementById('form-saque').style.display = 'none';
-  const sb = document.getElementById('status-box');
-  sb.style.display = 'block';
+// ======= NAVEGAÇÃO =======
+function irParaChave() {
+  const num = parseInt(rawValue) / 100;
+  if (num < 10) return;
+  
+  atualizarSteps(2);
+  mostrar('chave');
+}
 
-  document.getElementById('status-icon').textContent = '✅';
-  document.getElementById('status-title').textContent = 'Saque Solicitado!';
-  document.getElementById('status-sub').textContent = 'Será processado manualmente em até 24h úteis.';
+function selecionarTipo(tipo, icon, label, placeholder) {
+  tipoChave = tipo;
+  tipoChaveLabel = label;
+  
+  // Marcar botão selecionado
+  document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('selecionado'));
+  event.currentTarget.classList.add('selecionado');
+  
+  // Mostrar input
+  const area = document.getElementById('input-chave-area');
+  const lbl = document.getElementById('input-chave-label');
+  const inp = document.getElementById('input-chave');
+  const hint = document.getElementById('input-hint');
+  
+  area.style.display = 'block';
+  lbl.textContent = `Digite sua chave ${label}:`;
+  inp.placeholder = placeholder;
+  inp.value = '';
+  inp.focus();
+  
+  // Hints por tipo
+  const hints = {
+    cpf: '💡 Apenas números, 11 dígitos. Ex: 12345678901',
+    telefone: '💡 DDD + número. Ex: 11987654321 ou +5511987654321',
+    email: '💡 Seu e-mail cadastrado no banco. Ex: nome@email.com',
+    aleatoria: '💡 Chave no formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+  };
+  hint.textContent = hints[tipo] || '';
+  
+  document.getElementById('btn-prox2').disabled = true;
+}
 
-  const det = document.getElementById('status-detalhe');
-  det.innerHTML = `
-    <div><span>ID:</span> <span>${d.saque_id || '---'}</span></div>
-    <div><span>Valor:</span> <span>R$ ${(d.valor||0).toFixed(2).replace('.',',')}</span></div>
-    <div><span>Chave Pix:</span> <span>${d.chave_pix || '---'}</span></div>
-    <div><span>Tipo:</span> <span>${(d.tipo_chave||'').toUpperCase()}</span></div>
-    <div><span>Status:</span> <span>⏳ Pendente</span></div>
-    <div><span>Prazo:</span> <span>Até 24h úteis</span></div>
-  `;
+function validarChave() {
+  const val = document.getElementById('input-chave').value.trim();
+  chavePixInput = val;
+  const btn = document.getElementById('btn-prox2');
+  
+  let valido = false;
+  if (tipoChave === 'cpf') {
+    valido = /^\d{11}$/.test(val.replace(/\D/g,''));
+  } else if (tipoChave === 'telefone') {
+    valido = /^\+?[\d\s\-().]{10,15}$/.test(val);
+  } else if (tipoChave === 'email') {
+    valido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+  } else if (tipoChave === 'aleatoria') {
+    valido = val.length >= 20;
+  }
+  
+  btn.disabled = !valido || !tipoChave;
+}
+
+function irParaResumo() {
+  const inp = document.getElementById('input-chave').value.trim();
+  chavePixInput = inp;
+  
+  const num = parseInt(rawValue) / 100;
+  const formatted = num.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  
+  document.getElementById('res-valor').textContent = `R$ ${formatted}`;
+  document.getElementById('res-tipo').textContent = tipoChaveLabel;
+  document.getElementById('res-chave').textContent = chavePixInput;
+  
+  atualizarSteps(3);
+  mostrar('resumo');
+}
+
+function voltarParaValor() {
+  atualizarSteps(1);
+  mostrar('valor');
+}
+
+function voltarParaChave() {
+  atualizarSteps(2);
+  mostrar('chave');
+}
+
+function voltarParaResumo() {
+  atualizarSteps(3);
+  mostrar('resumo');
+}
+
+function atualizarSteps(atual) {
+  for (let i = 1; i <= 3; i++) {
+    const s = document.getElementById(`step${i}`);
+    s.className = 'step';
+    if (i < atual) s.classList.add('feito');
+    else if (i === atual) s.classList.add('ativo');
+  }
+  for (let i = 1; i <= 2; i++) {
+    const l = document.getElementById(`linha${i}`);
+    l.className = 'step-linha' + (i < atual ? ' feita' : '');
+  }
+}
+
+function mostrar(tela) {
+  document.getElementById('tela-valor').style.display = tela === 'valor' ? 'block' : 'none';
+  document.getElementById('tela-chave').style.display = tela === 'chave' ? 'block' : 'none';
+  document.getElementById('tela-resumo').style.display = tela === 'resumo' ? 'block' : 'none';
+  document.getElementById('loading').style.display = tela === 'loading' ? 'block' : 'none';
+  document.getElementById('erro').style.display = tela === 'erro' ? 'block' : 'none';
+  document.getElementById('resultado').style.display = tela === 'resultado' ? 'block' : 'none';
+}
+
+// ======= CONFIRMAR SAQUE =======
+async function confirmarSaque() {
+  const num = parseInt(rawValue) / 100;
+  
+  mostrar('loading');
+  
+  let seg = 0;
+  const msgs = [
+    'Conectando ao VortexPay...',
+    'Acessando Central de Saques...',
+    'Clicando em Saque Manual...',
+    'Enviando valor...',
+    'Informando chave Pix...',
+    'Aguardando confirmação...',
+    'Finalizando...',
+  ];
+  const timer = setInterval(() => {
+    seg++;
+    const idx = Math.min(Math.floor(seg / 2), msgs.length - 1);
+    document.getElementById('loading-msg').innerHTML =
+      msgs[idx] + '<br><small style="color:#555">' + seg + 's...</small>';
+  }, 1000);
+  
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 80000);
+    
+    const resp = await fetch('/api/saque', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        valor: num,
+        tipo_chave: tipoChave,
+        chave_pix: chavePixInput
+      }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeout);
+    clearInterval(timer);
+    
+    const data = await resp.json();
+    saqueAtual = data;
+    
+    mostrarResultado(data, num);
+    
+  } catch(e) {
+    clearInterval(timer);
+    if (e.name === 'AbortError') {
+      document.getElementById('erro-msg').textContent = 'Tempo esgotado. O saque pode ter sido processado — verifique seu saldo.';
+    } else {
+      document.getElementById('erro-msg').textContent = 'Erro de conexão. Tente novamente.';
+    }
+    mostrar('erro');
+  }
+}
+
+function mostrarResultado(data, valor) {
+  const res = document.getElementById('resultado');
+  const formatted = valor.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  
+  if (data.success) {
+    const statusOk = data.status === 'confirmado' || data.status === 'enviado';
+    
+    res.innerHTML = `
+      <div class="${statusOk ? 'saque-ok' : 'saque-pendente'}">
+        <div class="icon">${statusOk ? '✅' : '⏳'}</div>
+        <h2>${statusOk ? 'Saque Solicitado!' : 'Saque em Análise'}</h2>
+        <p>${statusOk 
+          ? 'Sua solicitação foi enviada ao VortexPay.' 
+          : 'Seu saque está sendo processado manualmente.'}</p>
+        <div class="valor-grande">R$ ${formatted}</div>
+      </div>
+      
+      <div class="detalhe-box">
+        <div class="detalhe-linha">
+          <span class="detalhe-key">Status</span>
+          <span class="detalhe-val">${data.status_msg || data.status || 'Processando'}</span>
+        </div>
+        <div class="detalhe-linha">
+          <span class="detalhe-key">Chave Pix</span>
+          <span class="detalhe-val">${chavePixInput}</span>
+        </div>
+        <div class="detalhe-linha">
+          <span class="detalhe-key">Tipo</span>
+          <span class="detalhe-val">${tipoChaveLabel}</span>
+        </div>
+        ${data.mensagem_bot ? `
+        <div class="detalhe-linha">
+          <span class="detalhe-key">Resposta</span>
+          <span class="detalhe-val" style="font-size:11px;color:#aaa;">${data.mensagem_bot.substring(0,120)}...</span>
+        </div>` : ''}
+      </div>
+      
+      <button class="novo-btn" onclick="novoSaque()">📤 Novo Saque</button>
+      <button class="voltar-btn" onclick="window.location.href='/'">💳 Ir para Depósito</button>
+    `;
+    mostrar('resultado');
+    
+    // Som de sucesso
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [523, 659, 784].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime + i*0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.12 + 0.3);
+        osc.start(ctx.currentTime + i*0.12);
+        osc.stop(ctx.currentTime + i*0.12 + 0.3);
+      });
+    } catch(e) {}
+    
+  } else {
+    document.getElementById('erro-msg').textContent = data.error || 'Erro ao processar saque.';
+    mostrar('erro');
+  }
 }
 
 function novoSaque() {
-  document.getElementById('status-box').style.display = 'none';
-  document.getElementById('form-saque').style.display = 'block';
-  valorCentavos = 0;
-  document.getElementById('chave-pix').value = '';
+  rawValue = '';
+  tipoChave = '';
+  tipoChaveLabel = '';
+  chavePixInput = '';
   atualizarDisplay();
+  atualizarSteps(1);
+  
+  document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('selecionado'));
+  document.getElementById('input-chave-area').style.display = 'none';
+  document.getElementById('input-chave').value = '';
+  
+  mostrar('valor');
   carregarSaldo();
 }
 
-// Inicializar
-carregarSaldo();
-atualizarDisplay();
+// ======= INIT =======
+window.addEventListener('DOMContentLoaded', () => {
+  carregarSaldo();
+});
 </script>
 </body>
 </html>
