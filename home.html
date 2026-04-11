@@ -195,6 +195,26 @@ body{
 <!-- Partículas -->
 <div id="particles"></div>
 
+<!-- ══ MODAL SENHA SAQUE ══ -->
+<div id="modal-saque" style="display:none;position:fixed;inset:0;z-index:999;background:#000000cc;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#111118;border:1.5px solid #00d68f44;border-radius:20px;padding:28px 22px;width:100%;max-width:360px;position:relative">
+    <button onclick="fecharModalSaque()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:#555;font-size:20px;cursor:pointer">✕</button>
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:36px;margin-bottom:8px">🔐</div>
+      <div style="font-size:17px;font-weight:700;color:#fff">Acesso ao Saque</div>
+      <div style="font-size:12px;color:#555;margin-top:4px">Digite a senha para continuar</div>
+    </div>
+    <input id="senha-saque" type="password" placeholder="••••••••"
+      style="width:100%;background:#0a0a0f;border:1.5px solid #ffffff15;border-radius:10px;padding:14px 16px;color:#fff;font-size:16px;outline:none;margin-bottom:10px;letter-spacing:4px;text-align:center"
+      onkeydown="if(event.key==='Enter')verificarSenha()"
+    >
+    <div id="msg-senha" style="font-size:12px;color:#ff6b6b;text-align:center;min-height:18px;margin-bottom:10px"></div>
+    <button onclick="verificarSenha()" style="width:100%;background:linear-gradient(135deg,#00d68f,#00a86b);color:#000;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer">
+      🔓 Entrar
+    </button>
+  </div>
+</div>
+
 <!-- ══ HERO ══ -->
 <section class="hero">
   <div class="logo-wrap">
@@ -221,9 +241,9 @@ body{
     <a href="/pague" class="btn-hero btn-pix">
       ⚡ Gerar Pix — Depositar agora
     </a>
-    <a href="/sacar" class="btn-hero btn-saque">
+    <button onclick="abrirModalSaque()" class="btn-hero btn-saque">
       💸 Solicitar Saque
-    </a>
+    </button>
     <a href="/sorteio" class="btn-hero btn-sorteio">
       🎲 Participar do Sorteio
     </a>
@@ -317,6 +337,34 @@ body{
 </footer>
 
 <script>
+// ── Modal Saque ──
+const SENHA_SAQUE = 'saque2024';
+function abrirModalSaque(){
+  const m = document.getElementById('modal-saque');
+  m.style.display = 'flex';
+  document.getElementById('senha-saque').value = '';
+  document.getElementById('msg-senha').textContent = '';
+  setTimeout(()=>document.getElementById('senha-saque').focus(),100);
+}
+function fecharModalSaque(){
+  document.getElementById('modal-saque').style.display = 'none';
+}
+function verificarSenha(){
+  const v = document.getElementById('senha-saque').value.trim();
+  if(!v){ document.getElementById('msg-senha').textContent='❌ Digite a senha'; return; }
+  if(v === SENHA_SAQUE){
+    window.location.href = '/sacar';
+  } else {
+    document.getElementById('msg-senha').textContent = '❌ Senha incorreta. Tente novamente.';
+    document.getElementById('senha-saque').value = '';
+    document.getElementById('senha-saque').focus();
+  }
+}
+// Fechar modal clicando fora
+document.getElementById('modal-saque').addEventListener('click', function(e){
+  if(e.target === this) fecharModalSaque();
+});
+
 // Partículas
 (function(){
   const c = document.getElementById('particles');
