@@ -409,13 +409,10 @@ let cdInt = null;
 document.addEventListener('DOMContentLoaded', () => {
   criarParticulas();
   carregarInfo();
-  // Auto-consultar se CPF salvo
-  const cpf = localStorage.getItem('sorteio_cpf');
-  if (cpf) {
-    mostrarConsulta();
-    document.getElementById('c-cpf').value = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
-    consultar();
-  }
+  // Limpar CPF salvo — campo sempre vazio ao abrir
+  localStorage.removeItem('sorteio_cpf');
+  localStorage.removeItem('sorteio_nome');
+  document.getElementById('c-cpf').value = '';
 });
 
 // ── PARTÍCULAS ──
