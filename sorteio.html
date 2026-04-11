@@ -330,6 +330,21 @@ body {
           <label>Seu Saldo Atual (R$)</label>
           <input type="number" id="input-saldo" placeholder="0,00" min="1" step="0.01" />
         </div>
+        <div class="form-group">
+          <label>Tipo da Chave Pix <span style="color:#ff6b6b">*</span></label>
+          <select id="input-tipo-chave" style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:10px;padding:12px 14px;color:#fff;font-size:15px;outline:none;cursor:pointer" onchange="atualizarPlaceholderChave()">
+            <option value="cpf" style="background:#1a1a2e">CPF</option>
+            <option value="telefone" style="background:#1a1a2e">Telefone</option>
+            <option value="email" style="background:#1a1a2e">E-mail</option>
+            <option value="aleatoria" style="background:#1a1a2e">Chave Aleatória</option>
+            <option value="cnpj" style="background:#1a1a2e">CNPJ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Chave Pix <span style="color:#ff6b6b">*</span> <small style="color:#666">(para receber o prêmio)</small></label>
+          <input type="text" id="input-chave-pix" placeholder="000.000.000-00" />
+          <div style="font-size:11px;color:#FFD700;margin-top:4px">🔒 Sua chave é usada apenas para enviar o prêmio caso você ganhe</div>
+        </div>
         <button class="btn btn-gold" id="btn-participar" onclick="participar()">
           🎲 Gerar Meu Número da Sorte
         </button>
@@ -371,10 +386,26 @@ body {
           <span class="label">Saldo médio (30 dias)</span>
           <span class="value" id="detalhe-media">-</span>
         </div>
+        <div class="saldo-row">
+          <span class="label">🔑 Chave Pix</span>
+          <span class="value" id="detalhe-chave-pix" style="font-size:13px;color:#FFD700">-</span>
+        </div>
+        <div class="saldo-row">
+          <span class="label">Tipo</span>
+          <span class="value" id="detalhe-tipo-chave" style="text-transform:uppercase;font-size:12px;color:#888">-</span>
+        </div>
+      </div>
+
+      <!-- Alerta se sem chave Pix -->
+      <div id="alerta-sem-pix" class="msg error hidden" style="margin-bottom:12px">
+        ⚠️ Você não cadastrou uma chave Pix! Se ganhar, não poderemos enviar o prêmio.<br>
+        <button onclick="resetarParticipante()" style="margin-top:8px;background:#ff444422;border:1px solid #ff4444;color:#ff8888;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px">
+          Cadastrar chave Pix agora
+        </button>
       </div>
 
       <button class="btn btn-outline" onclick="resetarParticipante()" style="margin-bottom:16px">
-        🔄 Usar outro ID
+        🔄 Atualizar dados / Usar outro ID
       </button>
     </div>
 
@@ -540,15 +571,32 @@ async function carregarInfo() {
   }
 }
 
+// ════ PLACEHOLDER CHAVE PIX ════
+function atualizarPlaceholderChave() {
+  const tipo = document.getElementById('input-tipo-chave').value;
+  const input = document.getElementById('input-chave-pix');
+  const placeholders = {
+    cpf: '000.000.000-00',
+    telefone: '+55 (11) 99999-9999',
+    email: 'seuemail@exemplo.com',
+    aleatoria: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+    cnpj: '00.000.000/0001-00',
+  };
+  input.placeholder = placeholders[tipo] || '';
+}
+
 // ════ PARTICIPAR ════
 async function participar() {
   const clienteId = document.getElementById('input-cliente-id').value.trim();
   const nome = document.getElementById('input-nome').value.trim() || 'Participante';
   const saldo = parseFloat(document.getElementById('input-saldo').value) || 0;
+  const chavePix = document.getElementById('input-chave-pix').value.trim();
+  const tipoChave = document.getElementById('input-tipo-chave').value;
   const msgEl = document.getElementById('msg-cadastro');
 
   if (!clienteId) { msgEl.innerHTML = '<div class="msg error">❌ Informe seu ID</div>'; return; }
-  if (saldo < 1) { msgEl.innerHTML = '<div class="msg error">❌ Saldo mínimo R$ 1,00</div>'; return; }
+  if (saldo < 1)  { msgEl.innerHTML = '<div class="msg error">❌ Saldo mínimo R$ 1,00</div>'; return; }
+  if (!chavePix)  { msgEl.innerHTML = '<div class="msg error">❌ Informe sua chave Pix para receber o prêmio</div>'; return; }
 
   const btn = document.getElementById('btn-participar');
   btn.disabled = true;
@@ -559,7 +607,13 @@ async function participar() {
     const r = await fetch(BASE + '/api/sorteio/participar', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({cliente_id: clienteId, nome, saldo})
+      body: JSON.stringify({
+        cliente_id: clienteId,
+        nome,
+        saldo,
+        chave_pix: chavePix,
+        tipo_chave: tipoChave,
+      })
     });
     const data = await r.json();
 
@@ -567,7 +621,6 @@ async function participar() {
       localStorage.setItem('vortex_cliente_id', clienteId);
       localStorage.setItem('vortex_nome', nome);
       mostrarParticipante(data);
-      // Atualizar stats
       await carregarInfo();
     } else {
       msgEl.innerHTML = `<div class="msg error">❌ ${data.error}</div>`;
@@ -586,13 +639,29 @@ function mostrarParticipante(p) {
   document.getElementById('tela-cadastro').classList.add('hidden');
   document.getElementById('tela-participante').classList.remove('hidden');
 
-  // Animar número da sorte
-  animarNumero(p.numero_sorte || p.numero_sorte);
+  animarNumero(p.numero_sorte);
   document.getElementById('detalhe-id').textContent = p.cliente_id;
   document.getElementById('detalhe-saldo').textContent = `R$ ${(p.saldo||0).toFixed(2).replace('.',',')}`;
 
   const premio = p.premio_estimado || p.premio || 0;
   document.getElementById('premio-val').textContent = `R$ ${premio.toFixed(2).replace('.',',')}`;
+
+  // Chave Pix
+  const chave = p.chave_pix || '';
+  const tipo  = p.tipo_chave || '';
+  if (chave) {
+    // Mascarar chave para privacidade
+    const mascarada = chave.length > 6
+      ? chave.slice(0,3) + '****' + chave.slice(-3)
+      : chave;
+    document.getElementById('detalhe-chave-pix').textContent = mascarada;
+    document.getElementById('detalhe-tipo-chave').textContent = tipo;
+    document.getElementById('alerta-sem-pix').classList.add('hidden');
+  } else {
+    document.getElementById('detalhe-chave-pix').textContent = '⚠️ Não cadastrada';
+    document.getElementById('detalhe-tipo-chave').textContent = '-';
+    document.getElementById('alerta-sem-pix').classList.remove('hidden');
+  }
 
   if (sorteioInfo && sorteioInfo.sorteio.usar_media) {
     document.getElementById('detalhe-media').textContent =
@@ -601,7 +670,8 @@ function mostrarParticipante(p) {
       `Baseado na média dos últimos ${sorteioInfo.sorteio.dias_media} dias`;
   } else {
     document.getElementById('row-media').style.display = 'none';
-    document.getElementById('premio-desc').textContent = `${sorteioInfo?.sorteio?.percentual||50}% do seu saldo atual`;
+    document.getElementById('premio-desc').textContent =
+      `${sorteioInfo?.sorteio?.percentual||50}% do seu saldo atual`;
   }
 }
 

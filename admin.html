@@ -965,16 +965,20 @@
         <div class="table-card" style="margin-bottom:20px">
           <div class="table-header">
             <h3>👥 Participantes Atuais</h3>
-            <button onclick="carregarParticipantes()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span id="badge-sem-pix" style="font-size:12px;background:#ff444422;color:#ff8888;border:1px solid #ff444444;padding:3px 10px;border-radius:20px;display:none">⚠️ <span id="qtd-sem-pix">0</span> sem chave Pix</span>
+              <button onclick="carregarParticipantes()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+            </div>
           </div>
           <div style="overflow-x:auto">
             <table class="data-table">
               <thead><tr>
                 <th>#</th><th>Cliente ID</th><th>Nome</th>
-                <th>Saldo</th><th>Nº Sorte</th><th>Prêmio Est.</th><th>Cadastro</th>
+                <th>Saldo</th><th>Nº Sorte</th><th>Prêmio Est.</th>
+                <th>Chave Pix</th><th>Tipo</th><th>Cadastro</th>
               </tr></thead>
               <tbody id="participantes-tbody">
-                <tr><td colspan="7" style="text-align:center;color:#666;padding:20px">Carregando...</td></tr>
+                <tr><td colspan="9" style="text-align:center;color:#666;padding:20px">Carregando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2057,24 +2061,41 @@ async function carregarParticipantes() {
     const r = await fetch(`${BASE}/api/sorteio/participantes?secret=${encodeURIComponent(secret)}`);
     const data = await r.json();
     const lista = data.participantes || [];
+    const semPix = data.sem_pix || 0;
+
+    // Badge aviso sem pix
+    const badge = document.getElementById('badge-sem-pix');
+    if (semPix > 0) {
+      badge.style.display = 'inline-block';
+      document.getElementById('qtd-sem-pix').textContent = semPix;
+    } else {
+      badge.style.display = 'none';
+    }
 
     if (!lista.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;padding:20px">Nenhum participante ainda</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;padding:20px">Nenhum participante ainda</td></tr>';
       return;
     }
-    tbody.innerHTML = lista.map((p, i) => `
+    tbody.innerHTML = lista.map((p, i) => {
+      const temPix = !!p.chave_pix;
+      const chaveMask = temPix
+        ? (p.chave_pix.length > 6 ? p.chave_pix.slice(0,4)+'****'+p.chave_pix.slice(-3) : p.chave_pix)
+        : '⚠️ Não cadastrada';
+      return `
       <tr>
         <td>${i+1}</td>
-        <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis">${p.cliente_id}</td>
+        <td style="font-size:12px">${p.cliente_id}</td>
         <td>${p.nome || '-'}</td>
         <td style="color:#00d68f;font-weight:700">R$ ${(p.saldo||0).toFixed(2).replace('.',',')}</td>
         <td style="font-family:monospace;color:#FFD700;font-weight:700">${p.numero_sorte}</td>
         <td style="color:#00d68f">R$ ${(p.premio_estimado||0).toFixed(2).replace('.',',')}</td>
+        <td style="font-size:12px;color:${temPix?'#FFD700':'#ff6b6b'}">${chaveMask}</td>
+        <td style="font-size:11px;text-transform:uppercase;color:#888">${p.tipo_chave||'-'}</td>
         <td style="font-size:11px;color:#666">${new Date(p.created_at).toLocaleDateString('pt-BR')}</td>
-      </tr>
-    `).join('');
+      </tr>`;
+    }).join('');
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#f66;padding:20px">Erro ao carregar</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#f66;padding:20px">Erro ao carregar</td></tr>';
   }
 }
 
@@ -2119,14 +2140,27 @@ async function realizarSorteio() {
     if (data.success) {
       const g = data.ganhador;
       const e = data.estatisticas;
+      const saque = data.saque || {};
+      const saqueOk = saque.success || saque.status === 'enviado';
+      const saqueMsg = saqueOk
+        ? `✅ Saque de R$ ${(g.premio||0).toFixed(2).replace('.',',')} enviado para ${g.chave_pix} (${g.tipo_chave})`
+        : `⚠️ ${saque.error || 'Saque pendente — será processado quando Telegram reconectar'}`;
+      const saqueCor = saqueOk ? '#00d68f' : '#FFD700';
+      const saqueBg  = saqueOk ? '#00d68f22' : '#FFD70022';
+
       el.innerHTML = `
         <div style="background:linear-gradient(135deg,#1a1500,#2a2000);border:2px solid #FFD700;border-radius:16px;padding:24px;text-align:center;margin-top:8px">
           <div style="font-size:48px;margin-bottom:8px">🎉</div>
           <div style="font-size:22px;font-weight:800;color:#FFD700;margin-bottom:4px">${g.nome || 'Ganhador'}</div>
-          <div style="font-size:13px;color:#888;margin-bottom:12px">${g.cliente_id}</div>
+          <div style="font-size:13px;color:#888;margin-bottom:8px">${g.cliente_id}</div>
           <div style="font-size:32px;font-weight:900;font-family:monospace;color:#FFD700;letter-spacing:6px;margin-bottom:12px">${g.numero_sorte}</div>
-          <div style="font-size:28px;font-weight:800;color:#00d68f;margin-bottom:8px">R$ ${(g.premio||0).toFixed(2).replace('.',',')}</div>
-          <div style="font-size:12px;color:#666">${e.total_participantes} participantes • R$ ${(e.total_saldo||0).toFixed(2).replace('.',',')} em jogo</div>
+          <div style="font-size:28px;font-weight:800;color:#00d68f;margin-bottom:4px">R$ ${(g.premio||0).toFixed(2).replace('.',',')}</div>
+          <div style="font-size:13px;color:#888;margin-bottom:12px">${e.total_participantes} participantes • ${e.com_chave_pix||0} com chave Pix</div>
+          <div style="background:${saqueBg};border:1px solid ${saqueCor}44;border-radius:10px;padding:12px;text-align:left">
+            <div style="font-size:12px;color:#888;margin-bottom:4px">💸 STATUS DO SAQUE AUTOMÁTICO</div>
+            <div style="font-size:13px;color:${saqueCor}">${saqueMsg}</div>
+            ${data.saque_id ? `<div style="font-size:11px;color:#666;margin-top:4px">ID: ${data.saque_id}</div>` : ''}
+          </div>
         </div>
       `;
       toast('🎉 Sorteio realizado com sucesso!');

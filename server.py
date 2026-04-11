@@ -72,9 +72,18 @@ def init_db():
         saldo_medio REAL DEFAULT 0,
         numero_sorte INTEGER,
         premio_estimado REAL DEFAULT 0,
+        chave_pix TEXT,
+        tipo_chave TEXT DEFAULT 'cpf',
         created_at TEXT,
         sorteio_id TEXT DEFAULT 'atual'
     )''')
+    # Adicionar colunas chave_pix/tipo_chave se tabela já existia
+    try:
+        conn.execute('ALTER TABLE sorteio_participantes ADD COLUMN chave_pix TEXT')
+    except: pass
+    try:
+        conn.execute("ALTER TABLE sorteio_participantes ADD COLUMN tipo_chave TEXT DEFAULT 'cpf'")
+    except: pass
     conn.execute('''CREATE TABLE IF NOT EXISTS sorteio_historico (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sorteio_id TEXT UNIQUE NOT NULL,
@@ -82,11 +91,20 @@ def init_db():
         ganhador_cliente_id TEXT,
         ganhador_nome TEXT,
         ganhador_numero INTEGER,
+        ganhador_chave_pix TEXT,
+        ganhador_tipo_chave TEXT,
         premio_pago REAL,
+        saque_id TEXT,
+        saque_status TEXT DEFAULT 'pendente',
         total_participantes INTEGER,
         total_saldo REAL,
         observacao TEXT
     )''')
+    # Adicionar colunas novas se tabela já existia
+    for col in ['ganhador_chave_pix TEXT','ganhador_tipo_chave TEXT',
+                'saque_id TEXT',"saque_status TEXT DEFAULT 'pendente'"]:
+        try: conn.execute(f'ALTER TABLE sorteio_historico ADD COLUMN {col}')
+        except: pass
     # Config padrão se não existir
     conn.execute('''INSERT OR IGNORE INTO sorteio_config
         (id, ativo, percentual, usar_media, dias_media, descricao, proximo_sorteio, updated_at)
@@ -207,8 +225,12 @@ def get_participante(cliente_id):
     row = c.fetchone(); conn.close()
     if row:
         cols = ['id','cliente_id','nome','saldo','saldo_medio','numero_sorte',
-                'premio_estimado','created_at','sorteio_id']
-        return dict(zip(cols, row))
+                'premio_estimado','chave_pix','tipo_chave','created_at','sorteio_id']
+        # Compatibilidade com rows sem as colunas novas
+        d = {}
+        for i, col in enumerate(cols):
+            d[col] = row[i] if i < len(row) else None
+        return d
     return None
 
 def calcular_premio(saldo, config):
@@ -491,11 +513,15 @@ async def route_sorteio_participar(request):
         nome = str(data.get('nome', 'Cliente')).strip()
         saldo = float(data.get('saldo', 0))
         saldo_medio = float(data.get('saldo_medio', saldo))
+        chave_pix = str(data.get('chave_pix', '')).strip()
+        tipo_chave = str(data.get('tipo_chave', 'cpf')).strip().lower()
 
         if not cliente_id:
             return web.json_response({'error': 'cliente_id obrigatório'}, status=400)
         if saldo < 1:
             return web.json_response({'error': 'Saldo mínimo de R$ 1,00 para participar'}, status=400)
+        if not chave_pix or len(chave_pix) < 5:
+            return web.json_response({'error': 'Chave Pix obrigatória para receber o prêmio'}, status=400)
 
         config = get_sorteio_config()
         if not config.get('ativo', 1):
@@ -507,9 +533,11 @@ async def route_sorteio_participar(request):
 
         conn = sqlite3.connect(DB_PATH)
         conn.execute('''INSERT OR REPLACE INTO sorteio_participantes
-            (cliente_id, nome, saldo, saldo_medio, numero_sorte, premio_estimado, created_at, sorteio_id)
-            VALUES (?,?,?,?,?,?,?,'atual')''',
-            (cliente_id, nome, saldo, saldo_medio, numero, premio, datetime.now().isoformat()))
+            (cliente_id, nome, saldo, saldo_medio, numero_sorte, premio_estimado,
+             chave_pix, tipo_chave, created_at, sorteio_id)
+            VALUES (?,?,?,?,?,?,?,?,?,'atual')''',
+            (cliente_id, nome, saldo, saldo_medio, numero, premio,
+             chave_pix, tipo_chave, datetime.now().isoformat()))
         conn.commit(); conn.close()
 
         return web.json_response({
@@ -519,72 +547,184 @@ async def route_sorteio_participar(request):
             'numero_sorte': numero,
             'saldo': saldo,
             'premio_estimado': premio,
+            'chave_pix': chave_pix,
+            'tipo_chave': tipo_chave,
             'message': f'✅ Você está participando! Número da sorte: {numero}',
         })
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
 
+async def _executar_sorteio_completo():
+    """Lógica central: sorteia ganhador e executa saque automático via bot"""
+    import random
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT * FROM sorteio_participantes WHERE sorteio_id='atual' AND saldo > 0")
+    rows = c.fetchall()
+    cols_part = ['id','cliente_id','nome','saldo','saldo_medio','numero_sorte',
+                 'premio_estimado','chave_pix','tipo_chave','created_at','sorteio_id']
+    participantes = []
+    for r in rows:
+        d = {}
+        for i, col in enumerate(cols_part):
+            d[col] = r[i] if i < len(r) else None
+        participantes.append(d)
+
+    if not participantes:
+        conn.close()
+        return {'success': False, 'error': 'Nenhum participante no sorteio'}
+
+    config = get_sorteio_config()
+
+    # Filtrar apenas participantes com chave Pix cadastrada
+    com_pix = [p for p in participantes if p.get('chave_pix')]
+    sem_pix  = [p for p in participantes if not p.get('chave_pix')]
+    pool = com_pix if com_pix else participantes  # se ninguém tem pix, sorteia todos
+
+    # Sorteio ponderado pelo saldo
+    pesos = [p['saldo_medio'] if config.get('usar_media') else p['saldo'] for p in pool]
+    ganhador = random.choices(pool, weights=pesos, k=1)[0]
+
+    premio = ganhador['premio_estimado']
+    if premio < 1:
+        # Recalcular prêmio atual
+        total_saldo = sum(p['saldo'] for p in participantes)
+        if config.get('premio_fixo', 0) > 0:
+            premio = float(config['premio_fixo'])
+        else:
+            base = ganhador['saldo_medio'] if config.get('usar_media') else ganhador['saldo']
+            premio = calcular_premio(base, config)
+
+    sorteio_id = f"sorteio_{int(time.time())}"
+    total_saldo = sum(p['saldo'] for p in participantes)
+
+    chave_pix   = ganhador.get('chave_pix') or ''
+    tipo_chave  = ganhador.get('tipo_chave') or 'cpf'
+
+    # Salvar no histórico (saque pendente)
+    conn.execute('''INSERT INTO sorteio_historico
+        (sorteio_id, data_sorteio, ganhador_cliente_id, ganhador_nome, ganhador_numero,
+         ganhador_chave_pix, ganhador_tipo_chave, premio_pago,
+         saque_status, total_participantes, total_saldo, observacao)
+        VALUES (?,?,?,?,?,?,?,?,'pendente',?,?,?)''',
+        (sorteio_id, datetime.now().isoformat(),
+         ganhador['cliente_id'], ganhador['nome'], ganhador['numero_sorte'],
+         chave_pix, tipo_chave, premio,
+         len(participantes), total_saldo,
+         f'Sorteio automático - {len(participantes)} participantes ({len(sem_pix)} sem chave Pix)'))
+
+    # Arquivar participantes
+    conn.execute("UPDATE sorteio_participantes SET sorteio_id=? WHERE sorteio_id='atual'", (sorteio_id,))
+    conn.commit(); conn.close()
+
+    print(f'🎉 SORTEIO {sorteio_id}: {ganhador["nome"]} ganhou R${premio:.2f} → {tipo_chave}: {chave_pix}', flush=True)
+
+    # ── SAQUE AUTOMÁTICO ──────────────────────────────────────
+    saque_result = {'success': False, 'error': 'Chave Pix não cadastrada'}
+    saque_id_gerado = None
+
+    if chave_pix and _telegram_ready:
+        print(f'💸 Iniciando saque automático R${premio:.2f} → {tipo_chave}: {chave_pix}', flush=True)
+        import hashlib as _hl
+        saque_id_gerado = 'saq_sorteio_' + _hl.md5(f"{sorteio_id}{chave_pix}".encode()).hexdigest()[:10]
+        salvar_saque(saque_id_gerado, premio, chave_pix, tipo_chave)
+        saque_result = await executar_saque_bot(premio, tipo_chave, chave_pix)
+
+        # Atualizar status no banco de saques
+        novo_status = saque_result.get('status', 'erro') if saque_result.get('success') else 'erro'
+        obs = saque_result.get('mensagem_bot', saque_result.get('error', ''))[:500]
+        conn2 = sqlite3.connect(DB_PATH)
+        conn2.execute('UPDATE saques SET status=?, processado_at=?, observacao=? WHERE saque_id=?',
+            (novo_status, datetime.now().isoformat(), obs, saque_id_gerado))
+        # Atualizar histórico com saque_id e status
+        conn2.execute('UPDATE sorteio_historico SET saque_id=?, saque_status=? WHERE sorteio_id=?',
+            (saque_id_gerado, novo_status, sorteio_id))
+        conn2.commit(); conn2.close()
+        print(f'💸 Saque automático: {novo_status} | {obs[:80]}', flush=True)
+
+    elif chave_pix and not _telegram_ready:
+        # Telegram offline — salvar saque pendente para processar depois
+        import hashlib as _hl
+        saque_id_gerado = 'saq_sorteio_' + _hl.md5(f"{sorteio_id}{chave_pix}".encode()).hexdigest()[:10]
+        salvar_saque(saque_id_gerado, premio, chave_pix, tipo_chave)
+        conn2 = sqlite3.connect(DB_PATH)
+        conn2.execute('UPDATE sorteio_historico SET saque_id=?, saque_status=? WHERE sorteio_id=?',
+            (saque_id_gerado, 'aguardando_telegram', sorteio_id))
+        conn2.commit(); conn2.close()
+        saque_result = {'success': False, 'error': 'Telegram offline — saque salvo, será processado quando reconectar'}
+        print(f'⚠️ Telegram offline — saque do sorteio salvo como pendente: {saque_id_gerado}', flush=True)
+
+    return {
+        'success': True,
+        'sorteio_id': sorteio_id,
+        'ganhador': {
+            'cliente_id': ganhador['cliente_id'],
+            'nome': ganhador['nome'],
+            'numero_sorte': ganhador['numero_sorte'],
+            'chave_pix': chave_pix,
+            'tipo_chave': tipo_chave,
+            'premio': premio,
+        },
+        'saque': saque_result,
+        'saque_id': saque_id_gerado,
+        'estatisticas': {
+            'total_participantes': len(participantes),
+            'com_chave_pix': len(com_pix),
+            'sem_chave_pix': len(sem_pix),
+            'total_saldo': round(total_saldo, 2),
+        }
+    }
+
 async def route_sorteio_realizar(request):
-    """ADMIN - Realizar o sorteio e escolher ganhador"""
+    """ADMIN - Realizar o sorteio e executar saque automático"""
     auth = (request.headers.get('X-VortexPay-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
-        import random
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("SELECT * FROM sorteio_participantes WHERE sorteio_id='atual' AND saldo > 0")
-        rows = c.fetchall()
-        cols = ['id','cliente_id','nome','saldo','saldo_medio','numero_sorte',
-                'premio_estimado','created_at','sorteio_id']
-        participantes = [dict(zip(cols, r)) for r in rows]
-
-        if not participantes:
-            conn.close()
-            return web.json_response({'error': 'Nenhum participante no sorteio'}, status=400)
-
-        config = get_sorteio_config()
-
-        # Sorteio ponderado pelo saldo (quem tem mais saldo tem mais chance)
-        pesos = [p['saldo_medio'] if config.get('usar_media') else p['saldo'] for p in participantes]
-        ganhador = random.choices(participantes, weights=pesos, k=1)[0]
-
-        premio = ganhador['premio_estimado']
-        sorteio_id = f"sorteio_{int(time.time())}"
-        total_saldo = sum(p['saldo'] for p in participantes)
-
-        # Salvar no histórico
-        conn.execute('''INSERT INTO sorteio_historico
-            (sorteio_id, data_sorteio, ganhador_cliente_id, ganhador_nome, ganhador_numero,
-             premio_pago, total_participantes, total_saldo, observacao)
-            VALUES (?,?,?,?,?,?,?,?,?)''',
-            (sorteio_id, datetime.now().isoformat(), ganhador['cliente_id'], ganhador['nome'],
-             ganhador['numero_sorte'], premio, len(participantes), total_saldo,
-             f'Sorteio automático - {len(participantes)} participantes'))
-
-        # Arquivar participantes do sorteio atual
-        conn.execute("UPDATE sorteio_participantes SET sorteio_id=? WHERE sorteio_id='atual'", (sorteio_id,))
-        conn.commit(); conn.close()
-
-        print(f'🎉 SORTEIO {sorteio_id}: {ganhador["nome"]} ganhou R${premio:.2f}!', flush=True)
-
-        return web.json_response({
-            'success': True,
-            'sorteio_id': sorteio_id,
-            'ganhador': {
-                'cliente_id': ganhador['cliente_id'],
-                'nome': ganhador['nome'],
-                'numero_sorte': ganhador['numero_sorte'],
-                'premio': premio,
-            },
-            'estatisticas': {
-                'total_participantes': len(participantes),
-                'total_saldo': round(total_saldo, 2),
-            }
-        })
+        resultado = await _executar_sorteio_completo()
+        return web.json_response(resultado)
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
+
+# ─── AGENDADOR AUTOMÁTICO DE SORTEIO ─────────────────────
+async def agendador_sorteio():
+    """Verifica a cada minuto se chegou a hora do sorteio e executa automaticamente"""
+    print('⏰ Agendador de sorteio iniciado', flush=True)
+    while True:
+        await asyncio.sleep(60)  # Verifica a cada 1 minuto
+        try:
+            config = get_sorteio_config()
+            proximo = config.get('proximo_sorteio')
+            if not proximo or not config.get('ativo', 1):
+                continue
+
+            import datetime as dt
+            agora = dt.datetime.now(dt.timezone.utc)
+            alvo = dt.datetime.fromisoformat(proximo.replace('Z', '+00:00'))
+            if alvo.tzinfo is None:
+                alvo = alvo.replace(tzinfo=dt.timezone.utc)
+
+            # Se passou da hora do sorteio (com tolerância de 2 min)
+            diff = (agora - alvo).total_seconds()
+            if 0 <= diff <= 120:
+                print(f'🎰 HORA DO SORTEIO AUTOMÁTICO! diff={diff:.0f}s', flush=True)
+
+                # Verificar se já não foi feito (limpar proximo_sorteio para não repetir)
+                conn = sqlite3.connect(DB_PATH)
+                conn.execute("UPDATE sorteio_config SET proximo_sorteio=NULL, updated_at=? WHERE id=1",
+                             (datetime.now().isoformat(),))
+                conn.commit(); conn.close()
+
+                resultado = await _executar_sorteio_completo()
+                if resultado['success']:
+                    g = resultado['ganhador']
+                    print(f'🎉 SORTEIO AUTO CONCLUÍDO: {g["nome"]} ganhou R${g["premio"]:.2f}!', flush=True)
+                else:
+                    print(f'❌ Sorteio auto falhou: {resultado.get("error")}', flush=True)
+
+        except Exception as e:
+            print(f'❌ Agendador erro: {e}', flush=True)
 
 async def route_sorteio_config(request):
     """ADMIN - Configurar parâmetros do sorteio"""
@@ -625,13 +765,20 @@ async def route_sorteio_participantes(request):
                  WHERE sorteio_id='atual' ORDER BY saldo DESC""")
     rows = c.fetchall(); conn.close()
     cols = ['id','cliente_id','nome','saldo','saldo_medio','numero_sorte',
-            'premio_estimado','created_at','sorteio_id']
-    participantes = [dict(zip(cols, r)) for r in rows]
+            'premio_estimado','chave_pix','tipo_chave','created_at','sorteio_id']
+    participantes = []
+    for r in rows:
+        d = {}
+        for i, col in enumerate(cols):
+            d[col] = r[i] if i < len(r) else None
+        participantes.append(d)
     total_saldo = sum(p['saldo'] for p in participantes)
     return web.json_response({
         'participantes': participantes,
         'total': len(participantes),
         'total_saldo': round(total_saldo, 2),
+        'com_pix': len([p for p in participantes if p.get('chave_pix')]),
+        'sem_pix': len([p for p in participantes if not p.get('chave_pix')]),
     })
 
 # ─── ROTAS ────────────────────────────────────────────────
@@ -1279,6 +1426,9 @@ async def main():
 
     # Telegram em background com retry automático
     asyncio.create_task(conectar_telegram())
+
+    # Agendador de sorteio automático
+    asyncio.create_task(agendador_sorteio())
 
     await asyncio.Event().wait()
 
