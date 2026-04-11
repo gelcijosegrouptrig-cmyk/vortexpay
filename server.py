@@ -107,14 +107,46 @@ async def conectar_telegram():
             @client.on(events.NewMessage(from_users=BOT_USERNAME))
             async def handler(event):
                 texto = event.message.text or ''
-                padroes = [r'pagamento.*confirmado', r'depósito.*recebido',
-                           r'✅.*depositado', r'recebemos.*R\$', r'depósito aprovado']
+                # Padrões exatos que o VortexPay envia ao confirmar depósito
+                padroes = [
+                    r'Depósito de R\$.*recebido com sucesso',
+                    r'✅ Depósito de',
+                    r'depósito.*recebido com sucesso',
+                    r'pagamento.*confirmado',
+                    r'✅.*depositado',
+                    r'recebemos.*R\$',
+                    r'depósito aprovado',
+                    r'Valor creditado:',
+                ]
                 if any(re.search(p, texto, re.IGNORECASE) for p in padroes):
-                    tx_match = re.search(r'txn_([a-f0-9]+)', texto)
-                    if tx_match:
-                        tx_id = f"txn_{tx_match.group(1)}"
-                        confirmar_pagamento(tx_id)
-                        print(f'✅ Pago confirmado: {tx_id}', flush=True)
+                    print(f'💰 Confirmação detectada: {texto[:100]}', flush=True)
+                    # Buscar tx mais recente pendente e confirmar
+                    conn = sqlite3.connect(DB_PATH)
+                    c = conn.cursor()
+                    # Pegar transações pendentes mais recentes (últimas 5 min)
+                    c.execute("""SELECT tx_id FROM transacoes 
+                                 WHERE status='pendente' 
+                                 ORDER BY created_at DESC LIMIT 5""")
+                    pendentes = [r[0] for r in c.fetchall()]
+                    conn.close()
+                    
+                    # Tentar extrair valor da mensagem para match
+                    val_match = re.search(r'R\$\s*([\d,.]+)', texto)
+                    valor_msg = None
+                    if val_match:
+                        try:
+                            valor_msg = float(val_match.group(1).replace(',', '.'))
+                        except:
+                            pass
+                    
+                    for tx_id in pendentes:
+                        tx = buscar_transacao(tx_id)
+                        if tx:
+                            # Confirmar se valor bate ou se só tem uma pendente
+                            if valor_msg is None or abs(tx['valor'] - valor_msg) < 0.01 or len(pendentes) == 1:
+                                confirmar_pagamento(tx_id)
+                                print(f'✅ Pago confirmado: {tx_id} R${tx["valor"]}', flush=True)
+                                break
 
             print('✅ Listener ativo, mantendo conexão...', flush=True)
             await client.run_until_disconnected()
@@ -128,6 +160,22 @@ async def conectar_telegram():
         await asyncio.sleep(espera)
 
 # ─── GERAR PIX - Garante conexão antes de gerar ────────────
+async def verificar_saldo_bot() -> float:
+    """Consulta saldo atual no bot"""
+    try:
+        bot = await client.get_entity(BOT_USERNAME)
+        await client.send_message(bot, '/start')
+        await asyncio.sleep(3)
+        msgs = await client.get_messages(bot, limit=3)
+        for msg in msgs:
+            if msg.text and 'Saldo Disponível' in msg.text:
+                m = re.search(r'Saldo Disponível[^`]*`R\$\s*([\d,.]+)`', msg.text)
+                if m:
+                    return float(m.group(1).replace(',', '.'))
+    except:
+        pass
+    return -1.0
+
 async def gerar_pix(valor, cliente_id=None, webhook_url=None):
     # Se Telegram não está pronto, tenta conectar e espera até 60s
     if not _telegram_ready:
@@ -237,6 +285,34 @@ async def route_status_tx(request):
     tx = buscar_transacao(tx_id)
     if not tx:
         return web.json_response({'error': 'Transação não encontrada'}, status=404)
+
+    # Se ainda pendente, verificar mensagens recentes do bot
+    if tx['status'] == 'pendente' and _telegram_ready:
+        try:
+            bot = await client.get_entity(BOT_USERNAME)
+            msgs = await client.get_messages(bot, limit=10)
+            padroes_pago = [
+                r'Depósito de R\$.*recebido com sucesso',
+                r'✅ Depósito de',
+                r'Valor creditado:',
+                r'depósito.*recebido',
+            ]
+            for msg in msgs:
+                if not msg.text:
+                    continue
+                if any(re.search(p, msg.text, re.IGNORECASE) for p in padroes_pago):
+                    # Verificar se é recente (últimos 10 min)
+                    import datetime as dt
+                    if hasattr(msg, 'date') and msg.date:
+                        idade = (dt.datetime.now(dt.timezone.utc) - msg.date).total_seconds()
+                        if idade < 600:  # 10 minutos
+                            confirmar_pagamento(tx_id)
+                            tx = buscar_transacao(tx_id)
+                            print(f'✅ Confirmado via polling: {tx_id}', flush=True)
+                            break
+        except Exception as e:
+            print(f'Polling erro: {e}', flush=True)
+
     return web.json_response({
         'tx_id': tx['tx_id'], 'valor': tx['valor'], 'status': tx['status'],
         'created_at': tx['created_at'], 'paid_at': tx.get('paid_at'),
