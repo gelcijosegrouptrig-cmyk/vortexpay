@@ -52,10 +52,10 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
 /* REGRA DESTAQUE */
 .regra-box{background:linear-gradient(135deg,#1a1200,#251a00);border:1px solid #FFD70044;border-radius:14px;padding:14px 16px;margin-bottom:14px;text-align:center}
 .regra-box .titulo{font-size:13px;color:#FFD700;font-weight:700;margin-bottom:8px}
-.regra-itens{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.regra-item{background:#FFD70015;border:1px solid #FFD70033;border-radius:10px;padding:8px 12px;text-align:center}
-.regra-item .val{font-size:20px;font-weight:900;color:#FFD700;font-family:monospace}
-.regra-item .lbl{font-size:11px;color:#888;margin-top:2px}
+.regra-itens{display:flex;gap:6px;justify-content:center;flex-wrap:nowrap;width:100%}
+.regra-item{background:#FFD70015;border:1px solid #FFD70033;border-radius:10px;padding:6px 8px;text-align:center;flex:1;min-width:0}
+.regra-item .val{font-size:18px;font-weight:900;color:#FFD700;font-family:monospace}
+.regra-item .lbl{font-size:10px;color:#888;margin-top:2px;white-space:nowrap}
 
 /* CARD */
 .card{background:linear-gradient(135deg,#141420,#1a1a2e);border:1px solid #ffffff12;border-radius:18px;padding:20px;margin-bottom:14px}
@@ -143,10 +143,10 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
   <div class="regra-box">
     <div class="titulo">🎫 Como ganhar números da sorte</div>
     <div class="regra-itens" id="regra-itens">
-      <div class="regra-item"><div class="val">1</div><div class="lbl">número<br>R$ 5</div></div>
-      <div class="regra-item"><div class="val">2</div><div class="lbl">números<br>R$ 10</div></div>
-      <div class="regra-item"><div class="val">3</div><div class="lbl">números<br>R$ 15</div></div>
-      <div class="regra-item"><div class="val">+1</div><div class="lbl">a cada<br>R$ 5</div></div>
+      <div class="regra-item"><div class="val">1</div><div class="lbl">nº · R$5</div></div>
+      <div class="regra-item"><div class="val">2</div><div class="lbl">nº · R$10</div></div>
+      <div class="regra-item"><div class="val">3</div><div class="lbl">nº · R$15</div></div>
+      <div class="regra-item"><div class="val">+1</div><div class="lbl">a cada R$5</div></div>
     </div>
   </div>
 
@@ -460,10 +460,10 @@ async function carregarInfo() {
     const vp = s.valor_por_numero || 5;
     const ri = document.getElementById('regra-itens');
     if (ri) ri.innerHTML = `
-      <div class="regra-item"><div class="val">1</div><div class="lbl">número<br>R$ ${vp.toFixed(0)}</div></div>
-      <div class="regra-item"><div class="val">2</div><div class="lbl">números<br>R$ ${(vp*2).toFixed(0)}</div></div>
-      <div class="regra-item"><div class="val">3</div><div class="lbl">números<br>R$ ${(vp*3).toFixed(0)}</div></div>
-      <div class="regra-item"><div class="val">+1</div><div class="lbl">a cada<br>R$ ${vp.toFixed(0)}</div></div>
+      <div class="regra-item"><div class="val">1</div><div class="lbl">nº · R$${vp.toFixed(0)}</div></div>
+      <div class="regra-item"><div class="val">2</div><div class="lbl">nº · R$${(vp*2).toFixed(0)}</div></div>
+      <div class="regra-item"><div class="val">3</div><div class="lbl">nº · R$${(vp*3).toFixed(0)}</div></div>
+      <div class="regra-item"><div class="val">+1</div><div class="lbl">a cada R$${vp.toFixed(0)}</div></div>
     `;
     if (s.proximo_sorteio) {
       iniciarCountdown(new Date(s.proximo_sorteio));
