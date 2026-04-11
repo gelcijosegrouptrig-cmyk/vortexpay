@@ -259,13 +259,11 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
       <p style="text-align:center;color:#555;font-size:12px" id="prox-data">Aguardando configuração</p>
     </div>
 
-    <!-- Stats -->
-    <div class="card">
-      <div class="sec-title">📊 Estatísticas</div>
-      <div class="stat-row"><span class="lbl">👥 Participantes</span><span class="val" id="st-part">-</span></div>
-      <div class="stat-row"><span class="lbl">🎫 Total de bilhetes</span><span class="val gold" id="st-bill">-</span></div>
-      <div class="stat-row"><span class="lbl">💰 Total depositado</span><span class="val" id="st-dep">-</span></div>
-      <div class="stat-row"><span class="lbl">🏆 Prêmio estimado</span><span class="val green" id="st-premio">-</span></div>
+    <!-- Prêmio em destaque -->
+    <div class="card" style="text-align:center;background:linear-gradient(135deg,#0d1a00,#142800);border-color:#00d68f44">
+      <div class="sec-title" style="text-align:center;color:#00d68f">🏆 Prêmio do Sorteio</div>
+      <div id="st-premio" style="font-size:52px;font-weight:900;color:#00d68f;font-family:monospace;margin:12px 0;text-shadow:0 0 30px #00d68f55">-</div>
+      <div style="font-size:13px;color:#555;margin-bottom:4px">👥 <span id="st-part">-</span> participantes</div>
     </div>
 
     <div class="msg info">
@@ -330,8 +328,6 @@ async function carregarInfo() {
     const s = info.sorteio;
     document.getElementById('desc-sorteio').textContent = s.descricao;
     document.getElementById('st-part').textContent = s.total_participantes;
-    document.getElementById('st-bill').textContent = s.total_bilhetes + ' bilhetes';
-    document.getElementById('st-dep').textContent  = 'R$ '+s.total_depositado.toFixed(2).replace('.',',');
     document.getElementById('st-premio').textContent = 'R$ '+s.premio_estimado_total.toFixed(2).replace('.',',');
     // Atualizar regras dinamicamente com valor_por_numero
     const vp = s.valor_por_numero || 5;
