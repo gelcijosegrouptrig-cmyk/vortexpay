@@ -324,10 +324,13 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
     <div id="etapa-valor">
       <div class="valor-display">
         <div><span class="cifrao">R$</span> <span class="valor" id="m-valor-display">0,00</span></div>
-        <div class="hint">Mínimo R$ 5,00</div>
+        <div class="hint" id="m-hint">Mínimo R$ 5,00 • Apenas múltiplos de R$ 5</div>
       </div>
       <div class="numeros-preview" id="m-numeros-preview" style="display:none">
         🎫 Você vai ganhar <strong id="m-qtd-nums">0</strong> número(s) da sorte!
+      </div>
+      <div id="m-aviso-multiplo" style="display:none;background:#ff444415;border:1px solid #ff444433;border-radius:10px;padding:8px 12px;text-align:center;font-size:13px;color:#ff8888;margin-bottom:8px">
+        ⚠️ Digite um valor múltiplo de R$ 5 (ex: 5, 10, 15, 20...)
       </div>
       <div class="teclado">
         <div class="key" onclick="tecla('1')">1</div>
@@ -591,6 +594,10 @@ function abrirDeposito() {
   if (!cpf) { alert('Faça seu cadastro primeiro!'); return; }
   cpfAtual = cpf;
   rawDep = '';
+  // Atualizar hint com valor configurado
+  const vp = info?.sorteio?.valor_por_numero || 5;
+  const hint = document.getElementById('m-hint');
+  if (hint) hint.textContent = `Mínimo R$ ${vp.toFixed(0)} • Apenas múltiplos de R$ ${vp.toFixed(0)}`;
   atualizarDisplayDep();
   document.getElementById('etapa-valor').style.display = 'block';
   document.getElementById('etapa-pix').style.display = 'none';
@@ -623,18 +630,40 @@ function tecla(v) {
 function atualizarDisplayDep() {
   const num = parseInt(rawDep || '0');
   const reais = num / 100;
-  document.getElementById('m-valor-display').textContent = reais.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  const btn = document.getElementById('m-btn-gerar');
   const vp = info?.sorteio?.valor_por_numero || 5;
-  if (reais >= 5) {
+  const btn = document.getElementById('m-btn-gerar');
+  const prev = document.getElementById('m-numeros-preview');
+  const aviso = document.getElementById('m-aviso-multiplo');
+  const display = document.getElementById('m-valor-display');
+
+  display.textContent = reais.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  if (reais === 0) {
+    // Zerado — neutro
+    btn.disabled = true;
+    prev.style.display = 'none';
+    aviso.style.display = 'none';
+    display.style.color = '#FFD700';
+  } else if (reais < vp) {
+    // Abaixo do mínimo
+    btn.disabled = true;
+    prev.style.display = 'none';
+    aviso.style.display = 'none';
+    display.style.color = '#ff8888';
+  } else if (reais % vp !== 0) {
+    // Não é múltiplo de vp
+    btn.disabled = true;
+    prev.style.display = 'none';
+    aviso.style.display = 'block';
+    display.style.color = '#ff8888';
+  } else {
+    // ✅ Válido e múltiplo de vp
     btn.disabled = false;
+    aviso.style.display = 'none';
+    display.style.color = '#00d68f';
     const qtd = Math.floor(reais / vp);
-    const prev = document.getElementById('m-numeros-preview');
     prev.style.display = 'block';
     document.getElementById('m-qtd-nums').textContent = qtd;
-  } else {
-    btn.disabled = true;
-    document.getElementById('m-numeros-preview').style.display = 'none';
   }
 }
 
