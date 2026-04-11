@@ -160,6 +160,24 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
   <!-- ══ ABA: MEUS NÚMEROS ══ -->
   <div id="tab-meus">
 
+    <!-- PRÊMIO DESTAQUE (sempre visível) -->
+    <div style="background:linear-gradient(135deg,#1a0a00,#2a1400);border:2px solid #FFD70055;border-radius:16px;padding:18px 12px;text-align:center;margin-bottom:14px">
+      <div style="font-size:12px;color:#FFD700;font-weight:700;letter-spacing:1px;margin-bottom:4px">🏆 PRÊMIO ACUMULADO</div>
+      <div id="home-premio" style="font-size:54px;font-weight:900;color:#FFD700;font-family:monospace;line-height:1;text-shadow:0 0 30px #FFD70088">R$ --</div>
+      <div style="font-size:12px;color:#aaa;margin-top:6px">💸 Enviado via Pix ao ganhador na hora</div>
+      <div style="display:flex;justify-content:center;gap:20px;margin-top:10px">
+        <div style="text-align:center">
+          <div id="home-part" style="font-size:20px;font-weight:800;color:#fff">-</div>
+          <div style="font-size:10px;color:#666">participantes</div>
+        </div>
+        <div style="width:1px;background:#333"></div>
+        <div style="text-align:center">
+          <div id="home-bilhetes" style="font-size:20px;font-weight:800;color:#fff">-</div>
+          <div style="font-size:10px;color:#666">bilhetes</div>
+        </div>
+      </div>
+    </div>
+
     <!-- INÍCIO: PARTICIPAR -->
     <div id="bloco-inicio">
       <div class="card gold">
@@ -447,12 +465,18 @@ async function carregarInfo() {
     const s = info.sorteio;
     document.getElementById('desc-sorteio').textContent = s.descricao;
     document.getElementById('st-part').textContent = s.total_participantes;
-    // Exibe exatamente o valor que será sacado (calculado igual ao backend no sorteio)
     const premioExato = s.premio_estimado_total || 0;
     document.getElementById('st-premio').textContent = 'R$ '+premioExato.toFixed(2).replace('.',',');
-    // Bilhetes totais
     const elBilhetes = document.getElementById('st-bilhetes');
     if (elBilhetes) elBilhetes.textContent = s.total_bilhetes || 0;
+
+    // ── Atualizar card de prêmio na tela principal ──
+    const elHomePremio = document.getElementById('home-premio');
+    const elHomePart   = document.getElementById('home-part');
+    const elHomeBil    = document.getElementById('home-bilhetes');
+    if (elHomePremio) elHomePremio.textContent = 'R$ '+premioExato.toFixed(2).replace('.',',');
+    if (elHomePart)   elHomePart.textContent   = s.total_participantes || 0;
+    if (elHomeBil)    elHomeBil.textContent     = s.total_bilhetes || 0;
 
     const vp = s.valor_por_numero || 5;
     const ri = document.getElementById('regra-itens');
