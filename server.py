@@ -1713,6 +1713,7 @@ async def route_health(request):
             motivo = 'iniciando'
     return web.json_response({
         'status': 'online',
+        'version': 'v20260412-fix-transaction',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'tentativas': _telegram_tentativas,
