@@ -4,10 +4,9 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python3 server.py",
+    "startCommand": "bash start.sh",
     "healthcheckPath": "/health",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
 }
-# test deploy Sun Apr 12 12:19:15 UTC 2026
