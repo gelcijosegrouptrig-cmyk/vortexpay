@@ -333,7 +333,10 @@ def init_db():
     # Migrações de colunas — cada ALTER TABLE em transação separada
     for col in ["valor_por_numero REAL DEFAULT 5.0",
                 "usar_media INTEGER DEFAULT 0",
-                "dias_media INTEGER DEFAULT 30"]:
+                "dias_media INTEGER DEFAULT 30",
+                "paypix_pct REAL DEFAULT 0.6",
+                "paypix_ativo INTEGER DEFAULT 1",
+                "paypix_descricao TEXT DEFAULT 'Gere seu Pix e receba sua % do valor'"]:
         try:
             conn.execute(f'ALTER TABLE sorteio_config ADD COLUMN {col}')
             conn.commit()
@@ -613,6 +616,23 @@ def get_sorteio_config():
             d[col] = row[i] if i < len(row) else None
         return d
     return {}
+
+def get_paypix_config():
+    """Retorna configuração do PayPix (%, ativo, descrição)"""
+    conn = sqlite3_connect()
+    try:
+        cur = conn.execute('SELECT paypix_pct, paypix_ativo, paypix_descricao FROM sorteio_config WHERE id=1')
+        row = cur.fetchone()
+        conn.close()
+        if row:
+            return {
+                'paypix_pct':       float(row[0]) if row[0] is not None else 0.6,
+                'paypix_ativo':     bool(row[1]) if row[1] is not None else True,
+                'paypix_descricao': str(row[2]) if row[2] else 'Gere seu Pix e receba sua % do valor',
+            }
+    except Exception:
+        conn.close()
+    return {'paypix_pct': 0.6, 'paypix_ativo': True, 'paypix_descricao': 'Gere seu Pix e receba sua % do valor'}
 
 def get_participante(cpf):
     """Busca participante pelo CPF"""
@@ -2353,13 +2373,17 @@ async def route_paypix_gerar(request):
         cliente_id = f"paypix_{hashlib.md5(f'{chave_pix}{time.time()}'.encode()).hexdigest()[:10]}"
         tx_id = f"ppx_{hashlib.md5(f'{chave_pix}{valor}{time.time()}'.encode()).hexdigest()[:16]}"
 
+        # Ler % dinâmico do banco
+        _pp_cfg = get_paypix_config()
+        _pct = _pp_cfg.get('paypix_pct', 0.6)
+
         extra = json.dumps({
             'tipo': 'paypix',
             'parceiro_chave': chave_pix,
             'parceiro_tipo':  tipo_chave,
             'valor_total':    valor,
-            'parceiro_pct':   0.6,
-            'plataforma_pct': 0.4,
+            'parceiro_pct':   _pct,
+            'plataforma_pct': round(1.0 - _pct, 4),
         })
 
         # Salvar como "gerando"
@@ -2470,6 +2494,47 @@ async def route_paypix_status(request):
             print(f'[paypix status] erro poll bot: {e}', flush=True)
 
     return web.json_response(resp)
+
+async def route_paypix_config(request):
+    """GET: retorna config PayPix | POST (admin): atualiza % e descrição"""
+    if request.method == 'POST':
+        auth = (request.headers.get('X-PaynexBet-Secret', '') or
+                request.rel_url.query.get('secret', ''))
+        if auth != WEBHOOK_SECRET:
+            return web.json_response({'error': 'Não autorizado'}, status=401)
+        try:
+            data = await request.json()
+            pct_raw = float(data.get('paypix_pct', 60))
+            # Aceita 0-100 (percentual) ou 0.0-1.0 (decimal)
+            pct = pct_raw / 100.0 if pct_raw > 1 else pct_raw
+            pct = max(0.01, min(0.99, pct))  # entre 1% e 99%
+            ativo = int(bool(data.get('paypix_ativo', True)))
+            descricao = str(data.get('paypix_descricao', 'Gere seu Pix e receba sua % do valor'))[:200]
+            conn = sqlite3_connect()
+            conn.execute(
+                'UPDATE sorteio_config SET paypix_pct=?, paypix_ativo=?, paypix_descricao=?, updated_at=? WHERE id=1',
+                (pct, ativo, descricao, datetime.now().isoformat())
+            )
+            conn.commit(); conn.close()
+            return web.json_response({
+                'success': True,
+                'paypix_pct': pct,
+                'paypix_pct_display': f'{round(pct*100, 1)}%',
+                'paypix_ativo': bool(ativo),
+                'paypix_descricao': descricao,
+            })
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    else:
+        # GET — público (paypix.html precisa saber o %)
+        cfg = get_paypix_config()
+        pct = cfg.get('paypix_pct', 0.6)
+        return web.json_response({
+            'paypix_pct':          pct,
+            'paypix_pct_display':  f'{round(pct*100, 1)}%',
+            'paypix_ativo':        cfg.get('paypix_ativo', True),
+            'paypix_descricao':    cfg.get('paypix_descricao', 'Gere seu Pix e receba sua % do valor'),
+        })
 
 async def _processar_split_paypix(tx_id, valor, extra_str):
     """Após confirmação de pagamento, envia 60% para o parceiro via bot"""
@@ -2632,6 +2697,9 @@ async def main():
     app.router.add_get('/paypix', route_paypix_page)
     app.router.add_post('/api/paypix/gerar', route_paypix_gerar)
     app.router.add_get('/api/paypix/status/{tx_id}', route_paypix_status)
+    app.router.add_get('/api/paypix/config', route_paypix_config)
+    app.router.add_post('/api/paypix/config', route_paypix_config)
+    app.router.add_options('/api/paypix/config', lambda r: web.Response(headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,X-PaynexBet-Secret'}))
     app.router.add_route('OPTIONS', '/api/paypix/gerar', lambda r: web.Response(status=200))
     # Endpoint de restart forçado (Railway reinicia o processo com código novo)
     async def route_force_restart(request):

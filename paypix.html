@@ -174,14 +174,46 @@ let _txId = null;
 let _pollInterval = null;
 let _pixCode = null;
 let _valor = 0;
+let _pct = 0.6; // será sobrescrito pela API
+
+// ─── CARREGAR CONFIG DINÂMICA DO % ───
+async function carregarConfigPaypix() {
+  try {
+    const r = await fetch(`${BASE}/api/paypix/config`);
+    const d = await r.json();
+    _pct = d.paypix_pct || 0.6;
+    const pctDisplay = Math.round(_pct * 100) + '%';
+    const platDisplay = Math.round((1 - _pct) * 100) + '%';
+    // Atualizar textos dinâmicos
+    const tituloP = document.querySelector('.logo p');
+    if (tituloP) tituloP.textContent = d.paypix_descricao || `Gere seu Pix e receba ${pctDisplay} do valor`;
+    // Labels do split
+    const lblVoce = document.querySelector('.split-row .label');
+    if (lblVoce) lblVoce.textContent = `💰 Você recebe (${pctDisplay})`;
+    document.querySelectorAll('.split-row .label').forEach((el, i) => {
+      if (i === 0) el.textContent = `💰 Você recebe (${pctDisplay})`;
+      if (i === 1) el.textContent = `🏦 Plataforma (${platDisplay})`;
+    });
+    // Info tip
+    document.querySelectorAll('.info-tip').forEach(el => {
+      el.textContent = `O cliente paga via Pix → ${pctDisplay} cai na sua conta automaticamente`;
+    });
+    // Badge status
+    if (!d.paypix_ativo) {
+      document.querySelector('.badge').innerHTML = '<span style="background:#ef4444"></span> Sistema inativo';
+      document.getElementById('btn-gerar').disabled = true;
+      document.getElementById('btn-gerar').textContent = '🔴 Sistema temporariamente indisponível';
+    }
+  } catch(e) { console.error('carregarConfigPaypix:', e); }
+}
 
 // ─── PREVIEW split ao digitar valor ───
 document.getElementById('valor').addEventListener('input', function() {
   const v = parseFloat(this.value) || 0;
   const box = document.getElementById('split-preview');
   if (v >= 5) {
-    const voce = v * 0.6;
-    const plat = v * 0.4;
+    const voce = v * _pct;
+    const plat = v * (1 - _pct);
     document.getElementById('prev-voce').textContent  = `R$ ${voce.toFixed(2).replace('.',',')}`;
     document.getElementById('prev-plat').textContent  = `R$ ${plat.toFixed(2).replace('.',',')}`;
     document.getElementById('prev-total').textContent = `R$ ${v.toFixed(2).replace('.',',')}`;
@@ -190,6 +222,9 @@ document.getElementById('valor').addEventListener('input', function() {
     box.style.display = 'none';
   }
 });
+
+// Carregar config ao inicializar
+carregarConfigPaypix();
 
 // ─── GERAR PIX ───
 async function gerarPix() {
@@ -275,7 +310,7 @@ async function aguardarPixCode() {
 
 function mostrarQr(pixCode) {
   // atualizar labels
-  const voce = _valor * 0.6;
+  const voce = _valor * _pct;
   document.getElementById('valor-destaque').textContent = `R$ ${_valor.toFixed(2).replace('.',',')}`;
   document.getElementById('voce-recebe-label').innerHTML = `Você recebe: <strong style="color:#4ade80">R$ ${voce.toFixed(2).replace('.',',')}</strong>`;
   document.getElementById('pix-code-text').textContent = pixCode;
@@ -313,7 +348,7 @@ function iniciarPollPagamento() {
 }
 
 function mostrarPago(d) {
-  const voce = _valor * 0.6;
+  const voce = _valor * _pct;
   const plat = _valor * 0.4;
   document.getElementById('conf-voce').textContent = `R$ ${voce.toFixed(2).replace('.',',')}`;
   document.getElementById('conf-plat').textContent = `R$ ${plat.toFixed(2).replace('.',',')}`;

@@ -585,6 +585,9 @@
       <div class="nav-item" onclick="showTab('sorteio')">
         🎲 <span>Sorteio</span>
       </div>
+      <div class="nav-item" onclick="showTab('paypix')">
+        💸 <span>PayPix</span>
+      </div>
       <div class="nav-section">Desenvolvedores</div>
       <div class="nav-item" onclick="showTab('api')">
         🔌 <span>API & Webhooks</span>
@@ -1021,6 +1024,137 @@
 
       </div><!-- /tab-sorteio -->
 
+      <!-- ═══════ PAYPIX ═══════ -->
+      <div id="tab-paypix" class="tab-content">
+
+        <!-- Métricas PayPix -->
+        <div class="metrics-grid" style="margin-bottom:20px">
+          <div class="metric-card green">
+            <div class="metric-icon">💸</div>
+            <div class="metric-label">Repasse ao Parceiro</div>
+            <div class="metric-value" id="pp-pct-display">—</div>
+            <div class="metric-sub">do valor gerado</div>
+          </div>
+          <div class="metric-card orange">
+            <div class="metric-icon">🏦</div>
+            <div class="metric-label">Receita Plataforma</div>
+            <div class="metric-value" id="pp-plat-display">—</div>
+            <div class="metric-sub">retido pela plataforma</div>
+          </div>
+          <div class="metric-card blue">
+            <div class="metric-icon">🔗</div>
+            <div class="metric-label">Link PayPix</div>
+            <div class="metric-value" style="font-size:13px;word-break:break-all">
+              <a href="/paypix" target="_blank" style="color:#60a5fa;text-decoration:none">/paypix</a>
+            </div>
+            <div class="metric-sub">link público para parceiros</div>
+          </div>
+          <div class="metric-card" id="pp-status-card" style="border-color:#22c55e44">
+            <div class="metric-icon">⚡</div>
+            <div class="metric-label">Status</div>
+            <div class="metric-value" id="pp-status-display">—</div>
+            <div class="metric-sub" id="pp-status-sub">sistema PayPix</div>
+          </div>
+        </div>
+
+        <!-- Configuração do % -->
+        <div class="table-card" style="margin-bottom:20px">
+          <div class="table-header">
+            <h3>⚙️ Configurar PayPix</h3>
+            <span style="font-size:12px;color:#888">Somente admin pode alterar</span>
+          </div>
+          <div style="padding:20px">
+
+            <!-- Slider visual do % -->
+            <div style="margin-bottom:24px">
+              <label style="font-size:12px;color:#888;display:block;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">
+                💸 Percentual de repasse ao parceiro
+              </label>
+              <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+                <input type="range" id="pp-slider" min="10" max="90" value="60" step="1"
+                  oninput="atualizarSliderPaypix(this.value)"
+                  style="flex:1;height:6px;accent-color:#22c55e;cursor:pointer">
+                <div style="background:#22c55e22;border:2px solid #22c55e44;border-radius:12px;padding:8px 16px;min-width:70px;text-align:center">
+                  <span id="pp-slider-val" style="font-size:24px;font-weight:900;color:#22c55e;font-family:monospace">60%</span>
+                </div>
+              </div>
+              <!-- Barra visual split -->
+              <div style="border-radius:8px;overflow:hidden;height:28px;display:flex;font-size:12px;font-weight:700">
+                <div id="pp-bar-parceiro" style="background:linear-gradient(90deg,#22c55e,#4ade80);width:60%;display:flex;align-items:center;justify-content:center;color:#000;transition:width .3s">
+                  <span id="pp-bar-parc-txt">Parceiro 60%</span>
+                </div>
+                <div id="pp-bar-plat" style="background:linear-gradient(90deg,#f97316,#fb923c);flex:1;display:flex;align-items:center;justify-content:center;color:#000;transition:width .3s">
+                  <span id="pp-bar-plat-txt">Plataforma 40%</span>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-top:6px">
+                <span>10%</span><span>50%</span><span>90%</span>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">% Exato (digite direto)</label>
+                <input id="pp-pct-input" type="number" min="10" max="90" value="60" step="1"
+                  oninput="atualizarInputPaypix(this.value)"
+                  style="width:100%;background:#ffffff10;border:1px solid #22c55e44;border-radius:8px;padding:10px;color:#22c55e;font-size:18px;font-weight:700;font-family:monospace">
+                <div style="font-size:11px;color:#555;margin-top:4px">Entre 10% e 90%</div>
+              </div>
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Status do PayPix</label>
+                <select id="pp-ativo" style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px;cursor:pointer">
+                  <option value="1" style="background:#1a1a2e">✅ Ativo — parceiros podem gerar Pix</option>
+                  <option value="0" style="background:#1a1a2e">🔴 Desativado — página indisponível</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="margin-bottom:20px">
+              <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Descrição exibida na página /paypix</label>
+              <input id="pp-descricao" type="text" maxlength="100" placeholder="Ex: Gere seu Pix e receba 60% do valor"
+                style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px">
+              <div style="font-size:11px;color:#555;margin-top:4px">Este texto aparece como subtítulo na página do parceiro</div>
+            </div>
+
+            <!-- Preview -->
+            <div style="background:#ffffff08;border:1px solid #ffffff15;border-radius:12px;padding:16px;margin-bottom:20px">
+              <div style="font-size:11px;color:#666;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">Preview — como o parceiro vê</div>
+              <div style="text-align:center">
+                <div style="font-size:20px;font-weight:800;color:#FFD700">💰 PayPix</div>
+                <div id="pp-preview-desc" style="font-size:13px;color:#888;margin-top:4px">Gere seu Pix e receba 60% do valor</div>
+                <div style="margin-top:10px;background:#22c55e22;border:1px solid #22c55e44;border-radius:8px;padding:8px;font-size:13px;color:#22c55e;display:inline-block">
+                  ● Sistema ativo · Parceiro recebe <span id="pp-preview-pct" style="font-weight:900">60%</span>
+                </div>
+              </div>
+            </div>
+
+            <button onclick="salvarConfigPaypix()" class="action-btn confirm-btn" style="width:100%;font-size:15px;padding:14px">
+              💾 Salvar Configuração PayPix
+            </button>
+            <div id="pp-msg" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <!-- Transações PayPix recentes -->
+        <div class="table-card">
+          <div class="table-header">
+            <h3>📊 Transações PayPix Recentes</h3>
+            <button onclick="carregarPaypixAdmin()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead><tr>
+                <th>ID</th><th>Valor</th><th>Parceiro Recebe</th><th>Chave Pix</th><th>Status</th><th>Data</th>
+              </tr></thead>
+              <tbody id="paypix-tbody">
+                <tr><td colspan="6" style="text-align:center;color:#666;padding:20px">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /tab-paypix -->
+
       <!-- API & WEBHOOKS -->
       <div id="tab-api" class="tab-content">
 
@@ -1435,6 +1569,7 @@ function showTab(tab) {
     saques: '📤 Saques',
     sorteio: '🎲 Sorteio',
     sistema: '🖥️ Sistema',
+    paypix: '💸 PayPix',
     api: '🔌 API & Webhooks',
   };
   document.getElementById('page-title').textContent = titles[tab] || tab;
@@ -1443,6 +1578,7 @@ function showTab(tab) {
   if (tab === 'depositos' && allDepositos.length === 0) loadDepositos();
   if (tab === 'saques' && allSaques.length === 0) loadSaques();
   if (tab === 'sorteio') carregarSorteioAdmin();
+  if (tab === 'paypix') carregarPaypixAdmin();
 }
 
 function tabName(tab) {
@@ -2209,6 +2345,120 @@ async function realizarSorteio() {
 if (sessionStorage.getItem('vp_secret')) {
   document.getElementById('login-secret').value = sessionStorage.getItem('vp_secret');
   fazerLogin();
+}
+
+// ═══════════════════════════════════════════════
+//  PAYPIX ADMIN
+// ═══════════════════════════════════════════════
+let _ppCfg = { paypix_pct: 0.6, paypix_ativo: true, paypix_descricao: '' };
+
+function atualizarSliderPaypix(val) {
+  val = Math.min(90, Math.max(10, parseInt(val)));
+  document.getElementById('pp-slider').value = val;
+  document.getElementById('pp-pct-input').value = val;
+  document.getElementById('pp-slider-val').textContent = val + '%';
+  document.getElementById('pp-bar-parceiro').style.width = val + '%';
+  document.getElementById('pp-bar-parc-txt').textContent = 'Parceiro ' + val + '%';
+  document.getElementById('pp-bar-plat-txt').textContent = 'Plataforma ' + (100 - val) + '%';
+  document.getElementById('pp-preview-pct').textContent = val + '%';
+  const desc = document.getElementById('pp-descricao').value || 'Gere seu Pix e receba sua % do valor';
+  document.getElementById('pp-preview-desc').textContent = desc.replace(/\d+%/, val + '%');
+}
+
+function atualizarInputPaypix(val) {
+  val = Math.min(90, Math.max(10, parseInt(val) || 60));
+  atualizarSliderPaypix(val);
+}
+
+async function carregarPaypixAdmin() {
+  try {
+    const r = await fetch(`${BASE}/api/paypix/config`);
+    const d = await r.json();
+    _ppCfg = d;
+    const pct = Math.round((d.paypix_pct || 0.6) * 100);
+    const platPct = 100 - pct;
+
+    // Métricas
+    document.getElementById('pp-pct-display').textContent = pct + '%';
+    document.getElementById('pp-plat-display').textContent = platPct + '%';
+    const ativo = d.paypix_ativo !== false;
+    const statusEl = document.getElementById('pp-status-display');
+    statusEl.textContent = ativo ? '✅ Ativo' : '🔴 Inativo';
+    statusEl.style.color = ativo ? '#22c55e' : '#ef4444';
+    document.getElementById('pp-status-sub').textContent = ativo ? 'parceiros podem gerar Pix' : 'página desativada';
+    document.getElementById('pp-status-card').style.borderColor = ativo ? '#22c55e44' : '#ef444444';
+
+    // Formulário
+    atualizarSliderPaypix(pct);
+    document.getElementById('pp-ativo').value = ativo ? '1' : '0';
+    document.getElementById('pp-descricao').value = d.paypix_descricao || '';
+    document.getElementById('pp-preview-desc').textContent = d.paypix_descricao || 'Gere seu Pix e receba ' + pct + '% do valor';
+    document.getElementById('pp-preview-pct').textContent = pct + '%';
+
+    // Carregar transações PayPix
+    await carregarTxPaypix();
+  } catch(e) { console.error('carregarPaypixAdmin:', e); }
+}
+
+async function carregarTxPaypix() {
+  try {
+    const r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(SECRET())}&limit=100`);
+    const d = await r.json();
+    const all = (d.transacoes || []).filter(tx =>
+      tx.extra && tx.extra.includes('"tipo": "paypix"') ||
+      tx.extra && tx.extra.includes('"tipo":"paypix"') ||
+      (tx.cliente_id && tx.cliente_id.startsWith('paypix_'))
+    );
+    const tbody = document.getElementById('paypix-tbody');
+    if (!all.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;padding:20px">📭 Nenhuma transação PayPix ainda</td></tr>';
+      return;
+    }
+    const pct = _ppCfg.paypix_pct || 0.6;
+    tbody.innerHTML = all.slice(0, 30).map(tx => {
+      let chave = '—';
+      try { const ex = JSON.parse(tx.extra || '{}'); chave = ex.parceiro_chave || '—'; } catch(e){}
+      const valParceiro = tx.status === 'pago' ? `<strong style="color:#22c55e">R$ ${(tx.valor * pct).toFixed(2).replace('.',',')}</strong>` : `<span style="color:#555">R$ ${(tx.valor * pct).toFixed(2).replace('.',',')} (aguardando)</span>`;
+      return `<tr>
+        <td class="mono" style="font-size:11px">${(tx.tx_id||'').substring(0,14)}…</td>
+        <td><strong>R$ ${(tx.valor||0).toFixed(2).replace('.',',')}</strong></td>
+        <td>${valParceiro}</td>
+        <td style="font-size:11px;color:#888">${chave}</td>
+        <td>${badgeStatus(tx.status)}</td>
+        <td style="color:#555;font-size:11px">${formatDate(tx.created_at)}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function salvarConfigPaypix() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Salvando...';
+  const msgEl = document.getElementById('pp-msg');
+  try {
+    const pct = parseInt(document.getElementById('pp-pct-input').value) || 60;
+    const ativo = document.getElementById('pp-ativo').value === '1';
+    const desc = document.getElementById('pp-descricao').value.trim();
+    const r = await fetch(`${BASE}/api/paypix/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ paypix_pct: pct, paypix_ativo: ativo, paypix_descricao: desc })
+    });
+    const d = await r.json();
+    if (d.success) {
+      msgEl.innerHTML = `<div class="msg success">✅ Configuração salva! Parceiros receberão <strong>${d.paypix_pct_display}</strong> a partir de agora.</div>`;
+      await carregarPaypixAdmin();
+    } else {
+      msgEl.innerHTML = `<div class="msg error">❌ Erro: ${d.error || 'Falha ao salvar'}</div>`;
+    }
+  } catch(e) {
+    msgEl.innerHTML = `<div class="msg error">❌ Erro de conexão: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Salvar Configuração PayPix';
+    setTimeout(() => { msgEl.innerHTML = ''; }, 5000);
+  }
 }
 </script>
 </body>
