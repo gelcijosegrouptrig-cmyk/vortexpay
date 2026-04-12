@@ -1318,21 +1318,14 @@ async def route_pix(request):
         # Salvar transação como "gerando" para polling do frontend
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS transacoes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tx_id TEXT UNIQUE NOT NULL,
-            valor REAL NOT NULL,
-            pix_code TEXT,
-            cliente_id TEXT,
-            webhook_url TEXT,
-            status TEXT DEFAULT 'gerando',
-            created_at TEXT,
-            paid_at TEXT,
-            participante_dados TEXT
-        )''')
+        # Garantir coluna extra existe (migracao segura)
+        try:
+            c.execute('ALTER TABLE transacoes ADD COLUMN extra TEXT')
+            conn.commit()
+        except: pass
         now = datetime.now().isoformat()
         part_json = json.dumps(participante_dados) if participante_dados else None
-        c.execute('INSERT OR IGNORE INTO transacoes (tx_id,valor,cliente_id,status,created_at,participante_dados) VALUES (?,?,?,?,?,?)',
+        c.execute('INSERT OR IGNORE INTO transacoes (tx_id,valor,cliente_id,status,created_at,extra) VALUES (?,?,?,?,?,?)',
                   (tx_id, valor, cliente_id, 'gerando', now, part_json))
         conn.commit()
         conn.close()
