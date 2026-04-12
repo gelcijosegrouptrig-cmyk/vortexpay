@@ -42,130 +42,142 @@ _telegram_session_invalida = False
 DB_PATH = '/tmp/transacoes.db'
 _USE_PG = False
 
-class DBConn:
-    """Wrapper que imita sqlite3.connect() mas usa PostgreSQL se disponível"""
-    def __init__(self, pg_conn=None, sq_conn=None):
-        self._pg = pg_conn
-        self._sq = sq_conn
-        self.row_factory = None
-
-    def execute(self, sql, params=()):
-        sql_pg = _to_pg(sql)
-        if self._pg:
-            try:
-                cur = self._pg.cursor()
-                cur.execute(sql_pg, params)
-                return cur
-            except Exception as e:
-                try:
-                    self._pg.rollback()
-                except Exception:
-                    pass
-                raise
-        return self._sq.execute(sql, params)
-
-    def cursor(self):
-        if self._pg:
-            return _PGCursor(self._pg.cursor())
-        return self._sq.cursor()
-
-    def commit(self):
-        if self._pg:
-            # Com autocommit=True, commit() é no-op (cada query já commitou)
-            try:
-                if not self._pg.autocommit:
-                    self._pg.commit()
-            except Exception:
-                pass
-        else:
-            self._sq.commit()
-
-    def rollback(self):
-        if self._pg:
-            try:
-                if not self._pg.autocommit:
-                    self._pg.rollback()
-            except Exception:
-                pass
-        else:
-            try:
-                self._sq.rollback()
-            except Exception:
-                pass
-
-    def close(self):
-        if self._pg:
-            try:
-                self._pg.close()
-            except Exception:
-                pass
-        else:
-            try:
-                self._sq.close()
-            except Exception:
-                pass
-
-    def __enter__(self): return self
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is not None:
-            self.rollback()
-        self.close()
-
-class _PGCursor:
-    def __init__(self, cur): self._c = cur
-    def execute(self, sql, params=()):
-        self._c.execute(_to_pg(sql), params)
-        return self
-    def fetchone(self): return self._c.fetchone()
-    def fetchall(self): return self._c.fetchall()
-    @property
-    def lastrowid(self): return self._c.fetchone()[0] if self._c else None
-
 def _to_pg(sql):
     """Converte SQL SQLite para PostgreSQL"""
     import re as _re
-    # ? → %s
     sql = sql.replace('?', '%s')
-    # INTEGER PRIMARY KEY AUTOINCREMENT → SERIAL PRIMARY KEY
     sql = _re.sub(r'INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY', sql, flags=_re.IGNORECASE)
-    # AUTOINCREMENT sozinho
     sql = _re.sub(r'\bAUTOINCREMENT\b', '', sql, flags=_re.IGNORECASE)
-    # INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING
     if _re.search(r'\bINSERT OR IGNORE\b', sql, _re.IGNORECASE):
         sql = _re.sub(r'\bINSERT OR IGNORE\b', 'INSERT', sql, flags=_re.IGNORECASE)
         if 'ON CONFLICT' not in sql.upper():
             sql = sql.rstrip() + ' ON CONFLICT DO NOTHING'
-    # INSERT OR REPLACE → INSERT ... ON CONFLICT DO NOTHING (simplificado)
     if _re.search(r'\bINSERT OR REPLACE\b', sql, _re.IGNORECASE):
         sql = _re.sub(r'\bINSERT OR REPLACE\b', 'INSERT', sql, flags=_re.IGNORECASE)
         if 'ON CONFLICT' not in sql.upper():
             sql = sql.rstrip() + ' ON CONFLICT DO NOTHING'
     return sql
 
+def _nova_pg_conn():
+    """Cria nova conexão PostgreSQL com autocommit=True (cada query = transação independente)"""
+    import psycopg2
+    pg = psycopg2.connect(DATABASE_URL)
+    pg.autocommit = True
+    return pg
+
+class _PGCursor:
+    """Cursor PostgreSQL que cria nova conexão por query para total isolamento"""
+    def __init__(self, cur, conn_owner=None):
+        self._c = cur
+        self._conn_owner = conn_owner  # referência para fechar depois se necessário
+
+    def execute(self, sql, params=()):
+        try:
+            self._c.execute(_to_pg(sql), params)
+        except Exception:
+            # Resetar cursor em caso de erro - não afeta outras queries
+            raise
+        return self
+
+    def fetchone(self): return self._c.fetchone()
+    def fetchall(self): return self._c.fetchall()
+
+    @property
+    def lastrowid(self):
+        try:
+            row = self._c.fetchone()
+            return row[0] if row else None
+        except Exception:
+            return None
+
+class DBConn:
+    """
+    Wrapper que imita sqlite3 mas usa PostgreSQL com autocommit=True.
+    CADA QUERY é executada em nova conexão para total isolamento — 
+    NUNCA ocorre 'current transaction is aborted'.
+    """
+    def __init__(self, pg_url=None, sq_conn=None):
+        self._pg_url = pg_url   # URL do PostgreSQL (para criar nova conn por query)
+        self._sq = sq_conn      # conexão SQLite (reutilizada)
+        self.row_factory = None
+
+    def _exec_pg(self, sql, params=()):
+        """Executa uma query PG em nova conexão — isolamento total, nunca abortada"""
+        import psycopg2
+        pg = None
+        try:
+            pg = psycopg2.connect(self._pg_url)
+            pg.autocommit = True
+            cur = pg.cursor()
+            cur.execute(_to_pg(sql), params)
+            return cur, pg  # retorna cursor E conexão (caller fecha)
+        except Exception:
+            if pg:
+                try: pg.close()
+                except: pass
+            raise
+
+    def execute(self, sql, params=()):
+        if self._pg_url:
+            cur, pg = self._exec_pg(sql, params)
+            # Wrap cursor para fechar pg quando não precisar mais
+            wrapped = _PGCursor(cur, conn_owner=pg)
+            return wrapped
+        return self._sq.execute(sql, params)
+
+    def cursor(self):
+        if self._pg_url:
+            import psycopg2
+            pg = psycopg2.connect(self._pg_url)
+            pg.autocommit = True
+            return _PGCursor(pg.cursor(), conn_owner=pg)
+        return self._sq.cursor()
+
+    def commit(self):
+        # PostgreSQL: autocommit=True → commit é no-op
+        if not self._pg_url and self._sq:
+            try: self._sq.commit()
+            except: pass
+
+    def rollback(self):
+        # PostgreSQL: autocommit=True → rollback é no-op (cada query já encerrou)
+        if not self._pg_url and self._sq:
+            try: self._sq.rollback()
+            except: pass
+
+    def close(self):
+        # PostgreSQL: conexões são criadas e fechadas por query — nada a fechar aqui
+        if not self._pg_url and self._sq:
+            try: self._sq.close()
+            except: pass
+
+    def __enter__(self): return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
 def _pg_insert_ignore(sql, params, conn):
     """Execute INSERT ignorando duplicatas no PostgreSQL"""
     try:
-        cur = conn.cursor()
-        cur._c.execute(_to_pg(sql), params)
-        conn._pg.commit()
+        conn.execute(sql, params)
     except Exception as e:
-        if 'duplicate' in str(e).lower() or 'unique' in str(e).lower():
-            conn._pg.rollback()
+        err = str(e).lower()
+        if 'duplicate' in err or 'unique' in err:
+            pass  # ignorar duplicata — esperado
         else:
-            conn._pg.rollback()
             raise
 
 def sqlite3_connect(path=None):
-    """Conecta ao PostgreSQL se disponível, senão SQLite"""
-    global _USE_PG
+    """Conecta ao PostgreSQL se disponível, senão SQLite.
+    PostgreSQL: cria DBConn com pg_url (nova conn por query = zero 'transaction aborted')
+    SQLite: abre arquivo local normalmente.
+    """
     if _USE_PG and DATABASE_URL:
         try:
+            # Testa conectividade antes de retornar
             import psycopg2
-            pg = psycopg2.connect(DATABASE_URL)
-            # autocommit=True evita o problema de "transaction aborted"
-            # cada query é sua propria transação independente
-            pg.autocommit = True
-            return DBConn(pg_conn=pg)
+            _test = psycopg2.connect(DATABASE_URL)
+            _test.close()
+            return DBConn(pg_url=DATABASE_URL)
         except Exception as e:
             print(f'[DB] Falha PostgreSQL, usando SQLite: {e}', flush=True)
     sq = sqlite3.connect(path or DB_PATH)
@@ -210,6 +222,21 @@ def _carregar_sessao_db():
     except Exception as e:
         print(f'⚠️ Erro ao carregar sessão do DB: {e}', flush=True)
 
+def _pg_exec_safe(pg, sql, params=None):
+    """Executa SQL no PostgreSQL com rollback automático em caso de erro.
+    Usado apenas no init_db onde a conexão NÃO tem autocommit."""
+    try:
+        cur = pg.cursor()
+        if params:
+            cur.execute(sql, params)
+        else:
+            cur.execute(sql)
+        return cur
+    except Exception as e:
+        try: pg.rollback()
+        except: pass
+        raise e
+
 def init_db():
     global _USE_PG
     # Tentar conectar ao PostgreSQL primeiro
@@ -217,7 +244,8 @@ def init_db():
         try:
             import psycopg2
             pg = psycopg2.connect(DATABASE_URL)
-            # Criar tabelas diretamente no PostgreSQL com sintaxe correta
+            # Usar autocommit=True no init_db também — cada CREATE TABLE é independente
+            pg.autocommit = True
             cur = pg.cursor()
             pg_tables = [
                 """CREATE TABLE IF NOT EXISTS transacoes (
@@ -256,13 +284,18 @@ def init_db():
                     chave TEXT PRIMARY KEY, valor TEXT, updated_at TEXT)""",
             ]
             for sql in pg_tables:
-                cur.execute(sql)
-            # Config padrão sorteio
-            cur.execute("""INSERT INTO sorteio_config
-                (id,ativo,valor_por_numero,premio_fixo,percentual,usar_media,dias_media,descricao,proximo_sorteio,updated_at)
-                VALUES (1,1,5.0,0,50.0,0,30,'Sorteio PaynexBet',NULL,%s)
-                ON CONFLICT (id) DO NOTHING""", (datetime.now().isoformat(),))
-            pg.commit()
+                try:
+                    cur.execute(sql)
+                except Exception as e:
+                    print(f'[DB init] Aviso ao criar tabela: {e}', flush=True)
+            # Config padrão sorteio (cada query é independente com autocommit)
+            try:
+                cur.execute("""INSERT INTO sorteio_config
+                    (id,ativo,valor_por_numero,premio_fixo,percentual,usar_media,dias_media,descricao,proximo_sorteio,updated_at)
+                    VALUES (1,1,5.0,0,50.0,0,30,'Sorteio PaynexBet',NULL,%s)
+                    ON CONFLICT (id) DO NOTHING""", (datetime.now().isoformat(),))
+            except Exception as e:
+                print(f'[DB init] Aviso config sorteio: {e}', flush=True)
             pg.close()
             _USE_PG = True
             print('✅ PostgreSQL conectado — banco PERSISTENTE ativo!', flush=True)
@@ -311,12 +344,16 @@ def init_db():
         proximo_sorteio TEXT,
         updated_at TEXT
     )''')
-    # Migrações de colunas
+    conn.commit()
+    # Migrações de colunas — cada ALTER TABLE em transação separada
     for col in ["valor_por_numero REAL DEFAULT 5.0",
                 "usar_media INTEGER DEFAULT 0",
                 "dias_media INTEGER DEFAULT 30"]:
-        try: conn.execute(f'ALTER TABLE sorteio_config ADD COLUMN {col}')
-        except: pass
+        try:
+            conn.execute(f'ALTER TABLE sorteio_config ADD COLUMN {col}')
+            conn.commit()
+        except Exception:
+            conn.rollback()
 
     conn.execute('''CREATE TABLE IF NOT EXISTS sorteio_participantes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -332,12 +369,16 @@ def init_db():
         updated_at TEXT,
         sorteio_id TEXT DEFAULT 'atual'
     )''')
-    # Migrações
+    conn.commit()
+    # Migrações sorteio_participantes — cada ALTER TABLE em transação separada
     for col in ['cpf TEXT', 'total_depositado REAL DEFAULT 0',
                 'total_numeros INTEGER DEFAULT 0', "numeros_sorte TEXT DEFAULT '[]'",
                 'updated_at TEXT']:
-        try: conn.execute(f'ALTER TABLE sorteio_participantes ADD COLUMN {col}')
-        except: pass
+        try:
+            conn.execute(f'ALTER TABLE sorteio_participantes ADD COLUMN {col}')
+            conn.commit()
+        except Exception:
+            conn.rollback()
 
     conn.execute('''CREATE TABLE IF NOT EXISTS sorteio_bilhetes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
