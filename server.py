@@ -426,9 +426,8 @@ def salvar_transacao(tx_id, valor, pix_code, cliente_id=None, webhook_url=None, 
 
 def buscar_transacao(tx_id):
     conn = sqlite3_connect()
-    c = conn.cursor()
-    c.execute('SELECT * FROM transacoes WHERE tx_id=?', (tx_id,))
-    row = c.fetchone(); conn.close()
+    cur = conn.execute('SELECT * FROM transacoes WHERE tx_id=?', (tx_id,))
+    row = cur.fetchone(); conn.close()
     if row:
         cols = ['id','tx_id','valor','pix_code','status','cliente_id',
                 'webhook_url','created_at','paid_at','extra']
@@ -438,16 +437,18 @@ def buscar_transacao(tx_id):
 def confirmar_pagamento(tx_id):
     """Confirma pagamento e automaticamente gera bilhetes do sorteio para o cliente"""
     import json as _json
+    # UPDATE em conexão própria
     conn = sqlite3_connect()
     conn.execute('UPDATE transacoes SET status=?,paid_at=? WHERE tx_id=?',
         ('pago', datetime.now().isoformat(), tx_id))
     conn.commit()
-
-    # Buscar dados completos da transação (valor, cliente_id e extra) em uma única query
-    c = conn.cursor()
-    c.execute('SELECT valor, cliente_id, extra FROM transacoes WHERE tx_id=?', (tx_id,))
-    row = c.fetchone()
     conn.close()
+
+    # SELECT em nova conexão independente (evita qualquer contaminação)
+    conn2 = sqlite3_connect()
+    cur = conn2.execute('SELECT valor, cliente_id, extra FROM transacoes WHERE tx_id=?', (tx_id,))
+    row = cur.fetchone()
+    conn2.close()
 
     if row:
         valor_pago, cliente_id, extra_json = row
@@ -455,35 +456,29 @@ def confirmar_pagamento(tx_id):
         if extra_json:
             try: participante_dados = _json.loads(extra_json)
             except: pass
-        if cliente_id and valor_pago and valor_pago >= 5:
-            # Tenta creditar bilhetes ao participante do sorteio pelo cliente_id
-            _creditar_bilhetes_por_deposito(cliente_id, valor_pago, tx_id, participante_dados)
-        elif valor_pago and valor_pago >= 5 and participante_dados and participante_dados.get('cpf'):
-            # Fallback: sem cliente_id mas temos cpf nos dados extras
+        if cliente_id and valor_pago and float(valor_pago) >= 5:
+            _creditar_bilhetes_por_deposito(cliente_id, float(valor_pago), tx_id, participante_dados)
+        elif valor_pago and float(valor_pago) >= 5 and participante_dados and participante_dados.get('cpf'):
             cpf_extra = re.sub(r'\D', '', str(participante_dados['cpf']))
-            _creditar_bilhetes_por_deposito(f'cli_{cpf_extra}', valor_pago, tx_id, participante_dados)
+            _creditar_bilhetes_por_deposito(f'cli_{cpf_extra}', float(valor_pago), tx_id, participante_dados)
 
 def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id, participante_dados=None):
-    """Gera bilhetes do sorteio automaticamente quando um depósito é confirmado.
-    Se participante_dados fornecido e participante não existe, cria automaticamente.
-    O cliente_id deve ser o CPF sem máscara (números apenas) ou 'cli_CPF'."""
+    """Gera bilhetes do sorteio automaticamente quando um depósito é confirmado."""
     try:
         import json as _json
-        conn = sqlite3_connect()
-        c = conn.cursor()
 
-        # Tentar encontrar participante por cliente_id ou por CPF embutido no cliente_id
         cpf_tentativa = re.sub(r'\D', '', str(cliente_id or '')).strip()
         if cliente_id and str(cliente_id).startswith('cli_'):
             cpf_tentativa = str(cliente_id)[4:]
 
         if not cpf_tentativa or len(cpf_tentativa) < 11:
-            conn.close()
-            return  # Sem CPF válido, não gera bilhetes
+            return  # Sem CPF válido
 
-        c.execute("SELECT id, cliente_id, total_depositado, total_numeros, numeros_sorte FROM sorteio_participantes WHERE cpf=? AND sorteio_id='atual'",
+        # SELECT em conexão própria
+        conn = sqlite3_connect()
+        cur = conn.execute("SELECT id, cliente_id, total_depositado, total_numeros, numeros_sorte FROM sorteio_participantes WHERE cpf=? AND sorteio_id='atual'",
                   (cpf_tentativa,))
-        row = c.fetchone()
+        row = cur.fetchone()
         conn.close()
 
         if not row:
@@ -504,10 +499,9 @@ def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id, participante_dados
                 print(f'✅ Sorteio: participante {nome_p} (CPF {cpf_tentativa}) criado automaticamente ao confirmar pagamento tx={tx_id}', flush=True)
                 # Re-buscar após criação
                 conn3 = sqlite3_connect()
-                c3 = conn3.cursor()
-                c3.execute("SELECT id, cliente_id, total_depositado, total_numeros, numeros_sorte FROM sorteio_participantes WHERE cpf=? AND sorteio_id='atual'",
+                cur3 = conn3.execute("SELECT id, cliente_id, total_depositado, total_numeros, numeros_sorte FROM sorteio_participantes WHERE cpf=? AND sorteio_id='atual'",
                            (cpf_tentativa,))
-                row = c3.fetchone()
+                row = cur3.fetchone()
                 conn3.close()
                 if not row:
                     return  # Falha inesperada
@@ -551,9 +545,8 @@ def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id, participante_dados
 
 def listar_transacoes(limit=50):
     conn = sqlite3_connect()
-    c = conn.cursor()
-    c.execute('SELECT * FROM transacoes ORDER BY created_at DESC LIMIT ?', (limit,))
-    rows = c.fetchall(); conn.close()
+    cur = conn.execute('SELECT * FROM transacoes ORDER BY created_at DESC LIMIT ?', (limit,))
+    rows = cur.fetchall(); conn.close()
     cols = ['id','tx_id','valor','pix_code','status','cliente_id',
             'webhook_url','created_at','paid_at','extra']
     return [dict(zip(cols, r)) for r in rows]
@@ -626,9 +619,8 @@ def load_sorteio_html():
 # ─── HELPERS SORTEIO ────────────────────────────────────────
 def get_sorteio_config():
     conn = sqlite3_connect()
-    c = conn.cursor()
-    c.execute('SELECT * FROM sorteio_config WHERE id=1')
-    row = c.fetchone(); conn.close()
+    cur = conn.execute('SELECT * FROM sorteio_config WHERE id=1')
+    row = cur.fetchone(); conn.close()
     if row:
         cols = ['id','ativo','valor_por_numero','premio_fixo','percentual',
                 'usar_media','dias_media','descricao','proximo_sorteio','updated_at']
@@ -641,9 +633,8 @@ def get_sorteio_config():
 def get_participante(cpf):
     """Busca participante pelo CPF"""
     conn = sqlite3_connect()
-    c = conn.cursor()
-    c.execute("SELECT * FROM sorteio_participantes WHERE cpf=? AND sorteio_id='atual'", (cpf,))
-    row = c.fetchone(); conn.close()
+    cur = conn.execute("SELECT * FROM sorteio_participantes WHERE cpf=? AND sorteio_id='atual'", (cpf,))
+    row = cur.fetchone(); conn.close()
     if not row: return None
     cols = ['id','cliente_id','nome','cpf','chave_pix','tipo_chave',
             'total_depositado','total_numeros','numeros_sorte','created_at','updated_at','sorteio_id']
@@ -661,12 +652,12 @@ def calcular_numeros(total_depositado, valor_por_numero=5.0):
 
 def gerar_bilhetes_unicos(cliente_id, qtd, sorteio_id='atual'):
     """Gera números únicos para o participante (sem repetir com outros)"""
-    import hashlib, json
+    import hashlib
+    # Buscar números já usados (query independente)
     conn = sqlite3_connect()
-    c = conn.cursor()
-    # Pegar todos os números já usados neste sorteio
-    c.execute('SELECT numero FROM sorteio_bilhetes WHERE sorteio_id=?', (sorteio_id,))
-    usados = set(r[0] for r in c.fetchall())
+    cur = conn.execute('SELECT numero FROM sorteio_bilhetes WHERE sorteio_id=?', (sorteio_id,))
+    usados = set(r[0] for r in cur.fetchall())
+    conn.close()
 
     numeros = []
     tentativa = 0
@@ -679,13 +670,16 @@ def gerar_bilhetes_unicos(cliente_id, qtd, sorteio_id='atual'):
         tentativa += 1
         if tentativa > 9999999: break
 
-    # Salvar bilhetes
+    # Salvar cada bilhete com conexão própria (nova conn por INSERT = zero conflito)
     for num in numeros:
         try:
-            conn.execute('INSERT INTO sorteio_bilhetes (cliente_id, numero, sorteio_id, created_at) VALUES (?,?,?,?)',
+            conn2 = sqlite3_connect()
+            conn2.execute('INSERT INTO sorteio_bilhetes (cliente_id, numero, sorteio_id, created_at) VALUES (?,?,?,?)',
                          (cliente_id, num, sorteio_id, datetime.now().isoformat()))
-        except: pass
-    conn.commit(); conn.close()
+            conn2.commit()
+            conn2.close()
+        except Exception as e:
+            print(f'[bilhete] erro ao inserir {num}: {e}', flush=True)
     return numeros
 
 async def _loop_verificar_pagamentos():
@@ -1760,16 +1754,11 @@ async def route_pix(request):
         tx_id = f"txn_{hashlib.md5(f'{cliente_id}{valor}{time.time()}'.encode()).hexdigest()[:16]}"
 
         # Salvar transação como "gerando" para polling do frontend
-        conn = sqlite3_connect()
-        c = conn.cursor()
-        # Garantir coluna extra existe (migracao segura)
-        try:
-            c.execute('ALTER TABLE transacoes ADD COLUMN extra TEXT')
-            conn.commit()
-        except: pass
         now = datetime.now().isoformat()
         part_json = json.dumps(participante_dados) if participante_dados else None
-        c.execute('INSERT OR IGNORE INTO transacoes (tx_id,valor,cliente_id,status,created_at,extra) VALUES (?,?,?,?,?,?)',
+        # Cada execute() usa nova conexão PG — zero risco de transaction aborted
+        conn = sqlite3_connect()
+        conn.execute('INSERT OR IGNORE INTO transacoes (tx_id,valor,cliente_id,status,created_at,extra) VALUES (?,?,?,?,?,?)',
                   (tx_id, valor, cliente_id, 'gerando', now, part_json))
         conn.commit()
         conn.close()
