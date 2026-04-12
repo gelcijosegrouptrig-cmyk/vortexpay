@@ -2540,6 +2540,32 @@ async def main():
     print('✅ DB ok', flush=True)
 
     app = web.Application(middlewares=[cors_middleware])
+
+    # ─── ENDPOINT SELF-UPDATE (baixa server.py do GitHub e reinicia) ───
+    async def route_self_update(request):
+        secret = request.rel_url.query.get('secret', '')
+        if secret != WEBHOOK_SECRET:
+            return web.json_response({'error': 'unauthorized'}, status=401)
+        import subprocess, threading, os as _os
+        GITHUB_RAW = 'https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/main/server.py'
+        def _do_update():
+            import time as _t, os as _o
+            try:
+                r = subprocess.run(['curl', '-s', '-f', '-o', 'server_new.py', GITHUB_RAW], timeout=30)
+                if r.returncode == 0:
+                    import shutil
+                    shutil.move('server_new.py', 'server.py')
+                    print('✅ server.py atualizado do GitHub!', flush=True)
+                else:
+                    print('❌ Falha ao baixar server.py do GitHub', flush=True)
+            except Exception as e:
+                print(f'❌ Erro no self-update: {e}', flush=True)
+            _t.sleep(1)
+            _o._exit(1)  # Railway reinicia automaticamente
+        threading.Thread(target=_do_update, daemon=True).start()
+        return web.json_response({'status': 'updating', 'msg': 'Baixando server.py do GitHub e reiniciando...'})
+    app.router.add_get('/api/self-update', route_self_update)
+
     # Endpoint de diagnóstico temporário
     async def route_debug_pix(request):
         import traceback as _tb
