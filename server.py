@@ -2242,13 +2242,19 @@ async def route_stats(request):
         saq_erro, _ = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status='erro'")[0]
         saq_total, val_saq_total = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques")[0]
 
-        # Últimos 7 dias - depósitos por dia
-        dep_por_dia = [{'data': r[0], 'qtd': r[1], 'valor': round(r[2],2)} for r in _q(
-            "SELECT date(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE created_at >= date('now','-7 days') GROUP BY date(created_at) ORDER BY date(created_at)")]
-
-        # Últimos 7 dias - saques por dia
-        saq_por_dia = [{'data': r[0], 'qtd': r[1], 'valor': round(r[2],2)} for r in _q(
-            "SELECT date(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE created_at >= date('now','-7 days') GROUP BY date(created_at) ORDER BY date(created_at)")]
+        # Últimos 7 dias - depósitos por dia (sintaxe compatível SQLite + PostgreSQL)
+        import os as _os
+        _is_pg = bool(_os.environ.get('DATABASE_URL',''))
+        if _is_pg:
+            dep_por_dia = [{'data': str(r[0])[:10], 'qtd': r[1], 'valor': round(float(r[2]),2)} for r in _q(
+                "SELECT DATE(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY DATE(created_at)")]
+            saq_por_dia = [{'data': str(r[0])[:10], 'qtd': r[1], 'valor': round(float(r[2]),2)} for r in _q(
+                "SELECT DATE(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY DATE(created_at)")]
+        else:
+            dep_por_dia = [{'data': r[0], 'qtd': r[1], 'valor': round(r[2],2)} for r in _q(
+                "SELECT date(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE created_at >= date('now','-7 days') GROUP BY date(created_at) ORDER BY date(created_at)")]
+            saq_por_dia = [{'data': r[0], 'qtd': r[1], 'valor': round(r[2],2)} for r in _q(
+                "SELECT date(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE created_at >= date('now','-7 days') GROUP BY date(created_at) ORDER BY date(created_at)")]
 
         # Últimos depósitos e saques
         ult_dep = [{'tx_id':r[0],'valor':r[1],'status':r[2],'created_at':r[3],'paid_at':r[4]} for r in _q(
