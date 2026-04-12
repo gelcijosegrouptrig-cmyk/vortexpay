@@ -644,6 +644,88 @@ def gerar_bilhetes_unicos(cliente_id, qtd, sorteio_id='atual'):
     conn.commit(); conn.close()
     return numeros
 
+async def _loop_verificar_pagamentos():
+    """Verifica a cada 30s se há pagamentos pendentes confirmados no bot"""
+    await asyncio.sleep(10)  # Aguarda sistema estabilizar
+    while True:
+        try:
+            if not _telegram_ready:
+                await asyncio.sleep(30)
+                continue
+
+            # Buscar transações pendentes
+            conn = sqlite3_connect()
+            c = conn.cursor()
+            c.execute("""SELECT tx_id, valor, extra FROM transacoes
+                         WHERE status='pendente'
+                         ORDER BY created_at DESC LIMIT 10""")
+            pendentes = c.fetchall()
+            conn.close()
+
+            if not pendentes:
+                await asyncio.sleep(30)
+                continue
+
+            # Verificar mensagens recentes do bot (últimos 5 min)
+            import datetime as _dt
+            bot = await client.get_entity(BOT_USERNAME)
+            msgs = await client.get_messages(bot, limit=20)
+
+            padroes = [
+                r'Depósito de R\$',
+                r'✅ Depósito',
+                r'depósito.*recebido',
+                r'pagamento.*confirmado',
+                r'Valor creditado',
+                r'depósito aprovado',
+                r'recebemos.*R\$',
+                r'crédito.*R\$',
+                r'pix.*recebido',
+                r'transferência.*recebida',
+            ]
+
+            for msg in msgs:
+                if not msg.text: continue
+                # Só mensagens dos últimos 10 minutos
+                if hasattr(msg, 'date') and msg.date:
+                    idade = (_dt.datetime.now(_dt.timezone.utc) - msg.date).total_seconds()
+                    if idade > 600: continue
+
+                if not any(re.search(p, msg.text, re.IGNORECASE) for p in padroes):
+                    continue
+
+                # Extrair valor da mensagem
+                val_match = re.search(r'R\$\s*([\d.,]+)', msg.text)
+                valor_msg = None
+                if val_match:
+                    try:
+                        valor_msg = float(val_match.group(1).replace(',','.').replace(' ',''))
+                    except: pass
+
+                print(f'💰 [Loop] Msg pagamento detectada: {msg.text[:80]}', flush=True)
+
+                for row_p in pendentes:
+                    tx_id_p, valor_p, extra_p = row_p[0], row_p[1], row_p[2]
+                    if valor_msg is None or abs(valor_p - valor_msg) < 0.05:
+                        # Confirmar pagamento
+                        confirmar_pagamento(tx_id_p)
+                        print(f'✅ [Loop] Confirmado: {tx_id_p} R${valor_p:.2f}', flush=True)
+                        # Split PayPix automático
+                        if extra_p:
+                            try:
+                                ex = json.loads(extra_p)
+                                if ex.get('tipo') == 'paypix':
+                                    asyncio.create_task(_processar_split_paypix(tx_id_p, valor_p, extra_p))
+                                    print(f'💸 [Loop] Split disparado: R${valor_p * 0.6:.2f} → {ex.get("parceiro_chave")}', flush=True)
+                            except Exception as ex_err:
+                                print(f'[Loop] Erro split: {ex_err}', flush=True)
+                        break
+
+        except Exception as e:
+            print(f'[Loop verificar] erro: {e}', flush=True)
+
+        await asyncio.sleep(30)  # Verificar a cada 30 segundos
+
 # ─── TELEGRAM - Conectar com retry ─────────────────────────
 async def conectar_telegram():
     global _telegram_ready, _telegram_tentativas, _telegram_session_invalida
@@ -695,11 +777,10 @@ async def conectar_telegram():
                     # Buscar tx mais recente pendente e confirmar
                     conn = sqlite3_connect()
                     c = conn.cursor()
-                    # Pegar transações pendentes mais recentes (últimas 5 min)
-                    c.execute("""SELECT tx_id FROM transacoes 
+                    c.execute("""SELECT tx_id, valor, extra FROM transacoes 
                                  WHERE status='pendente' 
                                  ORDER BY created_at DESC LIMIT 5""")
-                    pendentes = [r[0] for r in c.fetchall()]
+                    pendentes = c.fetchall()
                     conn.close()
                     
                     # Tentar extrair valor da mensagem para match
@@ -707,20 +788,30 @@ async def conectar_telegram():
                     valor_msg = None
                     if val_match:
                         try:
-                            valor_msg = float(val_match.group(1).replace(',', '.'))
+                            valor_msg = float(val_match.group(1).replace(',', '.').replace(' ',''))
                         except:
                             pass
                     
-                    for tx_id in pendentes:
-                        tx = buscar_transacao(tx_id)
-                        if tx:
-                            # Confirmar se valor bate ou se só tem uma pendente
-                            if valor_msg is None or abs(tx['valor'] - valor_msg) < 0.01 or len(pendentes) == 1:
-                                confirmar_pagamento(tx_id)
-                                print(f'✅ Pago confirmado: {tx_id} R${tx["valor"]}', flush=True)
-                                break
+                    for row_p in pendentes:
+                        tx_id_p, valor_p, extra_p = row_p[0], row_p[1], row_p[2]
+                        # Confirmar se valor bate ou se só tem uma pendente
+                        if valor_msg is None or abs(valor_p - valor_msg) < 0.05 or len(pendentes) == 1:
+                            confirmar_pagamento(tx_id_p)
+                            print(f'✅ Pago confirmado: {tx_id_p} R${valor_p}', flush=True)
+                            # Disparar split 60/40 se for PayPix
+                            if extra_p:
+                                try:
+                                    extra_d = json.loads(extra_p)
+                                    if extra_d.get('tipo') == 'paypix':
+                                        asyncio.create_task(_processar_split_paypix(tx_id_p, valor_p, extra_p))
+                                        print(f'💸 Split PayPix disparado: {tx_id_p} R${valor_p:.2f}', flush=True)
+                                except Exception as ex:
+                                    print(f'Erro split: {ex}', flush=True)
+                            break
 
             print('✅ Listener ativo, mantendo conexão...', flush=True)
+            # Iniciar loop de verificação periódica de pagamentos pendentes
+            asyncio.create_task(_loop_verificar_pagamentos())
             await client.run_until_disconnected()
 
         except Exception as e:
