@@ -1189,9 +1189,46 @@ async def route_confirmar_codigo(request):
         await temp_client.disconnect()
         _login_state = {}
 
-        # Salvar sessão
+        # Salvar sessão no arquivo local
         with open('session_string.txt','w') as f:
             f.write(nova_sessao)
+
+        # ── SALVAR NO RAILWAY via API para persistir entre deploys ──
+        railway_token = os.environ.get('RAILWAY_TOKEN', '')
+        railway_project = os.environ.get('RAILWAY_PROJECT_ID', '')
+        railway_service = os.environ.get('RAILWAY_SERVICE_ID', '')
+        railway_env = os.environ.get('RAILWAY_ENVIRONMENT_ID', '')
+        if railway_token and railway_project and railway_service and railway_env:
+            try:
+                import aiohttp as _aio
+                mutation = """
+                mutation($input: VariableCollectionUpsertInput!) {
+                  variableCollectionUpsert(input: $input)
+                }"""
+                variables = {
+                    "input": {
+                        "projectId": railway_project,
+                        "environmentId": railway_env,
+                        "serviceId": railway_service,
+                        "variables": {"SESSION_STR": nova_sessao}
+                    }
+                }
+                async with _aio.ClientSession() as sess:
+                    async with sess.post(
+                        'https://backboard.railway.app/graphql/v2',
+                        json={"query": mutation, "variables": variables},
+                        headers={"Authorization": f"Bearer {railway_token}", "Content-Type": "application/json"},
+                        timeout=_aio.ClientTimeout(total=10)
+                    ) as resp:
+                        result = await resp.json()
+                        if result.get('data', {}).get('variableCollectionUpsert'):
+                            print('✅ SESSION_STR salva no Railway automaticamente!', flush=True)
+                        else:
+                            print(f'⚠️ Railway API: {result}', flush=True)
+            except Exception as e_rail:
+                print(f'⚠️ Erro ao salvar no Railway: {e_rail}', flush=True)
+        else:
+            print('⚠️ Vars Railway não configuradas — sessão salva só em arquivo local', flush=True)
 
         # Reinicializar cliente principal
         try:
