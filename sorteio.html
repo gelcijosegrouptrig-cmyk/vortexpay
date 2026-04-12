@@ -718,34 +718,24 @@ async function gerarPixSorteio() {
     body.cliente_id = `cli_${cpf}`;
   }
 
-  // Função fetch com timeout de 60s e retry automático
-  async function fetchComRetry(url, opts, tentativas=3) {
-    for (let i = 0; i < tentativas; i++) {
-      try {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 60000); // 60s timeout
-        const r = await fetch(url, {...opts, signal: ctrl.signal});
-        clearTimeout(tid);
-        return r;
-      } catch(e) {
-        if (i === tentativas-1) throw e;
-        if (loadingMsg) loadingMsg.textContent = `⏳ Tentativa ${i+2}/3... aguarde`;
-        await new Promise(res => setTimeout(res, 3000));
-      }
-    }
-  }
-
+  // Fetch simples com timeout 60s
+  let pixGerado = false;
   try {
-    const r = await fetchComRetry(BASE + '/api/pix', {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 60000);
+    const r = await fetch(BASE + '/api/pix', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: ctrl.signal
     });
+    clearTimeout(tid);
     const d = await r.json();
 
     document.getElementById('etapa-loading').classList.add('hidden');
 
     if (d.success) {
+      pixGerado = true;
       pixCodeAtual = d.pix_code;
       txAtual = d.tx_id;
       const qtd = Math.floor(valor / vp);
@@ -764,15 +754,21 @@ async function gerarPixSorteio() {
     }
   } catch(e) {
     document.getElementById('etapa-loading').classList.add('hidden');
-    document.getElementById('etapa-valor').style.display = 'block';
-    alert('❌ Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.');
+    if (!pixGerado) {
+      document.getElementById('etapa-valor').style.display = 'block';
+      if (e.name === 'AbortError') {
+        alert('⏱️ O servidor demorou mais que o esperado. Tente novamente.');
+      } else {
+        alert('❌ Sem conexão. Verifique sua internet e tente novamente.');
+      }
+    }
   }
 }
 
 function gerarQRCodeDep(code) {
   const canvas = document.getElementById('m-qr-canvas');
   if (typeof QRCode !== 'undefined') {
-    QRCode.toCanvas(canvas, code, {width:200, margin:1, color:{dark:'#000',light:'#fff'}}, ()=>{});
+    QRCode.toCanvas(canvas, code, {width:220, margin:2, color:{dark:'#000000',light:'#ffffff'}}, function(err){ if(err) console.warn('QR:', err); });
   } else {
     const img = document.createElement('img');
     img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(code)}`;
