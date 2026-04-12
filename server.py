@@ -167,19 +167,10 @@ def _pg_insert_ignore(sql, params, conn):
             raise
 
 def sqlite3_connect(path=None):
-    """Conecta ao PostgreSQL se disponível, senão SQLite.
-    PostgreSQL: cria DBConn com pg_url (nova conn por query = zero 'transaction aborted')
-    SQLite: abre arquivo local normalmente.
-    """
+    """Retorna DBConn. PostgreSQL: novas conexões por query (zero transaction aborted).
+    SQLite: arquivo local."""
     if _USE_PG and DATABASE_URL:
-        try:
-            # Testa conectividade antes de retornar
-            import psycopg2
-            _test = psycopg2.connect(DATABASE_URL)
-            _test.close()
-            return DBConn(pg_url=DATABASE_URL)
-        except Exception as e:
-            print(f'[DB] Falha PostgreSQL, usando SQLite: {e}', flush=True)
+        return DBConn(pg_url=DATABASE_URL)
     sq = sqlite3.connect(path or DB_PATH)
     return DBConn(sq_conn=sq)
 
@@ -1767,18 +1758,15 @@ async def route_pix(request):
         async def gerar_em_background():
             result = await gerar_pix(valor, cliente_id, data.get('webhook_url'), participante_dados)
             if result.get('success') and result.get('pix_code'):
-                # Atualizar tx com o pix_code real
                 conn2 = sqlite3_connect()
-                c2 = conn2.cursor()
-                c2.execute('UPDATE transacoes SET pix_code=?, status=?, tx_id=? WHERE tx_id=?',
+                conn2.execute('UPDATE transacoes SET pix_code=?, status=?, tx_id=? WHERE tx_id=?',
                            (result['pix_code'], 'pendente', result['tx_id'], tx_id))
                 conn2.commit()
                 conn2.close()
                 print(f'✅ Pix pronto em background: {result["tx_id"]}', flush=True)
             else:
                 conn2 = sqlite3_connect()
-                c2 = conn2.cursor()
-                c2.execute('UPDATE transacoes SET status=? WHERE tx_id=?', ('erro', tx_id))
+                conn2.execute('UPDATE transacoes SET status=? WHERE tx_id=?', ('erro', tx_id))
                 conn2.commit()
                 conn2.close()
 
@@ -1793,15 +1781,16 @@ async def route_pix(request):
             'poll_url': f'/api/pix/status/{tx_id}'
         })
     except Exception as e:
+        import traceback
+        print(f'❌ ERRO route_pix: {traceback.format_exc()}', flush=True)
         return web.json_response({'success': False, 'error': str(e)})
 
 async def route_pix_status(request):
     """Polling do status de geração do Pix"""
     tx_id = request.match_info.get('tx_id')
     conn = sqlite3_connect()
-    c = conn.cursor()
-    c.execute('SELECT tx_id, valor, pix_code, status FROM transacoes WHERE tx_id=?', (tx_id,))
-    row = c.fetchone()
+    cur = conn.execute('SELECT tx_id, valor, pix_code, status FROM transacoes WHERE tx_id=?', (tx_id,))
+    row = cur.fetchone()
     conn.close()
     if not row:
         return web.json_response({'success': False, 'status': 'nao_encontrado'})
