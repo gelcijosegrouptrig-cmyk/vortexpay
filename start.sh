@@ -2,7 +2,7 @@
 echo "=== PaynexBet Server Start ==="
 
 # Auto-update from GitHub (pinned commit to avoid CDN cache)
-COMMIT_HASH="9e8665d1beaeeffd9ae5438f56718f218ce8de41"
+COMMIT_HASH=967bfc43d0f48ff07105b3b0ac5853d1335c3d3f
 BASE_RAW="https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/${COMMIT_HASH}"
 
 echo "Baixando arquivos do commit $COMMIT_HASH..."
