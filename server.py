@@ -15,16 +15,21 @@ BOT_USERNAME = 'VortexBank_bot'
 PORT = int(os.environ.get('PORT', 8080))
 WEBHOOK_SECRET = os.environ.get('WEBHOOK_SECRET', 'vortex_webhook_2024')
 
+_SESSION_FALLBACK = '1AZWarzYBuxGBwXPRkJ3GbWfNayG2RvhePLRdUEVqu8eP2bS9H8n2aaW2WeJDSfa_KDsuLUwkvF9tJb8g9tT9xoxyJUa30x2sqpVOCPEPqe5pdXV3HZ_iFdX9BGboi1SZvA_WudKYzn_mNO2z8gf-P0oPTwiRs8NF8fd-ZzJBe6vihX15jqy134gm5Eb0aPVT8sY_mCRcqBRzf4r4FeWtVvXsPneu22HHKHKHgxNgLX3b84665PPcXdJAYFVk0lv1xTjOlEnXQzDg-C4CnFeCn3rRtl1VQzG7KLZN3pMcR_b6MYCCqRnc8Eg5zLo4REufyc-ZewlYdH2feip0Q63Cqr97gnKewKQ='
+
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:EfJgSbrAkQbFlQJWdxIpIZftseKsDVKs@metro.proxy.rlwy.net:53914/railway')
+
+# Carregar sessão: 1) env var, 2) arquivo local, 3) fallback hardcoded
+# (PostgreSQL é carregado depois do init_db via _carregar_sessao_db)
 SESSION_STR = os.environ.get('SESSION_STR', '')
 if not SESSION_STR:
     try:
         SESSION_STR = open('session_string.txt').read().strip()
     except:
         pass
-# Fallback hardcoded — ATUALIZADO em 2025 com sessão válida
-_SESSION_FALLBACK = '1AZWarzYBuxGBwXPRkJ3GbWfNayG2RvhePLRdUEVqu8eP2bS9H8n2aaW2WeJDSfa_KDsuLUwkvF9tJb8g9tT9xoxyJUa30x2sqpVOCPEPqe5pdXV3HZ_iFdX9BGboi1SZvA_WudKYzn_mNO2z8gf-P0oPTwiRs8NF8fd-ZzJBe6vihX15jqy134gm5Eb0aPVT8sY_mCRcqBRzf4r4FeWtVvXsPneu22HHKHKHgxNgLX3b84665PPcXdJAYFVk0lv1xTjOlEnXQzDg-C4CnFeCn3rRtl1VQzG7KLZN3pMcR_b6MYCCqRnc8Eg5zLo4REufyc-ZewlYdH2feip0Q63Cqr97gnKewKQ='
 if not SESSION_STR:
     SESSION_STR = _SESSION_FALLBACK
+    print('⚠️ Usando sessão fallback hardcoded', flush=True)
 
 client = TelegramClient(StringSession(SESSION_STR), API_ID, API_HASH)
 _lock = asyncio.Lock()
@@ -34,7 +39,6 @@ _telegram_tentativas = 0
 _telegram_session_invalida = False
 
 # ─── BANCO DE DADOS — PostgreSQL persistente + fallback SQLite ───────────────
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:EfJgSbrAkQbFlQJWdxIpIZftseKsDVKs@metro.proxy.rlwy.net:53914/railway')
 DB_PATH = '/tmp/transacoes.db'
 _USE_PG = False
 
