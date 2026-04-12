@@ -514,10 +514,9 @@ async def verificar_saldo_bot() -> float:
     return -1.0
 
 async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados=None):
-    # Se Telegram não está pronto, tenta conectar e espera até 60s
+    # Se Telegram não está pronto, tenta conectar e espera até 15s
     if not _telegram_ready:
-        print('⏳ Aguardando Telegram ficar pronto...', flush=True)
-        for _ in range(30):  # espera até 30s (verificando a cada 1s)
+        for _ in range(15):
             await asyncio.sleep(1)
             if _telegram_ready:
                 break
@@ -526,14 +525,17 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados
 
     async with _lock:
         try:
-            # Verificar novamente dentro do lock
             if not _telegram_ready:
-                return {'success': False, 'error': '⚠️ Sistema em manutenção. O bot Telegram está sendo reconectado. Tente novamente em alguns minutos.'}
+                return {'success': False, 'error': '⚠️ Sistema em manutenção. Tente novamente em alguns minutos.'}
 
             bot = await client.get_entity(BOT_USERNAME)
 
+            # Sempre iniciar com /start para garantir estado limpo
+            await client.send_message(bot, '/start')
+            await asyncio.sleep(2)
+
             # Clicar DEPOSITAR
-            messages = await client.get_messages(bot, limit=15)
+            messages = await client.get_messages(bot, limit=5)
             clicou = False
             for msg in messages:
                 if msg.buttons:
@@ -541,47 +543,40 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados
                         for btn in row:
                             if 'DEPOSITAR' in btn.text:
                                 await btn.click()
-                                await asyncio.sleep(3)
+                                await asyncio.sleep(2)
                                 clicou = True; break
                         if clicou: break
                 if clicou: break
 
             if not clicou:
-                await client.send_message(bot, '/start')
-                await asyncio.sleep(2)
-                messages = await client.get_messages(bot, limit=5)
-                for msg in messages:
-                    if msg.buttons:
-                        for row in msg.buttons:
-                            for btn in row:
-                                if 'DEPOSITAR' in btn.text:
-                                    await btn.click()
-                                    await asyncio.sleep(3)
-                                    clicou = True; break
+                return {'success': False, 'error': 'Botão DEPOSITAR não encontrado. Tente novamente.'}
 
             # Enviar valor
             valor_str = str(int(valor)) if valor == int(valor) else f"{valor:.2f}"
             await client.send_message(bot, valor_str)
-            await asyncio.sleep(9)
 
-            # Capturar resposta
-            msgs = await client.get_messages(bot, limit=5)
-            for msg in msgs:
-                if msg.text and 'PIX Copia e Cola' in msg.text:
-                    text = msg.text
-                    pix_match = re.search(r'`(00020101[^`]+)`', text)
-                    pix_code = pix_match.group(1) if pix_match else None
-                    tx_match = re.search(r'txn_([a-f0-9]+)', text)
-                    tx_id = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
-                    val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', text)
-                    valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
-                    if pix_code:
-                        salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
-                        return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
-                                'valor': f"R$ {valor_conf}", 'status': 'pendente'}
+            # Polling ativo — checar a cada 2s por até 20s
+            for _ in range(10):
+                await asyncio.sleep(2)
+                msgs = await client.get_messages(bot, limit=5)
+                for msg in msgs:
+                    if msg.text and 'PIX Copia e Cola' in msg.text:
+                        text = msg.text
+                        pix_match = re.search(r'`(00020101[^`]+)`', text)
+                        pix_code = pix_match.group(1) if pix_match else None
+                        tx_match = re.search(r'txn_([a-f0-9]+)', text)
+                        tx_id = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
+                        val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', text)
+                        valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
+                        if pix_code:
+                            salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
+                            print(f'✅ Pix gerado: {tx_id} R${valor}', flush=True)
+                            return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
+                                    'valor': f"R$ {valor_conf}", 'status': 'pendente'}
 
-            return {'success': False, 'error': 'Bot não respondeu. Tente novamente.'}
+            return {'success': False, 'error': 'Bot demorou para responder. Tente novamente.'}
         except Exception as e:
+            print(f'❌ Erro gerar_pix: {e}', flush=True)
             return {'success': False, 'error': str(e)}
 
 # ─── MIDDLEWARE ────────────────────────────────────────────
