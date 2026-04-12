@@ -267,6 +267,19 @@ def init_db():
                     total_bilhetes INTEGER, total_depositado REAL, observacao TEXT)""",
                 """CREATE TABLE IF NOT EXISTS configuracoes (
                     chave TEXT PRIMARY KEY, valor TEXT, updated_at TEXT)""",
+                """CREATE TABLE IF NOT EXISTS paypix_fila (
+                    id SERIAL PRIMARY KEY,
+                    tx_id TEXT NOT NULL,
+                    valor REAL NOT NULL,
+                    chave_pix TEXT NOT NULL,
+                    tipo_chave TEXT NOT NULL,
+                    pct REAL NOT NULL DEFAULT 0.6,
+                    tentativas INTEGER DEFAULT 0,
+                    status TEXT DEFAULT 'pendente',
+                    proxima_tentativa TEXT,
+                    created_at TEXT,
+                    finalizado_at TEXT,
+                    observacao TEXT)""",
             ]
             for sql in pg_tables:
                 try:
@@ -400,6 +413,23 @@ def init_db():
         (id, ativo, valor_por_numero, premio_fixo, percentual, usar_media, dias_media, descricao, proximo_sorteio, updated_at)
         VALUES (1, 1, 5.0, 0, 50.0, 0, 30, 'Sorteio PaynexBet', NULL, ?)''',
         (datetime.now().isoformat(),))
+
+    # Tabela de fila de splits PayPix (agenda persistente)
+    conn.execute('''CREATE TABLE IF NOT EXISTS paypix_fila (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tx_id TEXT NOT NULL,
+        valor REAL NOT NULL,
+        chave_pix TEXT NOT NULL,
+        tipo_chave TEXT NOT NULL,
+        pct REAL NOT NULL DEFAULT 0.6,
+        tentativas INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'pendente',
+        proxima_tentativa TEXT,
+        created_at TEXT,
+        finalizado_at TEXT,
+        observacao TEXT
+    )''')
+
     conn.commit(); conn.close()
 
 def salvar_transacao(tx_id, valor, pix_code, cliente_id=None, webhook_url=None, participante_dados=None):
@@ -1735,7 +1765,7 @@ async def route_health(request):
             motivo = 'iniciando'
     return web.json_response({
         'status': 'online',
-        'version': 'v20260412-PAYPIX-FIX-v6',
+        'version': 'v20260412-PAYPIX-QUEUE-v7',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'tentativas': _telegram_tentativas,
@@ -2552,10 +2582,45 @@ async def route_paypix_config(request):
             'paypix_descricao':    cfg.get('paypix_descricao', 'Gere seu Pix e receba sua % do valor'),
         })
 
+def _paypix_fila_inserir(tx_id, val_par, chave, tipo, pct):
+    """Insere item na fila persistente de splits PayPix"""
+    try:
+        agora = datetime.now().isoformat()
+        conn  = sqlite3_connect()
+        conn.execute(
+            '''INSERT INTO paypix_fila
+               (tx_id, valor, chave_pix, tipo_chave, pct, tentativas, status,
+                proxima_tentativa, created_at, observacao)
+               VALUES (?,?,?,?,?,0,'pendente',?,?,?)''',
+            (tx_id, val_par, chave, tipo, pct, agora, agora,
+             f'Split PayPix {round(pct*100)}% aguardando envio')
+        )
+        conn.commit()
+        conn.close()
+        print(f'[PayPix Fila] ✅ Enfileirado: R${val_par:.2f} → {chave} (tx={tx_id})', flush=True)
+    except Exception as e:
+        print(f'[PayPix Fila] Erro ao enfileirar: {e}', flush=True)
+
+
+async def _tentar_envio_split(item_id, val_par, chave, tipo, tx_id, tentativa_num):
+    """Tenta enviar o saque do split. Retorna True se sucesso."""
+    print(f'[PayPix Fila] Tentativa #{tentativa_num} — R${val_par:.2f} → {chave} ({tipo}) [fila_id={item_id}]', flush=True)
+    try:
+        resultado = await executar_saque_bot(val_par, tipo, chave)
+    except Exception as ex:
+        resultado = {'success': False, 'error': str(ex), 'status': 'erro'}
+
+    print(f'[PayPix Fila] Resultado #{tentativa_num}: {resultado}', flush=True)
+    return resultado
+
+
 async def _processar_split_paypix(tx_id, valor, extra_str):
-    """Após confirmação de pagamento, envia % para o parceiro via bot (com retry 3x)"""
-    MAX_TENTATIVAS = 3
-    DELAY_RETRY    = 30  # segundos entre tentativas
+    """
+    Fase 1 — Tenta enviar 3 vezes com 30s de intervalo.
+    Se falhar nas 3: enfileira na paypix_fila para o worker tentar a cada 5 min até conseguir.
+    """
+    TENTATIVAS_RAPIDAS = 3
+    DELAY_RAPIDO       = 30  # segundos entre tentativas rápidas
 
     try:
         extra = json.loads(extra_str or '{}')
@@ -2570,54 +2635,173 @@ async def _processar_split_paypix(tx_id, valor, extra_str):
             print(f'[PayPix] split inválido tx={tx_id} chave={chave!r} val={val_par}', flush=True)
             return
 
+        # ── FASE 1: 3 tentativas rápidas (30s entre cada) ──
         resultado = None
-        for tentativa in range(1, MAX_TENTATIVAS + 1):
-            print(f'[PayPix] tentativa {tentativa}/{MAX_TENTATIVAS} — enviando R${val_par:.2f} → {chave} ({tipo})', flush=True)
-            try:
-                resultado = await executar_saque_bot(val_par, tipo, chave)
-            except Exception as ex_saque:
-                resultado = {'success': False, 'error': str(ex_saque), 'status': 'erro'}
-
-            print(f'[PayPix] resultado tentativa {tentativa}: {resultado}', flush=True)
-
+        for n in range(1, TENTATIVAS_RAPIDAS + 1):
+            resultado = await _tentar_envio_split(0, val_par, chave, tipo, tx_id, n)
             if resultado.get('success'):
-                break  # ✅ Enviado com sucesso — sair do loop
+                # ✅ Sucesso — registrar saque e sair
+                _registrar_saque_split(tx_id, val_par, chave, tipo, pct, resultado, n)
+                return
+            if n < TENTATIVAS_RAPIDAS:
+                print(f'[PayPix] aguardando {DELAY_RAPIDO}s antes do retry {n+1}...', flush=True)
+                await asyncio.sleep(DELAY_RAPIDO)
 
-            # Falhou — aguardar antes de nova tentativa (exceto na última)
-            if tentativa < MAX_TENTATIVAS:
-                print(f'[PayPix] aguardando {DELAY_RETRY}s antes de retry...', flush=True)
-                await asyncio.sleep(DELAY_RETRY)
+        # ── FASE 2: Falhou nas 3 → enfileirar para worker persistente ──
+        print(f'[PayPix] ❌ Falhou nas {TENTATIVAS_RAPIDAS} tentativas rápidas. Enfileirando para retry a cada 5min...', flush=True)
+        _paypix_fila_inserir(tx_id, val_par, chave, tipo, pct)
 
-        if not resultado:
-            resultado = {'success': False, 'status': 'erro', 'error': 'sem resultado'}
+    except Exception as e:
+        print(f'[PayPix] erro split (exceção): {e}', flush=True)
+        # Se exceção, tentar enfileirar para não perder o split
+        try:
+            extra2 = json.loads(extra_str or '{}')
+            chave2  = extra2.get('parceiro_chave', '')
+            tipo2   = extra2.get('parceiro_tipo', 'cpf')
+            pct2    = float(extra2.get('parceiro_pct', 0.6))
+            val2    = round(valor * pct2, 2)
+            if chave2 and val2 >= 1:
+                _paypix_fila_inserir(tx_id, val2, chave2, tipo2, pct2)
+        except Exception:
+            pass
 
-        # Registrar o saque na tabela saques
-        status_final = resultado.get('status', 'enviado') if resultado.get('success') else 'erro'
-        observacao   = f'PayPix split {round(pct*100)}% - tx {tx_id}'
-        if not resultado.get('success'):
-            observacao += f' | ERRO após {MAX_TENTATIVAS} tentativas: {resultado.get("error","")}'
 
-        saque_id = f"spp_{hashlib.md5(f'{tx_id}{time.time()}'.encode()).hexdigest()[:12]}"
+def _registrar_saque_split(tx_id, val_par, chave, tipo, pct, resultado, tentativas):
+    """Registra o saque na tabela saques após envio bem-sucedido"""
+    saque_id     = f"spp_{hashlib.md5(f'{tx_id}{time.time()}'.encode()).hexdigest()[:12]}"
+    status_final = resultado.get('status', 'enviado') if resultado.get('success') else 'erro'
+    observacao   = f'PayPix split {round(pct*100)}% - tx {tx_id} - {tentativas} tentativa(s)'
+    try:
         conn = sqlite3_connect()
         conn.execute(
             '''INSERT OR IGNORE INTO saques
                (saque_id,valor,chave_pix,tipo_chave,status,created_at,observacao)
                VALUES (?,?,?,?,?,?,?)''',
-            (saque_id, val_par, chave, tipo,
-             status_final,
-             datetime.now().isoformat(),
-             observacao[:200])
+            (saque_id, val_par, chave, tipo, status_final,
+             datetime.now().isoformat(), observacao[:200])
         )
         conn.commit()
         conn.close()
-
-        if resultado.get('success'):
-            print(f'[PayPix] ✅ Split enviado com sucesso: R${val_par:.2f} → {chave}', flush=True)
-        else:
-            print(f'[PayPix] ❌ Split falhou após {MAX_TENTATIVAS} tentativas: {resultado.get("error","")}', flush=True)
-
+        print(f'[PayPix] ✅ Saque registrado: R${val_par:.2f} → {chave} status={status_final}', flush=True)
     except Exception as e:
-        print(f'[PayPix] erro split (exceção): {e}', flush=True)
+        print(f'[PayPix] Erro ao registrar saque: {e}', flush=True)
+
+
+async def _worker_paypix_fila():
+    """
+    Worker background: processa a fila paypix_fila.
+    A cada 5 minutos verifica itens pendentes e tenta enviar.
+    Continua tentando INDEFINIDAMENTE até conseguir finalizar o Pix.
+    """
+    INTERVALO_WORKER = 300  # 5 minutos entre ciclos
+    TENTATIVAS_CICLO = 2    # tentativas por ciclo do worker (com 15s entre elas)
+    DELAY_CICLO      = 15   # segundos entre tentativas dentro do ciclo
+
+    print('[PayPix Worker] 🚀 Iniciado — verificando fila a cada 5 minutos', flush=True)
+
+    while True:
+        await asyncio.sleep(INTERVALO_WORKER)
+        try:
+            conn  = sqlite3_connect()
+            agora = datetime.now().isoformat()
+            # Buscar itens pendentes cuja próxima tentativa já passou
+            cur   = conn.execute(
+                """SELECT id, tx_id, valor, chave_pix, tipo_chave, pct, tentativas
+                   FROM paypix_fila
+                   WHERE status='pendente' AND (proxima_tentativa IS NULL OR proxima_tentativa <= ?)
+                   ORDER BY created_at ASC LIMIT 10""",
+                (agora,)
+            )
+            itens = cur.fetchall()
+            conn.close()
+
+            if not itens:
+                continue
+
+            print(f'[PayPix Worker] 🔄 Processando {len(itens)} item(s) da fila...', flush=True)
+
+            for row in itens:
+                item_id, tx_id, val_par, chave, tipo, pct, tentativas_total = row
+
+                sucesso = False
+                for n in range(1, TENTATIVAS_CICLO + 1):
+                    tentativa_num = tentativas_total + n
+                    resultado     = await _tentar_envio_split(item_id, val_par, chave, tipo, tx_id, tentativa_num)
+
+                    if resultado.get('success'):
+                        sucesso = True
+                        # ✅ Atualizar fila como finalizado
+                        conn2 = sqlite3_connect()
+                        conn2.execute(
+                            """UPDATE paypix_fila
+                               SET status='finalizado', tentativas=?, finalizado_at=?,
+                                   observacao=?
+                               WHERE id=?""",
+                            (tentativa_num, datetime.now().isoformat(),
+                             f'✅ Enviado na tentativa #{tentativa_num}', item_id)
+                        )
+                        conn2.commit()
+                        conn2.close()
+                        # Registrar na tabela saques
+                        _registrar_saque_split(tx_id, val_par, chave, tipo, pct, resultado, tentativa_num)
+                        print(f'[PayPix Worker] ✅ FINALIZADO item_id={item_id} — R${val_par:.2f} → {chave} (tentativa #{tentativa_num})', flush=True)
+                        break
+
+                    if n < TENTATIVAS_CICLO:
+                        await asyncio.sleep(DELAY_CICLO)
+
+                if not sucesso:
+                    # Agendar próxima tentativa para daqui 5 minutos
+                    proxima = (datetime.now() + __import__('datetime').timedelta(minutes=5)).isoformat()
+                    novo_total = tentativas_total + TENTATIVAS_CICLO
+                    conn3 = sqlite3_connect()
+                    conn3.execute(
+                        """UPDATE paypix_fila
+                           SET tentativas=?, proxima_tentativa=?,
+                               observacao=?
+                           WHERE id=?""",
+                        (novo_total, proxima,
+                         f'⏳ Aguardando retry — {novo_total} tentativa(s) realizadas', item_id)
+                    )
+                    conn3.commit()
+                    conn3.close()
+                    print(f'[PayPix Worker] ⏳ item_id={item_id} — próxima tentativa em 5min (total={novo_total})', flush=True)
+
+        except Exception as e:
+            print(f'[PayPix Worker] Erro no ciclo: {e}', flush=True)
+
+async def route_paypix_fila(request):
+    """GET /api/paypix/fila — Lista a fila de splits pendentes (admin)"""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'não autorizado'}, status=401)
+    try:
+        conn = sqlite3_connect()
+        cur  = conn.execute(
+            """SELECT id, tx_id, valor, chave_pix, tipo_chave, pct,
+                      tentativas, status, proxima_tentativa, created_at,
+                      finalizado_at, observacao
+               FROM paypix_fila
+               ORDER BY created_at DESC LIMIT 50"""
+        )
+        rows = cur.fetchall()
+        conn.close()
+        cols = ['id','tx_id','valor','chave_pix','tipo_chave','pct',
+                'tentativas','status','proxima_tentativa','created_at',
+                'finalizado_at','observacao']
+        itens = [dict(zip(cols, r)) for r in rows]
+        pendentes   = sum(1 for i in itens if i['status'] == 'pendente')
+        finalizados = sum(1 for i in itens if i['status'] == 'finalizado')
+        return web.json_response({
+            'success': True,
+            'total': len(itens),
+            'pendentes': pendentes,
+            'finalizados': finalizados,
+            'itens': itens
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
 
 async def route_exportar_csv(request):
     """Exportar depósitos ou saques em CSV"""
@@ -2748,6 +2932,7 @@ async def main():
     app.router.add_post('/api/paypix/config', route_paypix_config)
     app.router.add_options('/api/paypix/config', lambda r: web.Response(headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,X-PaynexBet-Secret'}))
     app.router.add_route('OPTIONS', '/api/paypix/gerar', lambda r: web.Response(status=200))
+    app.router.add_get('/api/paypix/fila', route_paypix_fila)
     # Endpoint de restart forçado (Railway reinicia o processo com código novo)
     async def route_force_restart(request):
         secret = request.rel_url.query.get('secret', '')
@@ -2777,7 +2962,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260412-PAYPIX-FIX-v6',
+            'version': 'v20260412-PAYPIX-QUEUE-v7',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
@@ -2807,6 +2992,9 @@ async def main():
 
     # Monitor de saques pendentes (reprocessa quando Telegram voltar)
     asyncio.create_task(reprocessar_saques_pendentes_sorteio())
+
+    # Worker de splits PayPix pendentes — tenta a cada 5 min até finalizar
+    asyncio.create_task(_worker_paypix_fila())
 
     await asyncio.Event().wait()
 

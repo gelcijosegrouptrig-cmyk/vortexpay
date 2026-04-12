@@ -1173,6 +1173,30 @@
           </div>
         </div>
 
+        <!-- Fila de Splits Pendentes -->
+        <div class="table-card" style="margin-top:20px">
+          <div class="table-header">
+            <h3>📋 Fila de Splits Pendentes</h3>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span id="pp-fila-badge" style="background:#FFD70022;border:1px solid #FFD70044;color:#FFD700;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700">0 pendentes</span>
+              <button onclick="carregarFilaPaypix()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+            </div>
+          </div>
+          <div style="padding:14px 20px;font-size:12px;color:#888;background:#ffffff05;border-bottom:1px solid #ffffff10">
+            ⏳ Splits que falharam nas tentativas rápidas são enfileirados aqui. O sistema tenta automaticamente a cada <strong style="color:#FFD700">5 minutos</strong> até finalizar o Pix.
+          </div>
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead><tr>
+                <th>ID</th><th>TX</th><th>Valor</th><th>Chave Pix</th><th>%</th><th>Tentativas</th><th>Status</th><th>Próxima</th><th>Observação</th>
+              </tr></thead>
+              <tbody id="paypix-fila-tbody">
+                <tr><td colspan="9" style="text-align:center;color:#666;padding:20px">Clique em Atualizar para carregar</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div><!-- /tab-paypix -->
 
       <!-- API & WEBHOOKS -->
@@ -2441,6 +2465,7 @@ async function carregarPaypixAdmin() {
 
     // Carregar transações PayPix
     await carregarTxPaypix();
+    await carregarFilaPaypix();
   } catch(e) { console.error('carregarPaypixAdmin:', e); }
 }
 
@@ -2502,6 +2527,51 @@ async function salvarConfigPaypix() {
     btn.disabled = false;
     btn.textContent = '💾 Salvar Configuração PayPix';
     setTimeout(() => { msgEl.innerHTML = ''; }, 5000);
+  }
+}
+
+// ─── FILA PAYPIX ───
+async function carregarFilaPaypix() {
+  const tbody = document.getElementById('paypix-fila-tbody');
+  const badge = document.getElementById('pp-fila-badge');
+  try {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;padding:16px"><span class="loader"></span> Carregando...</td></tr>';
+    const r = await fetch(`${BASE}/api/paypix/fila?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#f87171;padding:16px">Erro: ${d.error}</td></tr>`;
+      return;
+    }
+    if (badge) badge.textContent = `${d.pendentes} pendente(s) · ${d.finalizados} finalizado(s)`;
+    if (badge) badge.style.background = d.pendentes > 0 ? '#FFD70022' : '#22c55e22';
+    if (badge) badge.style.borderColor = d.pendentes > 0 ? '#FFD70044' : '#22c55e44';
+    if (badge) badge.style.color = d.pendentes > 0 ? '#FFD700' : '#4ade80';
+
+    if (!d.itens || !d.itens.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;padding:20px">✅ Fila vazia — nenhum split pendente</td></tr>';
+      return;
+    }
+    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.',',');
+    const fmtData = s => s ? s.substring(0,16).replace('T',' ') : '—';
+    tbody.innerHTML = d.itens.map(it => {
+      const stBadge = it.status === 'finalizado'
+        ? '<span style="background:#22c55e22;color:#4ade80;border-radius:20px;padding:2px 10px;font-size:11px">✅ Finalizado</span>'
+        : '<span style="background:#FFD70022;color:#FFD700;border-radius:20px;padding:2px 10px;font-size:11px;animation:pulse 1.5s infinite">⏳ Pendente</span>';
+      const proxima = it.proxima_tentativa ? fmtData(it.proxima_tentativa) : '—';
+      return `<tr>
+        <td style="color:#555;font-size:11px">#${it.id}</td>
+        <td class="mono" style="font-size:10px">${(it.tx_id||'').substring(0,12)}…</td>
+        <td><strong style="color:#4ade80">${fmt(it.valor)}</strong></td>
+        <td style="font-size:11px;color:#aaa">${it.chave_pix||'—'}</td>
+        <td style="color:#FFD700;font-weight:700">${Math.round((it.pct||0.6)*100)}%</td>
+        <td style="text-align:center;color:${it.tentativas>=6?'#f87171':'#aaa'}">${it.tentativas||0}</td>
+        <td>${stBadge}</td>
+        <td style="font-size:11px;color:#888">${proxima}</td>
+        <td style="font-size:10px;color:#666;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${it.observacao||'—'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#f87171;padding:16px">❌ Erro: ${e.message}</td></tr>`;
   }
 }
 
