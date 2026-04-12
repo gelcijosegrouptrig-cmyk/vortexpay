@@ -81,7 +81,7 @@
 
 <div class="logo">
   <h1>💰 PayPix</h1>
-  <p>Gere seu Pix e receba 60% do valor</p>
+  <p id="paypix-subtitulo">Gere seu Pix e receba sua % do valor</p>
 </div>
 
 <div class="card">
@@ -116,15 +116,15 @@
 
     <!-- split preview -->
     <div class="split-box" id="split-preview" style="display:none">
-      <div class="split-row"><span class="label">💰 Você recebe (60%)</span><span class="val verde" id="prev-voce">R$ 0,00</span></div>
+      <div class="split-row"><span class="label" id="lbl-voce">💰 Você recebe</span><span class="val verde" id="prev-voce">R$ 0,00</span></div>
       <hr class="divider"/>
-      <div class="split-row"><span class="label">🏦 Plataforma (40%)</span><span class="val amarelo" id="prev-plat">R$ 0,00</span></div>
+      <div class="split-row"><span class="label" id="lbl-plat">🏦 Plataforma</span><span class="val amarelo" id="prev-plat">R$ 0,00</span></div>
       <hr class="divider"/>
       <div class="split-row"><span class="label">📦 Total cobrado</span><span class="val" id="prev-total">R$ 0,00</span></div>
     </div>
 
     <button class="btn btn-gold" id="btn-gerar" onclick="gerarPix()">🚀 Gerar QR Code Pix</button>
-    <p class="info-tip">O cliente paga via Pix → 60% cai na sua conta automaticamente</p>
+    <p class="info-tip" id="info-tip-pct">O cliente paga via Pix → seu % cai na sua conta automaticamente</p>
   </div>
 
   <!-- ─── ETAPA 2: QR Code + aguardando ─── -->
@@ -184,20 +184,15 @@ async function carregarConfigPaypix() {
     _pct = d.paypix_pct || 0.6;
     const pctDisplay = Math.round(_pct * 100) + '%';
     const platDisplay = Math.round((1 - _pct) * 100) + '%';
-    // Atualizar textos dinâmicos
-    const tituloP = document.querySelector('.logo p');
-    if (tituloP) tituloP.textContent = d.paypix_descricao || `Gere seu Pix e receba ${pctDisplay} do valor`;
-    // Labels do split
-    const lblVoce = document.querySelector('.split-row .label');
+    // Atualizar textos dinâmicos via IDs (mais confiável)
+    const subtitulo = document.getElementById('paypix-subtitulo');
+    if (subtitulo) subtitulo.textContent = d.paypix_descricao || `Gere seu Pix e receba ${pctDisplay} do valor`;
+    const lblVoce = document.getElementById('lbl-voce');
     if (lblVoce) lblVoce.textContent = `💰 Você recebe (${pctDisplay})`;
-    document.querySelectorAll('.split-row .label').forEach((el, i) => {
-      if (i === 0) el.textContent = `💰 Você recebe (${pctDisplay})`;
-      if (i === 1) el.textContent = `🏦 Plataforma (${platDisplay})`;
-    });
-    // Info tip
-    document.querySelectorAll('.info-tip').forEach(el => {
-      el.textContent = `O cliente paga via Pix → ${pctDisplay} cai na sua conta automaticamente`;
-    });
+    const lblPlat = document.getElementById('lbl-plat');
+    if (lblPlat) lblPlat.textContent = `🏦 Plataforma (${platDisplay})`;
+    const infoTip = document.getElementById('info-tip-pct');
+    if (infoTip) infoTip.textContent = `O cliente paga via Pix → ${pctDisplay} cai na sua conta automaticamente`;
     // Badge status
     if (!d.paypix_ativo) {
       document.querySelector('.badge').innerHTML = '<span style="background:#ef4444"></span> Sistema inativo';
