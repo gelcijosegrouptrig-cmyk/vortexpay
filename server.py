@@ -71,14 +71,20 @@ class DBConn:
 
     def commit(self):
         if self._pg:
-            self._pg.commit()
+            # Com autocommit=True, commit() é no-op (cada query já commitou)
+            try:
+                if not self._pg.autocommit:
+                    self._pg.commit()
+            except Exception:
+                pass
         else:
             self._sq.commit()
 
     def rollback(self):
         if self._pg:
             try:
-                self._pg.rollback()
+                if not self._pg.autocommit:
+                    self._pg.rollback()
             except Exception:
                 pass
         else:
@@ -156,12 +162,9 @@ def sqlite3_connect(path=None):
         try:
             import psycopg2
             pg = psycopg2.connect(DATABASE_URL)
-            pg.autocommit = False
-            # Limpar qualquer transação abortada anterior
-            try:
-                pg.rollback()
-            except Exception:
-                pass
+            # autocommit=True evita o problema de "transaction aborted"
+            # cada query é sua propria transação independente
+            pg.autocommit = True
             return DBConn(pg_conn=pg)
         except Exception as e:
             print(f'[DB] Falha PostgreSQL, usando SQLite: {e}', flush=True)
