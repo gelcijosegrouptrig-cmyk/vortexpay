@@ -133,9 +133,54 @@ def init_db():
         try:
             import psycopg2
             pg = psycopg2.connect(DATABASE_URL)
+            # Criar tabelas diretamente no PostgreSQL com sintaxe correta
+            cur = pg.cursor()
+            pg_tables = [
+                """CREATE TABLE IF NOT EXISTS transacoes (
+                    id SERIAL PRIMARY KEY, tx_id TEXT UNIQUE NOT NULL,
+                    valor REAL NOT NULL, pix_code TEXT,
+                    status TEXT DEFAULT 'pendente', cliente_id TEXT,
+                    webhook_url TEXT, created_at TEXT, paid_at TEXT, extra TEXT)""",
+                """CREATE TABLE IF NOT EXISTS saques (
+                    id SERIAL PRIMARY KEY, saque_id TEXT UNIQUE NOT NULL,
+                    valor REAL NOT NULL, chave_pix TEXT NOT NULL,
+                    tipo_chave TEXT NOT NULL, status TEXT DEFAULT 'pendente',
+                    created_at TEXT, processado_at TEXT, observacao TEXT)""",
+                """CREATE TABLE IF NOT EXISTS sorteio_config (
+                    id INTEGER PRIMARY KEY, ativo INTEGER DEFAULT 1,
+                    valor_por_numero REAL DEFAULT 5.0, premio_fixo REAL DEFAULT 0,
+                    percentual REAL DEFAULT 50.0, usar_media INTEGER DEFAULT 0,
+                    dias_media INTEGER DEFAULT 30, descricao TEXT DEFAULT 'Sorteio PaynexBet',
+                    proximo_sorteio TEXT, updated_at TEXT)""",
+                """CREATE TABLE IF NOT EXISTS sorteio_participantes (
+                    id SERIAL PRIMARY KEY, cliente_id TEXT NOT NULL UNIQUE,
+                    nome TEXT, cpf TEXT, chave_pix TEXT, tipo_chave TEXT DEFAULT 'cpf',
+                    total_depositado REAL DEFAULT 0, total_numeros INTEGER DEFAULT 0,
+                    numeros_sorte TEXT DEFAULT '[]', created_at TEXT,
+                    updated_at TEXT, sorteio_id TEXT DEFAULT 'atual')""",
+                """CREATE TABLE IF NOT EXISTS sorteio_bilhetes (
+                    id SERIAL PRIMARY KEY, cliente_id TEXT NOT NULL,
+                    numero INTEGER NOT NULL, sorteio_id TEXT DEFAULT 'atual', created_at TEXT)""",
+                """CREATE TABLE IF NOT EXISTS sorteio_historico (
+                    id SERIAL PRIMARY KEY, sorteio_id TEXT UNIQUE NOT NULL,
+                    data_sorteio TEXT, ganhador_cliente_id TEXT, ganhador_nome TEXT,
+                    ganhador_cpf TEXT, ganhador_numero INTEGER, ganhador_chave_pix TEXT,
+                    ganhador_tipo_chave TEXT, premio_pago REAL, saque_id TEXT,
+                    saque_status TEXT DEFAULT 'pendente', total_participantes INTEGER,
+                    total_bilhetes INTEGER, total_depositado REAL, observacao TEXT)""",
+            ]
+            for sql in pg_tables:
+                cur.execute(sql)
+            # Config padrão sorteio
+            cur.execute("""INSERT INTO sorteio_config
+                (id,ativo,valor_por_numero,premio_fixo,percentual,usar_media,dias_media,descricao,proximo_sorteio,updated_at)
+                VALUES (1,1,5.0,0,50.0,0,30,'Sorteio PaynexBet',NULL,%s)
+                ON CONFLICT (id) DO NOTHING""", (datetime.now().isoformat(),))
+            pg.commit()
             pg.close()
             _USE_PG = True
-            print(f'✅ PostgreSQL conectado (banco persistente)!', flush=True)
+            print('✅ PostgreSQL conectado — banco PERSISTENTE ativo!', flush=True)
+            return  # Sai sem criar SQLite
         except ImportError:
             print('⚠️ psycopg2 não instalado, usando SQLite', flush=True)
             _USE_PG = False
