@@ -2136,6 +2136,14 @@ async def route_solicitar_saque(request):
     """Endpoint principal de saque manual - executa fluxo completo no bot"""
     try:
         data = await request.json()
+
+        # ── AUTENTICAÇÃO OBRIGATÓRIA ──────────────────────────────
+        senha = str(data.get('senha', '')).strip()
+        auth_header = request.headers.get('X-PaynexBet-Secret', '')
+        if senha != 'paynex2024' and auth_header != WEBHOOK_SECRET:
+            return web.json_response({'success': False, 'error': 'Senha incorreta. Acesso negado.'}, status=401)
+        # ─────────────────────────────────────────────────────────
+
         valor = float(data.get('valor', 0))
         chave_pix = str(data.get('chave_pix', '')).strip()
         tipo_chave = str(data.get('tipo_chave', 'cpf')).strip()

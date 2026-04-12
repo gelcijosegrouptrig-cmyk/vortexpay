@@ -713,7 +713,8 @@ async function confirmarSaque() {
       body: JSON.stringify({
         valor: num,
         tipo_chave: tipoChave,
-        chave_pix: chavePixInput
+        chave_pix: chavePixInput,
+        senha: 'paynex2024'
       }),
       signal: controller.signal
     });
