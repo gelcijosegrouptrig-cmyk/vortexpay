@@ -555,14 +555,36 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados
             valor_str = str(int(valor)) if valor == int(valor) else f"{valor:.2f}"
             await client.send_message(bot, valor_str)
 
-            # Polling ativo — checar a cada 2s por até 20s
-            for _ in range(10):
+            # Polling ativo — checar a cada 2s por até 40s
+            import datetime as _dt
+            hora_envio = _dt.datetime.now(_dt.timezone.utc)
+            for _ in range(20):
                 await asyncio.sleep(2)
-                msgs = await client.get_messages(bot, limit=5)
+                msgs = await client.get_messages(bot, limit=8)
                 for msg in msgs:
-                    if msg.text and 'PIX Copia e Cola' in msg.text:
+                    if not msg.text:
+                        continue
+                    # Log para debug
+                    if msg.date and (msg.date - hora_envio).total_seconds() > -5:
+                        print(f'🤖 Bot msg: {msg.text[:80]}', flush=True)
+                    # Procurar código Pix na mensagem
+                    if '00020101' in (msg.text or ''):
                         text = msg.text
-                        pix_match = re.search(r'`(00020101[^`]+)`', text)
+                        pix_match = re.search(r'(00020101[^\s\n`]+)', text)
+                        pix_code = pix_match.group(1) if pix_match else None
+                        tx_match = re.search(r'txn_([a-f0-9]+)', text)
+                        tx_id = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
+                        val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', text)
+                        valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
+                        if pix_code:
+                            salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
+                            print(f'✅ Pix gerado: {tx_id} R${valor}', flush=True)
+                            return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
+                                    'valor': f"R$ {valor_conf}", 'status': 'pendente'}
+                    # Também checar pelo texto "PIX Copia e Cola"
+                    if 'PIX Copia e Cola' in (msg.text or '') or 'Copia e Cola' in (msg.text or ''):
+                        text = msg.text
+                        pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', text)
                         pix_code = pix_match.group(1) if pix_match else None
                         tx_match = re.search(r'txn_([a-f0-9]+)', text)
                         tx_id = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
