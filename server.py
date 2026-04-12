@@ -863,6 +863,7 @@ async def _ping_telegram() -> bool:
 
 # ─── TELEGRAM - Auto-Login (sem intervenção humana) ─────────
 _auto_login_em_progresso = False   # evita múltiplos auto-logins simultâneos
+_floodwait_ate = 0                 # timestamp até quando o FloodWait está ativo
 
 async def _auto_login_telegram():
     """
@@ -894,8 +895,11 @@ async def _auto_login_telegram():
         try:
             sent = await temp_client.send_code_request('+5527997981963')
         except FloodWaitError as fw:
-            print(f'🤖 [AutoLogin] FloodWait: aguardar {fw.seconds}s', flush=True)
-            await temp_client.disconnect()
+            _floodwait_ate = time.time() + fw.seconds
+            mins = fw.seconds // 60
+            print(f'🤖 [AutoLogin] FloodWait: aguardar {mins}min ({fw.seconds}s). Próxima tentativa após {datetime.fromtimestamp(_floodwait_ate).strftime("%H:%M")}', flush=True)
+            try: await temp_client.disconnect()
+            except: pass
             _auto_login_em_progresso = False
             return False
 
@@ -1127,7 +1131,15 @@ async def watchdog_telegram():
                         await asyncio.sleep(PING_INTERVAL)
                         continue
 
-                    # Passo 2: sessão DB inválida → tentar auto-login com código
+                    # Passo 2: verificar FloodWait antes de tentar auto-login
+                    agora_fw = time.time()
+                    if _floodwait_ate > agora_fw:
+                        mins_rest = int((_floodwait_ate - agora_fw) / 60)
+                        print(f'⏳ [Watchdog] FloodWait ativo — aguardando mais {mins_rest}min para tentar auto-login', flush=True)
+                        await asyncio.sleep(min(300, _floodwait_ate - agora_fw))
+                        continue
+
+                    # Passo 3: sessão DB inválida → tentar auto-login com código
                     print('🤖 [Watchdog] Sessão DB inválida → iniciando AUTO-LOGIN...', flush=True)
                     sucesso = await _auto_login_telegram()
                     if sucesso:
@@ -2173,6 +2185,11 @@ async def route_health(request):
             motivo = 'iniciando'
     # Tempo desde último ping bem-sucedido
     ping_age = int(time.time() - _telegram_ultimo_ping) if _telegram_ultimo_ping else None
+    # Calcular FloodWait restante
+    fw_restante = None
+    if _floodwait_ate > time.time():
+        fw_restante = int((_floodwait_ate - time.time()) / 60)
+
     return web.json_response({
         'status': 'online',
         'version': 'v20260412-RECONDB-v10',
@@ -2183,6 +2200,7 @@ async def route_health(request):
         'tentativas': _telegram_tentativas,
         'bot': BOT_USERNAME,
         'webhook': '/webhook/confirmar',
+        'floodwait_min': fw_restante,
     })
 
 async def route_debug_pix(request):
