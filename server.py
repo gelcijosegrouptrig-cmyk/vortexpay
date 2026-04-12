@@ -871,7 +871,9 @@ async def verificar_saldo_bot() -> float:
         pass
     return -1.0
 
-async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados=None):
+async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados=None, tx_id_override=None):
+    """Gera Pix via bot Telegram.
+    Se tx_id_override for informado, NÃO chama salvar_transacao (o registro já existe no banco)."""
     # Espera Telegram ficar pronto (até 30s)
     for _ in range(30):
         if _telegram_ready:
@@ -936,7 +938,9 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados
                     val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', text)
                     valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
                     if pix_code:
-                        salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
+                        # Se tx_id_override foi passado, o registro já existe — não criar outro
+                        if not tx_id_override:
+                            salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
                         print(f'✅ Pix gerado: {tx_id} R${valor}', flush=True)
                         return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
                                 'valor': f"R$ {valor_conf}", 'status': 'pendente'}
@@ -950,7 +954,9 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados
                     val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', text)
                     valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
                     if pix_code:
-                        salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
+                        # Se tx_id_override foi passado, o registro já existe — não criar outro
+                        if not tx_id_override:
+                            salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
                         print(f'✅ Pix gerado: {tx_id} R${valor}', flush=True)
                         return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
                                 'valor': f"R$ {valor_conf}", 'status': 'pendente'}
@@ -1776,19 +1782,21 @@ async def route_pix(request):
 
         # Iniciar geração em background (não bloqueia resposta)
         async def gerar_em_background():
-            result = await gerar_pix(valor, cliente_id, data.get('webhook_url'), participante_dados)
+            # tx_id_override=tx_id garante que gerar_pix NÃO cria registro duplicado no banco
+            result = await gerar_pix(valor, cliente_id, data.get('webhook_url'), participante_dados, tx_id_override=tx_id)
+            conn2 = sqlite3_connect()
             if result.get('success') and result.get('pix_code'):
-                conn2 = sqlite3_connect()
-                conn2.execute('UPDATE transacoes SET pix_code=?, status=?, tx_id=? WHERE tx_id=?',
-                           (result['pix_code'], 'pendente', result['tx_id'], tx_id))
+                # Atualizar registro original com pix_code — mantém o tx_id original intacto
+                conn2.execute('UPDATE transacoes SET pix_code=?, status=? WHERE tx_id=?',
+                           (result['pix_code'], 'pendente', tx_id))
                 conn2.commit()
                 conn2.close()
-                print(f'✅ Pix pronto em background: {result["tx_id"]}', flush=True)
+                print(f'✅ Pix pronto: {tx_id} | pix_code={result["pix_code"][:30]}...', flush=True)
             else:
-                conn2 = sqlite3_connect()
                 conn2.execute('UPDATE transacoes SET status=? WHERE tx_id=?', ('erro', tx_id))
                 conn2.commit()
                 conn2.close()
+                print(f'❌ Falha gerar pix [{tx_id}]: {result.get("error")}', flush=True)
 
         asyncio.create_task(gerar_em_background())
 
