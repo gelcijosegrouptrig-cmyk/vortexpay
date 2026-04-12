@@ -1121,7 +1121,7 @@ async def route_solicitar_codigo(request):
         from telethon.errors import FloodWaitError
         temp_client = TelegramClient(SS(), API_ID, API_HASH)
         await temp_client.connect()
-        sent = await temp_client.send_code_request('+5511970569294')
+        sent = await temp_client.send_code_request('+5527997981963')
         _login_state = {
             'client': temp_client,
             'hash': sent.phone_code_hash,
@@ -1160,7 +1160,7 @@ async def route_confirmar_codigo(request):
             await temp_client.connect()
 
         try:
-            await temp_client.sign_in('+5511970569294', code, phone_code_hash=_login_state['hash'])
+            await temp_client.sign_in('+5527997981963', code, phone_code_hash=_login_state['hash'])
         except SessionPasswordNeededError:
             senha = data.get('password','')
             if not senha:
