@@ -1,6 +1,7 @@
 """
 PaynexBet - Servidor Railway 24/7
 HTTP imediato + Telegram background com retry automático
+Banco: PostgreSQL (persistente) com fallback SQLite
 """
 import asyncio, re, json, os, sqlite3, time, hashlib, hmac
 from datetime import datetime
@@ -26,13 +27,126 @@ _lock = asyncio.Lock()
 _saque_lock = asyncio.Lock()
 _telegram_ready = False
 _telegram_tentativas = 0
-_telegram_session_invalida = False  # True quando sessão foi revogada (AuthKeyDuplicatedError)
+_telegram_session_invalida = False
 
-# ─── BANCO DE DADOS ──────────────────────────────────────────
+# ─── BANCO DE DADOS — PostgreSQL persistente + fallback SQLite ───────────────
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
 DB_PATH = '/tmp/transacoes.db'
+_USE_PG = False  # será True se PostgreSQL disponível
+
+class DBConn:
+    """Wrapper que imita sqlite3.connect() mas usa PostgreSQL se disponível"""
+    def __init__(self, pg_conn=None, sq_conn=None):
+        self._pg = pg_conn
+        self._sq = sq_conn
+        self.row_factory = None
+
+    def execute(self, sql, params=()):
+        sql_pg = _to_pg(sql)
+        if self._pg:
+            cur = self._pg.cursor()
+            cur.execute(sql_pg, params)
+            return cur
+        return self._sq.execute(sql, params)
+
+    def cursor(self):
+        if self._pg:
+            return _PGCursor(self._pg.cursor())
+        return self._sq.cursor()
+
+    def commit(self):
+        if self._pg:
+            self._pg.commit()
+        else:
+            self._sq.commit()
+
+    def close(self):
+        if self._pg:
+            self._pg.close()
+        else:
+            self._sq.close()
+
+    def __enter__(self): return self
+    def __exit__(self, *a): self.close()
+
+class _PGCursor:
+    def __init__(self, cur): self._c = cur
+    def execute(self, sql, params=()):
+        self._c.execute(_to_pg(sql), params)
+        return self
+    def fetchone(self): return self._c.fetchone()
+    def fetchall(self): return self._c.fetchall()
+    @property
+    def lastrowid(self): return self._c.fetchone()[0] if self._c else None
+
+def _to_pg(sql):
+    """Converte SQL SQLite para PostgreSQL"""
+    import re as _re
+    # ? → %s
+    sql = sql.replace('?', '%s')
+    # INTEGER PRIMARY KEY AUTOINCREMENT → SERIAL PRIMARY KEY
+    sql = _re.sub(r'INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY', sql, flags=_re.IGNORECASE)
+    # AUTOINCREMENT sozinho
+    sql = _re.sub(r'\bAUTOINCREMENT\b', '', sql, flags=_re.IGNORECASE)
+    # INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING
+    sql = _re.sub(r'\bINSERT OR IGNORE\b', 'INSERT', sql, flags=_re.IGNORECASE)
+    if 'INSERT' in sql.upper() and 'ON CONFLICT' not in sql.upper() and 'INSERT OR REPLACE' not in sql.upper():
+        if 'ON CONFLICT DO NOTHING' not in sql:
+            sql = sql.rstrip().rstrip(')') 
+            # Só adiciona ON CONFLICT se for INSERT simples
+            pass
+    # INSERT OR REPLACE → INSERT ... ON CONFLICT DO UPDATE
+    sql = _re.sub(r'\bINSERT OR REPLACE\b', 'INSERT', sql, flags=_re.IGNORECASE)
+    return sql
+
+def _pg_insert_ignore(sql, params, conn):
+    """Execute INSERT ignorando duplicatas no PostgreSQL"""
+    try:
+        cur = conn.cursor()
+        cur._c.execute(_to_pg(sql), params)
+        conn._pg.commit()
+    except Exception as e:
+        if 'duplicate' in str(e).lower() or 'unique' in str(e).lower():
+            conn._pg.rollback()
+        else:
+            conn._pg.rollback()
+            raise
+
+def sqlite3_connect(path=None):
+    """Conecta ao PostgreSQL se disponível, senão SQLite"""
+    global _USE_PG
+    if _USE_PG and DATABASE_URL:
+        try:
+            import psycopg2
+            pg = psycopg2.connect(DATABASE_URL)
+            pg.autocommit = False
+            return DBConn(pg_conn=pg)
+        except Exception as e:
+            print(f'[DB] Falha PostgreSQL, usando SQLite: {e}', flush=True)
+    sq = sqlite3.connect(path or DB_PATH)
+    return DBConn(sq_conn=sq)
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    global _USE_PG
+    # Tentar conectar ao PostgreSQL primeiro
+    if DATABASE_URL:
+        try:
+            import psycopg2
+            pg = psycopg2.connect(DATABASE_URL)
+            pg.close()
+            _USE_PG = True
+            print(f'✅ PostgreSQL conectado (banco persistente)!', flush=True)
+        except ImportError:
+            print('⚠️ psycopg2 não instalado, usando SQLite', flush=True)
+            _USE_PG = False
+        except Exception as e:
+            print(f'⚠️ PostgreSQL falhou ({e}), usando SQLite', flush=True)
+            _USE_PG = False
+    else:
+        print('ℹ️ DATABASE_URL não definida, usando SQLite', flush=True)
+        _USE_PG = False
+
+    conn = sqlite3_connect(DB_PATH)
     conn.execute('''CREATE TABLE IF NOT EXISTS transacoes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tx_id TEXT UNIQUE NOT NULL, valor REAL NOT NULL,
@@ -129,7 +243,7 @@ def init_db():
 def salvar_transacao(tx_id, valor, pix_code, cliente_id=None, webhook_url=None, participante_dados=None):
     import json as _json
     extra = _json.dumps(participante_dados) if participante_dados else None
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     conn.execute('''INSERT OR REPLACE INTO transacoes
         (tx_id,valor,pix_code,status,cliente_id,webhook_url,created_at,extra)
         VALUES (?,?,?,'pendente',?,?,?,?)''',
@@ -137,7 +251,7 @@ def salvar_transacao(tx_id, valor, pix_code, cliente_id=None, webhook_url=None, 
     conn.commit(); conn.close()
 
 def buscar_transacao(tx_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     c = conn.cursor()
     c.execute('SELECT * FROM transacoes WHERE tx_id=?', (tx_id,))
     row = c.fetchone(); conn.close()
@@ -150,7 +264,7 @@ def buscar_transacao(tx_id):
 def confirmar_pagamento(tx_id):
     """Confirma pagamento e automaticamente gera bilhetes do sorteio para o cliente"""
     import json as _json
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     conn.execute('UPDATE transacoes SET status=?,paid_at=? WHERE tx_id=?',
         ('pago', datetime.now().isoformat(), tx_id))
     conn.commit()
@@ -181,7 +295,7 @@ def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id, participante_dados
     O cliente_id deve ser o CPF sem máscara (números apenas) ou 'cli_CPF'."""
     try:
         import json as _json
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3_connect(DB_PATH)
         c = conn.cursor()
 
         # Tentar encontrar participante por cliente_id ou por CPF embutido no cliente_id
@@ -206,7 +320,7 @@ def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id, participante_dados
                 nome_p = str(participante_dados.get('nome', '')).strip()
                 chave_p = str(participante_dados.get('chave_pix', '')).strip()
                 tipo_p = str(participante_dados.get('tipo_chave', 'cpf')).strip()
-                conn2 = sqlite3.connect(DB_PATH)
+                conn2 = sqlite3_connect(DB_PATH)
                 conn2.execute('''INSERT OR IGNORE INTO sorteio_participantes
                     (cliente_id, nome, cpf, chave_pix, tipo_chave,
                      total_depositado, total_numeros, numeros_sorte, created_at, updated_at, sorteio_id)
@@ -215,7 +329,7 @@ def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id, participante_dados
                 conn2.commit(); conn2.close()
                 print(f'✅ Sorteio: participante {nome_p} (CPF {cpf_tentativa}) criado automaticamente ao confirmar pagamento tx={tx_id}', flush=True)
                 # Re-buscar após criação
-                conn3 = sqlite3.connect(DB_PATH)
+                conn3 = sqlite3_connect(DB_PATH)
                 c3 = conn3.cursor()
                 c3.execute("SELECT id, cliente_id, total_depositado, total_numeros, numeros_sorte FROM sorteio_participantes WHERE cpf=? AND sorteio_id='atual'",
                            (cpf_tentativa,))
@@ -246,7 +360,7 @@ def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id, participante_dados
             novos_numeros = gerar_bilhetes_unicos(cli_id, novos)
             numeros_atuais.extend(novos_numeros)
 
-        conn2 = sqlite3.connect(DB_PATH)
+        conn2 = sqlite3_connect(DB_PATH)
         conn2.execute('''UPDATE sorteio_participantes
             SET total_depositado=?, total_numeros=?, numeros_sorte=?, updated_at=?
             WHERE cpf=? AND sorteio_id='atual' ''',
@@ -262,7 +376,7 @@ def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id, participante_dados
         print(f'⚠️ Erro ao creditar bilhetes sorteio (tx={tx_id}): {e}', flush=True)
 
 def listar_transacoes(limit=50):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     c = conn.cursor()
     c.execute('SELECT * FROM transacoes ORDER BY created_at DESC LIMIT ?', (limit,))
     rows = c.fetchall(); conn.close()
@@ -271,7 +385,7 @@ def listar_transacoes(limit=50):
     return [dict(zip(cols, r)) for r in rows]
 
 def salvar_saque(saque_id, valor, chave_pix, tipo_chave):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     conn.execute('''CREATE TABLE IF NOT EXISTS saques (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         saque_id TEXT UNIQUE NOT NULL,
@@ -290,7 +404,7 @@ def salvar_saque(saque_id, valor, chave_pix, tipo_chave):
     conn.commit(); conn.close()
 
 def listar_saques(limit=50):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     conn.execute('''CREATE TABLE IF NOT EXISTS saques (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         saque_id TEXT UNIQUE NOT NULL,
@@ -337,7 +451,7 @@ def load_sorteio_html():
 
 # ─── HELPERS SORTEIO ────────────────────────────────────────
 def get_sorteio_config():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     c = conn.cursor()
     c.execute('SELECT * FROM sorteio_config WHERE id=1')
     row = c.fetchone(); conn.close()
@@ -352,7 +466,7 @@ def get_sorteio_config():
 
 def get_participante(cpf):
     """Busca participante pelo CPF"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT * FROM sorteio_participantes WHERE cpf=? AND sorteio_id='atual'", (cpf,))
     row = c.fetchone(); conn.close()
@@ -374,7 +488,7 @@ def calcular_numeros(total_depositado, valor_por_numero=5.0):
 def gerar_bilhetes_unicos(cliente_id, qtd, sorteio_id='atual'):
     """Gera números únicos para o participante (sem repetir com outros)"""
     import hashlib, json
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     c = conn.cursor()
     # Pegar todos os números já usados neste sorteio
     c.execute('SELECT numero FROM sorteio_bilhetes WHERE sorteio_id=?', (sorteio_id,))
@@ -449,7 +563,7 @@ async def conectar_telegram():
                 if any(re.search(p, texto, re.IGNORECASE) for p in padroes):
                     print(f'💰 Confirmação detectada: {texto[:100]}', flush=True)
                     # Buscar tx mais recente pendente e confirmar
-                    conn = sqlite3.connect(DB_PATH)
+                    conn = sqlite3_connect(DB_PATH)
                     c = conn.cursor()
                     # Pegar transações pendentes mais recentes (últimas 5 min)
                     c.execute("""SELECT tx_id FROM transacoes 
@@ -624,7 +738,7 @@ async def route_sorteio_info(request):
     cpf = request.rel_url.query.get('cpf', '').strip()
     config = get_sorteio_config()
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT COUNT(*), COALESCE(SUM(total_depositado),0), COALESCE(SUM(total_numeros),0) FROM sorteio_participantes WHERE sorteio_id='atual'")
     total_part, total_dep, total_bilhetes = c.fetchone()
@@ -709,7 +823,7 @@ async def route_sorteio_cadastrar(request):
         now = datetime.now().isoformat()
         cliente_id = f"cli_{cpf}"
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3_connect(DB_PATH)
         if existente:
             # Atualizar dados (sem alterar depósitos e bilhetes)
             conn.execute('''UPDATE sorteio_participantes
@@ -786,7 +900,7 @@ async def route_sorteio_adicionar_deposito(request):
             numeros_atuais.extend(novos_numeros)
 
         import json as _json
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3_connect(DB_PATH)
         conn.execute('''UPDATE sorteio_participantes
             SET total_depositado=?, total_numeros=?, numeros_sorte=?, updated_at=?
             WHERE cpf=? AND sorteio_id='atual' ''',
@@ -835,7 +949,7 @@ async def route_sorteio_participar(request):
 async def _executar_sorteio_completo():
     """Lógica central: sorteia 1 bilhete vencedor e executa saque automático"""
     import random, json as _json
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     c = conn.cursor()
 
     # Buscar todos os bilhetes do sorteio atual
@@ -889,7 +1003,7 @@ async def _executar_sorteio_completo():
     cpf_ganhador = ganhador.get('cpf') or ''
 
     # Salvar no histórico
-    conn2 = sqlite3.connect(DB_PATH)
+    conn2 = sqlite3_connect(DB_PATH)
     conn2.execute('''INSERT INTO sorteio_historico
         (sorteio_id, data_sorteio, ganhador_cliente_id, ganhador_nome, ganhador_cpf,
          ganhador_numero, ganhador_chave_pix, ganhador_tipo_chave, premio_pago,
@@ -922,7 +1036,7 @@ async def _executar_sorteio_completo():
         # Atualizar status no banco de saques
         novo_status = saque_result.get('status', 'erro') if saque_result.get('success') else 'erro'
         obs = saque_result.get('mensagem_bot', saque_result.get('error', ''))[:500]
-        conn2 = sqlite3.connect(DB_PATH)
+        conn2 = sqlite3_connect(DB_PATH)
         conn2.execute('UPDATE saques SET status=?, processado_at=?, observacao=? WHERE saque_id=?',
             (novo_status, datetime.now().isoformat(), obs, saque_id_gerado))
         # Atualizar histórico com saque_id e status
@@ -936,7 +1050,7 @@ async def _executar_sorteio_completo():
         import hashlib as _hl
         saque_id_gerado = 'saq_sorteio_' + _hl.md5(f"{sorteio_id}{chave_pix}".encode()).hexdigest()[:10]
         salvar_saque(saque_id_gerado, premio, chave_pix, tipo_chave)
-        conn2 = sqlite3.connect(DB_PATH)
+        conn2 = sqlite3_connect(DB_PATH)
         conn2.execute('UPDATE sorteio_historico SET saque_id=?, saque_status=? WHERE sorteio_id=?',
             (saque_id_gerado, 'aguardando_telegram', sorteio_id))
         conn2.commit(); conn2.close()
@@ -1005,7 +1119,7 @@ async def agendador_sorteio():
                 print(f'🎰 SORTEIO AUTOMÁTICO DISPARADO! Atraso: {diff:.0f}s | Alvo: {proximo}', flush=True)
 
                 # Limpar proximo_sorteio PRIMEIRO para evitar re-disparo em caso de falha
-                conn = sqlite3.connect(DB_PATH)
+                conn = sqlite3_connect(DB_PATH)
                 conn.execute("UPDATE sorteio_config SET proximo_sorteio=NULL, updated_at=? WHERE id=1",
                              (datetime.now().isoformat(),))
                 conn.commit(); conn.close()
@@ -1030,7 +1144,7 @@ async def reprocessar_saques_pendentes_sorteio():
             if not _telegram_ready:
                 continue
             # Buscar saques de sorteio aguardando telegram
-            conn = sqlite3.connect(DB_PATH)
+            conn = sqlite3_connect(DB_PATH)
             c = conn.cursor()
             c.execute("""SELECT h.sorteio_id, h.ganhador_nome, h.ganhador_chave_pix,
                                 h.ganhador_tipo_chave, h.premio_pago, h.saque_id
@@ -1048,7 +1162,7 @@ async def reprocessar_saques_pendentes_sorteio():
                 result = await executar_saque_bot(premio, tipo_chave, chave_pix)
                 novo_status = result.get('status', 'erro') if result.get('success') else 'erro'
                 obs = result.get('mensagem_bot', result.get('error', ''))[:500]
-                conn2 = sqlite3.connect(DB_PATH)
+                conn2 = sqlite3_connect(DB_PATH)
                 conn2.execute('UPDATE sorteio_historico SET saque_status=? WHERE sorteio_id=?',
                               (novo_status, sorteio_id))
                 if saque_id:
@@ -1067,7 +1181,7 @@ async def route_sorteio_config(request):
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         data = await request.json()
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3_connect(DB_PATH)
         conn.execute('''UPDATE sorteio_config SET
             ativo=?, valor_por_numero=?, percentual=?, usar_media=?, dias_media=?,
             premio_fixo=?, descricao=?, proximo_sorteio=?, updated_at=?
@@ -1094,7 +1208,7 @@ async def route_sorteio_participantes(request):
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     import json as _json
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     c = conn.cursor()
     c.execute("""SELECT id, cliente_id, nome, cpf, chave_pix, tipo_chave,
                         total_depositado, total_numeros, numeros_sorte, created_at, updated_at, sorteio_id
@@ -1371,7 +1485,7 @@ async def route_pix(request):
         tx_id = f"txn_{hashlib.md5(f'{cliente_id}{valor}{time.time()}'.encode()).hexdigest()[:16]}"
 
         # Salvar transação como "gerando" para polling do frontend
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3_connect(DB_PATH)
         c = conn.cursor()
         # Garantir coluna extra existe (migracao segura)
         try:
@@ -1390,7 +1504,7 @@ async def route_pix(request):
             result = await gerar_pix(valor, cliente_id, data.get('webhook_url'), participante_dados)
             if result.get('success') and result.get('pix_code'):
                 # Atualizar tx com o pix_code real
-                conn2 = sqlite3.connect(DB_PATH)
+                conn2 = sqlite3_connect(DB_PATH)
                 c2 = conn2.cursor()
                 c2.execute('UPDATE transacoes SET pix_code=?, status=?, tx_id=? WHERE tx_id=?',
                            (result['pix_code'], 'pendente', result['tx_id'], tx_id))
@@ -1398,7 +1512,7 @@ async def route_pix(request):
                 conn2.close()
                 print(f'✅ Pix pronto em background: {result["tx_id"]}', flush=True)
             else:
-                conn2 = sqlite3.connect(DB_PATH)
+                conn2 = sqlite3_connect(DB_PATH)
                 c2 = conn2.cursor()
                 c2.execute('UPDATE transacoes SET status=? WHERE tx_id=?', ('erro', tx_id))
                 conn2.commit()
@@ -1420,7 +1534,7 @@ async def route_pix(request):
 async def route_pix_status(request):
     """Polling do status de geração do Pix"""
     tx_id = request.match_info.get('tx_id')
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     c = conn.cursor()
     c.execute('SELECT tx_id, valor, pix_code, status FROM transacoes WHERE tx_id=?', (tx_id,))
     row = c.fetchone()
@@ -1489,7 +1603,7 @@ async def route_webhook(request):
             confirmar_pagamento(tx_id)
             # Verificar se é uma transação PayPix e disparar split 60/40
             try:
-                conn_w = sqlite3.connect(DB_PATH)
+                conn_w = sqlite3_connect(DB_PATH)
                 cw = conn_w.cursor()
                 cw.execute('SELECT valor, extra FROM transacoes WHERE tx_id=?', (tx_id,))
                 row_w = cw.fetchone()
@@ -1765,7 +1879,7 @@ async def route_solicitar_saque(request):
 
         if resultado['success']:
             # Atualizar status no banco
-            conn = sqlite3.connect(DB_PATH)
+            conn = sqlite3_connect(DB_PATH)
             conn.execute(
                 'UPDATE saques SET status=?, processado_at=?, observacao=? WHERE saque_id=?',
                 (resultado['status'], datetime.now().isoformat(),
@@ -1785,7 +1899,7 @@ async def route_solicitar_saque(request):
             })
         else:
             # Marcar como erro no banco
-            conn = sqlite3.connect(DB_PATH)
+            conn = sqlite3_connect(DB_PATH)
             conn.execute(
                 'UPDATE saques SET status=?, observacao=? WHERE saque_id=?',
                 ('erro', resultado.get('error', ''), saque_id)
@@ -1825,7 +1939,7 @@ async def route_stats(request):
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3_connect(DB_PATH)
         c = conn.cursor()
 
         # Depósitos
@@ -1897,7 +2011,7 @@ async def route_cancelar_saque(request):
         return web.json_response({'error': 'Não autorizado'}, status=401)
     saque_id = request.match_info.get('saque_id')
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3_connect(DB_PATH)
         c = conn.cursor()
         c.execute("SELECT status FROM saques WHERE saque_id=?", (saque_id,))
         row = c.fetchone()
@@ -1972,7 +2086,7 @@ async def route_paypix_gerar(request):
         })
 
         # Salvar como "gerando"
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3_connect(DB_PATH)
         try:
             conn.execute('ALTER TABLE transacoes ADD COLUMN extra TEXT')
             conn.commit()
@@ -1989,7 +2103,7 @@ async def route_paypix_gerar(request):
         # Gerar Pix em background
         async def gerar_bg():
             result = await gerar_pix(valor, cliente_id, None, None)
-            conn2 = sqlite3.connect(DB_PATH)
+            conn2 = sqlite3_connect(DB_PATH)
             if result.get('success') and result.get('pix_code'):
                 # MANTER o tx_id original (ppx_...) — apenas atualizar pix_code e status
                 # Isso garante que o status polling funcione com o tx_id retornado ao frontend
@@ -2020,7 +2134,7 @@ async def route_paypix_gerar(request):
 async def route_paypix_status(request):
     """Status da transação PayPix — retorna pix_code quando pronto e status de pagamento"""
     tx_id = request.match_info.get('tx_id')
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3_connect(DB_PATH)
     c = conn.cursor()
     # Busca exata pelo tx_id (sempre mantemos o ppx_ original no banco)
     c.execute('SELECT tx_id, valor, pix_code, status, extra FROM transacoes WHERE tx_id=?', (tx_id,))
@@ -2102,7 +2216,7 @@ async def _processar_split_paypix(tx_id, valor, extra_str):
 
         # Registrar o saque na tabela saques
         saque_id = f"spp_{hashlib.md5(f'{tx_id}{time.time()}'.encode()).hexdigest()[:12]}"
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3_connect(DB_PATH)
         conn.execute(
             '''INSERT OR IGNORE INTO saques
                (saque_id,valor,chave_pix,tipo_chave,status,created_at,observacao)
