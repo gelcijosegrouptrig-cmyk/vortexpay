@@ -1106,6 +1106,98 @@ async def route_sorteio_participantes(request):
     })
 
 # ─── ROTAS ────────────────────────────────────────────────
+# ── Estado global para login interativo ──────────────────────────────────────
+_login_state = {}  # phone_code_hash, temp_client, temp_session
+
+async def route_solicitar_codigo(request):
+    """Passo 1: Solicitar código do Telegram (roda no IP do Railway)"""
+    global _login_state
+    auth = (request.headers.get('X-PaynexBet-Secret','') or
+            request.rel_url.query.get('secret',''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error':'Não autorizado'},status=401)
+    try:
+        from telethon.sessions import StringSession as SS
+        from telethon.errors import FloodWaitError
+        temp_client = TelegramClient(SS(), API_ID, API_HASH)
+        await temp_client.connect()
+        sent = await temp_client.send_code_request('+5511970569294')
+        _login_state = {
+            'client': temp_client,
+            'hash': sent.phone_code_hash,
+            'session': temp_client.session.save(),
+        }
+        print('📱 Código Telegram solicitado via API Railway', flush=True)
+        return web.json_response({'success':True,'message':'Código enviado para o Telegram!'})
+    except Exception as e:
+        import re as re2
+        m = re2.search(r'(\d+)', str(e))
+        if 'FloodWait' in type(e).__name__ and m:
+            secs=int(m.group(1)); h=secs//3600; mi=(secs%3600)//60
+            return web.json_response({'success':False,'error':f'FloodWait: aguarde {h}h{mi}min'})
+        return web.json_response({'success':False,'error':str(e)},status=500)
+
+async def route_confirmar_codigo(request):
+    """Passo 2: Confirmar código recebido e salvar sessão"""
+    global _login_state, client, _telegram_ready, _telegram_session_invalida
+    auth = (request.headers.get('X-PaynexBet-Secret','') or
+            request.rel_url.query.get('secret',''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error':'Não autorizado'},status=401)
+    try:
+        data = await request.json()
+        code = str(data.get('code','')).strip()
+        if not code:
+            return web.json_response({'error':'Código obrigatório'},status=400)
+        if not _login_state:
+            return web.json_response({'error':'Solicite o código primeiro via /api/telegram/solicitar-codigo'},status=400)
+
+        from telethon.errors import SessionPasswordNeededError
+        temp_client = _login_state['client']
+        if not temp_client.is_connected():
+            from telethon.sessions import StringSession as SS
+            temp_client = TelegramClient(SS(_login_state['session']), API_ID, API_HASH)
+            await temp_client.connect()
+
+        try:
+            await temp_client.sign_in('+5511970569294', code, phone_code_hash=_login_state['hash'])
+        except SessionPasswordNeededError:
+            senha = data.get('password','')
+            if not senha:
+                return web.json_response({'success':False,'needs_2fa':True,'message':'Digite sua senha 2FA'})
+            await temp_client.sign_in(password=senha)
+
+        me = await temp_client.get_me()
+        nova_sessao = temp_client.session.save()
+        await temp_client.disconnect()
+        _login_state = {}
+
+        # Salvar sessão
+        with open('session_string.txt','w') as f:
+            f.write(nova_sessao)
+
+        # Reinicializar cliente principal
+        try:
+            if client.is_connected(): await client.disconnect()
+        except: pass
+        from telethon.sessions import StringSession as SS
+        client.__init__(SS(nova_sessao), API_ID, API_HASH)
+        _telegram_ready = False
+        _telegram_session_invalida = False
+        await client.connect()
+        if await client.is_user_authorized():
+            _telegram_ready = True
+            print(f'✅ Telegram conectado: {me.first_name} ({me.id})', flush=True)
+
+        return web.json_response({
+            'success': True,
+            'message': f'✅ Telegram conectado como {me.first_name}!',
+            'user': me.first_name,
+            'user_id': me.id,
+        })
+    except Exception as e:
+        return web.json_response({'success':False,'error':str(e)},status=500)
+
 async def route_atualizar_sessao(request):
     """Atualiza SESSION_STRING em runtime sem reiniciar o servidor"""
     global client, _telegram_ready, _telegram_session_invalida
@@ -1757,6 +1849,8 @@ async def main():
     app.router.add_post('/api/deposito/confirmar', route_confirmar_deposito_admin)
     app.router.add_get('/api/exportar', route_exportar_csv)
     app.router.add_post('/api/atualizar-sessao', route_atualizar_sessao)
+    app.router.add_post('/api/telegram/solicitar-codigo', route_solicitar_codigo)
+    app.router.add_post('/api/telegram/confirmar-codigo', route_confirmar_codigo)
     # Sorteio
     app.router.add_get('/sorteio', route_sorteio_page)
     app.router.add_get('/sorteio.html', route_sorteio_page)
