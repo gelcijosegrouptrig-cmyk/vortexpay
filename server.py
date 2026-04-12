@@ -89,14 +89,15 @@ def _to_pg(sql):
     # AUTOINCREMENT sozinho
     sql = _re.sub(r'\bAUTOINCREMENT\b', '', sql, flags=_re.IGNORECASE)
     # INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING
-    sql = _re.sub(r'\bINSERT OR IGNORE\b', 'INSERT', sql, flags=_re.IGNORECASE)
-    if 'INSERT' in sql.upper() and 'ON CONFLICT' not in sql.upper() and 'INSERT OR REPLACE' not in sql.upper():
-        if 'ON CONFLICT DO NOTHING' not in sql:
-            sql = sql.rstrip().rstrip(')') 
-            # Só adiciona ON CONFLICT se for INSERT simples
-            pass
-    # INSERT OR REPLACE → INSERT ... ON CONFLICT DO UPDATE
-    sql = _re.sub(r'\bINSERT OR REPLACE\b', 'INSERT', sql, flags=_re.IGNORECASE)
+    if _re.search(r'\bINSERT OR IGNORE\b', sql, _re.IGNORECASE):
+        sql = _re.sub(r'\bINSERT OR IGNORE\b', 'INSERT', sql, flags=_re.IGNORECASE)
+        if 'ON CONFLICT' not in sql.upper():
+            sql = sql.rstrip() + ' ON CONFLICT DO NOTHING'
+    # INSERT OR REPLACE → INSERT ... ON CONFLICT DO NOTHING (simplificado)
+    if _re.search(r'\bINSERT OR REPLACE\b', sql, _re.IGNORECASE):
+        sql = _re.sub(r'\bINSERT OR REPLACE\b', 'INSERT', sql, flags=_re.IGNORECASE)
+        if 'ON CONFLICT' not in sql.upper():
+            sql = sql.rstrip() + ' ON CONFLICT DO NOTHING'
     return sql
 
 def _pg_insert_ignore(sql, params, conn):
