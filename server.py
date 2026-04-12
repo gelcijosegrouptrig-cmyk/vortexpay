@@ -1092,10 +1092,43 @@ async def watchdog_telegram():
                 except Exception as e_save:
                     print(f'[Watchdog] Erro ao salvar sessão: {e_save}', flush=True)
 
-            # ── Se sessão revogada → tentar AUTO-LOGIN ─────────────
+            # ── Se sessão revogada → tentar reconectar via DB primeiro ──
             if _telegram_session_invalida:
                 if not _auto_login_em_progresso:
-                    print('🤖 [Watchdog] Sessão inválida detectada → iniciando AUTO-LOGIN...', flush=True)
+                    # Passo 1: tentar reconectar com sessão do banco (sem pedir código)
+                    print('🔄 [Watchdog] Tentando reconectar via sessão do DB...', flush=True)
+                    reconectou = False
+                    try:
+                        import psycopg2 as _pg2w
+                        _pgcw = _pg2w.connect(DATABASE_URL)
+                        _curw = _pgcw.cursor()
+                        _curw.execute("SELECT valor FROM configuracoes WHERE chave='telegram_session'")
+                        _roww = _pgcw.fetchone()
+                        _pgcw.close()
+                        if _roww and _roww[0] and len(_roww[0]) > 50:
+                            _sessw = _roww[0]
+                            from telethon.sessions import StringSession as _SSW
+                            try:
+                                if client.is_connected(): await client.disconnect()
+                            except: pass
+                            await asyncio.sleep(2)
+                            client.__init__(_SSW(_sessw), API_ID, API_HASH)
+                            _telegram_session_invalida = False
+                            await client.connect()
+                            if await client.is_user_authorized():
+                                _telegram_ready = True
+                                falhas_seguidas = 0
+                                reconectou = True
+                                print('✅ [Watchdog] Reconectado via sessão DB!', flush=True)
+                    except Exception as _ew:
+                        print(f'⚠️ [Watchdog] Sessão DB falhou: {_ew}', flush=True)
+
+                    if reconectou:
+                        await asyncio.sleep(PING_INTERVAL)
+                        continue
+
+                    # Passo 2: sessão DB inválida → tentar auto-login com código
+                    print('🤖 [Watchdog] Sessão DB inválida → iniciando AUTO-LOGIN...', flush=True)
                     sucesso = await _auto_login_telegram()
                     if sucesso:
                         print('🤖 [Watchdog] Auto-login bem-sucedido! Retomando operação normal.', flush=True)
@@ -1985,6 +2018,65 @@ async def route_confirmar_codigo(request):
     except Exception as e:
         return web.json_response({'success':False,'error':str(e)},status=500)
 
+async def route_reconectar_db(request):
+    """
+    Força o Railway a recarregar a sessão do PostgreSQL e reconectar
+    sem precisar de novo código — resolve AuthKeyDuplicated e sessao_invalida
+    quando a sessão no DB ainda é válida.
+    """
+    global client, _telegram_ready, _telegram_session_invalida, SESSION_STR
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        # 1) Buscar sessão do PostgreSQL
+        import psycopg2 as _pg2
+        _pgc = _pg2.connect(DATABASE_URL)
+        _cur = _pgc.cursor()
+        _cur.execute("SELECT valor FROM configuracoes WHERE chave='telegram_session'")
+        _row = _cur.fetchone()
+        _pgc.close()
+
+        if not _row or not _row[0] or len(_row[0]) < 50:
+            return web.json_response({'success': False, 'error': 'Nenhuma sessão no banco'}, status=400)
+
+        nova_sessao = _row[0]
+
+        # 2) Desconectar cliente atual
+        try:
+            if client.is_connected():
+                await client.disconnect()
+            await asyncio.sleep(2)
+        except:
+            pass
+
+        # 3) Reinicializar com sessão do DB
+        from telethon.sessions import StringSession as SS2
+        client.__init__(SS2(nova_sessao), API_ID, API_HASH)
+        _telegram_ready = False
+        _telegram_session_invalida = False
+        SESSION_STR = nova_sessao
+
+        # 4) Conectar e verificar
+        await client.connect()
+        if await client.is_user_authorized():
+            me = await client.get_me()
+            _telegram_ready = True
+            _salvar_sessao_db(nova_sessao)
+            print(f'✅ [ReconectarDB] Reconectado: {me.first_name} ({me.id})', flush=True)
+            return web.json_response({
+                'success': True,
+                'message': f'✅ Reconectado como {me.first_name}!',
+                'user': me.first_name,
+                'user_id': me.id,
+            })
+        else:
+            return web.json_response({'success': False, 'error': 'Sessão do DB não autorizada — precisa de novo código'})
+
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
 async def route_sessao_atual(request):
     """Retorna a sessão atual válida para salvar no Railway manualmente"""
     auth = (request.headers.get('X-PaynexBet-Secret','') or
@@ -2083,7 +2175,7 @@ async def route_health(request):
     ping_age = int(time.time() - _telegram_ultimo_ping) if _telegram_ultimo_ping else None
     return web.json_response({
         'status': 'online',
-        'version': 'v20260412-AUTOLOGIN-v9',
+        'version': 'v20260412-RECONDB-v10',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -3244,6 +3336,7 @@ async def main():
     app.router.add_post('/api/telegram/solicitar-codigo', route_solicitar_codigo)
     app.router.add_post('/api/telegram/confirmar-codigo', route_confirmar_codigo)
     app.router.add_get('/api/telegram/sessao-atual', route_sessao_atual)
+    app.router.add_get('/api/reconectar', route_reconectar_db)
     # PayPix — parceiro gera Pix e recebe 60%
     app.router.add_get('/paypix', route_paypix_page)
     app.router.add_post('/api/paypix/gerar', route_paypix_gerar)
@@ -3282,7 +3375,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260412-AUTOLOGIN-v9',
+            'version': 'v20260412-RECONDB-v10',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
