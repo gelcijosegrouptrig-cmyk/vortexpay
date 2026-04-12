@@ -568,9 +568,8 @@ def listar_saques(limit=50):
         processado_at TEXT,
         observacao TEXT
     )''')
-    c = conn.cursor()
-    c.execute('SELECT * FROM saques ORDER BY created_at DESC LIMIT ?', (limit,))
-    rows = c.fetchall(); conn.close()
+    cur = conn.execute('SELECT * FROM saques ORDER BY created_at DESC LIMIT ?', (limit,))
+    rows = cur.fetchall(); conn.close()
     cols = ['id','saque_id','valor','chave_pix','tipo_chave','status',
             'created_at','processado_at','observacao']
     return [dict(zip(cols, r)) for r in rows]
@@ -678,11 +677,10 @@ async def _loop_verificar_pagamentos():
 
             # Buscar transações pendentes
             conn = sqlite3_connect()
-            c = conn.cursor()
-            c.execute("""SELECT tx_id, valor, extra FROM transacoes
+            cur = conn.execute("""SELECT tx_id, valor, extra FROM transacoes
                          WHERE status='pendente'
                          ORDER BY created_at DESC LIMIT 10""")
-            pendentes = c.fetchall()
+            pendentes = cur.fetchall()
             conn.close()
 
             if not pendentes:
@@ -799,11 +797,10 @@ async def conectar_telegram():
                     print(f'💰 Confirmação detectada: {texto[:100]}', flush=True)
                     # Buscar tx mais recente pendente e confirmar
                     conn = sqlite3_connect()
-                    c = conn.cursor()
-                    c.execute("""SELECT tx_id, valor, extra FROM transacoes 
+                    cur = conn.execute("""SELECT tx_id, valor, extra FROM transacoes 
                                  WHERE status='pendente' 
                                  ORDER BY created_at DESC LIMIT 5""")
-                    pendentes = c.fetchall()
+                    pendentes = cur.fetchall()
                     conn.close()
                     
                     # Tentar extrair valor da mensagem para match
@@ -914,53 +911,56 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados
 
         # Enviar valor
         valor_str = str(int(valor)) if valor == int(valor) else f"{valor:.2f}"
-        await client.send_message(bot, valor_str)
-
-        # Polling ativo — checar a cada 2s por até 40s
         import datetime as _dt
+        # CRÍTICO: marca o tempo ANTES do envio para filtrar mensagens antigas
         hora_envio = _dt.datetime.now(_dt.timezone.utc)
-        for _ in range(20):
+        cutoff = hora_envio - _dt.timedelta(seconds=3)  # margem de 3s para clock skew
+        await client.send_message(bot, valor_str)
+        print(f'[gerar_pix] Valor {valor_str} enviado, aguardando resposta...', flush=True)
+
+        # Polling ativo — checar a cada 2s por até 60s (30 tentativas)
+        for tentativa in range(30):
             await asyncio.sleep(2)
-            msgs = await client.get_messages(bot, limit=8)
+            msgs = await client.get_messages(bot, limit=10)
             for msg in msgs:
                 if not msg.text:
                     continue
+                # FILTRO RIGOROSO: ignorar mensagens com data anterior ao envio
+                if msg.date and msg.date < cutoff:
+                    continue
+                txt = msg.text or ''
                 # Log para debug
-                if msg.date and (msg.date - hora_envio).total_seconds() > -5:
-                    print(f'🤖 Bot msg: {msg.text[:80]}', flush=True)
-                # Procurar código Pix na mensagem
-                if '00020101' in (msg.text or ''):
-                    text = msg.text
-                    pix_match = re.search(r'(00020101[^\s\n`]+)', text)
+                print(f'[gerar_pix] [{tentativa}] {txt[:100]}', flush=True)
+                # Procurar código Pix — padrão primário
+                if '00020101' in txt:
+                    pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', txt)
                     pix_code = pix_match.group(1) if pix_match else None
-                    tx_match = re.search(r'txn_([a-f0-9]+)', text)
+                    tx_match = re.search(r'txn_([a-f0-9]+)', txt)
                     tx_id = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
-                    val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', text)
+                    val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', txt)
                     valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
                     if pix_code:
-                        # Se tx_id_override foi passado, o registro já existe — não criar outro
                         if not tx_id_override:
                             salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
                         print(f'✅ Pix gerado: {tx_id} R${valor}', flush=True)
                         return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
                                 'valor': f"R$ {valor_conf}", 'status': 'pendente'}
-                # Também checar pelo texto "PIX Copia e Cola"
-                if 'PIX Copia e Cola' in (msg.text or '') or 'Copia e Cola' in (msg.text or ''):
-                    text = msg.text
-                    pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', text)
+                # Padrão secundário: "PIX Copia e Cola" sem código 00020101
+                if 'PIX Copia e Cola' in txt or 'Copia e Cola' in txt:
+                    pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', txt)
                     pix_code = pix_match.group(1) if pix_match else None
-                    tx_match = re.search(r'txn_([a-f0-9]+)', text)
+                    tx_match = re.search(r'txn_([a-f0-9]+)', txt)
                     tx_id = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
-                    val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', text)
+                    val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', txt)
                     valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
                     if pix_code:
-                        # Se tx_id_override foi passado, o registro já existe — não criar outro
                         if not tx_id_override:
                             salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
-                        print(f'✅ Pix gerado: {tx_id} R${valor}', flush=True)
+                        print(f'✅ Pix gerado (copia-cola): {tx_id} R${valor}', flush=True)
                         return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
                                 'valor': f"R$ {valor_conf}", 'status': 'pendente'}
 
+        print(f'[gerar_pix] Timeout após 60s — nenhum código Pix recebido', flush=True)
         return {'success': False, 'error': 'Bot demorou para responder. Tente novamente.'}
     except Exception as e:
         print(f'❌ Erro gerar_pix: {e}', flush=True)
@@ -995,11 +995,10 @@ async def route_sorteio_info(request):
     config = get_sorteio_config()
 
     conn = sqlite3_connect()
-    c = conn.cursor()
-    c.execute("SELECT COUNT(*), COALESCE(SUM(total_depositado),0), COALESCE(SUM(total_numeros),0) FROM sorteio_participantes WHERE sorteio_id='atual'")
-    total_part, total_dep, total_bilhetes = c.fetchone()
-    c.execute("SELECT * FROM sorteio_historico ORDER BY data_sorteio DESC LIMIT 5")
-    hist_rows = c.fetchall()
+    cur1 = conn.execute("SELECT COUNT(*), COALESCE(SUM(total_depositado),0), COALESCE(SUM(total_numeros),0) FROM sorteio_participantes WHERE sorteio_id='atual'")
+    total_part, total_dep, total_bilhetes = cur1.fetchone()
+    cur2 = conn.execute("SELECT * FROM sorteio_historico ORDER BY data_sorteio DESC LIMIT 5")
+    hist_rows = cur2.fetchall()
     conn.close()
 
     hist_cols = ['id','sorteio_id','data_sorteio','ganhador_cliente_id','ganhador_nome',
@@ -1206,19 +1205,18 @@ async def _executar_sorteio_completo():
     """Lógica central: sorteia 1 bilhete vencedor e executa saque automático"""
     import random, json as _json
     conn = sqlite3_connect()
-    c = conn.cursor()
 
     # Buscar todos os bilhetes do sorteio atual
-    c.execute("SELECT cliente_id, numero FROM sorteio_bilhetes WHERE sorteio_id='atual'")
-    bilhetes = c.fetchall()  # [(cliente_id, numero), ...]
+    cur_b = conn.execute("SELECT cliente_id, numero FROM sorteio_bilhetes WHERE sorteio_id='atual'")
+    bilhetes = cur_b.fetchall()  # [(cliente_id, numero), ...]
 
     if not bilhetes:
         conn.close()
         return {'success': False, 'error': 'Nenhum bilhete no sorteio. Participantes precisam fazer depósitos.'}
 
     # Buscar participantes
-    c.execute("SELECT * FROM sorteio_participantes WHERE sorteio_id='atual'")
-    rows = c.fetchall()
+    cur_p = conn.execute("SELECT * FROM sorteio_participantes WHERE sorteio_id='atual'")
+    rows = cur_p.fetchall()
     cols_part = ['id','cliente_id','nome','cpf','chave_pix','tipo_chave',
                  'total_depositado','total_numeros','numeros_sorte','created_at','updated_at','sorteio_id']
     participantes = []
@@ -1401,13 +1399,12 @@ async def reprocessar_saques_pendentes_sorteio():
                 continue
             # Buscar saques de sorteio aguardando telegram
             conn = sqlite3_connect()
-            c = conn.cursor()
-            c.execute("""SELECT h.sorteio_id, h.ganhador_nome, h.ganhador_chave_pix,
+            cur = conn.execute("""SELECT h.sorteio_id, h.ganhador_nome, h.ganhador_chave_pix,
                                 h.ganhador_tipo_chave, h.premio_pago, h.saque_id
                          FROM sorteio_historico h
                          WHERE h.saque_status='aguardando_telegram'
                          ORDER BY h.data_sorteio DESC LIMIT 5""")
-            pendentes = c.fetchall()
+            pendentes = cur.fetchall()
             conn.close()
 
             for row in pendentes:
@@ -1465,12 +1462,11 @@ async def route_sorteio_participantes(request):
         return web.json_response({'error': 'Não autorizado'}, status=401)
     import json as _json
     conn = sqlite3_connect()
-    c = conn.cursor()
-    c.execute("""SELECT id, cliente_id, nome, cpf, chave_pix, tipo_chave,
+    cur = conn.execute("""SELECT id, cliente_id, nome, cpf, chave_pix, tipo_chave,
                         total_depositado, total_numeros, numeros_sorte, created_at, updated_at, sorteio_id
                  FROM sorteio_participantes
                  WHERE sorteio_id='atual' ORDER BY total_depositado DESC""")
-    rows = c.fetchall(); conn.close()
+    rows = cur.fetchall(); conn.close()
     cols = ['id','cliente_id','nome','cpf','chave_pix','tipo_chave',
             'total_depositado','total_numeros','numeros_sorte','created_at','updated_at','sorteio_id']
     participantes = []
@@ -2220,47 +2216,38 @@ async def route_stats(request):
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
-        conn = sqlite3_connect()
-        c = conn.cursor()
+        def _q(sql):
+            conn2 = sqlite3_connect()
+            cur2 = conn2.execute(sql)
+            rows2 = cur2.fetchall()
+            conn2.close()
+            return rows2
 
         # Depósitos
-        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE status='pago'")
-        dep_conf, val_dep_conf = c.fetchone()
-        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE status='pendente'")
-        dep_pend, val_dep_pend = c.fetchone()
-        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM transacoes")
-        dep_total, val_dep_total = c.fetchone()
+        dep_conf, val_dep_conf = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE status='pago'")[0]
+        dep_pend, val_dep_pend = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE status='pendente'")[0]
+        dep_total, val_dep_total = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM transacoes")[0]
 
         # Saques
-        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status IN ('enviado','confirmado','processado')")
-        saq_conf, val_saq_conf = c.fetchone()
-        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status='pendente'")
-        saq_pend, val_saq_pend = c.fetchone()
-        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status='erro'")
-        saq_erro, _ = c.fetchone()
-        c.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques")
-        saq_total, val_saq_total = c.fetchone()
+        saq_conf, val_saq_conf = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status IN ('enviado','confirmado','processado')")[0]
+        saq_pend, val_saq_pend = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status='pendente'")[0]
+        saq_erro, _ = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status='erro'")[0]
+        saq_total, val_saq_total = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques")[0]
 
         # Últimos 7 dias - depósitos por dia
-        c.execute("""SELECT date(created_at), COUNT(*), COALESCE(SUM(valor),0)
-                     FROM transacoes WHERE created_at >= date('now','-7 days')
-                     GROUP BY date(created_at) ORDER BY date(created_at)""")
-        dep_por_dia = [{'data': r[0], 'qtd': r[1], 'valor': round(r[2],2)} for r in c.fetchall()]
+        dep_por_dia = [{'data': r[0], 'qtd': r[1], 'valor': round(r[2],2)} for r in _q(
+            "SELECT date(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE created_at >= date('now','-7 days') GROUP BY date(created_at) ORDER BY date(created_at)")]
 
         # Últimos 7 dias - saques por dia
-        c.execute("""SELECT date(created_at), COUNT(*), COALESCE(SUM(valor),0)
-                     FROM saques WHERE created_at >= date('now','-7 days')
-                     GROUP BY date(created_at) ORDER BY date(created_at)""")
-        saq_por_dia = [{'data': r[0], 'qtd': r[1], 'valor': round(r[2],2)} for r in c.fetchall()]
+        saq_por_dia = [{'data': r[0], 'qtd': r[1], 'valor': round(r[2],2)} for r in _q(
+            "SELECT date(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE created_at >= date('now','-7 days') GROUP BY date(created_at) ORDER BY date(created_at)")]
 
         # Últimos depósitos e saques
-        c.execute("SELECT tx_id,valor,status,created_at,paid_at FROM transacoes ORDER BY created_at DESC LIMIT 10")
-        ult_dep = [{'tx_id':r[0],'valor':r[1],'status':r[2],'created_at':r[3],'paid_at':r[4]} for r in c.fetchall()]
+        ult_dep = [{'tx_id':r[0],'valor':r[1],'status':r[2],'created_at':r[3],'paid_at':r[4]} for r in _q(
+            "SELECT tx_id,valor,status,created_at,paid_at FROM transacoes ORDER BY created_at DESC LIMIT 10")]
 
-        c.execute("SELECT saque_id,valor,chave_pix,tipo_chave,status,created_at,processado_at FROM saques ORDER BY created_at DESC LIMIT 10")
-        ult_saq = [{'saque_id':r[0],'valor':r[1],'chave_pix':r[2],'tipo_chave':r[3],'status':r[4],'created_at':r[5],'processado_at':r[6]} for r in c.fetchall()]
-
-        conn.close()
+        ult_saq = [{'saque_id':r[0],'valor':r[1],'chave_pix':r[2],'tipo_chave':r[3],'status':r[4],'created_at':r[5],'processado_at':r[6]} for r in _q(
+            "SELECT saque_id,valor,chave_pix,tipo_chave,status,created_at,processado_at FROM saques ORDER BY created_at DESC LIMIT 10")]
         return web.json_response({
             'depositos': {
                 'total': dep_total, 'confirmados': dep_conf, 'pendentes': dep_pend,
@@ -2293,9 +2280,8 @@ async def route_cancelar_saque(request):
     saque_id = request.match_info.get('saque_id')
     try:
         conn = sqlite3_connect()
-        c = conn.cursor()
-        c.execute("SELECT status FROM saques WHERE saque_id=?", (saque_id,))
-        row = c.fetchone()
+        cur = conn.execute("SELECT status FROM saques WHERE saque_id=?", (saque_id,))
+        row = cur.fetchone()
         if not row:
             conn.close()
             return web.json_response({'error': 'Saque não encontrado'}, status=404)
@@ -2414,10 +2400,9 @@ async def route_paypix_status(request):
     """Status da transação PayPix — retorna pix_code quando pronto e status de pagamento"""
     tx_id = request.match_info.get('tx_id')
     conn = sqlite3_connect()
-    c = conn.cursor()
-    # Busca exata pelo tx_id (sempre mantemos o ppx_ original no banco)
-    c.execute('SELECT tx_id, valor, pix_code, status, extra FROM transacoes WHERE tx_id=?', (tx_id,))
-    row = c.fetchone()
+    # Usar conn.execute() diretamente (evita cursor compartilhado no PG)
+    cur = conn.execute('SELECT tx_id, valor, pix_code, status, extra FROM transacoes WHERE tx_id=?', (tx_id,))
+    row = cur.fetchone()
     conn.close()
 
     if not row:
@@ -2646,6 +2631,28 @@ async def main():
         threading.Thread(target=_exit, daemon=True).start()
         return web.json_response({'status': 'restarting', 'msg': 'Processo encerrando para Railway reiniciar com código novo'})
     app.router.add_get('/api/restart', route_force_restart)
+
+    # Endpoint para resetar o lock preso + diagnóstico completo
+    async def route_lock_reset(request):
+        global _lock
+        secret = request.rel_url.query.get('secret', '')
+        if secret != WEBHOOK_SECRET:
+            return web.json_response({'error': 'unauthorized'}, status=401)
+        lock_antes = _lock.locked()
+        if _lock.locked():
+            # Força liberação do lock criando um novo
+            _lock = asyncio.Lock()
+            lock_resetado = True
+        else:
+            lock_resetado = False
+        return web.json_response({
+            'lock_estava_preso': lock_antes,
+            'lock_resetado': lock_resetado,
+            'telegram_ready': _telegram_ready,
+            'version': 'v20260412-fix-transaction',
+            'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
+        })
+    app.router.add_get('/api/lock/reset', route_lock_reset)
 
     # Sorteio
     app.router.add_get('/sorteio', route_sorteio_page)
