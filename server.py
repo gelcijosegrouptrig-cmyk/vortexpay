@@ -58,96 +58,67 @@ def _to_pg(sql):
             sql = sql.rstrip() + ' ON CONFLICT DO NOTHING'
     return sql
 
-def _nova_pg_conn():
-    """Cria nova conexão PostgreSQL com autocommit=True (cada query = transação independente)"""
+class _FakeRow:
+    """Resultado de query PG que já foi executada e fechou a conexão"""
+    def __init__(self, rows, lastrow=None):
+        self._rows = rows
+        self._last = lastrow
+    def fetchone(self): return self._rows[0] if self._rows else None
+    def fetchall(self): return self._rows
+    @property
+    def lastrowid(self): return self._last
+
+def _pg_run(sql, params=()):
+    """Executa SQL no PG abrindo e fechando conexão na mesma chamada.
+    Retorna _FakeRow com todos os resultados já em memória.
+    Zero risco de 'transaction aborted' — cada chamada é totalmente isolada."""
     import psycopg2
     pg = psycopg2.connect(DATABASE_URL)
-    pg.autocommit = True
-    return pg
-
-class _PGCursor:
-    """Cursor PostgreSQL que cria nova conexão por query para total isolamento"""
-    def __init__(self, cur, conn_owner=None):
-        self._c = cur
-        self._conn_owner = conn_owner  # referência para fechar depois se necessário
-
-    def execute(self, sql, params=()):
+    try:
+        pg.autocommit = True
+        cur = pg.cursor()
+        cur.execute(_to_pg(sql), params if params else ())
         try:
-            self._c.execute(_to_pg(sql), params)
+            rows = cur.fetchall()
         except Exception:
-            # Resetar cursor em caso de erro - não afeta outras queries
-            raise
-        return self
-
-    def fetchone(self): return self._c.fetchone()
-    def fetchall(self): return self._c.fetchall()
-
-    @property
-    def lastrowid(self):
-        try:
-            row = self._c.fetchone()
-            return row[0] if row else None
-        except Exception:
-            return None
+            rows = []
+        lastrow = None
+        return _FakeRow(rows, lastrow)
+    finally:
+        try: pg.close()
+        except: pass
 
 class DBConn:
-    """
-    Wrapper que imita sqlite3 mas usa PostgreSQL com autocommit=True.
-    CADA QUERY é executada em nova conexão para total isolamento — 
-    NUNCA ocorre 'current transaction is aborted'.
-    """
-    def __init__(self, pg_url=None, sq_conn=None):
-        self._pg_url = pg_url   # URL do PostgreSQL (para criar nova conn por query)
-        self._sq = sq_conn      # conexão SQLite (reutilizada)
+    """Wrapper sqlite3-compatível. PG: _pg_run por query (abre+fecha = zero transaction aborted).
+    SQLite: conexão normal."""
+    def __init__(self, use_pg=False, sq_conn=None):
+        self._use_pg = use_pg
+        self._sq = sq_conn
         self.row_factory = None
 
-    def _exec_pg(self, sql, params=()):
-        """Executa uma query PG em nova conexão — isolamento total, nunca abortada"""
-        import psycopg2
-        pg = None
-        try:
-            pg = psycopg2.connect(self._pg_url)
-            pg.autocommit = True
-            cur = pg.cursor()
-            cur.execute(_to_pg(sql), params)
-            return cur, pg  # retorna cursor E conexão (caller fecha)
-        except Exception:
-            if pg:
-                try: pg.close()
-                except: pass
-            raise
-
     def execute(self, sql, params=()):
-        if self._pg_url:
-            cur, pg = self._exec_pg(sql, params)
-            # Wrap cursor para fechar pg quando não precisar mais
-            wrapped = _PGCursor(cur, conn_owner=pg)
-            return wrapped
+        if self._use_pg:
+            return _pg_run(sql, params)
         return self._sq.execute(sql, params)
 
     def cursor(self):
-        if self._pg_url:
-            import psycopg2
-            pg = psycopg2.connect(self._pg_url)
-            pg.autocommit = True
-            return _PGCursor(pg.cursor(), conn_owner=pg)
+        if self._use_pg:
+            # Retorna objeto que delega execute() para _pg_run
+            return _DBCursor(use_pg=True)
         return self._sq.cursor()
 
     def commit(self):
-        # PostgreSQL: autocommit=True → commit é no-op
-        if not self._pg_url and self._sq:
+        if not self._use_pg and self._sq:
             try: self._sq.commit()
             except: pass
 
     def rollback(self):
-        # PostgreSQL: autocommit=True → rollback é no-op (cada query já encerrou)
-        if not self._pg_url and self._sq:
+        if not self._use_pg and self._sq:
             try: self._sq.rollback()
             except: pass
 
     def close(self):
-        # PostgreSQL: conexões são criadas e fechadas por query — nada a fechar aqui
-        if not self._pg_url and self._sq:
+        if not self._use_pg and self._sq:
             try: self._sq.close()
             except: pass
 
@@ -155,22 +126,45 @@ class DBConn:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+class _DBCursor:
+    """Cursor para DBConn.cursor() — delega para _pg_run"""
+    def __init__(self, use_pg=False, sq_cur=None):
+        self._use_pg = use_pg
+        self._sq_cur = sq_cur
+        self._result = None
+
+    def execute(self, sql, params=()):
+        if self._use_pg:
+            self._result = _pg_run(sql, params)
+        else:
+            self._result = self._sq_cur.execute(sql, params)
+        return self
+
+    def fetchone(self):
+        if self._result: return self._result.fetchone()
+        return None
+
+    def fetchall(self):
+        if self._result: return self._result.fetchall()
+        return []
+
+    @property
+    def lastrowid(self):
+        if self._result: return self._result.lastrowid
+        return None
+
 def _pg_insert_ignore(sql, params, conn):
-    """Execute INSERT ignorando duplicatas no PostgreSQL"""
+    """INSERT ignorando duplicatas"""
     try:
         conn.execute(sql, params)
     except Exception as e:
-        err = str(e).lower()
-        if 'duplicate' in err or 'unique' in err:
-            pass  # ignorar duplicata — esperado
-        else:
+        if 'duplicate' not in str(e).lower() and 'unique' not in str(e).lower():
             raise
 
 def sqlite3_connect(path=None):
-    """Retorna DBConn. PostgreSQL: novas conexões por query (zero transaction aborted).
-    SQLite: arquivo local."""
+    """Retorna DBConn. PG: _pg_run por query. SQLite: arquivo local."""
     if _USE_PG and DATABASE_URL:
-        return DBConn(pg_url=DATABASE_URL)
+        return DBConn(use_pg=True)
     sq = sqlite3.connect(path or DB_PATH)
     return DBConn(sq_conn=sq)
 
