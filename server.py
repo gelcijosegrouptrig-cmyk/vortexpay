@@ -1888,7 +1888,7 @@ async def route_health(request):
     ping_age = int(time.time() - _telegram_ultimo_ping) if _telegram_ultimo_ping else None
     return web.json_response({
         'status': 'online',
-        'version': 'v20260412-WATCHDOG-v8',
+        'version': 'v20260412-ADMIN-TG-v9',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
