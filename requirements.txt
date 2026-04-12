@@ -18,3 +18,4 @@ psycopg2-binary==2.9.10
 # force-rebuild-v6 Sun Apr 12 19:53:37 UTC 2026
 # rebuild paypix-queue-v7 Sun Apr 12 20:02:16 UTC 2026
 # rebuild sorteio-font-fix Sun Apr 12 20:09:40 UTC 2026
+# rebuild watchdog Sun Apr 12 22:47:25 UTC 2026
