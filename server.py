@@ -2601,6 +2601,18 @@ async def main():
     app.router.add_post('/api/paypix/gerar', route_paypix_gerar)
     app.router.add_get('/api/paypix/status/{tx_id}', route_paypix_status)
     app.router.add_route('OPTIONS', '/api/paypix/gerar', lambda r: web.Response(status=200))
+    # Endpoint de restart forçado (Railway reinicia o processo com código novo)
+    async def route_force_restart(request):
+        secret = request.rel_url.query.get('secret', '')
+        if secret != WEBHOOK_SECRET:
+            return web.json_response({'error': 'unauthorized'}, status=401)
+        import threading
+        def _exit():
+            import time as _t; _t.sleep(1); import os; os._exit(1)
+        threading.Thread(target=_exit, daemon=True).start()
+        return web.json_response({'status': 'restarting', 'msg': 'Processo encerrando para Railway reiniciar com código novo'})
+    app.router.add_get('/api/restart', route_force_restart)
+
     # Sorteio
     app.router.add_get('/sorteio', route_sorteio_page)
     app.router.add_get('/sorteio.html', route_sorteio_page)
