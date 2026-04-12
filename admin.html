@@ -1655,17 +1655,41 @@ async function loadSaldo() {
   try {
     const r = await fetch(`${BASE}/api/saldo`);
     const d = await r.json();
-    saldoBot = d.saldo || 0;
+    saldoBot    = d.saldo     || 0;
     disponivelBot = d.disponivel || 0;
 
-    const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
 
-    document.getElementById('m-saldo').textContent = fmt(saldoBot);
+    // Dashboard card
+    document.getElementById('m-saldo').textContent    = fmt(saldoBot);
     document.getElementById('m-disponivel').textContent = `Disponível: ${fmt(disponivelBot)}`;
-    document.getElementById('w-saldo').textContent = fmt(saldoBot);
+
+    // Carteira — saldo principal
+    document.getElementById('w-saldo').textContent     = fmt(saldoBot);
     document.getElementById('w-disponivel').textContent = fmt(disponivelBot);
-    document.getElementById('w-conta').textContent = '5956000812 (bin cash)';
-  } catch(e) {}
+    document.getElementById('w-conta').textContent     = '5956000812 (bin cash)';
+
+    // Carteira — depositado e sacado já chegam da API saldo (banco local)
+    if (d.total_depositado !== undefined) {
+      document.getElementById('w-depositado').textContent = fmt(d.total_depositado);
+      document.getElementById('w-sacado').textContent     = fmt(d.total_sacado || 0);
+    }
+
+    // Resumo financeiro inline (sem esperar loadStats)
+    if (d.total_depositado !== undefined) {
+      const dep = {
+        valor_recebido: d.total_depositado,
+        valor_pendente: d.depositos_pendentes || 0,
+        total: '-',
+      };
+      const saq = {
+        valor_sacado:  d.total_sacado || 0,
+        valor_pendente: d.saques_pendentes || 0,
+        total: '-',
+      };
+      renderResumoFinanceiro(dep, saq);
+    }
+  } catch(e) { console.error('loadSaldo:', e); }
 }
 
 // ═══════════════════════════════════════════════

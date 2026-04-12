@@ -1735,7 +1735,7 @@ async def route_health(request):
             motivo = 'iniciando'
     return web.json_response({
         'status': 'online',
-        'version': 'v20260412-STATS-FIX-v4',
+        'version': 'v20260412-CARTEIRA-FIX-v5',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'tentativas': _telegram_tentativas,
@@ -1943,30 +1943,46 @@ async def route_admin_page(request):
     return web.Response(text=load_admin_html(), content_type='text/html', charset='utf-8')
 
 async def route_saldo(request):
-    """Retorna saldo atual da conta via bot Telegram"""
-    if not _telegram_ready:
-        return web.json_response({'success': False, 'saldo': 0, 'disponivel': 0, 'error': 'Telegram não conectado'})
+    """Retorna saldo calculado localmente (depósitos confirmados - saques realizados)
+    Evita FloodWait do Telegram consultando apenas o banco de dados."""
     try:
-        bot = await client.get_entity(BOT_USERNAME)
-        await client.send_message(bot, '/start')
-        await asyncio.sleep(3)
-        msgs = await client.get_messages(bot, limit=5)
-        for msg in msgs:
-            if not msg.text:
-                continue
-            # Padrão: "Saldo Disponível: `R$ 37,92`" ou "Saldo: R$37,92"
-            m = re.search(r'Saldo[^`\n]*`R\$\s*([\d,.]+)`', msg.text)
-            if not m:
-                m = re.search(r'Saldo[:\s*]+R\$\s*([\d,.]+)', msg.text)
-            if m:
-                saldo = float(m.group(1).replace(',', '.'))
-                # Disponível para saque (pode ter taxa)
-                m2 = re.search(r'[Dd]ispon[íi]vel[^`\n]*`R\$\s*([\d,.]+)`', msg.text)
-                if not m2:
-                    m2 = re.search(r'[Ss]aque[:\s]+R\$\s*([\d,.]+)', msg.text)
-                disponivel = float(m2.group(1).replace(',', '.')) if m2 else saldo
-                return web.json_response({'success': True, 'saldo': saldo, 'disponivel': disponivel})
-        return web.json_response({'success': False, 'saldo': 0, 'disponivel': 0, 'error': 'Saldo não encontrado'})
+        conn = sqlite3_connect()
+
+        # Total depositado confirmado (pago)
+        r1 = conn.execute("SELECT COALESCE(SUM(valor),0) FROM transacoes WHERE status='pago'").fetchone()
+        total_depositado = float(r1[0]) if r1 else 0.0
+
+        # Total sacado (enviado/confirmado/processado) — exclui split PayPix automático
+        r2 = conn.execute(
+            "SELECT COALESCE(SUM(valor),0) FROM saques WHERE status IN ('enviado','confirmado','processado')"
+        ).fetchone()
+        total_sacado = float(r2[0]) if r2 else 0.0
+
+        # Total pendente
+        r3 = conn.execute("SELECT COALESCE(SUM(valor),0) FROM transacoes WHERE status='pendente'").fetchone()
+        total_pendente = float(r3[0]) if r3 else 0.0
+
+        # Saques pendentes
+        r4 = conn.execute("SELECT COALESCE(SUM(valor),0) FROM saques WHERE status='pendente'").fetchone()
+        saques_pendentes = float(r4[0]) if r4 else 0.0
+
+        conn.close()
+
+        # Saldo = depositado - sacado
+        saldo = round(total_depositado - total_sacado, 2)
+        # Disponível = saldo - saques pendentes em processamento
+        disponivel = round(max(0.0, saldo - saques_pendentes), 2)
+
+        return web.json_response({
+            'success': True,
+            'saldo': saldo,
+            'disponivel': disponivel,
+            'total_depositado': total_depositado,
+            'total_sacado': total_sacado,
+            'depositos_pendentes': total_pendente,
+            'saques_pendentes': saques_pendentes,
+            'fonte': 'banco_local',
+        })
     except Exception as e:
         return web.json_response({'success': False, 'saldo': 0, 'disponivel': 0, 'error': str(e)})
 
@@ -2730,7 +2746,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260412-STATS-FIX-v4',
+            'version': 'v20260412-CARTEIRA-FIX-v5',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
