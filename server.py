@@ -1252,6 +1252,24 @@ async def route_confirmar_codigo(request):
     except Exception as e:
         return web.json_response({'success':False,'error':str(e)},status=500)
 
+async def route_sessao_atual(request):
+    """Retorna a sessão atual válida para salvar no Railway manualmente"""
+    auth = (request.headers.get('X-PaynexBet-Secret','') or
+            request.rel_url.query.get('secret',''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error':'Não autorizado'}, status=401)
+    try:
+        if client.is_connected() and await client.is_user_authorized():
+            sessao = client.session.save()
+            return web.json_response({
+                'success': True,
+                'session_str': sessao,
+                'instrucao': 'Copie session_str e salve como SESSION_STR no Railway Variables'
+            })
+        return web.json_response({'success': False, 'error': 'Telegram não conectado'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
 async def route_atualizar_sessao(request):
     """Atualiza SESSION_STRING em runtime sem reiniciar o servidor"""
     global client, _telegram_ready, _telegram_session_invalida
@@ -2170,6 +2188,7 @@ async def main():
     app.router.add_post('/api/atualizar-sessao', route_atualizar_sessao)
     app.router.add_post('/api/telegram/solicitar-codigo', route_solicitar_codigo)
     app.router.add_post('/api/telegram/confirmar-codigo', route_confirmar_codigo)
+    app.router.add_get('/api/telegram/sessao-atual', route_sessao_atual)
     # PayPix — parceiro gera Pix e recebe 60%
     app.router.add_get('/paypix', route_paypix_page)
     app.router.add_post('/api/paypix/gerar', route_paypix_gerar)
