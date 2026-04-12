@@ -82,9 +82,9 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
 .btn-outline{background:transparent;border:1px solid #FFD70044;color:#FFD700;padding:10px;font-size:13px}
 
 /* BILHETES */
-.bilhetes-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
-.bilhete{background:linear-gradient(135deg,#1a1200,#2a1e00);border:1px solid #FFD70055;border-radius:10px;padding:10px 6px;text-align:center;overflow:hidden}
-.bilhete .num{font-size:20px;font-weight:900;color:#FFD700;font-family:monospace;letter-spacing:1px;white-space:nowrap;display:block;width:100%}
+.bilhetes-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+.bilhete{background:linear-gradient(135deg,#1a1200,#2a1e00);border:1px solid #FFD70055;border-radius:10px;padding:10px 8px;text-align:center;overflow:hidden}
+.bilhete .num{font-size:24px;font-weight:900;color:#FFD700;font-family:monospace;letter-spacing:2px;white-space:nowrap;display:block;width:100%}
 .bilhete .lbl{font-size:10px;color:#666;margin-top:2px}
 
 /* PROGRESSO */
@@ -578,7 +578,7 @@ function mostrarParticipante(p) {
   } else {
     grid.innerHTML = nums.map(n => `
       <div class="bilhete">
-        <div class="num">${n}</div>
+        <div class="num">${String(n)}</div>
         <div class="lbl">🎫 Bilhete</div>
       </div>`).join('');
   }
