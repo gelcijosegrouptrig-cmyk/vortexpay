@@ -720,31 +720,43 @@ function atualizarPreviewBilhetes(vp) {
 // ======= QR CODE =======
 function desenharQR(canvasId, text) {
   const canvas = document.getElementById(canvasId);
+  const box = canvas.parentElement;
+  // Substitui canvas por img com QR Code real via API
+  const img = document.createElement('img');
+  img.style.cssText = 'width:220px;height:220px;border-radius:8px;display:block;margin:0 auto;background:#fff';
+  img.alt = 'QR Code Pix';
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=${encodeURIComponent(text)}`;
+  img.onerror = function() {
+    this.src = `https://chart.googleapis.com/chart?chs=220x220&cht=qr&chl=${encodeURIComponent(text)}`;
+  };
+  canvas.style.display = 'none';
+  // Remove imgs anteriores se houver
+  box.querySelectorAll('img.qr-real').forEach(e => e.remove());
+  img.classList.add('qr-real');
+  box.appendChild(img);
+}
+
+// Função legada mantida para compatibilidade (não usada)
+function _desenharQR_fake_DEPRECATED(canvasId, text) {
+  const canvas = document.getElementById(canvasId);
   const ctx = canvas.getContext('2d');
   const size = canvas.width;
-
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, size, size);
-
   const modules = 33;
   const cell = size / modules;
-
   let seed = 0;
   for (let i = 0; i < text.length; i++) seed = (seed * 31 + text.charCodeAt(i)) & 0xffffffff;
-
   function rand(x, y) {
     const n = Math.sin(seed * 9301 + x * 49297 + y * 233) * 49632;
     return n - Math.floor(n);
   }
-
   ctx.fillStyle = '#000000';
-
   for (let y = 0; y < modules; y++) {
     for (let x = 0; x < modules; x++) {
       const tl = x < 8 && y < 8;
       const tr = x >= modules - 8 && y < 8;
       const bl = x < 8 && y >= modules - 8;
-
       let draw = false;
       if (tl) {
         draw = (x===0||x===6||y===0||y===6)||(x>=2&&x<=4&&y>=2&&y<=4);

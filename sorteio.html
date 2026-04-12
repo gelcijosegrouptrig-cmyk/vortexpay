@@ -43,7 +43,7 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
 
 /* PIX RESULT */
 .pix-result{display:none}
-.qr-box{background:#fff;border-radius:16px;padding:16px;text-align:center;margin-bottom:14px}
+.qr-box{background:#fff;border-radius:16px;padding:16px;text-align:center;margin-bottom:14px;min-height:230px;display:flex;align-items:center;justify-content:center}
 .pix-code-area{background:#0a0a18;border:1px solid #00d4ff33;border-radius:12px;padding:12px;margin-bottom:10px;word-break:break-all;font-size:11px;color:#00d4ff;font-family:monospace;line-height:1.5;max-height:80px;overflow:hidden}
 .copy-pix-btn{width:100%;padding:14px;background:#00ff6622;border:1px solid #00ff6644;border-radius:12px;font-size:15px;font-weight:700;color:#00ff66;cursor:pointer;margin-bottom:8px}
 .copy-pix-btn:active{background:#00ff6644}
@@ -778,16 +778,63 @@ async function gerarPixSorteio() {
 }
 
 function gerarQRCodeDep(code) {
-  const canvas = document.getElementById('m-qr-canvas');
-  if (typeof QRCode !== 'undefined') {
-    QRCode.toCanvas(canvas, code, {width:220, margin:2, color:{dark:'#000000',light:'#ffffff'}}, function(err){ if(err) console.warn('QR:', err); });
-  } else {
-    const img = document.createElement('img');
-    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(code)}`;
-    img.style.cssText = 'width:200px;height:200px;border-radius:8px';
-    const box = canvas.parentElement;
-    box.innerHTML = '';
-    box.appendChild(img);
+  const box = document.getElementById('m-qr-canvas').parentElement;
+  // Limpa o container
+  box.innerHTML = '';
+
+  // Estratégia 1: usar API externa de QR (confiável, sem dependência de lib)
+  const img = document.createElement('img');
+  img.style.cssText = 'width:210px;height:210px;border-radius:8px;display:block;margin:0 auto;background:#fff';
+  img.alt = 'QR Code Pix';
+  // Usa goqr.me como primário e qrserver como fallback
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=210x210&margin=2&data=${encodeURIComponent(code)}`;
+  img.onerror = function() {
+    // Fallback: tentar outro serviço
+    this.src = `https://chart.googleapis.com/chart?chs=210x210&cht=qr&chl=${encodeURIComponent(code)}`;
+    this.onerror = function() {
+      // Ultimo fallback: tentar QRCode.js se disponível
+      if (typeof QRCode !== 'undefined') {
+        const div = document.createElement('div');
+        box.innerHTML = '';
+        box.appendChild(div);
+        try {
+          new QRCode(div, {
+            text: code,
+            width: 210,
+            height: 210,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        } catch(e) { console.warn('QRCode.js falhou:', e); }
+      }
+    };
+  };
+  box.appendChild(img);
+
+  // Estratégia 2: também tentar QRCode.js em paralelo como upgrade visual
+  if (typeof QRCode !== 'undefined' && QRCode.CorrectLevel) {
+    try {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex;justify-content:center';
+      new QRCode(div, {
+        text: code,
+        width: 210,
+        height: 210,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+      // Se QRCode.js funcionou, substituir a img
+      setTimeout(() => {
+        const qrImg = div.querySelector('img,canvas');
+        if (qrImg && qrImg.width > 0) {
+          box.innerHTML = '';
+          qrImg.style.cssText = 'width:210px;height:210px;border-radius:8px;display:block;margin:0 auto';
+          box.appendChild(qrImg);
+        }
+      }, 300);
+    } catch(e) { /* ignorar — img já foi carregada */ }
   }
 }
 
