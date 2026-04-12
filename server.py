@@ -1715,7 +1715,7 @@ async def route_health(request):
             motivo = 'iniciando'
     return web.json_response({
         'status': 'online',
-        'version': 'v20260412-STATS-FIX-v3',
+        'version': 'v20260412-STATS-FIX-v4',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'tentativas': _telegram_tentativas,
@@ -2242,19 +2242,17 @@ async def route_stats(request):
         saq_erro, _ = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status='erro'")[0]
         saq_total, val_saq_total = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques")[0]
 
-        # Últimos 7 dias - depósitos por dia (sintaxe compatível SQLite + PostgreSQL)
-        import os as _os
-        _is_pg = bool(_os.environ.get('DATABASE_URL',''))
-        if _is_pg:
+        # Últimos 7 dias - depósitos por dia (query com try/except para SQLite e PostgreSQL)
+        try:
             dep_por_dia = [{'data': str(r[0])[:10], 'qtd': r[1], 'valor': round(float(r[2]),2)} for r in _q(
                 "SELECT DATE(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY DATE(created_at)")]
+        except Exception:
+            dep_por_dia = []
+        try:
             saq_por_dia = [{'data': str(r[0])[:10], 'qtd': r[1], 'valor': round(float(r[2]),2)} for r in _q(
                 "SELECT DATE(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY DATE(created_at)")]
-        else:
-            dep_por_dia = [{'data': r[0], 'qtd': r[1], 'valor': round(r[2],2)} for r in _q(
-                "SELECT date(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE created_at >= date('now','-7 days') GROUP BY date(created_at) ORDER BY date(created_at)")]
-            saq_por_dia = [{'data': r[0], 'qtd': r[1], 'valor': round(r[2],2)} for r in _q(
-                "SELECT date(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE created_at >= date('now','-7 days') GROUP BY date(created_at) ORDER BY date(created_at)")]
+        except Exception:
+            saq_por_dia = []
 
         # Últimos depósitos e saques
         ult_dep = [{'tx_id':r[0],'valor':r[1],'status':r[2],'created_at':r[3],'paid_at':r[4]} for r in _q(
@@ -2554,7 +2552,8 @@ async def main():
         if secret != WEBHOOK_SECRET:
             return web.json_response({'error': 'unauthorized'}, status=401)
         import subprocess, threading, os as _os
-        GITHUB_RAW = 'https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/main/server.py'
+        COMMIT = request.rel_url.query.get('commit', 'e294ecc')
+        GITHUB_RAW = f'https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/{COMMIT}/server.py'
         def _do_update():
             import time as _t, os as _o
             try:
@@ -2663,7 +2662,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260412-STATS-FIX-v3',
+            'version': 'v20260412-STATS-FIX-v4',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
