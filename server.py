@@ -861,6 +861,155 @@ async def _ping_telegram() -> bool:
         print(f'[Ping] falhou: {e}', flush=True)
         return False
 
+# ─── TELEGRAM - Auto-Login (sem intervenção humana) ─────────
+_auto_login_em_progresso = False   # evita múltiplos auto-logins simultâneos
+
+async def _auto_login_telegram():
+    """
+    Auto-login completo sem intervenção humana:
+    1) Solicita código via Telethon (temp_client)
+    2) Aguarda 25s para o Telegram entregar a mensagem
+    3) Lê conversa com "Telegram" (serviceNotifications) para extrair o código
+    4) Confirma o código e reinicializa o cliente principal
+    """
+    global _login_state, client, _telegram_ready, _telegram_session_invalida
+    global _auto_login_em_progresso
+
+    if _auto_login_em_progresso:
+        print('🤖 [AutoLogin] Já em progresso, aguardando...', flush=True)
+        return False
+
+    _auto_login_em_progresso = True
+    print('🤖 [AutoLogin] Iniciando auto-login Telegram...', flush=True)
+
+    try:
+        from telethon.sessions import StringSession as SS
+        from telethon.errors import FloodWaitError, SessionPasswordNeededError
+        import re as re_al
+
+        # ── Passo 1: cliente temporário para solicitar código ──────────
+        temp_client = TelegramClient(SS(), API_ID, API_HASH)
+        await temp_client.connect()
+        print('🤖 [AutoLogin] Solicitando código...', flush=True)
+        try:
+            sent = await temp_client.send_code_request('+5527997981963')
+        except FloodWaitError as fw:
+            print(f'🤖 [AutoLogin] FloodWait: aguardar {fw.seconds}s', flush=True)
+            await temp_client.disconnect()
+            _auto_login_em_progresso = False
+            return False
+
+        phone_code_hash = sent.phone_code_hash
+        temp_session = temp_client.session.save()
+        print('🤖 [AutoLogin] Código solicitado! Aguardando 30s para chegar...', flush=True)
+
+        # ── Passo 2: aguardar a mensagem chegar no Telegram ────────────
+        await asyncio.sleep(30)
+
+        # ── Passo 3: usar o CLIENT PRINCIPAL (que ainda tem sessão lida)
+        # para ler as mensagens recentes do Telegram (serviceNotifications)
+        codigo = None
+        try:
+            # Tenta com o cliente principal se ele ainda consegue conectar
+            main_tmp = TelegramClient(SS(SESSION_STR), API_ID, API_HASH)
+            await main_tmp.connect()
+            if await main_tmp.is_user_authorized():
+                print('🤖 [AutoLogin] Lendo mensagens do Telegram...', flush=True)
+                # Telegram envia código via "Telegram" (777000) ou serviceNotifications
+                from telethon.tl.types import InputPeerUser
+                async for msg in main_tmp.iter_messages('777000', limit=5):
+                    txt = msg.message or ''
+                    # Procurar código de 5 dígitos no texto
+                    m = re_al.search(r'\b(\d{5})\b', txt)
+                    if m:
+                        codigo = m.group(1)
+                        print(f'🤖 [AutoLogin] Código encontrado: {codigo} (msg: {txt[:60]})', flush=True)
+                        break
+
+                # Se não achou em 777000, tenta nas últimas msgs da conta
+                if not codigo:
+                    async for msg in main_tmp.iter_messages('Telegram', limit=10):
+                        txt = msg.message or ''
+                        m = re_al.search(r'\b(\d{5})\b', txt)
+                        if m:
+                            codigo = m.group(1)
+                            print(f'🤖 [AutoLogin] Código (Telegram): {codigo}', flush=True)
+                            break
+
+                await main_tmp.disconnect()
+            else:
+                await main_tmp.disconnect()
+                print('🤖 [AutoLogin] Cliente principal sem autorização, não lê mensagens', flush=True)
+        except Exception as e_read:
+            print(f'🤖 [AutoLogin] Erro ao ler mensagens: {e_read}', flush=True)
+
+        if not codigo:
+            print('🤖 [AutoLogin] ❌ Código não encontrado nas mensagens! Aguardando próximo ciclo.', flush=True)
+            await temp_client.disconnect()
+            _auto_login_em_progresso = False
+            return False
+
+        # ── Passo 4: confirmar código com temp_client ──────────────────
+        print(f'🤖 [AutoLogin] Confirmando código {codigo}...', flush=True)
+        try:
+            # Reconectar temp_client se necessário
+            if not temp_client.is_connected():
+                temp_client = TelegramClient(SS(temp_session), API_ID, API_HASH)
+                await temp_client.connect()
+
+            await temp_client.sign_in('+5527997981963', codigo, phone_code_hash=phone_code_hash)
+        except SessionPasswordNeededError:
+            print('🤖 [AutoLogin] 2FA necessário — não suportado no auto-login', flush=True)
+            await temp_client.disconnect()
+            _auto_login_em_progresso = False
+            return False
+        except Exception as e_sign:
+            print(f'🤖 [AutoLogin] Erro sign_in: {e_sign}', flush=True)
+            await temp_client.disconnect()
+            _auto_login_em_progresso = False
+            return False
+
+        me = await temp_client.get_me()
+        nova_sessao = temp_client.session.save()
+        await temp_client.disconnect()
+        print(f'🤖 [AutoLogin] Login OK: {me.first_name} ({me.id})', flush=True)
+
+        # ── Passo 5: salvar nova sessão ────────────────────────────────
+        try:
+            with open('session_string.txt', 'w') as f:
+                f.write(nova_sessao)
+        except Exception as e_file:
+            print(f'[AutoLogin] Erro ao salvar session_string.txt: {e_file}', flush=True)
+
+        _salvar_sessao_db(nova_sessao)
+
+        # ── Passo 6: reinicializar cliente principal ───────────────────
+        try:
+            if client.is_connected():
+                await client.disconnect()
+        except:
+            pass
+        from telethon.sessions import StringSession as SS2
+        client.__init__(SS2(nova_sessao), API_ID, API_HASH)
+        _telegram_session_invalida = False
+        _telegram_ready = False
+        await client.connect()
+        if await client.is_user_authorized():
+            _telegram_ready = True
+            _salvar_sessao_db(nova_sessao)
+            print('🤖 [AutoLogin] ✅ Cliente principal reconectado automaticamente!', flush=True)
+            _auto_login_em_progresso = False
+            return True
+        else:
+            print('🤖 [AutoLogin] ❌ Cliente principal não autorizou após login', flush=True)
+            _auto_login_em_progresso = False
+            return False
+
+    except Exception as e:
+        print(f'🤖 [AutoLogin] Erro geral: {e}', flush=True)
+        _auto_login_em_progresso = False
+        return False
+
 # ─── TELEGRAM - Reconexão limpa ─────────────────────────────
 async def _reconectar_telegram():
     """Desconecta e reconecta o client Telegram de forma limpa."""
@@ -922,11 +1071,25 @@ async def watchdog_telegram():
                 except Exception as e_save:
                     print(f'[Watchdog] Erro ao salvar sessão: {e_save}', flush=True)
 
-            # ── Se sessão revogada, não adianta pingar ─────────────
+            # ── Se sessão revogada → tentar AUTO-LOGIN ─────────────
             if _telegram_session_invalida:
-                print('⛔ [Watchdog] Sessão revogada — aguardando reconexão manual (código Telegram)', flush=True)
-                await asyncio.sleep(60)
-                continue
+                if not _auto_login_em_progresso:
+                    print('🤖 [Watchdog] Sessão inválida detectada → iniciando AUTO-LOGIN...', flush=True)
+                    sucesso = await _auto_login_telegram()
+                    if sucesso:
+                        print('🤖 [Watchdog] Auto-login bem-sucedido! Retomando operação normal.', flush=True)
+                        _telegram_session_invalida = False
+                        falhas_seguidas = 0
+                        await asyncio.sleep(PING_INTERVAL)
+                        continue
+                    else:
+                        print('🤖 [Watchdog] Auto-login falhou. Tentando novamente em 3min...', flush=True)
+                        await asyncio.sleep(180)
+                        continue
+                else:
+                    print('🤖 [Watchdog] Auto-login em progresso, aguardando...', flush=True)
+                    await asyncio.sleep(30)
+                    continue
 
             # ── Ping ───────────────────────────────────────────────
             if _telegram_ready:
@@ -967,10 +1130,21 @@ async def conectar_telegram():
 
     while True:
         if _telegram_session_invalida:
-            print('⚠️ Sessão inválida — aguardando 5min antes de tentar...', flush=True)
-            await asyncio.sleep(300)
-            _telegram_session_invalida = False
-            continue
+            if not _auto_login_em_progresso:
+                print('🤖 [ConectarTG] Sessão inválida → tentando AUTO-LOGIN...', flush=True)
+                sucesso = await _auto_login_telegram()
+                if sucesso:
+                    print('🤖 [ConectarTG] Auto-login bem-sucedido!', flush=True)
+                    _telegram_session_invalida = False
+                    continue
+                else:
+                    print('🤖 [ConectarTG] Auto-login falhou, tentando em 3min...', flush=True)
+                    await asyncio.sleep(180)
+                    continue
+            else:
+                print('🤖 [ConectarTG] Auto-login em progresso, aguardando 30s...', flush=True)
+                await asyncio.sleep(30)
+                continue
 
         _telegram_tentativas += 1
         try:
@@ -1888,7 +2062,7 @@ async def route_health(request):
     ping_age = int(time.time() - _telegram_ultimo_ping) if _telegram_ultimo_ping else None
     return web.json_response({
         'status': 'online',
-        'version': 'v20260412-ADMIN-TG-v9',
+        'version': 'v20260412-AUTOLOGIN-v9',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -3087,7 +3261,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260412-PAYPIX-QUEUE-v7',
+            'version': 'v20260412-AUTOLOGIN-v9',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)

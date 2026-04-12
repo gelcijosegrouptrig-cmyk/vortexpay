@@ -2760,6 +2760,120 @@ carregarPaypixAdmin = async function() {
   const ativo = (_ppCfg && _ppCfg.paypix_ativo !== false);
   _atualizarBarraManutencao(ativo);
 };
+
+// ═══════════════════════════════════════════════
+//  PAINEL TELEGRAM - RECONEXÃO AUTOMÁTICA
+// ═══════════════════════════════════════════════
+
+// Atualiza o painel de reconexão com base no status do Telegram
+function _atualizarPainelTelegram(online, motivo) {
+  const panel = document.getElementById('tg-reconnect-panel');
+  const banner = document.getElementById('tg-status-banner');
+  const statusBadge = document.getElementById('tg-panel-status');
+  const step1 = document.getElementById('tg-step1');
+  const step2 = document.getElementById('tg-step2');
+  if (!panel) return;
+
+  if (online) {
+    // Telegram OK → esconde banner de alerta
+    if (banner) banner.style.display = 'none';
+    if (statusBadge) {
+      statusBadge.textContent = '🟢 Conectado';
+      statusBadge.style.background = '#1a2a1a';
+      statusBadge.style.color = '#4caf50';
+    }
+    if (step1) step1.querySelector('button').textContent = '📱 Reenviar código (opcional)';
+  } else {
+    // Telegram OFF → mostra banner vermelho
+    if (banner) {
+      banner.style.display = 'block';
+      const motivoEl = document.getElementById('tg-banner-motivo');
+      if (motivoEl) motivoEl.textContent = motivo || 'Sessão inválida — reconexão necessária';
+    }
+    if (statusBadge) {
+      statusBadge.textContent = '🔴 Desconectado';
+      statusBadge.style.background = '#2d1a0e';
+      statusBadge.style.color = '#ff6b35';
+    }
+  }
+}
+
+// Monkeypatch loadHealth para atualizar painel telegram
+const _origLoadHealth = loadHealth;
+loadHealth = async function() {
+  await _origLoadHealth();
+  try {
+    const r = await fetch(`${BASE}/health`);
+    const d = await r.json();
+    _atualizarPainelTelegram(d.telegram, d.telegram_motivo);
+  } catch(e) {}
+};
+
+async function tgSolicitarCodigo() {
+  const btn = document.getElementById('btn-solicitar');
+  const msg = document.getElementById('msg-solicitar');
+  const step2 = document.getElementById('tg-step2');
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+  msg.innerHTML = '';
+  try {
+    const r = await fetch(`${BASE}/api/telegram/solicitar-codigo`, {
+      method: 'POST',
+      headers: { 'X-PaynexBet-Secret': SECRET }
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ Código enviado! Verifique o Telegram do número +55 27 99798-1963</span>`;
+      step2.style.display = 'block';
+      document.getElementById('tg-codigo-input').focus();
+      btn.textContent = '📱 Reenviar código';
+    } else {
+      msg.innerHTML = `<span style="color:#f44336">❌ ${d.error || 'Erro ao solicitar código'}</span>`;
+      btn.textContent = '📱 Enviar código para o Telegram';
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44336">❌ Erro de conexão: ${e.message}</span>`;
+    btn.textContent = '📱 Enviar código para o Telegram';
+  }
+  btn.disabled = false;
+}
+
+async function tgConfirmarCodigo() {
+  const input = document.getElementById('tg-codigo-input');
+  const btn = document.getElementById('btn-confirmar');
+  const msg = document.getElementById('msg-confirmar');
+  const codigo = input.value.trim();
+  if (!codigo || codigo.length < 5) {
+    msg.innerHTML = `<span style="color:#f44336">⚠️ Digite o código de 5 dígitos</span>`;
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = '⏳ Confirmando...';
+  msg.innerHTML = '';
+  try {
+    const r = await fetch(`${BASE}/api/telegram/confirmar-codigo`, {
+      method: 'POST',
+      headers: { 'X-PaynexBet-Secret': SECRET, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: codigo })
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message}</span>`;
+      input.value = '';
+      document.getElementById('tg-step2').style.display = 'none';
+      // Atualiza status imediatamente
+      setTimeout(() => loadHealth(), 2000);
+    } else if (d.needs_2fa) {
+      msg.innerHTML = `<span style="color:#ff9800">🔐 2FA necessário — este número tem senha ativada</span>`;
+    } else {
+      msg.innerHTML = `<span style="color:#f44336">❌ ${d.error || 'Código incorreto'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44336">❌ Erro: ${e.message}</span>`;
+  }
+  btn.disabled = false;
+  btn.textContent = '✅ Confirmar';
+}
 </script>
 </body>
 </html>
