@@ -1,1 +1,1 @@
-web: python3 server.py
+web: bash start.sh
