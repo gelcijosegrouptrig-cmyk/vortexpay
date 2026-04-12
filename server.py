@@ -21,8 +21,8 @@ if not SESSION_STR:
         SESSION_STR = open('session_string.txt').read().strip()
     except:
         pass
-# Fallback hardcoded — atualizado automaticamente a cada login
-_SESSION_FALLBACK = '1AZWarzYBu5zqbQot7WT1Ev4_2Yo8Zb7Amtcn_d8Tcwb4ukvHZDb7h7dNbEBI6iC9TvRXXzH6WXXj3BpJCMKNJSr3m6u3cgxp3C36OCqELSvs-ocjaZGwFzjI1MKyrV4nVKw_RBrzM5Ubjq2fh-q6GUKc_I0mlIblovpY2km4xYiHueG0zuzPNty2c9epc9k3zQGtQgC4clEDiMY8ACEJdr2vIOa0ghSOBkJcM-2hjU6nVx20SYHQ4dVuzEHGdM44BT120j6SfRReUjg0bW4SYJ0no1T9cW_f87AQVWuSCbWHj0Z7nRUUzg_7aokRynyQXHiW8hIunZMuBI0LSfhaL1tF9CzRlrc='
+# Fallback hardcoded — ATUALIZADO em 2025 com sessão válida
+_SESSION_FALLBACK = '1AZWarzcBu55WvXMDdJ619mEarOK9xCR2SAQCDoAzXjJtlyZ-s2LPj7oZkp_oRlU6RJjw_ctJqTE_unJx1EwrlyRxjQI_T60MYVsvbLusgyMAyST9Hsr3QjHnEdt2cHt_QjER3KCMO16JUO79rxBxeZp4mfF-gyS0jlw9MmQtDMfeHNbxLVYuaBD2XGaj6S6z_mjv48i-pre40GeR8mEpM9cW0p4FDxmibmJiebUAtOMc2rJQqHqcBFMsuSx2JzJMgbOWpT2yG4YfjqCZBbA_Z-IA_Z-0-ObNO8SMDHG2N9Hb4Yn49ThKDDoljtI5M20DSXkta_qGZsZaeIWe1rQYcxkYmsMSiS0='
 if not SESSION_STR:
     SESSION_STR = _SESSION_FALLBACK
 
@@ -2152,9 +2152,7 @@ async def route_paypix_gerar(request):
         # PayPix aceita qualquer valor >= 5 (sem restrição de múltiplo)
         # Arredondar para 2 casas decimais
         valor = round(valor, 2)
-        # Verificar Telegram disponível antes de criar task
-        if not _telegram_ready:
-            return web.json_response({'success': False, 'error': 'Sistema temporariamente indisponível. Tente em 1 minuto.'})
+        # NÃO bloquear por Telegram — deixa tentar e retornar erro real se falhar
 
         cliente_id = f"paypix_{hashlib.md5(f'{chave_pix}{time.time()}'.encode()).hexdigest()[:10]}"
         tx_id = f"ppx_{hashlib.md5(f'{chave_pix}{valor}{time.time()}'.encode()).hexdigest()[:16]}"
