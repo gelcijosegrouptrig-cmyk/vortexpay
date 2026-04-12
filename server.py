@@ -21,6 +21,10 @@ if not SESSION_STR:
         SESSION_STR = open('session_string.txt').read().strip()
     except:
         pass
+# Fallback hardcoded — atualizado automaticamente a cada login
+_SESSION_FALLBACK = '1AZWarzYBu5zqbQot7WT1Ev4_2Yo8Zb7Amtcn_d8Tcwb4ukvHZDb7h7dNbEBI6iC9TvRXXzH6WXXj3BpJCMKNJSr3m6u3cgxp3C36OCqELSvs-ocjaZGwFzjI1MKyrV4nVKw_RBrzM5Ubjq2fh-q6GUKc_I0mlIblovpY2km4xYiHueG0zuzPNty2c9epc9k3zQGtQgC4clEDiMY8ACEJdr2vIOa0ghSOBkJcM-2hjU6nVx20SYHQ4dVuzEHGdM44BT120j6SfRReUjg0bW4SYJ0no1T9cW_f87AQVWuSCbWHj0Z7nRUUzg_7aokRynyQXHiW8hIunZMuBI0LSfhaL1tF9CzRlrc='
+if not SESSION_STR:
+    SESSION_STR = _SESSION_FALLBACK
 
 client = TelegramClient(StringSession(SESSION_STR), API_ID, API_HASH)
 _lock = asyncio.Lock()
@@ -44,9 +48,16 @@ class DBConn:
     def execute(self, sql, params=()):
         sql_pg = _to_pg(sql)
         if self._pg:
-            cur = self._pg.cursor()
-            cur.execute(sql_pg, params)
-            return cur
+            try:
+                cur = self._pg.cursor()
+                cur.execute(sql_pg, params)
+                return cur
+            except Exception as e:
+                try:
+                    self._pg.rollback()
+                except Exception:
+                    pass
+                raise
         return self._sq.execute(sql, params)
 
     def cursor(self):
@@ -60,14 +71,35 @@ class DBConn:
         else:
             self._sq.commit()
 
+    def rollback(self):
+        if self._pg:
+            try:
+                self._pg.rollback()
+            except Exception:
+                pass
+        else:
+            try:
+                self._sq.rollback()
+            except Exception:
+                pass
+
     def close(self):
         if self._pg:
-            self._pg.close()
+            try:
+                self._pg.close()
+            except Exception:
+                pass
         else:
-            self._sq.close()
+            try:
+                self._sq.close()
+            except Exception:
+                pass
 
     def __enter__(self): return self
-    def __exit__(self, *a): self.close()
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            self.rollback()
+        self.close()
 
 class _PGCursor:
     def __init__(self, cur): self._c = cur
@@ -121,6 +153,11 @@ def sqlite3_connect(path=None):
             import psycopg2
             pg = psycopg2.connect(DATABASE_URL)
             pg.autocommit = False
+            # Limpar qualquer transação abortada anterior
+            try:
+                pg.rollback()
+            except Exception:
+                pass
             return DBConn(pg_conn=pg)
         except Exception as e:
             print(f'[DB] Falha PostgreSQL, usando SQLite: {e}', flush=True)
@@ -2132,19 +2169,19 @@ async def route_paypix_gerar(request):
         })
 
         # Salvar como "gerando"
+        now = datetime.now().isoformat()
         conn = sqlite3_connect()
         try:
-            conn.execute('ALTER TABLE transacoes ADD COLUMN extra TEXT')
+            conn.execute(
+                'INSERT OR IGNORE INTO transacoes (tx_id,valor,cliente_id,status,created_at,extra) VALUES (?,?,?,?,?,?)',
+                (tx_id, valor, cliente_id, 'gerando', now, extra)
+            )
             conn.commit()
-        except:
-            pass
-        now = datetime.now().isoformat()
-        conn.execute(
-            'INSERT OR IGNORE INTO transacoes (tx_id,valor,cliente_id,status,created_at,extra) VALUES (?,?,?,?,?,?)',
-            (tx_id, valor, cliente_id, 'gerando', now, extra)
-        )
-        conn.commit()
-        conn.close()
+        except Exception as e:
+            conn.rollback()
+            print(f'[PayPix] Erro ao inserir transacao: {e}', flush=True)
+        finally:
+            conn.close()
 
         # Gerar Pix em background
         async def gerar_bg():
