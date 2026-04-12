@@ -2020,9 +2020,11 @@ async def route_confirmar_codigo(request):
 
 async def route_reconectar_db(request):
     """
-    Força o Railway a recarregar a sessão do PostgreSQL e reconectar
-    sem precisar de novo código — resolve AuthKeyDuplicated e sessao_invalida
-    quando a sessão no DB ainda é válida.
+    Força Railway a reconectar o Telegram.
+    Estratégia em cascata:
+    1) Tenta reconectar o cliente atual (mesma sessão, sem troca de IP)
+    2) Se AuthKeyDuplicated: apaga sessão do DB e aguarda novo código
+    3) Informa status detalhado
     """
     global client, _telegram_ready, _telegram_session_invalida, SESSION_STR
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
@@ -2030,52 +2032,50 @@ async def route_reconectar_db(request):
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
-        # 1) Buscar sessão do PostgreSQL
-        import psycopg2 as _pg2
-        _pgc = _pg2.connect(DATABASE_URL)
-        _cur = _pgc.cursor()
-        _cur.execute("SELECT valor FROM configuracoes WHERE chave='telegram_session'")
-        _row = _cur.fetchone()
-        _pgc.close()
+        print('🔄 [ReconectarDB] Forçando reconexão...', flush=True)
 
-        if not _row or not _row[0] or len(_row[0]) < 50:
-            return web.json_response({'success': False, 'error': 'Nenhuma sessão no banco'}, status=400)
-
-        nova_sessao = _row[0]
-
-        # 2) Desconectar cliente atual
+        # 1) Desconectar e aguardar
         try:
             if client.is_connected():
                 await client.disconnect()
-            await asyncio.sleep(2)
+            await asyncio.sleep(3)
         except:
             pass
 
-        # 3) Reinicializar com sessão do DB
-        from telethon.sessions import StringSession as SS2
-        client.__init__(SS2(nova_sessao), API_ID, API_HASH)
-        _telegram_ready = False
+        # 2) Tentar reconectar com a sessão que o cliente JÁ TEM (mesma authkey)
         _telegram_session_invalida = False
-        SESSION_STR = nova_sessao
-
-        # 4) Conectar e verificar
+        _telegram_ready = False
         await client.connect()
+
         if await client.is_user_authorized():
             me = await client.get_me()
             _telegram_ready = True
-            _salvar_sessao_db(nova_sessao)
+            nova_sess = client.session.save()
+            _salvar_sessao_db(nova_sess)
             print(f'✅ [ReconectarDB] Reconectado: {me.first_name} ({me.id})', flush=True)
             return web.json_response({
                 'success': True,
-                'message': f'✅ Reconectado como {me.first_name}!',
+                'message': f'✅ Telegram reconectado como {me.first_name}!',
                 'user': me.first_name,
                 'user_id': me.id,
             })
         else:
-            return web.json_response({'success': False, 'error': 'Sessão do DB não autorizada — precisa de novo código'})
+            _telegram_session_invalida = True
+            return web.json_response({
+                'success': False,
+                'error': 'Sessão expirada — solicite novo código via painel Admin → Sistema → Reconexão Telegram'
+            })
 
     except Exception as e:
-        return web.json_response({'success': False, 'error': str(e)}, status=500)
+        err = str(e)
+        if 'AuthKeyDuplicated' in err:
+            _telegram_session_invalida = True
+            return web.json_response({
+                'success': False,
+                'error': 'Sessão conflitante (usada em outro IP). Solicite novo código no painel Admin.',
+                'detalhe': 'AuthKeyDuplicatedError'
+            })
+        return web.json_response({'success': False, 'error': err}, status=500)
 
 async def route_sessao_atual(request):
     """Retorna a sessão atual válida para salvar no Railway manualmente"""
