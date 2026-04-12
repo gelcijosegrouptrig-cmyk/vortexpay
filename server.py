@@ -164,6 +164,45 @@ def sqlite3_connect(path=None):
     sq = sqlite3.connect(path or DB_PATH)
     return DBConn(sq_conn=sq)
 
+def _salvar_sessao_db(session_str):
+    """Salva a sessão Telegram no PostgreSQL para persistir entre deploys"""
+    try:
+        if not DATABASE_URL: return
+        import psycopg2
+        pg = psycopg2.connect(DATABASE_URL)
+        cur = pg.cursor()
+        cur.execute("""INSERT INTO configuracoes (chave, valor, updated_at)
+                       VALUES ('telegram_session', %s, %s)
+                       ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor, updated_at=EXCLUDED.updated_at""",
+                    (session_str, datetime.now().isoformat()))
+        pg.commit(); pg.close()
+        print('✅ Sessão Telegram salva no PostgreSQL!', flush=True)
+    except Exception as e:
+        print(f'⚠️ Erro ao salvar sessão no DB: {e}', flush=True)
+
+def _carregar_sessao_db():
+    """Carrega sessão Telegram salva no PostgreSQL"""
+    global SESSION_STR, client
+    try:
+        if not DATABASE_URL: return
+        import psycopg2
+        from telethon.sessions import StringSession
+        pg = psycopg2.connect(DATABASE_URL)
+        cur = pg.cursor()
+        # Garantir que tabela existe
+        cur.execute("""CREATE TABLE IF NOT EXISTS configuracoes
+                       (chave TEXT PRIMARY KEY, valor TEXT, updated_at TEXT)""")
+        pg.commit()
+        cur.execute("SELECT valor FROM configuracoes WHERE chave='telegram_session'")
+        row = cur.fetchone()
+        pg.close()
+        if row and row[0] and len(row[0]) > 50:
+            SESSION_STR = row[0]
+            client = TelegramClient(StringSession(SESSION_STR), API_ID, API_HASH)
+            print('✅ Sessão Telegram carregada do PostgreSQL!', flush=True)
+    except Exception as e:
+        print(f'⚠️ Erro ao carregar sessão do DB: {e}', flush=True)
+
 def init_db():
     global _USE_PG
     # Tentar conectar ao PostgreSQL primeiro
@@ -206,6 +245,8 @@ def init_db():
                     ganhador_tipo_chave TEXT, premio_pago REAL, saque_id TEXT,
                     saque_status TEXT DEFAULT 'pendente', total_participantes INTEGER,
                     total_bilhetes INTEGER, total_depositado REAL, observacao TEXT)""",
+                """CREATE TABLE IF NOT EXISTS configuracoes (
+                    chave TEXT PRIMARY KEY, valor TEXT, updated_at TEXT)""",
             ]
             for sql in pg_tables:
                 cur.execute(sql)
@@ -218,6 +259,8 @@ def init_db():
             pg.close()
             _USE_PG = True
             print('✅ PostgreSQL conectado — banco PERSISTENTE ativo!', flush=True)
+            # Tentar carregar sessão salva no banco
+            _carregar_sessao_db()
             return  # Sai sem criar SQLite
         except ImportError:
             print('⚠️ psycopg2 não instalado, usando SQLite', flush=True)
@@ -1395,6 +1438,8 @@ async def route_confirmar_codigo(request):
         # Salvar sessão no arquivo local
         with open('session_string.txt','w') as f:
             f.write(nova_sessao)
+        # Salvar no PostgreSQL — persiste entre deploys!
+        _salvar_sessao_db(nova_sessao)
 
         # ── SALVAR NO RAILWAY via API para persistir entre deploys ──
         railway_token = os.environ.get('RAILWAY_TOKEN', '')
@@ -1444,6 +1489,7 @@ async def route_confirmar_codigo(request):
         await client.connect()
         if await client.is_user_authorized():
             _telegram_ready = True
+            _salvar_sessao_db(nova_sessao)  # Garantir que está salva no DB
             print(f'✅ Telegram conectado: {me.first_name} ({me.id})', flush=True)
 
         return web.json_response({
@@ -1486,9 +1532,10 @@ async def route_atualizar_sessao(request):
         if not nova_sessao or len(nova_sessao) < 50:
             return web.json_response({'error': 'session_string inválida (muito curta)'}, status=400)
 
-        # Salvar nova sessão no arquivo
+        # Salvar nova sessão no arquivo e no PostgreSQL
         with open('session_string.txt', 'w') as f:
             f.write(nova_sessao)
+        _salvar_sessao_db(nova_sessao)  # Persistir no DB!
         print(f'🔑 Nova sessão recebida via API ({len(nova_sessao)} chars)', flush=True)
 
         # Reinicializar cliente com nova sessão
