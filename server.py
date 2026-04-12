@@ -1305,17 +1305,91 @@ async def route_pix(request):
             return web.json_response({'success': False, 'error': 'Valor mínimo R$ 5,00'})
         if valor % 5 != 0:
             return web.json_response({'success': False, 'error': 'Valor deve ser múltiplo de R$ 5'})
-        # Dados do participante do sorteio (enviados pelo sorteio.html)
-        participante_dados = data.get('participante_dados')  # {nome, cpf, chave_pix, tipo_chave}
+
+        participante_dados = data.get('participante_dados')
         cliente_id = data.get('cliente_id')
-        # Se vier dados do participante, usar CPF como cliente_id
         if participante_dados and participante_dados.get('cpf'):
             cpf_limpo = re.sub(r'\D', '', str(participante_dados['cpf']))
             cliente_id = f"cli_{cpf_limpo}"
-        result = await gerar_pix(valor, cliente_id, data.get('webhook_url'), participante_dados)
-        return web.json_response(result)
+
+        # Gerar tx_id imediatamente e iniciar geração em background
+        tx_id = f"txn_{hashlib.md5(f'{cliente_id}{valor}{time.time()}'.encode()).hexdigest()[:16]}"
+
+        # Salvar transação como "gerando" para polling do frontend
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS transacoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tx_id TEXT UNIQUE NOT NULL,
+            valor REAL NOT NULL,
+            pix_code TEXT,
+            cliente_id TEXT,
+            webhook_url TEXT,
+            status TEXT DEFAULT 'gerando',
+            created_at TEXT,
+            paid_at TEXT,
+            participante_dados TEXT
+        )''')
+        now = datetime.now().isoformat()
+        part_json = json.dumps(participante_dados) if participante_dados else None
+        c.execute('INSERT OR IGNORE INTO transacoes (tx_id,valor,cliente_id,status,created_at,participante_dados) VALUES (?,?,?,?,?,?)',
+                  (tx_id, valor, cliente_id, 'gerando', now, part_json))
+        conn.commit()
+        conn.close()
+
+        # Iniciar geração em background (não bloqueia resposta)
+        async def gerar_em_background():
+            result = await gerar_pix(valor, cliente_id, data.get('webhook_url'), participante_dados)
+            if result.get('success') and result.get('pix_code'):
+                # Atualizar tx com o pix_code real
+                conn2 = sqlite3.connect(DB_PATH)
+                c2 = conn2.cursor()
+                c2.execute('UPDATE transacoes SET pix_code=?, status=?, tx_id=? WHERE tx_id=?',
+                           (result['pix_code'], 'pendente', result['tx_id'], tx_id))
+                conn2.commit()
+                conn2.close()
+                print(f'✅ Pix pronto em background: {result["tx_id"]}', flush=True)
+            else:
+                conn2 = sqlite3.connect(DB_PATH)
+                c2 = conn2.cursor()
+                c2.execute('UPDATE transacoes SET status=? WHERE tx_id=?', ('erro', tx_id))
+                conn2.commit()
+                conn2.close()
+
+        asyncio.create_task(gerar_em_background())
+
+        # Responder imediatamente com tx_id para polling
+        return web.json_response({
+            'success': True,
+            'tx_id': tx_id,
+            'status': 'gerando',
+            'message': 'Gerando Pix... aguarde alguns segundos.',
+            'poll_url': f'/api/pix/status/{tx_id}'
+        })
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)})
+
+async def route_pix_status(request):
+    """Polling do status de geração do Pix"""
+    tx_id = request.match_info.get('tx_id')
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT tx_id, valor, pix_code, status FROM transacoes WHERE tx_id=?', (tx_id,))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return web.json_response({'success': False, 'status': 'nao_encontrado'})
+    r_tx_id, valor, pix_code, status = row
+    if status == 'gerando':
+        return web.json_response({'success': False, 'status': 'gerando', 'message': 'Aguarde...'})
+    if status == 'erro':
+        return web.json_response({'success': False, 'status': 'erro', 'error': 'Falha ao gerar Pix. Tente novamente.'})
+    if pix_code:
+        return web.json_response({
+            'success': True, 'tx_id': r_tx_id, 'pix_code': pix_code,
+            'valor': f'R$ {valor:.2f}', 'status': status
+        })
+    return web.json_response({'success': False, 'status': status})
 
 async def route_status_tx(request):
     tx_id = request.match_info.get('tx_id')
@@ -1842,6 +1916,7 @@ async def main():
     app.router.add_get('/health', route_health)
     app.router.add_get('/api/status', route_health)
     app.router.add_post('/api/pix', route_pix)
+    app.router.add_get('/api/pix/status/{tx_id}', route_pix_status)
     app.router.add_route('OPTIONS', '/api/pix', lambda r: web.Response(status=200))
     app.router.add_get('/api/status/{tx_id}', route_status_tx)
     app.router.add_get('/api/transacoes', route_transacoes)

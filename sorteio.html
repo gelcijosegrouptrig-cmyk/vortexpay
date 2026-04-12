@@ -706,9 +706,8 @@ async function gerarPixSorteio() {
   document.getElementById('etapa-valor').style.display = 'none';
   document.getElementById('etapa-loading').classList.remove('hidden');
 
-  // Atualizar mensagem de loading
-  const loadingMsg = document.querySelector('#etapa-loading p');
-  if (loadingMsg) loadingMsg.textContent = '⏳ Gerando Pix... aguarde até 30s';
+  const loadingMsg = document.querySelector('#etapa-loading div:last-child') ||
+                     document.querySelector('#etapa-loading p');
 
   const body = {valor};
   if (participante_dados) {
@@ -718,50 +717,63 @@ async function gerarPixSorteio() {
     body.cliente_id = `cli_${cpf}`;
   }
 
-  // Fetch simples com timeout 60s
-  let pixGerado = false;
   try {
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 60000);
+    // Passo 1: POST /api/pix — resposta imediata com tx_id
+    if (loadingMsg) loadingMsg.textContent = '⏳ Iniciando...';
     const r = await fetch(BASE + '/api/pix', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(body),
-      signal: ctrl.signal
+      body: JSON.stringify(body)
     });
-    clearTimeout(tid);
     const d = await r.json();
+
+    if (!d.success && d.status !== 'gerando') {
+      document.getElementById('etapa-loading').classList.add('hidden');
+      document.getElementById('etapa-valor').style.display = 'block';
+      alert('❌ ' + (d.error || 'Erro ao gerar Pix. Tente novamente.'));
+      return;
+    }
+
+    const txIdTemp = d.tx_id;
+
+    // Passo 2: Polling /api/pix/status/:tx_id até ter pix_code (máx 60s)
+    let pixData = null;
+    for (let i = 0; i < 30; i++) {
+      await new Promise(res => setTimeout(res, 2000));
+      if (loadingMsg) loadingMsg.textContent = `⏳ Gerando Pix... ${(i+1)*2}s`;
+      try {
+        const rs = await fetch(BASE + '/api/pix/status/' + txIdTemp);
+        const ds = await rs.json();
+        if (ds.success && ds.pix_code) { pixData = ds; break; }
+        if (ds.status === 'erro') {
+          document.getElementById('etapa-loading').classList.add('hidden');
+          document.getElementById('etapa-valor').style.display = 'block';
+          alert('❌ ' + (ds.error || 'Falha ao gerar Pix. Tente novamente.'));
+          return;
+        }
+      } catch(e2) { /* continuar polling */ }
+    }
 
     document.getElementById('etapa-loading').classList.add('hidden');
 
-    if (d.success) {
-      pixGerado = true;
-      pixCodeAtual = d.pix_code;
-      txAtual = d.tx_id;
+    if (pixData && pixData.pix_code) {
+      pixCodeAtual = pixData.pix_code;
+      txAtual = pixData.tx_id;
       const qtd = Math.floor(valor / vp);
-
       document.getElementById('m-valor-conf').textContent = `R$ ${valor.toFixed(2).replace('.',',')}`;
       document.getElementById('m-nums-conf').textContent = qtd;
-      document.getElementById('m-pix-code').textContent = d.pix_code;
+      document.getElementById('m-pix-code').textContent = pixData.pix_code;
       document.getElementById('etapa-pix').style.display = 'block';
-
-      gerarQRCodeDep(d.pix_code);
-      iniciarPollingDep(d.tx_id, valor, participante_dados);
-
+      gerarQRCodeDep(pixData.pix_code);
+      iniciarPollingDep(pixData.tx_id, valor, participante_dados);
     } else {
       document.getElementById('etapa-valor').style.display = 'block';
-      alert('❌ ' + (d.error || 'Erro ao gerar Pix. Tente novamente.'));
+      alert('⏱️ Demorou mais que o esperado. Tente novamente em alguns segundos.');
     }
   } catch(e) {
     document.getElementById('etapa-loading').classList.add('hidden');
-    if (!pixGerado) {
-      document.getElementById('etapa-valor').style.display = 'block';
-      if (e.name === 'AbortError') {
-        alert('⏱️ O servidor demorou mais que o esperado. Tente novamente.');
-      } else {
-        alert('❌ Sem conexão. Verifique sua internet e tente novamente.');
-      }
-    }
+    document.getElementById('etapa-valor').style.display = 'block';
+    alert('❌ Erro de conexão. Verifique sua internet e tente novamente.');
   }
 }
 
