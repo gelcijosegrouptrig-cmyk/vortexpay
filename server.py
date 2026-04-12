@@ -2520,6 +2520,27 @@ async def main():
     print('✅ DB ok', flush=True)
 
     app = web.Application(middlewares=[cors_middleware])
+    # Endpoint de diagnóstico temporário
+    async def route_debug_pix(request):
+        import traceback as _tb
+        try:
+            data = await request.json()
+            valor = float(data.get('valor', 5))
+            import hashlib as _hlib, time as _time
+            tx_id = f"dbg_{_hlib.md5(str(_time.time()).encode()).hexdigest()[:8]}"
+            now = __import__('datetime').datetime.now().isoformat()
+            conn = sqlite3_connect()
+            conn.execute('INSERT OR IGNORE INTO transacoes (tx_id,valor,cliente_id,status,created_at,extra) VALUES (?,?,?,?,?,?)',
+                      (tx_id, valor, 'cli_debug', 'gerando', now, None))
+            conn.commit()
+            conn.close()
+            return web.json_response({'success': True, 'tx_id': tx_id, 'msg': 'INSERT OK sem erro'})
+        except Exception as e:
+            tb = _tb.format_exc()
+            print(f'DEBUG PIX ERROR:\n{tb}', flush=True)
+            return web.json_response({'success': False, 'error': str(e), 'traceback': tb})
+    app.router.add_post('/api/debug/pix', route_debug_pix)
+
     app.router.add_get('/', route_home)            # Página principal PaynexBet
     app.router.add_get('/home', route_home)
     app.router.add_get('/index.html', route_index)
