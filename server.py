@@ -1897,6 +1897,12 @@ async def route_paypix_gerar(request):
             return web.json_response({'success': False, 'error': 'Informe sua chave Pix'})
         if valor < 5:
             return web.json_response({'success': False, 'error': 'Valor mínimo R$ 5,00'})
+        # PayPix aceita qualquer valor >= 5 (sem restrição de múltiplo)
+        # Arredondar para 2 casas decimais
+        valor = round(valor, 2)
+        # Verificar Telegram disponível antes de criar task
+        if not _telegram_ready:
+            return web.json_response({'success': False, 'error': 'Sistema temporariamente indisponível. Tente em 1 minuto.'})
 
         cliente_id = f"paypix_{hashlib.md5(f'{chave_pix}{time.time()}'.encode()).hexdigest()[:10]}"
         tx_id = f"ppx_{hashlib.md5(f'{chave_pix}{valor}{time.time()}'.encode()).hexdigest()[:16]}"
@@ -1930,14 +1936,23 @@ async def route_paypix_gerar(request):
             result = await gerar_pix(valor, cliente_id, None, None)
             conn2 = sqlite3.connect(DB_PATH)
             if result.get('success') and result.get('pix_code'):
-                # atualiza tx_id real + pix_code (mantém extra com dados do parceiro)
                 real_tx = result.get('tx_id', tx_id)
+                # Preservar extra (dados do parceiro) ao atualizar
                 conn2.execute(
                     'UPDATE transacoes SET pix_code=?, status=?, tx_id=? WHERE tx_id=?',
                     (result['pix_code'], 'pendente', real_tx, tx_id)
                 )
+                # Garantir que extra do parceiro está salvo no tx_id real
+                conn2.execute(
+                    'UPDATE transacoes SET extra=? WHERE tx_id=? AND (extra IS NULL OR extra="")',
+                    (extra, real_tx)
+                )
+                print(f'[PayPix] Pix gerado: {real_tx} R${valor:.2f}', flush=True)
             else:
-                conn2.execute("UPDATE transacoes SET status='erro' WHERE tx_id=?", (tx_id,))
+                erro_msg = result.get('error', 'Erro desconhecido')
+                conn2.execute("UPDATE transacoes SET status='erro', extra=? WHERE tx_id=?",
+                              (json.dumps({'tipo':'paypix','erro': erro_msg, **json.loads(extra)}), tx_id))
+                print(f'[PayPix] Falha ao gerar: {erro_msg}', flush=True)
             conn2.commit()
             conn2.close()
 

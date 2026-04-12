@@ -199,6 +199,7 @@ async function gerarPix() {
 
   if (!chave) return alert('⚠️ Informe sua chave Pix!');
   if (valor < 5) return alert('⚠️ Valor mínimo é R$ 5,00!');
+  if (valor > 10000) return alert('⚠️ Valor máximo é R$ 10.000,00!');
 
   const btn = document.getElementById('btn-gerar');
   btn.disabled = true;
@@ -213,7 +214,12 @@ async function gerarPix() {
     const data = await res.json();
 
     if (!data.success) {
-      alert('❌ ' + (data.error || 'Erro ao gerar Pix'));
+      const msg = data.error || 'Erro ao gerar Pix';
+      if (msg.includes('indisponível') || msg.includes('manutenção') || msg.includes('temporariamente')) {
+        alert('⚠️ Sistema ocupado. Aguarde 1 minuto e tente novamente.');
+      } else {
+        alert('❌ ' + msg);
+      }
       btn.disabled = false;
       btn.innerHTML = '🚀 Gerar QR Code Pix';
       return;
@@ -232,9 +238,18 @@ async function gerarPix() {
 }
 
 async function aguardarPixCode() {
-  // mostra loading no btn enquanto aguarda
   const btn = document.getElementById('btn-gerar');
-  for (let i = 0; i < 30; i++) {
+  const mensagens = [
+    'Conectando ao sistema…',
+    'Gerando QR Code…',
+    'Processando…',
+    'Quase pronto…',
+    'Aguarde mais um pouco…'
+  ];
+  // Polling por até 90 segundos (45 x 2s)
+  for (let i = 0; i < 45; i++) {
+    const msgIdx = Math.min(Math.floor(i / 9), mensagens.length - 1);
+    btn.innerHTML = `<span class="loader"></span>${mensagens[msgIdx]}`;
     await new Promise(r => setTimeout(r, 2000));
     try {
       const r = await fetch(`${BASE}/api/paypix/status/${_txId}`);
@@ -245,14 +260,15 @@ async function aguardarPixCode() {
         return;
       }
       if (d.status === 'erro') {
-        alert('❌ Falha ao gerar Pix. Tente novamente.');
+        // Erro real — mostrar mensagem clara
+        alert('❌ Falha ao gerar Pix.\n\nO sistema pode estar ocupado ou o Telegram offline.\nAguarde 1 minuto e tente novamente.');
         btn.disabled = false;
         btn.innerHTML = '🚀 Gerar QR Code Pix';
         return;
       }
     } catch(e) {}
   }
-  alert('⚠️ Timeout ao gerar Pix. Tente novamente.');
+  alert('⚠️ O sistema demorou mais que o esperado.\nTente novamente em instantes.');
   btn.disabled = false;
   btn.innerHTML = '🚀 Gerar QR Code Pix';
 }
