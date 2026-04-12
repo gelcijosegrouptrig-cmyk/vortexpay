@@ -9,3 +9,4 @@ psycopg2-binary==2.9.10
 # rebuild Sun Apr 12 17:37:46 UTC 2026 - commit hash fix
 # rebuild final Sun Apr 12 17:39:54 UTC 2026
 # v4 Sun Apr 12 17:42:51 UTC 2026
+# rebuild Sun Apr 12 17:46:24 UTC 2026 - sorteio metric-cards

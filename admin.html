@@ -880,27 +880,31 @@
       <!-- ═══ SORTEIO ═══ -->
       <div id="tab-sorteio" class="tab-content">
 
-        <!-- Stats do sorteio -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
-          <div class="stat-card">
-            <div class="stat-icon">👥</div>
-            <div class="stat-value" id="s-total-part">-</div>
-            <div class="stat-label">Participantes</div>
+        <!-- Stats do sorteio - mesmo padrão do Dashboard -->
+        <div class="metrics-grid" style="margin-bottom:20px">
+          <div class="metric-card blue">
+            <div class="metric-icon">👥</div>
+            <div class="metric-label">Participantes</div>
+            <div class="metric-value" id="s-total-part">—</div>
+            <div class="metric-sub">no sorteio atual</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon">🎫</div>
-            <div class="stat-value" id="s-total-bilhetes" style="color:#FFD700">-</div>
-            <div class="stat-label">Total bilhetes</div>
+          <div class="metric-card yellow">
+            <div class="metric-icon">🎫</div>
+            <div class="metric-label">Total Bilhetes</div>
+            <div class="metric-value" id="s-total-bilhetes">—</div>
+            <div class="metric-sub">bilhetes em jogo</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon">💰</div>
-            <div class="stat-value" id="s-total-saldo">-</div>
-            <div class="stat-label">Total depositado</div>
+          <div class="metric-card orange">
+            <div class="metric-icon">💰</div>
+            <div class="metric-label">Total Depositado</div>
+            <div class="metric-value" id="s-total-saldo">—</div>
+            <div class="metric-sub">acumulado no sorteio</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon">🏆</div>
-            <div class="stat-value" id="s-premio" style="color:#00d68f">-</div>
-            <div class="stat-label">Prêmio estimado</div>
+          <div class="metric-card green">
+            <div class="metric-icon">🏆</div>
+            <div class="metric-label">Prêmio Estimado</div>
+            <div class="metric-value" id="s-premio">—</div>
+            <div class="metric-sub" id="s-premio-sub">enviado via Pix ao ganhador</div>
           </div>
         </div>
 
@@ -2030,6 +2034,8 @@ async function carregarSorteioAdmin() {
       document.getElementById('s-total-bilhetes').textContent = s.total_bilhetes || 0;
     document.getElementById('s-total-saldo').textContent = `R$ ${(s.total_depositado||s.total_saldo||0).toFixed(2).replace('.',',')}`;
     document.getElementById('s-premio').textContent = `R$ ${s.premio_estimado_total.toFixed(2).replace('.',',')}`;
+    if (document.getElementById('s-premio-sub'))
+      document.getElementById('s-premio-sub').textContent = `${s.percentual||50}% do total · enviado via Pix`;
 
     // Preencher config
     document.getElementById('sc-descricao').value = s.descricao || '';
