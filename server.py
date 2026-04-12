@@ -1936,22 +1936,16 @@ async def route_paypix_gerar(request):
             result = await gerar_pix(valor, cliente_id, None, None)
             conn2 = sqlite3.connect(DB_PATH)
             if result.get('success') and result.get('pix_code'):
-                real_tx = result.get('tx_id', tx_id)
-                # Preservar extra (dados do parceiro) ao atualizar
+                # MANTER o tx_id original (ppx_...) — apenas atualizar pix_code e status
+                # Isso garante que o status polling funcione com o tx_id retornado ao frontend
                 conn2.execute(
-                    'UPDATE transacoes SET pix_code=?, status=?, tx_id=? WHERE tx_id=?',
-                    (result['pix_code'], 'pendente', real_tx, tx_id)
+                    'UPDATE transacoes SET pix_code=?, status=? WHERE tx_id=?',
+                    (result['pix_code'], 'pendente', tx_id)
                 )
-                # Garantir que extra do parceiro está salvo no tx_id real
-                conn2.execute(
-                    'UPDATE transacoes SET extra=? WHERE tx_id=? AND (extra IS NULL OR extra="")',
-                    (extra, real_tx)
-                )
-                print(f'[PayPix] Pix gerado: {real_tx} R${valor:.2f}', flush=True)
+                print(f'[PayPix] Pix gerado OK: {tx_id} R${valor:.2f}', flush=True)
             else:
                 erro_msg = result.get('error', 'Erro desconhecido')
-                conn2.execute("UPDATE transacoes SET status='erro', extra=? WHERE tx_id=?",
-                              (json.dumps({'tipo':'paypix','erro': erro_msg, **json.loads(extra)}), tx_id))
+                conn2.execute("UPDATE transacoes SET status='erro' WHERE tx_id=?", (tx_id,))
                 print(f'[PayPix] Falha ao gerar: {erro_msg}', flush=True)
             conn2.commit()
             conn2.close()
@@ -1973,9 +1967,8 @@ async def route_paypix_status(request):
     tx_id = request.match_info.get('tx_id')
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # busca pelo tx_id original OU pelo tx_id real gerado em background
-    c.execute('SELECT tx_id, valor, pix_code, status, extra FROM transacoes WHERE tx_id=? OR tx_id LIKE ?',
-              (tx_id, f'%{tx_id[-10:]}%'))
+    # Busca exata pelo tx_id (sempre mantemos o ppx_ original no banco)
+    c.execute('SELECT tx_id, valor, pix_code, status, extra FROM transacoes WHERE tx_id=?', (tx_id,))
     row = c.fetchone()
     conn.close()
 
