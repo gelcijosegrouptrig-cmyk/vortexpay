@@ -1432,6 +1432,21 @@ async def route_webhook(request):
         tx_id = data.get('tx_id')
         if data.get('status') == 'pago' and tx_id:
             confirmar_pagamento(tx_id)
+            # Verificar se é uma transação PayPix e disparar split 60/40
+            try:
+                conn_w = sqlite3.connect(DB_PATH)
+                cw = conn_w.cursor()
+                cw.execute('SELECT valor, extra FROM transacoes WHERE tx_id=?', (tx_id,))
+                row_w = cw.fetchone()
+                conn_w.close()
+                if row_w:
+                    valor_w, extra_w = row_w
+                    if extra_w:
+                        ex = json.loads(extra_w)
+                        if ex.get('tipo') == 'paypix':
+                            asyncio.create_task(_processar_split_paypix(tx_id, valor_w, extra_w))
+            except Exception as e_w:
+                print(f'[webhook] erro split check: {e_w}', flush=True)
             return web.json_response({'success': True, 'message': f'Pagamento {tx_id} confirmado'})
         return web.json_response({'success': False, 'message': 'Status inválido'})
     except Exception as e:
@@ -1865,6 +1880,180 @@ async def route_confirmar_deposito_admin(request):
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
 
+async def route_paypix_page(request):
+    """Página pública /paypix — parceiro gera Pix e recebe 60%"""
+    html = open('paypix.html', encoding='utf-8').read()
+    return web.Response(text=html, content_type='text/html', charset='utf-8')
+
+async def route_paypix_gerar(request):
+    """Gera um Pix para o parceiro. Guarda chave_pix do parceiro no extra para split depois."""
+    try:
+        data = await request.json()
+        chave_pix   = str(data.get('chave_pix', '')).strip()
+        tipo_chave  = str(data.get('tipo_chave', 'cpf')).strip()
+        valor       = float(data.get('valor', 0))
+
+        if not chave_pix:
+            return web.json_response({'success': False, 'error': 'Informe sua chave Pix'})
+        if valor < 5:
+            return web.json_response({'success': False, 'error': 'Valor mínimo R$ 5,00'})
+
+        cliente_id = f"paypix_{hashlib.md5(f'{chave_pix}{time.time()}'.encode()).hexdigest()[:10]}"
+        tx_id = f"ppx_{hashlib.md5(f'{chave_pix}{valor}{time.time()}'.encode()).hexdigest()[:16]}"
+
+        extra = json.dumps({
+            'tipo': 'paypix',
+            'parceiro_chave': chave_pix,
+            'parceiro_tipo':  tipo_chave,
+            'valor_total':    valor,
+            'parceiro_pct':   0.6,
+            'plataforma_pct': 0.4,
+        })
+
+        # Salvar como "gerando"
+        conn = sqlite3.connect(DB_PATH)
+        try:
+            conn.execute('ALTER TABLE transacoes ADD COLUMN extra TEXT')
+            conn.commit()
+        except:
+            pass
+        now = datetime.now().isoformat()
+        conn.execute(
+            'INSERT OR IGNORE INTO transacoes (tx_id,valor,cliente_id,status,created_at,extra) VALUES (?,?,?,?,?,?)',
+            (tx_id, valor, cliente_id, 'gerando', now, extra)
+        )
+        conn.commit()
+        conn.close()
+
+        # Gerar Pix em background
+        async def gerar_bg():
+            result = await gerar_pix(valor, cliente_id, None, None)
+            conn2 = sqlite3.connect(DB_PATH)
+            if result.get('success') and result.get('pix_code'):
+                # atualiza tx_id real + pix_code (mantém extra com dados do parceiro)
+                real_tx = result.get('tx_id', tx_id)
+                conn2.execute(
+                    'UPDATE transacoes SET pix_code=?, status=?, tx_id=? WHERE tx_id=?',
+                    (result['pix_code'], 'pendente', real_tx, tx_id)
+                )
+            else:
+                conn2.execute("UPDATE transacoes SET status='erro' WHERE tx_id=?", (tx_id,))
+            conn2.commit()
+            conn2.close()
+
+        asyncio.create_task(gerar_bg())
+
+        return web.json_response({
+            'success': True,
+            'tx_id':   tx_id,
+            'status':  'gerando',
+            'message': 'Gerando Pix… aguarde.',
+            'poll_url': f'/api/paypix/status/{tx_id}'
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+async def route_paypix_status(request):
+    """Status da transação PayPix — retorna pix_code quando pronto e status de pagamento"""
+    tx_id = request.match_info.get('tx_id')
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # busca pelo tx_id original OU pelo tx_id real gerado em background
+    c.execute('SELECT tx_id, valor, pix_code, status, extra FROM transacoes WHERE tx_id=? OR tx_id LIKE ?',
+              (tx_id, f'%{tx_id[-10:]}%'))
+    row = c.fetchone()
+    conn.close()
+
+    if not row:
+        return web.json_response({'success': False, 'status': 'nao_encontrado'})
+
+    real_tx, valor, pix_code, status, extra_str = row
+    resp = {'success': True, 'tx_id': real_tx, 'status': status, 'valor': valor}
+
+    if status == 'gerando':
+        resp['success'] = False
+        resp['message'] = 'Gerando Pix…'
+        return web.json_response(resp)
+
+    if status == 'erro':
+        resp['success'] = False
+        resp['error'] = 'Falha ao gerar Pix'
+        return web.json_response(resp)
+
+    if pix_code:
+        resp['pix_code'] = pix_code
+
+    if status == 'pago':
+        resp['pagamento'] = 'pago'
+        return web.json_response(resp)
+
+    # Se pendente, tenta detectar pagamento via mensagens recentes do bot
+    if status == 'pendente' and _telegram_ready and pix_code:
+        try:
+            import datetime as dt
+            bot = await client.get_entity(BOT_USERNAME)
+            msgs = await client.get_messages(bot, limit=15)
+            padroes_pago = [
+                r'Depósito de R\$.*recebido',
+                r'✅ Depósito',
+                r'Valor creditado',
+                r'depósito.*confirmado',
+            ]
+            for msg in msgs:
+                if not msg.text:
+                    continue
+                if any(re.search(p, msg.text, re.IGNORECASE) for p in padroes_pago):
+                    if hasattr(msg, 'date') and msg.date:
+                        idade = (dt.datetime.now(dt.timezone.utc) - msg.date).total_seconds()
+                        if idade < 900:  # 15 minutos
+                            confirmar_pagamento(real_tx)
+                            # Disparar split
+                            extra2_str = extra_str or ''
+                            asyncio.create_task(_processar_split_paypix(real_tx, valor, extra2_str))
+                            resp['pagamento'] = 'pago'
+                            resp['status'] = 'pago'
+                            return web.json_response(resp)
+        except Exception as e:
+            print(f'[paypix status] erro poll bot: {e}', flush=True)
+
+    return web.json_response(resp)
+
+async def _processar_split_paypix(tx_id, valor, extra_str):
+    """Após confirmação de pagamento, envia 60% para o parceiro via bot"""
+    try:
+        extra = json.loads(extra_str or '{}')
+        if extra.get('tipo') != 'paypix':
+            return
+        chave   = extra.get('parceiro_chave', '')
+        tipo    = extra.get('parceiro_tipo', 'cpf')
+        pct     = float(extra.get('parceiro_pct', 0.6))
+        val_par = round(valor * pct, 2)
+
+        if not chave or val_par < 1:
+            print(f'[PayPix] split inválido tx={tx_id}', flush=True)
+            return
+
+        print(f'[PayPix] enviando R${val_par:.2f} → {chave} ({tipo})', flush=True)
+        resultado = await executar_saque_bot(val_par, tipo, chave)
+        print(f'[PayPix] resultado split: {resultado}', flush=True)
+
+        # Registrar o saque na tabela saques
+        saque_id = f"spp_{hashlib.md5(f'{tx_id}{time.time()}'.encode()).hexdigest()[:12]}"
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute(
+            '''INSERT OR IGNORE INTO saques
+               (saque_id,valor,chave_pix,tipo_chave,status,created_at,observacao)
+               VALUES (?,?,?,?,?,?,?)''',
+            (saque_id, val_par, chave, tipo,
+             resultado.get('status','enviado'),
+             datetime.now().isoformat(),
+             f'PayPix split 60% - tx {tx_id}')
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f'[PayPix] erro split: {e}', flush=True)
+
 async def route_exportar_csv(request):
     """Exportar depósitos ou saques em CSV"""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
@@ -1936,6 +2125,11 @@ async def main():
     app.router.add_post('/api/atualizar-sessao', route_atualizar_sessao)
     app.router.add_post('/api/telegram/solicitar-codigo', route_solicitar_codigo)
     app.router.add_post('/api/telegram/confirmar-codigo', route_confirmar_codigo)
+    # PayPix — parceiro gera Pix e recebe 60%
+    app.router.add_get('/paypix', route_paypix_page)
+    app.router.add_post('/api/paypix/gerar', route_paypix_gerar)
+    app.router.add_get('/api/paypix/status/{tx_id}', route_paypix_status)
+    app.router.add_route('OPTIONS', '/api/paypix/gerar', lambda r: web.Response(status=200))
     # Sorteio
     app.router.add_get('/sorteio', route_sorteio_page)
     app.router.add_get('/sorteio.html', route_sorteio_page)
