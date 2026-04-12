@@ -37,6 +37,9 @@ _saque_lock = asyncio.Lock()
 _telegram_ready = False
 _telegram_tentativas = 0
 _telegram_session_invalida = False
+_telegram_ultimo_ping = 0        # timestamp do último ping bem-sucedido
+_telegram_reconectando = False   # flag para evitar reconexões simultâneas
+_sessao_salva_em = 0             # timestamp do último save de sessão
 
 # ─── BANCO DE DADOS — PostgreSQL persistente + fallback SQLite ───────────────
 DB_PATH = '/tmp/transacoes.db'
@@ -797,26 +800,184 @@ async def _loop_verificar_pagamentos():
 
         await asyncio.sleep(30)  # Verificar a cada 30 segundos
 
-# ─── TELEGRAM - Conectar com retry ─────────────────────────
-async def conectar_telegram():
-    global _telegram_ready, _telegram_tentativas, _telegram_session_invalida
+# ─── TELEGRAM - Registrar handler de mensagens ──────────────
+def _registrar_handler_telegram():
+    """Registra o handler de novas mensagens (chamado após cada reconexão)"""
+    @client.on(events.NewMessage(from_users=BOT_USERNAME))
+    async def handler(event):
+        texto = event.message.text or ''
+        padroes = [
+            r'Depósito de R\$.*recebido com sucesso',
+            r'✅ Depósito de',
+            r'depósito.*recebido com sucesso',
+            r'pagamento.*confirmado',
+            r'✅.*depositado',
+            r'recebemos.*R\$',
+            r'depósito aprovado',
+            r'Valor creditado:',
+        ]
+        if any(re.search(p, texto, re.IGNORECASE) for p in padroes):
+            print(f'💰 Confirmação detectada: {texto[:100]}', flush=True)
+            conn = sqlite3_connect()
+            cur = conn.execute("""SELECT tx_id, valor, extra FROM transacoes
+                         WHERE status='pendente'
+                         ORDER BY created_at DESC LIMIT 5""")
+            pendentes = cur.fetchall()
+            conn.close()
+            val_match = re.search(r'R\$\s*([\d,.]+)', texto)
+            valor_msg = None
+            if val_match:
+                try:
+                    valor_msg = float(val_match.group(1).replace(',', '.').replace(' ', ''))
+                except:
+                    pass
+            for row_p in pendentes:
+                tx_id_p, valor_p, extra_p = row_p[0], row_p[1], row_p[2]
+                if valor_msg is None or abs(valor_p - valor_msg) < 0.05 or len(pendentes) == 1:
+                    confirmar_pagamento(tx_id_p)
+                    print(f'✅ Pago confirmado: {tx_id_p} R${valor_p}', flush=True)
+                    if extra_p:
+                        try:
+                            extra_d = json.loads(extra_p)
+                            if extra_d.get('tipo') == 'paypix':
+                                asyncio.create_task(_processar_split_paypix(tx_id_p, valor_p, extra_p))
+                        except Exception as ex:
+                            print(f'Erro split handler: {ex}', flush=True)
+                    break
+
+# ─── TELEGRAM - Ping de keepalive ───────────────────────────
+async def _ping_telegram() -> bool:
+    """Testa se a conexão Telegram está viva. Retorna True se OK."""
+    global _telegram_ultimo_ping
+    try:
+        if not client.is_connected():
+            return False
+        me = await asyncio.wait_for(client.get_me(), timeout=15)
+        if me:
+            _telegram_ultimo_ping = time.time()
+            return True
+        return False
+    except Exception as e:
+        print(f'[Ping] falhou: {e}', flush=True)
+        return False
+
+# ─── TELEGRAM - Reconexão limpa ─────────────────────────────
+async def _reconectar_telegram():
+    """Desconecta e reconecta o client Telegram de forma limpa."""
+    global _telegram_ready, _telegram_tentativas, _telegram_reconectando
+    if _telegram_reconectando:
+        return  # já tem reconexão em andamento
+    _telegram_reconectando = True
+    _telegram_ready = False
+    try:
+        try:
+            if client.is_connected():
+                await client.disconnect()
+        except:
+            pass
+        await asyncio.sleep(3)
+        await client.connect()
+        if await client.is_user_authorized():
+            _telegram_ready = True
+            _telegram_tentativas = 0
+            _telegram_ultimo_ping = time.time()
+            print('✅ [Reconexão] Telegram OK!', flush=True)
+        else:
+            print('❌ [Reconexão] Sessão inválida após reconectar', flush=True)
+    except Exception as e:
+        print(f'❌ [Reconexão] Erro: {e}', flush=True)
+    finally:
+        _telegram_reconectando = False
+
+# ─── TELEGRAM - Watchdog (verifica a cada 2min) ──────────────
+async def watchdog_telegram():
+    """
+    Loop eterno que:
+    1) A cada 2min faz ping no Telegram
+    2) Se falhar → tenta reconectar imediatamente
+    3) Se reconectar falhar → tenta de novo em 30s, 60s, 120s (backoff)
+    4) A cada 30min salva a sessão atual no DB (keepalive de sessão)
+    5) NUNCA desiste — só para se sessão for revogada (AuthKeyDuplicated)
+    """
+    global _telegram_ready, _telegram_session_invalida, _sessao_salva_em
+    await asyncio.sleep(30)  # aguarda sistema estabilizar no boot
+    print('🔍 [Watchdog] Iniciado — verificando Telegram a cada 2min', flush=True)
+
+    PING_INTERVAL   = 120   # 2 minutos entre pings normais
+    SAVE_INTERVAL   = 1800  # 30 minutos entre saves de sessão
+    backoff_delays  = [30, 60, 120, 180, 300]  # backoff progressivo em segundos
+    falhas_seguidas = 0
+
     while True:
-        # Se sessão foi revogada, espera longa (evita flood) mas segue tentando
+        try:
+            # ── Salvar sessão periodicamente ──────────────────────
+            agora = time.time()
+            if _telegram_ready and (agora - _sessao_salva_em) > SAVE_INTERVAL:
+                try:
+                    sess = client.session.save()
+                    if sess and len(sess) > 50:
+                        _salvar_sessao_db(sess)
+                        _sessao_salva_em = agora
+                        print('💾 [Watchdog] Sessão Telegram salva no DB', flush=True)
+                except Exception as e_save:
+                    print(f'[Watchdog] Erro ao salvar sessão: {e_save}', flush=True)
+
+            # ── Se sessão revogada, não adianta pingar ─────────────
+            if _telegram_session_invalida:
+                print('⛔ [Watchdog] Sessão revogada — aguardando reconexão manual (código Telegram)', flush=True)
+                await asyncio.sleep(60)
+                continue
+
+            # ── Ping ───────────────────────────────────────────────
+            if _telegram_ready:
+                ok = await _ping_telegram()
+                if ok:
+                    falhas_seguidas = 0
+                    await asyncio.sleep(PING_INTERVAL)
+                    continue
+                else:
+                    print(f'⚠️ [Watchdog] Ping falhou! Tentando reconectar...', flush=True)
+                    _telegram_ready = False
+            else:
+                print(f'⚠️ [Watchdog] Telegram offline! Reconectando...', flush=True)
+
+            # ── Reconectar ────────────────────────────────────────
+            await _reconectar_telegram()
+
+            if _telegram_ready:
+                falhas_seguidas = 0
+                print(f'✅ [Watchdog] Reconectado com sucesso!', flush=True)
+                await asyncio.sleep(PING_INTERVAL)
+            else:
+                # Backoff progressivo
+                falhas_seguidas += 1
+                delay = backoff_delays[min(falhas_seguidas - 1, len(backoff_delays) - 1)]
+                print(f'🔄 [Watchdog] Falha #{falhas_seguidas} — tentando novamente em {delay}s', flush=True)
+                await asyncio.sleep(delay)
+
+        except Exception as e_watch:
+            print(f'[Watchdog] Exceção inesperada: {e_watch}', flush=True)
+            await asyncio.sleep(30)
+
+# ─── TELEGRAM - Conectar com retry ──────────────────────────
+async def conectar_telegram():
+    """Conexão inicial do Telegram — após conectar, o watchdog assume o keepalive."""
+    global _telegram_ready, _telegram_tentativas, _telegram_session_invalida
+    _registrar_handler_telegram()  # registrar handler uma única vez
+
+    while True:
         if _telegram_session_invalida:
-            print('⚠️ Sessão inválida/revogada. Aguardando 5min antes de tentar nova sessão...', flush=True)
+            print('⚠️ Sessão inválida — aguardando 5min antes de tentar...', flush=True)
             await asyncio.sleep(300)
-            _telegram_session_invalida = False  # Tenta novamente
+            _telegram_session_invalida = False
             continue
 
         _telegram_tentativas += 1
         try:
             print(f'🔄 Tentativa {_telegram_tentativas} - Conectando Telegram...', flush=True)
-
-            # Desconectar se já estava conectado
             if client.is_connected():
                 await client.disconnect()
             await asyncio.sleep(1)
-
             await client.connect()
 
             if not await client.is_user_authorized():
@@ -828,69 +989,27 @@ async def conectar_telegram():
             me = await client.get_me()
             print(f'✅ Telegram OK: {me.first_name} ({me.id})', flush=True)
             _telegram_ready = True
+            _telegram_ultimo_ping = time.time()
 
-            @client.on(events.NewMessage(from_users=BOT_USERNAME))
-            async def handler(event):
-                texto = event.message.text or ''
-                # Padrões exatos que o PaynexBet envia ao confirmar depósito
-                padroes = [
-                    r'Depósito de R\$.*recebido com sucesso',
-                    r'✅ Depósito de',
-                    r'depósito.*recebido com sucesso',
-                    r'pagamento.*confirmado',
-                    r'✅.*depositado',
-                    r'recebemos.*R\$',
-                    r'depósito aprovado',
-                    r'Valor creditado:',
-                ]
-                if any(re.search(p, texto, re.IGNORECASE) for p in padroes):
-                    print(f'💰 Confirmação detectada: {texto[:100]}', flush=True)
-                    # Buscar tx mais recente pendente e confirmar
-                    conn = sqlite3_connect()
-                    cur = conn.execute("""SELECT tx_id, valor, extra FROM transacoes 
-                                 WHERE status='pendente' 
-                                 ORDER BY created_at DESC LIMIT 5""")
-                    pendentes = cur.fetchall()
-                    conn.close()
-                    
-                    # Tentar extrair valor da mensagem para match
-                    val_match = re.search(r'R\$\s*([\d,.]+)', texto)
-                    valor_msg = None
-                    if val_match:
-                        try:
-                            valor_msg = float(val_match.group(1).replace(',', '.').replace(' ',''))
-                        except:
-                            pass
-                    
-                    for row_p in pendentes:
-                        tx_id_p, valor_p, extra_p = row_p[0], row_p[1], row_p[2]
-                        # Confirmar se valor bate ou se só tem uma pendente
-                        if valor_msg is None or abs(valor_p - valor_msg) < 0.05 or len(pendentes) == 1:
-                            confirmar_pagamento(tx_id_p)
-                            print(f'✅ Pago confirmado: {tx_id_p} R${valor_p}', flush=True)
-                            # Disparar split 60/40 se for PayPix
-                            if extra_p:
-                                try:
-                                    extra_d = json.loads(extra_p)
-                                    if extra_d.get('tipo') == 'paypix':
-                                        asyncio.create_task(_processar_split_paypix(tx_id_p, valor_p, extra_p))
-                                        print(f'💸 Split PayPix disparado: {tx_id_p} R${valor_p:.2f}', flush=True)
-                                except Exception as ex:
-                                    print(f'Erro split: {ex}', flush=True)
-                            break
+            # Salvar sessão válida imediatamente
+            try:
+                _salvar_sessao_db(client.session.save())
+                _sessao_salva_em = time.time()
+            except:
+                pass
 
-            print('✅ Listener ativo, mantendo conexão...', flush=True)
-            # Iniciar loop de verificação periódica de pagamentos pendentes
+            # Iniciar loops de background
             asyncio.create_task(_loop_verificar_pagamentos())
+            asyncio.create_task(watchdog_telegram())
+
+            print('✅ Listener ativo — watchdog iniciado', flush=True)
             await client.run_until_disconnected()
 
         except Exception as e:
             nome_erro = type(e).__name__
             print(f'❌ Erro Telegram ({nome_erro}): {e}', flush=True)
-            
-            # AuthKeyDuplicatedError: sessão revogada, não adianta tentar com mesma session
             if 'AuthKeyDuplicated' in nome_erro or 'AuthKeyDuplicated' in str(e):
-                print('🚫 Sessão revogada (usada em dois IPs). Pausando 5min...', flush=True)
+                print('🚫 Sessão revogada (AuthKeyDuplicated). Pausando 5min...', flush=True)
                 _telegram_session_invalida = True
                 _telegram_ready = False
                 await asyncio.sleep(300)
@@ -1759,15 +1878,21 @@ async def route_health(request):
     if not _telegram_ready:
         if _telegram_session_invalida:
             motivo = 'sessao_invalida'
-        elif _telegram_tentativas > 0:
+        elif _telegram_reconectando:
             motivo = 'reconectando'
+        elif _telegram_tentativas > 0:
+            motivo = 'tentando'
         else:
             motivo = 'iniciando'
+    # Tempo desde último ping bem-sucedido
+    ping_age = int(time.time() - _telegram_ultimo_ping) if _telegram_ultimo_ping else None
     return web.json_response({
         'status': 'online',
-        'version': 'v20260412-PAYPIX-QUEUE-v7',
+        'version': 'v20260412-WATCHDOG-v8',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
+        'watchdog': 'ativo',
+        'ultimo_ping_seg': ping_age,
         'tentativas': _telegram_tentativas,
         'bot': BOT_USERNAME,
         'webhook': '/webhook/confirmar',
