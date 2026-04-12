@@ -1057,6 +1057,26 @@
           </div>
         </div>
 
+        <!-- Botão rápido manutenção -->
+        <div id="pp-manutencao-bar" style="display:none;background:#1a1000;border:1px solid #6a4400;border-radius:12px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div>
+            <span style="font-size:15px;font-weight:700;color:#FFD700">🔧 PayPix está em MANUTENÇÃO</span>
+            <div style="font-size:12px;color:#888;margin-top:2px">Parceiros veem a tela de manutenção em /paypix</div>
+          </div>
+          <button onclick="ativarPaypixRapido()" style="background:linear-gradient(135deg,#22c55e,#4ade80);border:none;border-radius:8px;padding:10px 18px;color:#000;font-weight:700;font-size:13px;cursor:pointer">
+            ✅ Reativar agora
+          </button>
+        </div>
+        <div id="pp-ativo-bar" style="background:#0a2a0a;border:1px solid #2d6a2d;border-radius:12px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div>
+            <span style="font-size:15px;font-weight:700;color:#4ade80">✅ PayPix está ATIVO</span>
+            <div style="font-size:12px;color:#888;margin-top:2px">Parceiros podem gerar Pix normalmente</div>
+          </div>
+          <button onclick="desativarPaypixRapido()" style="background:linear-gradient(135deg,#dc2626,#f87171);border:none;border-radius:8px;padding:10px 18px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">
+            🔧 Colocar em manutenção
+          </button>
+        </div>
+
         <!-- Configuração do % -->
         <div class="table-card" style="margin-bottom:20px">
           <div class="table-header">
@@ -2484,6 +2504,44 @@ async function salvarConfigPaypix() {
     setTimeout(() => { msgEl.innerHTML = ''; }, 5000);
   }
 }
+
+// ─── ATIVAR/DESATIVAR PAYPIX RÁPIDO (botões de manutenção) ───
+async function _togglePaypixAtivo(ativo) {
+  try {
+    const cfg = _ppCfg || {};
+    const pct  = Math.round((cfg.paypix_pct || 0.6) * 100);
+    const desc = cfg.paypix_descricao || ('Gere seu Pix e receba ' + pct + '% do valor');
+    const r = await fetch(`${BASE}/api/paypix/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ paypix_pct: pct, paypix_ativo: ativo, paypix_descricao: desc })
+    });
+    const d = await r.json();
+    if (d.success) {
+      await carregarPaypixAdmin();
+      // Atualizar barras de status
+      _atualizarBarraManutencao(ativo);
+    }
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+function _atualizarBarraManutencao(ativo) {
+  const barManut = document.getElementById('pp-manutencao-bar');
+  const barAtivo = document.getElementById('pp-ativo-bar');
+  if (barManut) barManut.style.display = ativo ? 'none' : 'flex';
+  if (barAtivo) barAtivo.style.display = ativo ? 'flex' : 'none';
+}
+
+async function ativarPaypixRapido()   { await _togglePaypixAtivo(true);  }
+async function desativarPaypixRapido(){ await _togglePaypixAtivo(false); }
+
+// Chamar ao carregar a aba para sincronizar barras
+const _origCarregarPaypixAdmin = carregarPaypixAdmin;
+carregarPaypixAdmin = async function() {
+  await _origCarregarPaypixAdmin();
+  const ativo = (_ppCfg && _ppCfg.paypix_ativo !== false);
+  _atualizarBarraManutencao(ativo);
+};
 </script>
 </body>
 </html>

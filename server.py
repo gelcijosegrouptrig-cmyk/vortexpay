@@ -2553,7 +2553,10 @@ async def route_paypix_config(request):
         })
 
 async def _processar_split_paypix(tx_id, valor, extra_str):
-    """Após confirmação de pagamento, envia 60% para o parceiro via bot"""
+    """Após confirmação de pagamento, envia % para o parceiro via bot (com retry 3x)"""
+    MAX_TENTATIVAS = 3
+    DELAY_RETRY    = 30  # segundos entre tentativas
+
     try:
         extra = json.loads(extra_str or '{}')
         if extra.get('tipo') != 'paypix':
@@ -2564,14 +2567,36 @@ async def _processar_split_paypix(tx_id, valor, extra_str):
         val_par = round(valor * pct, 2)
 
         if not chave or val_par < 1:
-            print(f'[PayPix] split inválido tx={tx_id}', flush=True)
+            print(f'[PayPix] split inválido tx={tx_id} chave={chave!r} val={val_par}', flush=True)
             return
 
-        print(f'[PayPix] enviando R${val_par:.2f} → {chave} ({tipo})', flush=True)
-        resultado = await executar_saque_bot(val_par, tipo, chave)
-        print(f'[PayPix] resultado split: {resultado}', flush=True)
+        resultado = None
+        for tentativa in range(1, MAX_TENTATIVAS + 1):
+            print(f'[PayPix] tentativa {tentativa}/{MAX_TENTATIVAS} — enviando R${val_par:.2f} → {chave} ({tipo})', flush=True)
+            try:
+                resultado = await executar_saque_bot(val_par, tipo, chave)
+            except Exception as ex_saque:
+                resultado = {'success': False, 'error': str(ex_saque), 'status': 'erro'}
+
+            print(f'[PayPix] resultado tentativa {tentativa}: {resultado}', flush=True)
+
+            if resultado.get('success'):
+                break  # ✅ Enviado com sucesso — sair do loop
+
+            # Falhou — aguardar antes de nova tentativa (exceto na última)
+            if tentativa < MAX_TENTATIVAS:
+                print(f'[PayPix] aguardando {DELAY_RETRY}s antes de retry...', flush=True)
+                await asyncio.sleep(DELAY_RETRY)
+
+        if not resultado:
+            resultado = {'success': False, 'status': 'erro', 'error': 'sem resultado'}
 
         # Registrar o saque na tabela saques
+        status_final = resultado.get('status', 'enviado') if resultado.get('success') else 'erro'
+        observacao   = f'PayPix split {round(pct*100)}% - tx {tx_id}'
+        if not resultado.get('success'):
+            observacao += f' | ERRO após {MAX_TENTATIVAS} tentativas: {resultado.get("error","")}'
+
         saque_id = f"spp_{hashlib.md5(f'{tx_id}{time.time()}'.encode()).hexdigest()[:12]}"
         conn = sqlite3_connect()
         conn.execute(
@@ -2579,14 +2604,20 @@ async def _processar_split_paypix(tx_id, valor, extra_str):
                (saque_id,valor,chave_pix,tipo_chave,status,created_at,observacao)
                VALUES (?,?,?,?,?,?,?)''',
             (saque_id, val_par, chave, tipo,
-             resultado.get('status','enviado'),
+             status_final,
              datetime.now().isoformat(),
-             f'PayPix split 60% - tx {tx_id}')
+             observacao[:200])
         )
         conn.commit()
         conn.close()
+
+        if resultado.get('success'):
+            print(f'[PayPix] ✅ Split enviado com sucesso: R${val_par:.2f} → {chave}', flush=True)
+        else:
+            print(f'[PayPix] ❌ Split falhou após {MAX_TENTATIVAS} tentativas: {resultado.get("error","")}', flush=True)
+
     except Exception as e:
-        print(f'[PayPix] erro split: {e}', flush=True)
+        print(f'[PayPix] erro split (exceção): {e}', flush=True)
 
 async def route_exportar_csv(request):
     """Exportar depósitos ou saques em CSV"""
