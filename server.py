@@ -711,92 +711,98 @@ async def verificar_saldo_bot() -> float:
     return -1.0
 
 async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados=None):
-    # Se Telegram não está pronto, tenta conectar e espera até 15s
+    # Espera Telegram ficar pronto (até 30s)
+    for _ in range(30):
+        if _telegram_ready:
+            break
+        await asyncio.sleep(1)
     if not _telegram_ready:
-        for _ in range(15):
-            await asyncio.sleep(1)
-            if _telegram_ready:
-                break
-        if not _telegram_ready:
-            return {'success': False, 'error': 'Serviço temporariamente indisponível. Tente novamente.'}
+        return {'success': False, 'error': 'Serviço temporariamente indisponível. Tente novamente.'}
 
-    async with _lock:
-        try:
-            if not _telegram_ready:
-                return {'success': False, 'error': '⚠️ Sistema em manutenção. Tente novamente em alguns minutos.'}
+    # Lock com timeout de 120s para não bloquear para sempre
+    try:
+        await asyncio.wait_for(_lock.acquire(), timeout=120)
+    except asyncio.TimeoutError:
+        return {'success': False, 'error': 'Sistema ocupado. Tente novamente em instantes.'}
 
-            bot = await client.get_entity(BOT_USERNAME)
+    try:
+        bot = await client.get_entity(BOT_USERNAME)
 
-            # Sempre iniciar com /start para garantir estado limpo
-            await client.send_message(bot, '/start')
+        # Sempre iniciar com /start para garantir estado limpo
+        await client.send_message(bot, '/start')
+        await asyncio.sleep(2)
+
+        # Clicar DEPOSITAR
+        messages = await client.get_messages(bot, limit=5)
+        clicou = False
+        for msg in messages:
+            if msg.buttons:
+                for row in msg.buttons:
+                    for btn in row:
+                        if 'DEPOSITAR' in btn.text:
+                            await btn.click()
+                            await asyncio.sleep(2)
+                            clicou = True; break
+                    if clicou: break
+            if clicou: break
+
+        if not clicou:
+            return {'success': False, 'error': 'Botão DEPOSITAR não encontrado. Tente novamente.'}
+
+        # Enviar valor
+        valor_str = str(int(valor)) if valor == int(valor) else f"{valor:.2f}"
+        await client.send_message(bot, valor_str)
+
+        # Polling ativo — checar a cada 2s por até 40s
+        import datetime as _dt
+        hora_envio = _dt.datetime.now(_dt.timezone.utc)
+        for _ in range(20):
             await asyncio.sleep(2)
+            msgs = await client.get_messages(bot, limit=8)
+            for msg in msgs:
+                if not msg.text:
+                    continue
+                # Log para debug
+                if msg.date and (msg.date - hora_envio).total_seconds() > -5:
+                    print(f'🤖 Bot msg: {msg.text[:80]}', flush=True)
+                # Procurar código Pix na mensagem
+                if '00020101' in (msg.text or ''):
+                    text = msg.text
+                    pix_match = re.search(r'(00020101[^\s\n`]+)', text)
+                    pix_code = pix_match.group(1) if pix_match else None
+                    tx_match = re.search(r'txn_([a-f0-9]+)', text)
+                    tx_id = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
+                    val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', text)
+                    valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
+                    if pix_code:
+                        salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
+                        print(f'✅ Pix gerado: {tx_id} R${valor}', flush=True)
+                        return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
+                                'valor': f"R$ {valor_conf}", 'status': 'pendente'}
+                # Também checar pelo texto "PIX Copia e Cola"
+                if 'PIX Copia e Cola' in (msg.text or '') or 'Copia e Cola' in (msg.text or ''):
+                    text = msg.text
+                    pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', text)
+                    pix_code = pix_match.group(1) if pix_match else None
+                    tx_match = re.search(r'txn_([a-f0-9]+)', text)
+                    tx_id = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
+                    val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', text)
+                    valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
+                    if pix_code:
+                        salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
+                        print(f'✅ Pix gerado: {tx_id} R${valor}', flush=True)
+                        return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
+                                'valor': f"R$ {valor_conf}", 'status': 'pendente'}
 
-            # Clicar DEPOSITAR
-            messages = await client.get_messages(bot, limit=5)
-            clicou = False
-            for msg in messages:
-                if msg.buttons:
-                    for row in msg.buttons:
-                        for btn in row:
-                            if 'DEPOSITAR' in btn.text:
-                                await btn.click()
-                                await asyncio.sleep(2)
-                                clicou = True; break
-                        if clicou: break
-                if clicou: break
-
-            if not clicou:
-                return {'success': False, 'error': 'Botão DEPOSITAR não encontrado. Tente novamente.'}
-
-            # Enviar valor
-            valor_str = str(int(valor)) if valor == int(valor) else f"{valor:.2f}"
-            await client.send_message(bot, valor_str)
-
-            # Polling ativo — checar a cada 2s por até 40s
-            import datetime as _dt
-            hora_envio = _dt.datetime.now(_dt.timezone.utc)
-            for _ in range(20):
-                await asyncio.sleep(2)
-                msgs = await client.get_messages(bot, limit=8)
-                for msg in msgs:
-                    if not msg.text:
-                        continue
-                    # Log para debug
-                    if msg.date and (msg.date - hora_envio).total_seconds() > -5:
-                        print(f'🤖 Bot msg: {msg.text[:80]}', flush=True)
-                    # Procurar código Pix na mensagem
-                    if '00020101' in (msg.text or ''):
-                        text = msg.text
-                        pix_match = re.search(r'(00020101[^\s\n`]+)', text)
-                        pix_code = pix_match.group(1) if pix_match else None
-                        tx_match = re.search(r'txn_([a-f0-9]+)', text)
-                        tx_id = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
-                        val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', text)
-                        valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
-                        if pix_code:
-                            salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
-                            print(f'✅ Pix gerado: {tx_id} R${valor}', flush=True)
-                            return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
-                                    'valor': f"R$ {valor_conf}", 'status': 'pendente'}
-                    # Também checar pelo texto "PIX Copia e Cola"
-                    if 'PIX Copia e Cola' in (msg.text or '') or 'Copia e Cola' in (msg.text or ''):
-                        text = msg.text
-                        pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', text)
-                        pix_code = pix_match.group(1) if pix_match else None
-                        tx_match = re.search(r'txn_([a-f0-9]+)', text)
-                        tx_id = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
-                        val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', text)
-                        valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
-                        if pix_code:
-                            salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
-                            print(f'✅ Pix gerado: {tx_id} R${valor}', flush=True)
-                            return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
-                                    'valor': f"R$ {valor_conf}", 'status': 'pendente'}
-
-            return {'success': False, 'error': 'Bot demorou para responder. Tente novamente.'}
-        except Exception as e:
-            print(f'❌ Erro gerar_pix: {e}', flush=True)
-            return {'success': False, 'error': str(e)}
+        return {'success': False, 'error': 'Bot demorou para responder. Tente novamente.'}
+    except Exception as e:
+        print(f'❌ Erro gerar_pix: {e}', flush=True)
+        return {'success': False, 'error': str(e)}
+    finally:
+        try:
+            _lock.release()
+        except Exception:
+            pass
 
 # ─── MIDDLEWARE ────────────────────────────────────────────
 @web.middleware
