@@ -706,17 +706,37 @@ async function gerarPixSorteio() {
   document.getElementById('etapa-valor').style.display = 'none';
   document.getElementById('etapa-loading').classList.remove('hidden');
 
-  try {
-    const body = {valor};
-    if (participante_dados) {
-      body.participante_dados = participante_dados;
-    } else {
-      // Depósito adicional: enviar cliente_id pelo CPF
-      const cpf = localStorage.getItem('sorteio_cpf');
-      body.cliente_id = `cli_${cpf}`;
-    }
+  // Atualizar mensagem de loading
+  const loadingMsg = document.querySelector('#etapa-loading p');
+  if (loadingMsg) loadingMsg.textContent = '⏳ Gerando Pix... aguarde até 30s';
 
-    const r = await fetch(BASE + '/api/pix', {
+  const body = {valor};
+  if (participante_dados) {
+    body.participante_dados = participante_dados;
+  } else {
+    const cpf = localStorage.getItem('sorteio_cpf');
+    body.cliente_id = `cli_${cpf}`;
+  }
+
+  // Função fetch com timeout de 60s e retry automático
+  async function fetchComRetry(url, opts, tentativas=3) {
+    for (let i = 0; i < tentativas; i++) {
+      try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 60000); // 60s timeout
+        const r = await fetch(url, {...opts, signal: ctrl.signal});
+        clearTimeout(tid);
+        return r;
+      } catch(e) {
+        if (i === tentativas-1) throw e;
+        if (loadingMsg) loadingMsg.textContent = `⏳ Tentativa ${i+2}/3... aguarde`;
+        await new Promise(res => setTimeout(res, 3000));
+      }
+    }
+  }
+
+  try {
+    const r = await fetchComRetry(BASE + '/api/pix', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(body)
@@ -745,7 +765,7 @@ async function gerarPixSorteio() {
   } catch(e) {
     document.getElementById('etapa-loading').classList.add('hidden');
     document.getElementById('etapa-valor').style.display = 'block';
-    alert('❌ Erro de conexão. Tente novamente.');
+    alert('❌ Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.');
   }
 }
 
