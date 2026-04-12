@@ -901,51 +901,72 @@ async def _auto_login_telegram():
 
         phone_code_hash = sent.phone_code_hash
         temp_session = temp_client.session.save()
-        print('🤖 [AutoLogin] Código solicitado! Aguardando 30s para chegar...', flush=True)
+        print('🤖 [AutoLogin] Código solicitado! Aguardando 35s para chegar...', flush=True)
 
         # ── Passo 2: aguardar a mensagem chegar no Telegram ────────────
-        await asyncio.sleep(30)
+        await asyncio.sleep(35)
 
-        # ── Passo 3: usar o CLIENT PRINCIPAL (que ainda tem sessão lida)
-        # para ler as mensagens recentes do Telegram (serviceNotifications)
+        # ── Passo 3: ler mensagens usando sessão do DB (mais recente) ──
+        # Estratégia em cascata: DB → SESSION_STR → sem leitura
         codigo = None
-        try:
-            # Tenta com o cliente principal se ele ainda consegue conectar
-            main_tmp = TelegramClient(SS(SESSION_STR), API_ID, API_HASH)
-            await main_tmp.connect()
-            if await main_tmp.is_user_authorized():
-                print('🤖 [AutoLogin] Lendo mensagens do Telegram...', flush=True)
-                # Telegram envia código via "Telegram" (777000) ou serviceNotifications
-                from telethon.tl.types import InputPeerUser
-                async for msg in main_tmp.iter_messages('777000', limit=5):
-                    txt = msg.message or ''
-                    # Procurar código de 5 dígitos no texto
-                    m = re_al.search(r'\b(\d{5})\b', txt)
-                    if m:
-                        codigo = m.group(1)
-                        print(f'🤖 [AutoLogin] Código encontrado: {codigo} (msg: {txt[:60]})', flush=True)
-                        break
+        sessoes_tentar = []
 
-                # Se não achou em 777000, tenta nas últimas msgs da conta
-                if not codigo:
-                    async for msg in main_tmp.iter_messages('Telegram', limit=10):
+        # 1) Tentar sessão do banco (mais recente/válida)
+        try:
+            import psycopg2 as _pg2
+            _pg_conn = _pg2.connect(DATABASE_URL)
+            _cur = _pg_conn.cursor()
+            _cur.execute("SELECT valor FROM configuracoes WHERE chave='telegram_session'")
+            _row = _cur.fetchone()
+            _pg_conn.close()
+            if _row and _row[0] and len(_row[0]) > 100:
+                sessoes_tentar.append(('DB', _row[0]))
+        except:
+            pass
+
+        # 2) Sessão do env/arquivo
+        if SESSION_STR and len(SESSION_STR) > 100:
+            sessoes_tentar.append(('env', SESSION_STR))
+
+        for origem, sess_str in sessoes_tentar:
+            if codigo:
+                break
+            try:
+                print(f'🤖 [AutoLogin] Tentando ler mensagens com sessão {origem}...', flush=True)
+                leitor = TelegramClient(SS(sess_str), API_ID, API_HASH)
+                await leitor.connect()
+                if await leitor.is_user_authorized():
+                    # Tenta 777000 (notificações do Telegram)
+                    async for msg in leitor.iter_messages(777000, limit=5):
                         txt = msg.message or ''
                         m = re_al.search(r'\b(\d{5})\b', txt)
                         if m:
                             codigo = m.group(1)
-                            print(f'🤖 [AutoLogin] Código (Telegram): {codigo}', flush=True)
+                            print(f'🤖 [AutoLogin] ✅ Código [{origem}]: {codigo}', flush=True)
                             break
-
-                await main_tmp.disconnect()
-            else:
-                await main_tmp.disconnect()
-                print('🤖 [AutoLogin] Cliente principal sem autorização, não lê mensagens', flush=True)
-        except Exception as e_read:
-            print(f'🤖 [AutoLogin] Erro ao ler mensagens: {e_read}', flush=True)
+                    # Fallback: busca em todas as mensagens recentes
+                    if not codigo:
+                        async for msg in leitor.iter_messages(limit=20):
+                            txt = msg.message or ''
+                            if 'login' in txt.lower() or 'código' in txt.lower() or 'code' in txt.lower():
+                                m = re_al.search(r'\b(\d{5})\b', txt)
+                                if m:
+                                    codigo = m.group(1)
+                                    print(f'🤖 [AutoLogin] ✅ Código busca geral [{origem}]: {codigo}', flush=True)
+                                    break
+                    await leitor.disconnect()
+                else:
+                    await leitor.disconnect()
+                    print(f'🤖 [AutoLogin] Sessão {origem} sem autorização', flush=True)
+            except Exception as e_read:
+                print(f'🤖 [AutoLogin] Erro sessão {origem}: {e_read}', flush=True)
 
         if not codigo:
-            print('🤖 [AutoLogin] ❌ Código não encontrado nas mensagens! Aguardando próximo ciclo.', flush=True)
-            await temp_client.disconnect()
+            print('🤖 [AutoLogin] ❌ Código não encontrado! Sistema aguardará próximo ciclo (3min).', flush=True)
+            try:
+                await temp_client.disconnect()
+            except:
+                pass
             _auto_login_em_progresso = False
             return False
 
