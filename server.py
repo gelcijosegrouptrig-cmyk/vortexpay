@@ -1726,6 +1726,31 @@ async def route_health(request):
         'webhook': '/webhook/confirmar',
     })
 
+async def route_debug_pix(request):
+    """Endpoint de diagnóstico - testa DBConn e INSERT diretamente"""
+    import traceback, time
+    resultado = {}
+    try:
+        resultado['USE_PG'] = _USE_PG
+        resultado['DATABASE_URL_set'] = bool(DATABASE_URL)
+        # Testar conexão
+        conn = sqlite3_connect()
+        resultado['sqlite3_connect'] = 'OK'
+        # Testar INSERT
+        tx_test = f'debug_{int(time.time())}'
+        conn.execute('INSERT OR IGNORE INTO transacoes (tx_id,valor,cliente_id,status,created_at,extra) VALUES (?,?,?,?,?,?)',
+                    (tx_test, 1.0, 'debug', 'teste', '2025-01-01', None))
+        conn.commit()
+        conn.close()
+        resultado['INSERT'] = 'OK'
+        resultado['tx_test'] = tx_test
+        resultado['success'] = True
+    except Exception as e:
+        resultado['error'] = str(e)
+        resultado['traceback'] = traceback.format_exc()
+        resultado['success'] = False
+    return web.json_response(resultado)
+
 async def route_pix(request):
     try:
         data = await request.json()
@@ -2548,6 +2573,7 @@ async def main():
     app.router.add_get('/api/status', route_health)
     app.router.add_post('/api/pix', route_pix)
     app.router.add_get('/api/pix/status/{tx_id}', route_pix_status)
+    app.router.add_get('/api/debug-pix', route_debug_pix)
     app.router.add_route('OPTIONS', '/api/pix', lambda r: web.Response(status=200))
     app.router.add_get('/api/status/{tx_id}', route_status_tx)
     app.router.add_get('/api/transacoes', route_transacoes)
