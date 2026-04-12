@@ -335,6 +335,24 @@ body{
 </head>
 <body>
 
+<!-- TELA DE SENHA -->
+<div id="tela-senha" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#0f0f1a;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border:1px solid #ff6b3333;border-radius:24px;padding:36px 28px;width:100%;max-width:380px;text-align:center;box-shadow:0 0 40px rgba(255,107,51,0.15);">
+    <div style="width:72px;height:72px;background:linear-gradient(135deg,#ff6b33,#ff3366);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px;box-shadow:0 0 30px rgba(255,107,51,0.4);">🔐</div>
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;letter-spacing:1px;">PAYNEXBET</h2>
+    <p style="font-size:13px;color:#888;margin-bottom:28px;">Digite a senha para acessar o saque</p>
+    <input id="input-senha" type="password" placeholder="••••••••"
+      style="width:100%;padding:16px;background:#ffffff0d;border:2px solid #ffffff15;border-radius:14px;color:#fff;font-size:20px;text-align:center;letter-spacing:6px;outline:none;margin-bottom:12px;"
+      onkeydown="if(event.key==='Enter') verificarSenha()"
+      oninput="document.getElementById('msg-senha-err').style.display='none'"/>
+    <div id="msg-senha-err" style="display:none;color:#ff4466;font-size:13px;margin-bottom:10px;">❌ Senha incorreta. Tente novamente.</div>
+    <button onclick="verificarSenha()"
+      style="width:100%;padding:16px;background:linear-gradient(135deg,#ff6b33,#ff3366);border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:800;cursor:pointer;letter-spacing:1px;box-shadow:0 4px 20px rgba(255,107,51,0.4);">
+      🔓 ENTRAR
+    </button>
+  </div>
+</div>
+
 <div class="card">
   <div class="logo">
     <div class="logo-icon">📤</div>
@@ -810,9 +828,25 @@ function novoSaque() {
   carregarSaldo();
 }
 
+// ======= SENHA DE ACESSO =======
+const SENHA_SAQUE = 'paynex2024';
+
+function verificarSenha() {
+  const input = document.getElementById('input-senha').value;
+  if (input === SENHA_SAQUE) {
+    document.getElementById('tela-senha').style.display = 'none';
+    carregarSaldo();
+  } else {
+    document.getElementById('msg-senha-err').style.display = 'block';
+    document.getElementById('input-senha').value = '';
+    document.getElementById('input-senha').focus();
+  }
+}
+
 // ======= INIT =======
 window.addEventListener('DOMContentLoaded', () => {
-  carregarSaldo();
+  // Não carrega saldo até passar pela senha
+  document.getElementById('input-senha').focus();
 });
 </script>
 </body>
