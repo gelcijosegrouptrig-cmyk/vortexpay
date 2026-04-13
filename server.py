@@ -306,6 +306,8 @@ def init_db():
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_pct REAL DEFAULT 0.6",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_ativo INTEGER DEFAULT 1",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_descricao TEXT DEFAULT 'Gere seu Pix e receba sua % do valor'",
+                # Corrigir valor_por_numero se ainda estiver com valor errado de migração anterior
+                "UPDATE sorteio_config SET valor_por_numero=5.0 WHERE id=1 AND valor_por_numero=10.0",
             ]
             for mig_sql in pg_migrations:
                 try:
