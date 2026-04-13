@@ -640,6 +640,7 @@
             <div class="metric-label">Saldo Atual</div>
             <div class="metric-value" id="m-saldo">—</div>
             <div class="metric-sub" id="m-disponivel">Disponível para saque</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px" id="m-saldo-hora">clique 🔄 para atualizar</div>
           </div>
           <div class="metric-card green">
             <div class="metric-icon">📥</div>
@@ -715,9 +716,16 @@
       <div id="tab-carteira" class="tab-content">
         <div class="wallet-grid">
           <div class="wallet-main">
-            <div class="label">Saldo Total</div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div class="label">Saldo Total</div>
+              <button onclick="loadSaldo()" title="Buscar saldo real do bot Telegram agora"
+                style="background:var(--primary);border:none;border-radius:8px;padding:4px 10px;color:#fff;font-size:12px;cursor:pointer;font-weight:600">
+                🔄 Atualizar Saldo
+              </button>
+              <span id="saldo-bot-status" style="font-size:11px;color:var(--text3)"></span>
+            </div>
             <div class="valor" id="w-saldo">R$ —</div>
-            <div class="sub">VortexBank Digital</div>
+            <div class="sub">VortexBank Digital — <span style="font-size:11px;color:var(--text3)">auto-refresh desativado para proteger o bot</span></div>
             <div class="wallet-account">
               Conta: <span id="w-conta">Carregando...</span>
             </div>
@@ -1657,8 +1665,8 @@ async function fazerLogin() {
       sessionStorage.setItem('vp_secret', secret);
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('admin-screen').style.display = 'block';
-      loadAll();
-      setInterval(loadAll, 30000);
+      loadAllComSaldo(); // primeira carga: busca saldo real do bot
+      setInterval(loadAll, 30000); // auto-refresh 30s: só health + stats (sem Telegram)
     } else {
       document.getElementById('login-error').textContent = '❌ Senha incorreta. Tente novamente.';
     }
@@ -1725,6 +1733,15 @@ function toast(msg, type = 'success') {
 //  LOAD ALL
 // ═══════════════════════════════════════════════
 async function loadAll() {
+  document.getElementById('last-update').textContent = '🔄 Atualizando...';
+  // ⚡ loadSaldo com saldo bot FORA do loop automático — evita sobrecarga no Telegram
+  // O saldo do bot só é buscado via botão manual ou na primeira carga
+  await Promise.all([loadHealth(), loadStats()]);
+  document.getElementById('last-update').textContent = '⏱ ' + new Date().toLocaleTimeString('pt-BR');
+}
+
+async function loadAllComSaldo() {
+  // Carga completa: health + stats + saldo real do bot (uso manual ou login)
   document.getElementById('last-update').textContent = '🔄 Atualizando...';
   await Promise.all([loadHealth(), loadStats(), loadSaldo()]);
   document.getElementById('last-update').textContent = '⏱ ' + new Date().toLocaleTimeString('pt-BR');
@@ -1863,11 +1880,19 @@ async function loadSaldo() {
     // ── Dashboard card ──
     document.getElementById('m-saldo').textContent       = fmt(saldoBot);
     document.getElementById('m-disponivel').textContent  = `Disponível: ${fmt(disponivelBot)}`;
+    const horaEl = document.getElementById('m-saldo-hora');
+    if (horaEl) horaEl.textContent = `atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
 
     // ── Carteira — cabeçalho ──
     document.getElementById('w-saldo').textContent       = fmt(saldoBot);
     document.getElementById('w-disponivel').textContent  = fmt(disponivelBot);
     document.getElementById('w-conta').textContent       = '5956000812 (bin cash)';
+    // Mostrar horário da última consulta real ao bot
+    const statusEl = document.getElementById('saldo-bot-status');
+    if (statusEl) {
+      const fonte = saldoBotReal !== null ? '✅ bot Telegram' : '⚠️ banco local';
+      statusEl.textContent = `${fonte} · ${new Date().toLocaleTimeString('pt-BR')}`;
+    }
     document.getElementById('w-depositado').textContent  = fmt(dep.valor_recebido || d.total_depositado || 0);
     document.getElementById('w-sacado').textContent      = fmt(saq.valor_sacado   || d.total_sacado    || 0);
 
