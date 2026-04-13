@@ -2153,11 +2153,14 @@ async def route_sorteio_config(request):
             ]:
                 try: cur.execute(mig)
                 except Exception: pass
+            # UPDATE com commit explícito
+            pg.autocommit = False
             cur.execute('''UPDATE sorteio_config SET
                 ativo=%s, valor_por_numero=%s, percentual=%s, usar_media=%s, dias_media=%s,
                 premio_fixo=%s, descricao=%s, proximo_sorteio=%s, updated_at=%s,
                 acumulativo=%s, min_participantes=%s
                 WHERE id=1''', params)
+            pg.commit()
             pg.close()
         else:
             conn = sqlite3_connect()
@@ -2517,8 +2520,10 @@ async def route_db_migrate(request):
         "UPDATE sorteio_config SET min_participantes=5, acumulativo=1, percentual=50 WHERE id=1",
     ]
     try:
-        import os, psycopg2
-        pg = psycopg2.connect(os.environ['DATABASE_URL'])
+        import psycopg2
+        if not DATABASE_URL:
+            return web.json_response({'success': False, 'error': 'DATABASE_URL não configurada'})
+        pg = psycopg2.connect(DATABASE_URL)
         pg.autocommit = True
         cur = pg.cursor()
         for sql in migrations:
@@ -2989,7 +2994,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260414-ACUM-v15',
+        'version': 'v20260414-ACUM-v16',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -4213,7 +4218,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260414-ACUM-v15',
+            'version': 'v20260414-ACUM-v16',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
