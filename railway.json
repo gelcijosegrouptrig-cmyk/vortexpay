@@ -11,5 +11,6 @@
     "restartPolicyMaxRetries": 5
   },
   "_rebuild": "20260413132213",
-  "rebuildTimestamp": "20260413160004"
+  "rebuildTimestamp": "20260413160152",
+  "forceRebuild": true
 }
