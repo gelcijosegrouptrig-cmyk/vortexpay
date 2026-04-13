@@ -176,20 +176,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   </div>
 
   <!-- STATS -->
-  <div class="divider"><span>Números da plataforma</span></div>
+  <div class="divider"><span>🏆 Prêmio atual do sorteio</span></div>
 
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-val" id="s-part">--</div>
-      <div class="stat-lbl">Participantes</div>
-    </div>
+  <div class="stats-grid" style="grid-template-columns:1fr 1fr">
     <div class="stat-card">
       <div class="stat-val" id="s-premio">--</div>
-      <div class="stat-lbl">Prêmio acumulado</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-val" id="s-bil">--</div>
-      <div class="stat-lbl">Bilhetes ativos</div>
+      <div class="stat-lbl">🏆 Prêmio estimado</div>
     </div>
     <div class="stat-card">
       <div class="stat-val">R$5</div>
@@ -244,10 +236,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     const r=await fetch('/api/sorteio/info');
     const d=await r.json();
     const s=d.sorteio;
-    document.getElementById('s-part').textContent=s.total_participantes||0;
-    document.getElementById('s-bil').textContent=s.total_bilhetes||0;
     const p=s.premio_estimado_total||0;
-    document.getElementById('s-premio').textContent='R$'+p.toFixed(0);
+    const elP=document.getElementById('s-premio');
+    if(elP) elP.textContent='R$'+p.toFixed(2).replace('.',',');
   }catch(e){}
 })();
 </script>
