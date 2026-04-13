@@ -13,10 +13,11 @@
   .logo h1{font-size:1.7rem;font-weight:800;color:#FFD700;letter-spacing:1px}
   .logo p{color:#aaa;font-size:.85rem;margin-top:4px}
 
-  .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;padding:24px;width:100%;max-width:420px;display:flex;flex-direction:column;align-items:flex-start}
+  .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;padding:24px;width:100%;max-width:420px;display:flex;flex-direction:column;align-items:stretch}
 
-  /* Badge ativo */
-  .badge{display:inline-flex;align-items:center;gap:6px;background:#1a3a1a;border:1px solid #2d6a2d;color:#4ade80;border-radius:20px;padding:5px 14px;font-size:.78rem;font-weight:600;margin-bottom:18px}
+  /* Topo do card: badge + dots na mesma linha */
+  .card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:#1a3a1a;border:1px solid #2d6a2d;color:#4ade80;border-radius:20px;padding:5px 14px;font-size:.78rem;font-weight:600;margin:0}
   .badge span{width:8px;height:8px;background:#4ade80;border-radius:50%;animation:pulse 1.5s infinite}
   .badge.inativo{background:#2a1a1a;border-color:#6a2d2d;color:#f87171}
   .badge.inativo span{background:#f87171;animation:none}
@@ -80,7 +81,7 @@
 
   .info-tip{font-size:.75rem;color:#666;text-align:center;margin-top:14px;line-height:1.5}
 
-  .steps-header{display:flex;gap:8px;margin-bottom:20px;justify-content:center;width:100%}
+  .steps-header{display:flex;gap:8px;justify-content:flex-end;margin:0}
   .step-dot{width:28px;height:6px;border-radius:3px;background:#2a2a2a;transition:.3s}
   .step-dot.active{background:#FFD700}
   .step-dot.done{background:#4ade80}
@@ -97,20 +98,21 @@
 </div>
 
 <div class="card">
-  <div class="badge" id="badge-status"><span></span> <span id="badge-txt">Sistema ativo</span></div>
+  <!-- Topo: badge + dots na mesma linha reta -->
+  <div class="card-top">
+    <div class="badge" id="badge-status"><span></span> <span id="badge-txt">Sistema ativo</span></div>
+    <div class="steps-header" id="steps-header">
+      <div class="step-dot active" id="dot1"></div>
+      <div class="step-dot" id="dot2"></div>
+      <div class="step-dot" id="dot3"></div>
+    </div>
+  </div>
 
   <!-- Banner manutenção (oculto por padrão) -->
   <div class="manutencao-banner" id="manutencao-banner" style="display:none">
     <div class="ico">🔧</div>
     <h2>Sistema em Manutenção</h2>
     <p>O PayPix está temporariamente fora do ar para melhorias.<br>Volte em breve!</p>
-  </div>
-
-  <!-- indicador de etapas -->
-  <div class="steps-header" id="steps-header" style="margin-top:10px">
-    <div class="step-dot active" id="dot1"></div>
-    <div class="step-dot" id="dot2"></div>
-    <div class="step-dot" id="dot3"></div>
   </div>
 
   <!-- ─── ETAPA 1: formulário ─── -->
