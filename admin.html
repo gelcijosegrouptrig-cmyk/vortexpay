@@ -1835,18 +1835,28 @@ async function tgSolicitarCodigo() {
 // ═══════════════════════════════════════════════
 async function loadSaldo() {
   try {
-    // Buscar saldo local e stats em paralelo
-    const [rSaldo, rStats] = await Promise.all([
+    // Buscar saldo local, stats e saldo real do bot em paralelo
+    const [rSaldo, rStats, rBot] = await Promise.all([
       fetch(`${BASE}/api/saldo`),
-      fetch(`${BASE}/api/stats?secret=${encodeURIComponent(SECRET())}`)
+      fetch(`${BASE}/api/stats?secret=${encodeURIComponent(SECRET())}`),
+      fetch(`${BASE}/api/saldo/bot?secret=${encodeURIComponent(SECRET())}`).catch(() => null)
     ]);
     const d    = await rSaldo.json();
     const dSt  = rStats.ok ? await rStats.json() : {};
+    const dBot = (rBot && rBot.ok) ? await rBot.json() : {};
     const dep  = dSt.depositos || {};
     const saq  = dSt.saques    || {};
 
-    saldoBot      = d.saldo      || 0;
-    disponivelBot = d.disponivel || 0;
+    // Saldo local (base de cálculo contábil)
+    const saldoLocal     = d.saldo      || 0;
+    const disponivelLocal = d.disponivel || 0;
+
+    // Saldo real do bot (se disponível)
+    const saldoBotReal = (dBot.success && dBot.saldo_bot >= 0) ? dBot.saldo_bot : null;
+
+    // Usar saldo real do bot para exibição principal, fallback para local
+    saldoBot      = saldoBotReal !== null ? saldoBotReal : saldoLocal;
+    disponivelBot = saldoBotReal !== null ? saldoBotReal : disponivelLocal;
 
     const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
 
@@ -1863,11 +1873,11 @@ async function loadSaldo() {
 
     // ── Resumo financeiro completo ──
     const depFull = {
-      valor_recebido: dep.valor_recebido || d.total_depositado || 0,
-      valor_pendente: dep.valor_pendente || d.depositos_pendentes || 0,
-      total:          dep.confirmados    || dep.total || 0,
-      qtd_total:      dep.total          || 0,
-      qtd_confirmados: dep.confirmados   || 0,
+      valor_recebido:  dep.valor_recebido || d.total_depositado  || 0,
+      valor_pendente:  dep.valor_pendente || d.depositos_pendentes || 0,
+      total:           dep.confirmados    || dep.total || 0,
+      qtd_total:       dep.total          || 0,
+      qtd_confirmados: dep.confirmados    || 0,
     };
     const saqFull = {
       valor_sacado:   saq.valor_sacado   || d.total_sacado    || 0,
@@ -1876,7 +1886,7 @@ async function loadSaldo() {
       qtd_total:      saq.total          || 0,
       qtd_realizados: saq.realizados     || 0,
     };
-    renderResumoFinanceiro(depFull, saqFull);
+    renderResumoFinanceiro(depFull, saqFull, saldoBotReal, saldoLocal);
 
   } catch(e) { console.error('loadSaldo:', e); }
 }
@@ -1920,7 +1930,7 @@ async function loadStats() {
     renderGrafico(dep.por_dia || [], saq.por_dia || []);
 
     // Resumo financeiro carteira
-    renderResumoFinanceiro(dep, saq);
+    renderResumoFinanceiro(dep, saq, null, null);
 
     // Tabelas recentes dashboard
     renderDepositosRecentes();
@@ -2066,19 +2076,32 @@ async function loadSaques() {
   } catch(e) {}
 }
 
-function renderResumoFinanceiro(dep, saq) {
+function renderResumoFinanceiro(dep, saq, saldoBotReal, saldoLocal) {
   const fmt = v => '<strong style="color:var(--text)">R$ ' + (v||0).toFixed(2).replace('.',',') + '</strong>';
-  const qtdDep = dep.qtd_confirmados || dep.total || 0;
-  const qtdSaq = dep.qtd_realizados  || saq.qtd_realizados || saq.total || 0;
+  const fmtG = v => '<strong style="color:var(--green)">R$ ' + (v||0).toFixed(2).replace('.',',') + '</strong>';
+  const fmtR = v => '<strong style="color:var(--red)">R$ ' + (v||0).toFixed(2).replace('.',',') + '</strong>';
+  const fmtY = v => '<strong style="color:var(--yellow)">R$ ' + (v||0).toFixed(2).replace('.',',') + '</strong>';
+
+  // Resultado líquido = depositado - sacado
+  const resultado = (dep.valor_recebido||0) - (saq.valor_sacado||0);
+  const resultadoHtml = resultado >= 0 ? fmtG(resultado) : fmtR(Math.abs(resultado));
+
+  // Linha de saldo bot real (se disponível) ou saldo local
+  const linhaSaldoBot = saldoBotReal !== null && saldoBotReal !== undefined
+    ? `<tr><td style="color:var(--text2);padding:13px 20px">💰 Saldo Real (bot Telegram)</td><td style="padding:13px 20px">${fmtG(saldoBotReal)}</td></tr>
+       <tr><td style="color:var(--text2);padding:13px 20px">📊 Saldo Contábil (banco local)</td><td style="padding:13px 20px">${fmt(saldoLocal || saldoBot)}</td></tr>`
+    : `<tr><td style="color:var(--text2);padding:13px 20px">💰 Saldo (banco local)</td><td style="padding:13px 20px">${fmt(saldoBot)}</td></tr>`;
+
   document.getElementById('table-resumo-financeiro').innerHTML = `
-    <tr><td style="color:var(--text2);padding:13px 20px">Saldo na conta (bot)</td><td style="padding:13px 20px">${fmt(saldoBot)}</td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Disponível para saque</td><td style="padding:13px 20px"><strong style="color:var(--green)">R$ ${(disponivelBot||0).toFixed(2).replace('.',',')}</strong></td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Depósitos confirmados</td><td style="padding:13px 20px">${fmt(dep.valor_recebido||0)}</td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Depósitos pendentes</td><td style="padding:13px 20px"><strong style="color:var(--yellow)">R$ ${(dep.valor_pendente||0).toFixed(2).replace('.',',')}</strong></td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Saques realizados</td><td style="padding:13px 20px"><strong style="color:var(--red)">R$ ${(saq.valor_sacado||0).toFixed(2).replace('.',',')}</strong></td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Saques pendentes</td><td style="padding:13px 20px"><strong style="color:var(--yellow)">R$ ${(saq.valor_pendente||0).toFixed(2).replace('.',',')}</strong></td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Qtd. depósitos confirmados</td><td style="padding:13px 20px"><strong>${dep.qtd_confirmados || dep.total || 0} transações</strong></td></tr>
-    <tr><td style="color:var(--text2);padding:13px 20px">Qtd. saques realizados</td><td style="padding:13px 20px"><strong>${saq.qtd_realizados || saq.total || 0} saques</strong></td></tr>
+    ${linhaSaldoBot}
+    <tr><td style="color:var(--text2);padding:13px 20px">✅ Disponível para saque</td><td style="padding:13px 20px">${fmtG(disponivelBot)}</td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">📥 Depósitos confirmados</td><td style="padding:13px 20px">${fmt(dep.valor_recebido||0)}</td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">⏳ Depósitos pendentes</td><td style="padding:13px 20px">${fmtY(dep.valor_pendente||0)}</td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">📤 Saques realizados</td><td style="padding:13px 20px">${fmtR(saq.valor_sacado||0)}</td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">⏳ Saques pendentes</td><td style="padding:13px 20px">${fmtY(saq.valor_pendente||0)}</td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">🔢 Qtd. depósitos confirmados</td><td style="padding:13px 20px"><strong>${dep.qtd_confirmados || dep.total || 0} transações</strong></td></tr>
+    <tr><td style="color:var(--text2);padding:13px 20px">🔢 Qtd. saques realizados</td><td style="padding:13px 20px"><strong>${saq.qtd_realizados || saq.total || 0} saques</strong></td></tr>
+    <tr style="border-top:2px solid var(--border)"><td style="color:var(--text2);padding:13px 20px;font-weight:700">📊 Resultado líquido</td><td style="padding:13px 20px">${resultadoHtml}</td></tr>
   `;
 }
 

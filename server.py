@@ -1650,19 +1650,41 @@ async def conectar_telegram():
 
 # ─── GERAR PIX - Garante conexão antes de gerar ────────────
 async def verificar_saldo_bot() -> float:
-    """Consulta saldo atual no bot"""
+    """Consulta saldo atual no bot clicando em CARTEIRA"""
     try:
         bot = await client.get_entity(BOT_USERNAME)
+        # Enviar /start e clicar em CARTEIRA
         await client.send_message(bot, '/start')
-        await asyncio.sleep(3)
-        msgs = await client.get_messages(bot, limit=3)
+        await asyncio.sleep(2)
+        msgs = await client.get_messages(bot, limit=5)
+        # Tentar clicar no botão CARTEIRA
         for msg in msgs:
-            if msg.text and 'Saldo Disponível' in msg.text:
-                m = re.search(r'Saldo Disponível[^`]*`R\$\s*([\d,.]+)`', msg.text)
-                if m:
-                    return float(m.group(1).replace(',', '.'))
-    except:
-        pass
+            if msg.buttons:
+                for row in msg.buttons:
+                    for btn in row:
+                        if 'CARTEIRA' in (btn.text or '').upper():
+                            await btn.click()
+                            await asyncio.sleep(3)
+                            break
+        # Ler resposta com saldo
+        msgs2 = await client.get_messages(bot, limit=5)
+        for msg in msgs2:
+            if not msg.text:
+                continue
+            # Padrão: 💰 Saldo Atual: R$ 10.38
+            m = re.search(r'Saldo Atual[:\s]*R\$\s*([\d,.]+)', msg.text)
+            if m:
+                return float(m.group(1).replace(',', '.'))
+            # Padrão alternativo: Saldo Disponível `R$ 10,38`
+            m2 = re.search(r'Saldo[^`\n]*[`:]\s*R\$\s*([\d,.]+)', msg.text)
+            if m2:
+                return float(m2.group(1).replace(',', '.'))
+            # Padrão direto: R$ 10.38 após saldo
+            m3 = re.search(r'💰[^\n]*R\$\s*([\d,.]+)', msg.text)
+            if m3:
+                return float(m3.group(1).replace(',', '.'))
+    except Exception as e:
+        print(f'[saldo_bot] erro: {e}', flush=True)
     return -1.0
 
 async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados=None, tx_id_override=None):
@@ -3769,6 +3791,22 @@ async def route_saque_page(request):
 async def route_admin_page(request):
     return web.Response(text=load_admin_html(), content_type='text/html', charset='utf-8')
 
+async def route_saldo_bot(request):
+    """Consulta saldo real do bot Telegram em tempo real."""
+    # Verificar autenticação
+    secret = request.headers.get('X-PaynexBet-Secret') or request.rel_url.query.get('secret', '')
+    if secret != WEBHOOK_SECRET:
+        return web.json_response({'success': False, 'error': 'Não autorizado'}, status=401)
+    try:
+        saldo = await verificar_saldo_bot()
+        if saldo >= 0:
+            return web.json_response({'success': True, 'saldo_bot': saldo, 'fonte': 'telegram'})
+        else:
+            return web.json_response({'success': False, 'saldo_bot': -1, 'error': 'Não foi possível obter saldo do bot'})
+    except Exception as e:
+        return web.json_response({'success': False, 'saldo_bot': -1, 'error': str(e)})
+
+
 async def route_saldo(request):
     """Retorna saldo calculado localmente (depósitos confirmados - saques realizados)
     Evita FloodWait do Telegram consultando apenas o banco de dados."""
@@ -4740,6 +4778,7 @@ async def main():
     # Rota /pague — gerar Pix (abre modal automaticamente)
     app.router.add_get('/pague', route_pague)           # paynexbet.com/pague
     app.router.add_get('/api/saldo', route_saldo)
+    app.router.add_get('/api/saldo/bot', route_saldo_bot)
     app.router.add_post('/api/saque', route_solicitar_saque)
     app.router.add_route('OPTIONS', '/api/saque', lambda r: web.Response(status=200))
     app.router.add_get('/api/saques', route_saques_admin)
