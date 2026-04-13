@@ -161,13 +161,27 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
   <div id="tab-meus">
 
     <!-- PRÊMIO DESTAQUE (sempre visível) -->
-    <div style="background:linear-gradient(135deg,#1a0a00,#2a1400);border:2px solid #FFD70055;border-radius:16px;padding:14px 12px;text-align:center;margin-bottom:14px">
+    <div style="background:linear-gradient(135deg,#1a0a00,#2a1400);border:2px solid #FFD70055;border-radius:16px;padding:16px 14px;text-align:center;margin-bottom:14px">
       <div style="font-size:11px;color:#FFD700;font-weight:700;letter-spacing:1px;margin-bottom:6px">🏆 PRÊMIO DO SORTEIO</div>
-      <div id="home-premio" style="font-size:34px;font-weight:900;color:#FFD700;font-family:monospace;line-height:1.1;text-shadow:0 0 20px #FFD70066">R$ --</div>
-      <div id="home-acumulado-label" style="font-size:12px;color:#FFD700;margin-top:5px;display:block;background:#FFD70015;border-radius:8px;padding:4px 10px">🔥 Prêmio acumulado: <strong>R$ <span id="home-acum-valor">0,00</span></strong> de rodadas anteriores</div>
+      <div id="home-premio" style="font-size:38px;font-weight:900;color:#FFD700;font-family:monospace;line-height:1.1;text-shadow:0 0 20px #FFD70066">R$ --</div>
+      <div style="font-size:11px;color:#aaa;margin-top:4px;margin-bottom:10px">💸 Valor exato enviado via Pix ao ganhador</div>
+
+      <!-- Breakdown: acumulado sempre visível -->
+      <div style="background:#ffffff08;border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:12px;text-align:left">
+        <div id="home-acum-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="color:#FFD700">🔥 Acumulado de rodadas anteriores</span>
+          <span id="home-acum-valor" style="color:#FFD700;font-weight:700">R$ 0,00</span>
+        </div>
+        <div style="border-top:1px solid #ffffff15;padding-top:6px;display:flex;justify-content:space-between;align-items:center">
+          <span style="color:#fff;font-weight:700">🏆 Total do prêmio</span>
+          <span id="home-total-label" style="color:#FFD700;font-weight:900">R$ --</span>
+        </div>
+      </div>
+
       <!-- Base oculto (hidden) -->
+      <div id="home-acumulado-label" style="display:none"></div>
       <div id="home-base-label" style="display:none"><span id="home-base-val">R$ --</span><span id="home-pct-label">50</span></div>
-      <div style="font-size:11px;color:#aaa;margin-top:3px">💸 Enviado via Pix ao ganhador na hora</div>
+
       <div id="home-proxdata" style="display:none;margin-top:6px;font-size:11px;color:#FFD700">📅 Próximo sorteio: <span id="home-proxdata-val">--</span></div>
       <!-- Mini countdown na home -->
       <div id="home-cdown" style="margin-top:8px;display:flex;justify-content:center;gap:10px">
@@ -552,11 +566,15 @@ async function carregarInfo() {
     const elHomeBil     = document.getElementById('home-bilhetes');
     const elHomeBaseVal = document.getElementById('home-base-val');
     const elHomePctLbl  = document.getElementById('home-pct-label');
-    if (elHomePremio) elHomePremio.textContent = 'R$ '+premioExato.toFixed(2).replace('.',',');
-    if (elHomePart)   elHomePart.textContent   = s.total_participantes || 0;
-    if (elHomeBil)    elHomeBil.textContent     = s.total_bilhetes || 0;
-    if (elHomeBaseVal) elHomeBaseVal.textContent = 'R$ '+premioBase.toFixed(2).replace('.',',');
-    if (elHomePctLbl)  elHomePctLbl.textContent  = pct.toFixed(0);
+    const elHomeAcumVal = document.getElementById('home-acum-valor');
+    const elHomeTotalLbl = document.getElementById('home-total-label');
+    if (elHomePremio)   elHomePremio.textContent  = 'R$ '+premioExato.toFixed(2).replace('.',',');
+    if (elHomePart)     elHomePart.textContent     = s.total_participantes || 0;
+    if (elHomeBil)      elHomeBil.textContent      = s.total_bilhetes || 0;
+    if (elHomeBaseVal)  elHomeBaseVal.textContent  = 'R$ '+premioBase.toFixed(2).replace('.',',');
+    if (elHomePctLbl)   elHomePctLbl.textContent   = pct.toFixed(0);
+    if (elHomeAcumVal)  elHomeAcumVal.textContent  = 'R$ '+(acumExato||0).toFixed(2).replace('.',',');
+    if (elHomeTotalLbl) elHomeTotalLbl.textContent = 'R$ '+premioExato.toFixed(2).replace('.',',');
 
     const vp = s.valor_por_numero || 5;
     const ri = document.getElementById('regra-itens');
@@ -566,14 +584,8 @@ async function carregarInfo() {
       <div class="regra-item"><div class="val">3</div><div class="lbl">nº · R$${(vp*3).toFixed(0)}</div></div>
       <div class="regra-item"><div class="val">+1</div><div class="lbl">a cada R$${vp.toFixed(0)}</div></div>
     `;
-    // ── Exibir acumulado SEMPRE visível (mesmo R$0,00) ──
-    const acum = s.premio_acumulado || 0;
-    const elAcumLabel = document.getElementById('home-acumulado-label');
-    const elAcumValor = document.getElementById('home-acum-valor');
-    if (elAcumLabel && elAcumValor) {
-      elAcumLabel.style.display = 'block'; // sempre visível
-      elAcumValor.textContent = acum.toFixed(2).replace('.',',');
-    }
+    // ── Exibir acumulado já atualizado acima ──
+    const acum = acumExato || 0;
     const minPart = s.min_participantes || 5;
     const totalPart = s.total_participantes || 0;
     const elMinAviso = document.getElementById('home-min-aviso');
