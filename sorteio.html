@@ -143,10 +143,10 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
   <div class="regra-box">
     <div class="titulo">🎫 Como ganhar números da sorte</div>
     <div class="regra-itens" id="regra-itens">
-      <div class="regra-item"><div class="val">1</div><div class="lbl">nº · R$5</div></div>
-      <div class="regra-item"><div class="val">2</div><div class="lbl">nº · R$10</div></div>
-      <div class="regra-item"><div class="val">3</div><div class="lbl">nº · R$15</div></div>
-      <div class="regra-item"><div class="val">+1</div><div class="lbl">a cada R$5</div></div>
+      <div class="regra-item"><div class="val">1</div><div class="lbl">nº · R$10</div></div>
+      <div class="regra-item"><div class="val">2</div><div class="lbl">nº · R$20</div></div>
+      <div class="regra-item"><div class="val">3</div><div class="lbl">nº · R$30</div></div>
+      <div class="regra-item"><div class="val">+1</div><div class="lbl">a cada R$10</div></div>
     </div>
   </div>
 
@@ -164,7 +164,9 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
     <div style="background:linear-gradient(135deg,#1a0a00,#2a1400);border:2px solid #FFD70055;border-radius:16px;padding:14px 12px;text-align:center;margin-bottom:14px">
       <div style="font-size:11px;color:#FFD700;font-weight:700;letter-spacing:1px;margin-bottom:6px">🏆 PRÊMIO ACUMULADO</div>
       <div id="home-premio" style="font-size:32px;font-weight:900;color:#FFD700;font-family:monospace;line-height:1.1;text-shadow:0 0 20px #FFD70066">R$ --</div>
+      <div id="home-acumulado-label" style="font-size:11px;color:#FFD700;margin-top:3px;display:none">🔥 Inclui R$ <span id="home-acum-valor">0,00</span> acumulado de rodadas anteriores</div>
       <div style="font-size:11px;color:#aaa;margin-top:5px">💸 Enviado via Pix ao ganhador na hora</div>
+      <div id="home-min-aviso" style="display:none;margin-top:8px;background:#FF6B0020;border:1px solid #FF6B0055;border-radius:8px;padding:6px 10px;font-size:11px;color:#FF6B00">⏳ Aguardando mínimo de <span id="home-min-num">5</span> participantes para sortear</div>
       <div style="display:flex;justify-content:center;gap:20px;margin-top:8px">
         <div style="text-align:center">
           <div id="home-part" style="font-size:15px;font-weight:800;color:#fff">-</div>
@@ -354,13 +356,13 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
       <!-- Valor -->
       <div class="valor-display">
         <div><span class="cifrao">R$</span> <span class="valor" id="m-valor-display">0,00</span></div>
-        <div class="hint" id="m-hint">Mínimo R$ 5,00 • Apenas múltiplos de R$ 5</div>
+        <div class="hint" id="m-hint">Mínimo R$ 10,00 • Apenas múltiplos de R$ 10</div>
       </div>
       <div class="numeros-preview" id="m-numeros-preview" style="display:none">
         🎫 Você vai ganhar <strong id="m-qtd-nums">0</strong> número(s) da sorte!
       </div>
       <div id="m-aviso-multiplo" style="display:none;background:#ff444415;border:1px solid #ff444433;border-radius:10px;padding:8px 12px;text-align:center;font-size:13px;color:#ff8888;margin-bottom:8px">
-        ⚠️ Digite um valor múltiplo de R$ 5 (ex: 5, 10, 15, 20...)
+        ⚠️ Digite um valor múltiplo de R$ 10 (ex: 10, 20, 30, 40...)
       </div>
       <div class="teclado">
         <div class="key" onclick="tecla('1')">1</div>
@@ -478,7 +480,7 @@ async function carregarInfo() {
     if (elHomePart)   elHomePart.textContent   = s.total_participantes || 0;
     if (elHomeBil)    elHomeBil.textContent     = s.total_bilhetes || 0;
 
-    const vp = s.valor_por_numero || 5;
+    const vp = s.valor_por_numero || 10;
     const ri = document.getElementById('regra-itens');
     if (ri) ri.innerHTML = `
       <div class="regra-item"><div class="val">1</div><div class="lbl">nº · R$${vp.toFixed(0)}</div></div>
@@ -486,6 +488,22 @@ async function carregarInfo() {
       <div class="regra-item"><div class="val">3</div><div class="lbl">nº · R$${(vp*3).toFixed(0)}</div></div>
       <div class="regra-item"><div class="val">+1</div><div class="lbl">a cada R$${vp.toFixed(0)}</div></div>
     `;
+    // ── Exibir acumulado e aviso mínimo participantes ──
+    const acum = s.premio_acumulado || 0;
+    const elAcumLabel = document.getElementById('home-acumulado-label');
+    const elAcumValor = document.getElementById('home-acum-valor');
+    if (elAcumLabel && elAcumValor && acum > 0) {
+      elAcumLabel.style.display = 'block';
+      elAcumValor.textContent = acum.toFixed(2).replace('.',',');
+    } else if (elAcumLabel) { elAcumLabel.style.display = 'none'; }
+    const minPart = s.min_participantes || 5;
+    const totalPart = s.total_participantes || 0;
+    const elMinAviso = document.getElementById('home-min-aviso');
+    const elMinNum   = document.getElementById('home-min-num');
+    if (elMinAviso && elMinNum) {
+      elMinNum.textContent = minPart;
+      elMinAviso.style.display = (totalPart < minPart) ? 'block' : 'none';
+    }
     if (s.proximo_sorteio) {
       iniciarCountdown(new Date(s.proximo_sorteio));
       document.getElementById('prox-data').textContent = new Date(s.proximo_sorteio).toLocaleString('pt-BR');
@@ -574,7 +592,7 @@ function mostrarParticipante(p) {
   const nums = p.numeros_sorte || [];
   const grid = document.getElementById('p-bilhetes');
   if (nums.length === 0) {
-    grid.innerHTML = '<div style="color:#444;font-size:13px;padding:8px 0">Nenhum número ainda. Faça mais depósitos!<br><br><strong style="color:#FFD700">R$ 5 = 1 número 🎫</strong></div>';
+    grid.innerHTML = '<div style="color:#444;font-size:13px;padding:8px 0">Nenhum número ainda. Faça mais depósitos!<br><br><strong style="color:#FFD700">R$ 10 = 1 número 🎫</strong></div>';
   } else {
     grid.innerHTML = nums.map(n => `
       <div class="bilhete">

@@ -255,10 +255,12 @@ def init_db():
                     created_at TEXT, processado_at TEXT, observacao TEXT)""",
                 """CREATE TABLE IF NOT EXISTS sorteio_config (
                     id INTEGER PRIMARY KEY, ativo INTEGER DEFAULT 1,
-                    valor_por_numero REAL DEFAULT 5.0, premio_fixo REAL DEFAULT 0,
+                    valor_por_numero REAL DEFAULT 10.0, premio_fixo REAL DEFAULT 0,
                     percentual REAL DEFAULT 50.0, usar_media INTEGER DEFAULT 0,
                     dias_media INTEGER DEFAULT 30, descricao TEXT DEFAULT 'Sorteio PaynexBet',
-                    proximo_sorteio TEXT, updated_at TEXT)""",
+                    proximo_sorteio TEXT, updated_at TEXT,
+                    premio_acumulado REAL DEFAULT 0, min_participantes INTEGER DEFAULT 1,
+                    acumulativo INTEGER DEFAULT 1)""",
                 """CREATE TABLE IF NOT EXISTS sorteio_participantes (
                     id SERIAL PRIMARY KEY, cliente_id TEXT NOT NULL UNIQUE,
                     nome TEXT, cpf TEXT, chave_pix TEXT, tipo_chave TEXT DEFAULT 'cpf',
@@ -299,8 +301,8 @@ def init_db():
             # Config padrão sorteio (cada query é independente com autocommit)
             try:
                 cur.execute("""INSERT INTO sorteio_config
-                    (id,ativo,valor_por_numero,premio_fixo,percentual,usar_media,dias_media,descricao,proximo_sorteio,updated_at)
-                    VALUES (1,1,5.0,0,50.0,0,30,'Sorteio PaynexBet',NULL,%s)
+                    (id,ativo,valor_por_numero,premio_fixo,percentual,usar_media,dias_media,descricao,proximo_sorteio,updated_at,premio_acumulado)
+                    VALUES (1,1,10.0,0,50.0,0,30,'Sorteio PaynexBet',NULL,%s,0)
                     ON CONFLICT (id) DO NOTHING""", (datetime.now().isoformat(),))
             except Exception as e:
                 print(f'[DB init] Aviso config sorteio: {e}', flush=True)
@@ -343,23 +345,29 @@ def init_db():
     conn.execute('''CREATE TABLE IF NOT EXISTS sorteio_config (
         id INTEGER PRIMARY KEY,
         ativo INTEGER DEFAULT 1,
-        valor_por_numero REAL DEFAULT 5.0,
+        valor_por_numero REAL DEFAULT 10.0,
         premio_fixo REAL DEFAULT 0,
         percentual REAL DEFAULT 50.0,
         usar_media INTEGER DEFAULT 0,
         dias_media INTEGER DEFAULT 30,
         descricao TEXT DEFAULT 'Sorteio PaynexBet',
         proximo_sorteio TEXT,
-        updated_at TEXT
+        updated_at TEXT,
+        premio_acumulado REAL DEFAULT 0,
+        min_participantes INTEGER DEFAULT 1,
+        acumulativo INTEGER DEFAULT 1
     )''')
     conn.commit()
     # Migrações de colunas — cada ALTER TABLE em transação separada
-    for col in ["valor_por_numero REAL DEFAULT 5.0",
+    for col in ["valor_por_numero REAL DEFAULT 10.0",
                 "usar_media INTEGER DEFAULT 0",
                 "dias_media INTEGER DEFAULT 30",
                 "paypix_pct REAL DEFAULT 0.6",
                 "paypix_ativo INTEGER DEFAULT 1",
-                "paypix_descricao TEXT DEFAULT 'Gere seu Pix e receba sua % do valor'"]:
+                "paypix_descricao TEXT DEFAULT 'Gere seu Pix e receba sua % do valor'",
+                "premio_acumulado REAL DEFAULT 0",
+                "min_participantes INTEGER DEFAULT 1",
+                "acumulativo INTEGER DEFAULT 1"]:
         try:
             conn.execute(f'ALTER TABLE sorteio_config ADD COLUMN {col}')
             conn.commit()
@@ -420,8 +428,8 @@ def init_db():
 
     # Config padrão
     conn.execute('''INSERT OR IGNORE INTO sorteio_config
-        (id, ativo, valor_por_numero, premio_fixo, percentual, usar_media, dias_media, descricao, proximo_sorteio, updated_at)
-        VALUES (1, 1, 5.0, 0, 50.0, 0, 30, 'Sorteio PaynexBet', NULL, ?)''',
+        (id, ativo, valor_por_numero, premio_fixo, percentual, usar_media, dias_media, descricao, proximo_sorteio, updated_at, premio_acumulado)
+        VALUES (1, 1, 10.0, 0, 50.0, 0, 30, 'Sorteio PaynexBet', NULL, ?, 0)''',
         (datetime.now().isoformat(),))
 
     # Tabela de fila de splits PayPix (agenda persistente)
@@ -545,7 +553,7 @@ def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id, participante_dados
 
         # Ler config do sorteio
         cfg = get_sorteio_config()
-        vp = float(cfg.get('valor_por_numero') or 5.0)
+        vp = float(cfg.get('valor_por_numero') or 10.0)
 
         novo_total = total_dep + float(valor)
         novos_total_num = calcular_numeros(novo_total, vp)
@@ -852,7 +860,9 @@ def get_sorteio_config():
     row = cur.fetchone(); conn.close()
     if row:
         cols = ['id','ativo','valor_por_numero','premio_fixo','percentual',
-                'usar_media','dias_media','descricao','proximo_sorteio','updated_at']
+                'usar_media','dias_media','descricao','proximo_sorteio','updated_at',
+                'paypix_pct','paypix_ativo','paypix_descricao','premio_acumulado',
+                'min_participantes','acumulativo']
         d = {}
         for i, col in enumerate(cols):
             d[col] = row[i] if i < len(row) else None
@@ -892,7 +902,7 @@ def get_participante(cpf):
     except: d['numeros_sorte'] = []
     return d
 
-def calcular_numeros(total_depositado, valor_por_numero=5.0):
+def calcular_numeros(total_depositado, valor_por_numero=10.0):
     """Calcula quantos números a pessoa tem: R$5=1, R$10=2, R$15=3..."""
     return max(0, int(total_depositado // valor_por_numero))
 
@@ -1630,12 +1640,14 @@ async def route_sorteio_info(request):
             d[col] = r[i] if i < len(r) else None
         historico.append(d)
 
-    vp = float(config.get('valor_por_numero') or 5.0)
+    vp = float(config.get('valor_por_numero') or 10.0)
     # Cálculo idêntico ao usado no sorteio real (max R$1,00 mínimo)
     _premio_fixo = float(config.get('premio_fixo') or 0)
     _percentual  = float(config.get('percentual') or 50)
-    premio = _premio_fixo if _premio_fixo > 0 else round(total_dep * _percentual / 100, 2)
-    premio = max(premio, 1.0)  # mínimo R$1,00 — igual ao _executar_sorteio_completo
+    _acumulado   = float(config.get('premio_acumulado') or 0)
+    premio_base = _premio_fixo if _premio_fixo > 0 else round(total_dep * _percentual / 100, 2)
+    premio_base = max(premio_base, 1.0)  # mínimo R$1,00
+    premio = round(premio_base + _acumulado, 2)  # total com acumulado
 
     resp = {
         'sorteio': {
@@ -1651,6 +1663,9 @@ async def route_sorteio_info(request):
             'total_bilhetes': int(total_bilhetes),
             'total_depositado': round(total_dep, 2),
             'premio_estimado_total': premio,
+            'premio_acumulado': round(_acumulado, 2),
+            'acumulativo': bool(int(config.get('acumulativo') or 1)),
+            'min_participantes': int(config.get('min_participantes') or 1),
         },
         'historico': historico,
     }
@@ -1759,7 +1774,7 @@ async def route_sorteio_adicionar_deposito(request):
             return web.json_response({'error': 'Participante não cadastrado. Cadastre-se primeiro em /sorteio'}, status=404)
 
         config = get_sorteio_config()
-        vp = float(config.get('valor_por_numero') or 5.0)
+        vp = float(config.get('valor_por_numero') or 10.0)
 
         novo_total = (part['total_depositado'] or 0) + valor
         numeros_antes = int(part['total_numeros'] or 0)
@@ -1851,6 +1866,33 @@ async def _executar_sorteio_completo():
 
     config = get_sorteio_config()
 
+    # ── VERIFICAR MÍNIMO DE PARTICIPANTES (SORTEIO ACUMULATIVO) ────────────
+    min_part_cfg = int(config.get('min_participantes') or 1)
+    acumulativo_cfg = bool(int(config.get('acumulativo') or 1))
+    total_part_atual = len(participantes)
+
+    if acumulativo_cfg and total_part_atual < min_part_cfg:
+        conn.close()
+        # Calcular quanto acumula desta rodada (50% dos depósitos atuais)
+        total_dep_temp = sum(p['total_depositado'] or 0 for p in participantes)
+        percentual_cfg = float(config.get('percentual', 50)) / 100
+        base_temp = round(total_dep_temp * percentual_cfg, 2)
+        acum_anterior = float(config.get('premio_acumulado') or 0)
+        total_acum = round(base_temp + acum_anterior, 2)
+        # ✅ SALVAR acumulado no banco para próxima rodada
+        conn3 = sqlite3_connect()
+        conn3.execute('UPDATE sorteio_config SET premio_acumulado=? WHERE id=1', (total_acum,))
+        conn3.commit(); conn3.close()
+        print(f'🎰 [Acumulativo] Poucos participantes ({total_part_atual}/{min_part_cfg}). Prêmio acumulado: R${total_acum:.2f}', flush=True)
+        return {
+            'success': False,
+            'acumulando': True,
+            'error': f'Mínimo {min_part_cfg} participantes. Atual: {total_part_atual}. Prêmio acumulado: R${total_acum:.2f}',
+            'total_participantes': total_part_atual,
+            'min_participantes': min_part_cfg,
+            'premio_acumulado': total_acum,
+        }
+
     # Sortear 1 bilhete aleatório (cada bilhete = igual chance)
     bilhete_vencedor = random.choice(bilhetes)
     cliente_id_vencedor, numero_vencedor = bilhete_vencedor
@@ -1862,12 +1904,21 @@ async def _executar_sorteio_completo():
     total_depositado = sum(p['total_depositado'] or 0 for p in participantes)
     total_bilhetes_count = len(bilhetes)
 
-    # Calcular prêmio
+    # ── PRÊMIO ACUMULATIVO ──────────────────────────────────────────────────
+    premio_acumulado_anterior = float(config.get('premio_acumulado') or 0)
+    acumulativo = bool(int(config.get('acumulativo') or 1))
+    min_participantes = int(config.get('min_participantes') or 1)
+
+    # Calcular prêmio base desta rodada
     if float(config.get('premio_fixo') or 0) > 0:
-        premio = float(config['premio_fixo'])
+        premio_base = float(config['premio_fixo'])
     else:
-        premio = round(total_depositado * float(config.get('percentual', 50)) / 100, 2)
-    premio = max(premio, 1.0)
+        premio_base = round(total_depositado * float(config.get('percentual', 50)) / 100, 2)
+    premio_base = max(premio_base, 1.0)
+
+    # Somar acumulado de rodadas anteriores
+    premio = round(premio_base + premio_acumulado_anterior, 2)
+    print(f'🏆 Prêmio: base R${premio_base:.2f} + acumulado R${premio_acumulado_anterior:.2f} = TOTAL R${premio:.2f}', flush=True)
 
     sorteio_id  = f"sorteio_{int(time.time())}"
     chave_pix   = ganhador.get('chave_pix') or ''
@@ -1890,9 +1941,11 @@ async def _executar_sorteio_completo():
     # Arquivar participantes e bilhetes
     conn2.execute("UPDATE sorteio_participantes SET sorteio_id=? WHERE sorteio_id='atual'", (sorteio_id,))
     conn2.execute("UPDATE sorteio_bilhetes SET sorteio_id=? WHERE sorteio_id='atual'", (sorteio_id,))
+    # Resetar prêmio acumulado (pois houve ganhador nesta rodada)
+    conn2.execute("UPDATE sorteio_config SET premio_acumulado=0 WHERE id=1")
     conn2.commit(); conn2.close()
 
-    print(f'🎉 SORTEIO {sorteio_id}: bilhete {numero_vencedor} → {ganhador["nome"]} ganhou R${premio:.2f} → {tipo_chave}: {chave_pix}', flush=True)
+    print(f'🎉 SORTEIO {sorteio_id}: bilhete {numero_vencedor} → {ganhador["nome"]} ganhou R${premio:.2f} (incluindo acumulado R${premio_acumulado_anterior:.2f}) → {tipo_chave}: {chave_pix}', flush=True)
 
     # ── SAQUE AUTOMÁTICO ──────────────────────────────────────
     # Prioridade: 1) Asaas (se configurado), 2) Telegram Bot, 3) Pendente
@@ -2061,10 +2114,11 @@ async def route_sorteio_config(request):
         conn = sqlite3_connect()
         conn.execute('''UPDATE sorteio_config SET
             ativo=?, valor_por_numero=?, percentual=?, usar_media=?, dias_media=?,
-            premio_fixo=?, descricao=?, proximo_sorteio=?, updated_at=?
+            premio_fixo=?, descricao=?, proximo_sorteio=?, updated_at=?,
+            acumulativo=?, min_participantes=?
             WHERE id=1''', (
             int(data.get('ativo', 1)),
-            float(data.get('valor_por_numero', 5.0)),
+            float(data.get('valor_por_numero', 10.0)),
             float(data.get('percentual', 50)),
             int(data.get('usar_media', 0)),
             int(data.get('dias_media', 30)),
@@ -2072,11 +2126,78 @@ async def route_sorteio_config(request):
             str(data.get('descricao', 'Sorteio PaynexBet')),
             data.get('proximo_sorteio'),
             datetime.now().isoformat(),
+            int(data.get('acumulativo', 1)),
+            int(data.get('min_participantes', 1)),
         ))
         conn.commit(); conn.close()
         return web.json_response({'success': True, 'message': 'Configuração salva!'})
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
+
+async def route_sorteio_acumular(request):
+    """ADMIN - Encerrar rodada sem ganhador e acumular prêmio para próxima"""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        config = get_sorteio_config()
+        conn = sqlite3_connect()
+        cur1 = conn.execute("SELECT COALESCE(SUM(total_depositado),0), COUNT(*) FROM sorteio_participantes WHERE sorteio_id='atual'")
+        total_dep_rod, total_part_rod = cur1.fetchone()
+        total_dep_rod = float(total_dep_rod or 0)
+
+        # Calcular prêmio desta rodada
+        _pf = float(config.get('premio_fixo') or 0)
+        _pct = float(config.get('percentual') or 50)
+        premio_rod = _pf if _pf > 0 else round(total_dep_rod * _pct / 100, 2)
+        premio_rod = max(premio_rod, 0.0)
+
+        acumulado_anterior = float(config.get('premio_acumulado') or 0)
+        novo_acumulado = round(acumulado_anterior + premio_rod, 2)
+
+        # Arquivar participantes desta rodada (sem ganhador)
+        sorteio_id_acum = f"acumulado_{int(time.time())}"
+        conn.execute("INSERT OR IGNORE INTO sorteio_historico (sorteio_id, data_sorteio, premio_pago, saque_status, total_participantes, total_bilhetes, total_depositado, observacao) VALUES (?,?,?,?,?,?,?,?)",
+            (sorteio_id_acum, datetime.now().isoformat(), 0, 'acumulado',
+             int(total_part_rod), 0, total_dep_rod,
+             f'Rodada encerrada sem ganhador. Prêmio R${premio_rod:.2f} acumulado para próxima rodada.'))
+        conn.execute("UPDATE sorteio_participantes SET sorteio_id=? WHERE sorteio_id='atual'", (sorteio_id_acum,))
+        conn.execute("UPDATE sorteio_bilhetes SET sorteio_id=? WHERE sorteio_id='atual'", (sorteio_id_acum,))
+        # Salvar novo acumulado
+        conn.execute("UPDATE sorteio_config SET premio_acumulado=?, updated_at=? WHERE id=1",
+                     (novo_acumulado, datetime.now().isoformat()))
+        conn.commit(); conn.close()
+
+        print(f'🔄 Rodada acumulada: R${premio_rod:.2f} adicionado. Acumulado total: R${novo_acumulado:.2f}', flush=True)
+        return web.json_response({
+            'success': True,
+            'message': f'Rodada encerrada. Prêmio R${premio_rod:.2f} acumulado!',
+            'premio_acumulado': novo_acumulado,
+            'sorteio_id_encerrado': sorteio_id_acum,
+        })
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
+
+async def route_sorteio_set_acumulado(request):
+    """ADMIN - Definir valor acumulado manualmente"""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        valor = float(data.get('valor', 0))
+        conn = sqlite3_connect()
+        conn.execute("UPDATE sorteio_config SET premio_acumulado=?, updated_at=? WHERE id=1",
+                     (valor, datetime.now().isoformat()))
+        conn.commit(); conn.close()
+        print(f'💰 Prêmio acumulado definido manualmente: R${valor:.2f}', flush=True)
+        return web.json_response({'success': True, 'premio_acumulado': valor})
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
 
 async def route_sorteio_participantes(request):
     """ADMIN - Listar todos os participantes"""
@@ -2137,7 +2258,7 @@ async def route_asaas_pix_sorteio(request):
             return web.json_response({'success': False, 'error': 'Gateway PIX não configurado. Informe ASAAS_API_KEY.'}, status=503)
 
         config = get_sorteio_config()
-        vp = float(config.get('valor_por_numero') or 5.0)
+        vp = float(config.get('valor_por_numero') or 10.0)
         qtd_numeros = int(valor // vp)
 
         print(f'🎰 [Asaas/Sorteio] Gerando PIX R${valor:.2f} para CPF:{cpf} ({nome})', flush=True)
@@ -2265,7 +2386,7 @@ async def _processar_deposito_sorteio_asaas(cpf: str, nome: str, valor: float):
     """
     import json as _json
     config = get_sorteio_config()
-    vp = float(config.get('valor_por_numero') or 5.0)
+    vp = float(config.get('valor_por_numero') or 10.0)
 
     part = get_participante(cpf)
     if not part:
@@ -2797,7 +2918,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260413-ASAAS-v13',
+        'version': 'v20260414-ACUM-v14',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -4019,7 +4140,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260413-ASAAS-v13',
+            'version': 'v20260414-ACUM-v14',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
@@ -4034,6 +4155,8 @@ async def main():
     app.router.add_post('/api/sorteio/realizar', route_sorteio_realizar)
     app.router.add_post('/api/sorteio/config', route_sorteio_config)
     app.router.add_get('/api/sorteio/participantes', route_sorteio_participantes)
+    app.router.add_post('/api/sorteio/acumular', route_sorteio_acumular)
+    app.router.add_post('/api/sorteio/set-acumulado', route_sorteio_set_acumulado)
     # ── Asaas ──────────────────────────────────────────────────────────────────
     app.router.add_post('/api/sorteio/asaas/pix', route_asaas_pix_sorteio)
     app.router.add_get('/api/sorteio/asaas/status/{tx_id}', route_asaas_pix_status)
