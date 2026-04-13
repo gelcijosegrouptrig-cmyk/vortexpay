@@ -484,16 +484,14 @@ document.addEventListener('DOMContentLoaded', () => {
   localStorage.removeItem('sorteio_cpf');
   localStorage.removeItem('sorteio_nome');
   document.getElementById('c-cpf').value = '';
-  // Ocultar contadores de participantes/bilhetes (não necessários para o usuário)
-  ['home-part','home-bilhetes','st-part','st-bilhetes'].forEach(id => {
+  // Elementos ocultos (já com display:none no HTML)
+  ['home-part','home-bilhetes'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) { el.style.display = 'none'; if (el.parentElement) el.parentElement.style.display = 'none'; }
+    if (el) el.style.display = 'none';
+    // NÃO ocultar parentElement — pode ser o card de prêmio!
   });
-  // Ocultar divs pai que contêm os textos "participantes" e "bilhetes"
-  document.querySelectorAll('div[style*="gap:20px"][style*="justify-content:center"]').forEach(el => { el.style.display = 'none'; });
-  document.querySelectorAll('div[style*="font-size:13px"][style*="color:#bbb"]').forEach(el => {
-    if (el.textContent.includes('participantes')) el.style.display = 'none';
-  });
+  // Ocultar apenas a linha de participantes/bilhetes na aba Sorteio
+  document.querySelectorAll('#tab-sorteio div[style*="gap:20px"][style*="justify-content:center"]').forEach(el => { el.style.display = 'none'; });
 });
 
 // ── PARTÍCULAS ──
