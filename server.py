@@ -1868,6 +1868,9 @@ async def route_sorteio_adicionar_deposito(request):
              datetime.now().isoformat(), cpf))
         conn.commit(); conn.close()
 
+        # ── ACÚMULO AUTOMÁTICO: 50% do depósito vai para o prêmio acumulado ──
+        novo_acum = _acumular_premio_deposito(valor)
+
         return web.json_response({
             'success': True,
             'cpf': cpf,
@@ -1878,7 +1881,8 @@ async def route_sorteio_adicionar_deposito(request):
             'novos_numeros': novos_numeros,
             'total_numeros': numeros_total,
             'todos_numeros': numeros_atuais,
-            'message': f'✅ R${valor:.2f} adicionado! {novos} novo(s) número(s) gerado(s). Total: {numeros_total} bilhetes.',
+            'premio_acumulado': novo_acum,
+            'message': f'✅ R${valor:.2f} adicionado! {novos} novo(s) número(s) gerado(s). Total: {numeros_total} bilhetes. Acumulado: R${novo_acum:.2f}',
         })
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
@@ -2592,6 +2596,32 @@ async def route_webhook_asaas(request):
         return web.Response(text='ok', status=200)  # sempre 200 para Asaas não pausar a fila
 
 
+def _acumular_premio_deposito(valor: float, percentual: float = None):
+    """
+    Acumula automaticamente X% do depósito confirmado no premio_acumulado.
+    Chamado toda vez que um depósito de sorteio é confirmado.
+    percentual: None = usa o configurado em sorteio_config (padrão 50%)
+    """
+    try:
+        config = get_sorteio_config()
+        pct = percentual if percentual is not None else float(config.get('percentual', 50)) / 100
+        incremento = round(valor * pct, 2)
+        acum_atual = float(config.get('premio_acumulado') or 0)
+        novo_acum = round(acum_atual + incremento, 2)
+
+        conn = sqlite3_connect()
+        conn.execute("UPDATE sorteio_config SET premio_acumulado=?, updated_at=? WHERE id=1",
+                     (novo_acum, datetime.now().isoformat()))
+        conn.commit()
+        conn.close()
+
+        print(f'💰 [Acúmulo] +R${incremento:.2f} ({pct*100:.0f}% de R${valor:.2f}) | acumulado: R${acum_atual:.2f} → R${novo_acum:.2f}', flush=True)
+        return novo_acum
+    except Exception as e:
+        print(f'⚠️ [Acúmulo] Erro ao acumular: {e}', flush=True)
+        return None
+
+
 async def _processar_deposito_sorteio_asaas(cpf: str, nome: str, valor: float):
     """
     Processa depósito confirmado pelo Asaas:
@@ -2643,6 +2673,9 @@ async def _processar_deposito_sorteio_asaas(cpf: str, nome: str, valor: float):
          datetime.now().isoformat(), cpf))
     conn.commit()
     conn.close()
+
+    # ── ACÚMULO AUTOMÁTICO: 50% do depósito vai para o prêmio acumulado ──
+    _acumular_premio_deposito(valor)
 
     print(f'🎫 [Asaas/Sorteio] {nome} (CPF:{cpf}) | +R${valor:.2f} | +{novos} bilhetes | Total:{numeros_total} bilhetes', flush=True)
 
