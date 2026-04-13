@@ -248,13 +248,13 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
           <span class="badge">✅ Participando</span>
         </div>
 
-        <!-- Progresso para próximo número -->
+        <!-- Depósito total - apenas valor, sem texto confuso -->
         <div class="prog-box">
           <div class="prog-label">
-            <span id="p-dep">R$ 0,00 depositados</span>
-            <span id="p-prox">Próximo número em R$ --</span>
+            <span id="p-dep" style="font-size:13px;color:#aaa">R$ 0,00 depositados</span>
+            <span id="p-prox" style="display:none"></span>
           </div>
-          <div class="prog-bar"><div class="prog-fill" id="p-prog" style="width:0%"></div></div>
+          <div id="p-prog-wrap" style="display:none"><div class="prog-bar"><div class="prog-fill" id="p-prog" style="width:0%"></div></div></div>
         </div>
 
         <!-- Bilhetes -->
@@ -618,16 +618,12 @@ function mostrarParticipante(p) {
   const pct = (depAtual === 0 && dep > 0) ? 100 : (vp > 0 ? (depAtual / vp * 100) : 0);
   const falta = vp - depAtual;
 
+  // Mostrar apenas o total depositado, sem texto de "faltam" que confunde
   document.getElementById('p-dep').textContent  = `R$ ${dep.toFixed(2).replace('.',',')} depositados`;
-  // Só mostrar "faltam" se realmente falta parte de um número (depAtual > 0)
-  if (qtd === 0) {
-    document.getElementById('p-prox').textContent = `Deposite R$ ${vp.toFixed(0)} para 1 número`;
-  } else if (depAtual > 0) {
-    document.getElementById('p-prox').textContent = `Próximo número: faltam R$ ${falta.toFixed(2).replace('.',',')} `;
-  } else {
-    document.getElementById('p-prox').textContent = `✅ ${qtd} número${qtd > 1 ? 's' : ''} na sorte!`;
-  }
-  document.getElementById('p-prog').style.width = pct.toFixed(0)+'%';
+  // Ocultar completamente o texto "próximo" e a barra de progresso
+  document.getElementById('p-prox').style.display = 'none';
+  const progWrap = document.getElementById('p-prog-wrap');
+  if (progWrap) progWrap.style.display = 'none';
   document.getElementById('p-qtd').textContent  = qtd;
 
   const chave = p.chave_pix || '';
