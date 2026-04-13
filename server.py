@@ -664,6 +664,19 @@ def load_admin_html():
     return '<h1>PaynexBet - Admin</h1>'
 
 def load_sorteio_html():
+    # Tentar carregar versão corrigida do PostgreSQL (patch aplicado remotamente)
+    if _USE_PG and DATABASE_URL:
+        try:
+            import psycopg2 as _pg2
+            _conn = _pg2.connect(DATABASE_URL)
+            _cur = _conn.cursor()
+            _cur.execute("SELECT valor FROM configuracoes WHERE chave='sorteio_html_patch'")
+            _row = _cur.fetchone()
+            _conn.close()
+            if _row and _row[0] and len(_row[0]) > 1000:
+                return _row[0]
+        except Exception:
+            pass
     if os.path.exists('sorteio.html'):
         html = open('sorteio.html', encoding='utf-8').read()
         # Remove bloco de participantes/bilhetes da home (card prêmio acumulado)
@@ -3148,7 +3161,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260413-UI-v24',
+        'version': 'v20260413-UI-v25',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -4420,7 +4433,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260413-UI-v24',
+            'version': 'v20260413-UI-v25',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
