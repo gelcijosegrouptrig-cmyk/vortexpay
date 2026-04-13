@@ -2722,13 +2722,58 @@ async def route_webhook_asaas(request):
         body = await request.json()
         event = body.get('event', '')
         payment = body.get('payment', {})
+        transfer = body.get('transfer', {})
         payment_id = payment.get('id', '')
         valor = float(payment.get('value', 0))
         external_ref = payment.get('externalReference', '')
 
         print(f'📨 [Webhook Asaas] Evento: {event} | ID:{payment_id} | R${valor:.2f}', flush=True)
 
-        # Só processa pagamentos recebidos
+        # ── TRANSFER_DONE: saque PIX confirmado ──────────────────────────
+        if event == 'TRANSFER_DONE':
+            tid = transfer.get('id', '')
+            tval = float(transfer.get('value', 0))
+            tkey = transfer.get('pixAddressKey', '')
+            ete  = transfer.get('endToEndIdentifier', '')
+            print(f'✅ [Webhook Asaas] TRANSFER_DONE | ID:{tid} | R${tval:.2f} | chave:{tkey} | E2E:{ete}', flush=True)
+            # Atualizar saque no banco local para 'confirmado'
+            try:
+                conn = sqlite3_connect()
+                conn.execute(
+                    "UPDATE saques SET status='confirmado', processado_at=?, observacao=? WHERE saque_id=? OR observacao LIKE ?",
+                    (datetime.now().isoformat(),
+                     f'PIX confirmado Asaas | E2E:{ete}',
+                     tid, f'%{tid}%')
+                )
+                conn.commit()
+                conn.close()
+                print(f'✅ [Webhook] Saque {tid} marcado como confirmado no DB', flush=True)
+            except Exception as _e:
+                print(f'⚠️ [Webhook] Erro ao atualizar saque: {_e}', flush=True)
+            return web.Response(text='ok', status=200)
+
+        # ── TRANSFER_FAILED: saque PIX falhou ────────────────────────────
+        if event == 'TRANSFER_FAILED':
+            tid  = transfer.get('id', '')
+            tval = float(transfer.get('value', 0))
+            tkey = transfer.get('pixAddressKey', '')
+            fail = transfer.get('failReason', 'desconhecido')
+            print(f'❌ [Webhook Asaas] TRANSFER_FAILED | ID:{tid} | R${tval:.2f} | chave:{tkey} | motivo:{fail}', flush=True)
+            # Atualizar saque no banco local para 'erro'
+            try:
+                conn = sqlite3_connect()
+                conn.execute(
+                    "UPDATE saques SET status='erro', observacao=? WHERE saque_id=? OR observacao LIKE ?",
+                    (f'Falha Asaas: {fail}', tid, f'%{tid}%')
+                )
+                conn.commit()
+                conn.close()
+                print(f'⚠️ [Webhook] Saque {tid} marcado como erro no DB | motivo:{fail}', flush=True)
+            except Exception as _e:
+                print(f'⚠️ [Webhook] Erro ao atualizar saque falho: {_e}', flush=True)
+            return web.Response(text='ok', status=200)
+
+        # Só processa pagamentos recebidos daqui pra frente
         if event not in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'):
             return web.Response(text='ok', status=200)
 
