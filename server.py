@@ -2997,7 +2997,6 @@ async def route_patch_sorteio_html(request):
         pg = psycopg2.connect(DATABASE_URL)
         pg.autocommit = True
         cur = pg.cursor()
-        # Verificar estrutura da tabela configuracoes
         cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='configuracoes'")
         cols = [r[0] for r in cur.fetchall()]
         if 'atualizado_em' in cols:
@@ -3015,6 +3014,43 @@ async def route_patch_sorteio_html(request):
         pg.close()
         print(f'🔧 sorteio.html patch salvo no PostgreSQL: {len(html_content)} chars', flush=True)
         return web.json_response({'success': True, 'chars': len(html_content), 'msg': 'sorteio.html atualizado no PostgreSQL'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_patch_paypix_html(request):
+    """POST /api/admin/patch-paypix-html — Salva paypix.html no PostgreSQL (patch permanente)"""
+    auth = (request.headers.get('X-PaynexBet-Secret','') or request.rel_url.query.get('secret',''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        html_content = data.get('html', '')
+        if not html_content or len(html_content) < 1000:
+            return web.json_response({'success': False, 'error': 'HTML inválido ou muito curto'}, status=400)
+        import psycopg2, datetime as _dt
+        if not DATABASE_URL:
+            return web.json_response({'success': False, 'error': 'DATABASE_URL não configurada'})
+        pg = psycopg2.connect(DATABASE_URL)
+        pg.autocommit = True
+        cur = pg.cursor()
+        cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='configuracoes'")
+        cols = [r[0] for r in cur.fetchall()]
+        if 'atualizado_em' in cols:
+            cur.execute("""
+                INSERT INTO configuracoes (chave, valor, atualizado_em)
+                VALUES ('paypix_html_patch', %s, %s)
+                ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = EXCLUDED.atualizado_em
+            """, (html_content, _dt.datetime.utcnow().isoformat()))
+        else:
+            cur.execute("""
+                INSERT INTO configuracoes (chave, valor)
+                VALUES ('paypix_html_patch', %s)
+                ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor
+            """, (html_content,))
+        pg.close()
+        print(f'🔧 paypix.html patch salvo no PostgreSQL: {len(html_content)} chars', flush=True)
+        return web.json_response({'success': True, 'chars': len(html_content), 'msg': 'paypix.html atualizado no PostgreSQL'})
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
@@ -4751,6 +4787,7 @@ async def main():
     app.router.add_post('/api/railway/set-vars', route_railway_set_vars)
     app.router.add_post('/api/admin/db-migrate', route_db_migrate)
     app.router.add_post('/api/admin/patch-sorteio-html', route_patch_sorteio_html)
+    app.router.add_post('/api/admin/patch-paypix-html', route_patch_paypix_html)
 
     runner = web.AppRunner(app)
     await runner.setup()
