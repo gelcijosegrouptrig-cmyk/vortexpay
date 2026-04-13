@@ -1713,13 +1713,26 @@ async def route_sorteio_info(request):
         historico.append(d)
 
     vp = float(config.get('valor_por_numero') or 5.0)
-    # Cálculo idêntico ao usado no sorteio real (max R$1,00 mínimo)
+    # Prêmio = o acumulado total (que já cresce 50% a cada depósito confirmado)
+    # Se premio_fixo > 0, usa fixo. Caso contrário, usa o acumulado salvo.
     _premio_fixo = float(config.get('premio_fixo') or 0)
-    _percentual  = float(config.get('percentual') or 50)
     _acumulado   = float(config.get('premio_acumulado') or 0)
-    premio_base = _premio_fixo if _premio_fixo > 0 else round(total_dep * _percentual / 100, 2)
-    premio_base = max(premio_base, 1.0)  # mínimo R$1,00
-    premio = round(premio_base + _acumulado, 2)  # total com acumulado
+    _percentual  = float(config.get('percentual') or 50)
+
+    if _premio_fixo > 0:
+        # Modo prêmio fixo: ignora acumulado
+        premio = _premio_fixo
+        premio_base = _premio_fixo
+    elif _acumulado > 0:
+        # Modo acumulativo: o prêmio É o acumulado (já foi somando 50% de cada depósito)
+        premio = round(_acumulado, 2)
+        premio_base = premio
+    else:
+        # Fallback: calcular 50% do total depositado quando acumulado ainda é zero
+        premio_base = round(total_dep * _percentual / 100, 2)
+        premio_base = max(premio_base, 1.0)
+        premio = premio_base
+    premio = max(premio, 1.0)
 
     resp = {
         'sorteio': {
@@ -1950,13 +1963,13 @@ async def _executar_sorteio_completo():
     if acumulativo_cfg and total_part_atual < min_part_cfg:
         conn.close()
         # Não arquivar — participantes e bilhetes continuam na rodada
-        # O prêmio acumulado já é calculado dinamicamente (50% do total_dep + acum_anterior)
         acum_atual = float(config.get('premio_acumulado') or 0)
         total_dep_temp = sum(p['total_depositado'] or 0 for p in participantes)
-        percentual_cfg = float(config.get('percentual', 50)) / 100
-        base_temp = round(total_dep_temp * percentual_cfg, 2)
-        premio_exibido = round(base_temp + acum_atual, 2)
-        print(f'🎰 [Acumulativo] Poucos participantes ({total_part_atual}/{min_part_cfg}). Prêmio estimado: R${premio_exibido:.2f}', flush=True)
+        _percentual_cfg = float(config.get('percentual', 50)) / 100
+        # O prêmio exibido é o acumulado já salvo (ou fallback 50% dos depósitos)
+        premio_exibido = acum_atual if acum_atual > 0 else round(total_dep_temp * _percentual_cfg, 2)
+        premio_exibido = max(premio_exibido, 0.0)
+        print(f'🎰 [Acumulativo] Poucos participantes ({total_part_atual}/{min_part_cfg}). Prêmio acumulado: R${premio_exibido:.2f}', flush=True)
         return {
             'success': False,
             'acumulando': True,
@@ -1983,16 +1996,20 @@ async def _executar_sorteio_completo():
     acumulativo = bool(int(config.get('acumulativo') or 1))
     min_participantes = int(config.get('min_participantes') or 1)
 
-    # Calcular prêmio base desta rodada
+    # O prêmio_acumulado JÁ contém 50% de todos os depósitos desta rodada
+    # (acumulado automaticamente a cada depósito confirmado)
     if float(config.get('premio_fixo') or 0) > 0:
-        premio_base = float(config['premio_fixo'])
+        # Modo prêmio fixo
+        premio = float(config['premio_fixo'])
+    elif premio_acumulado_anterior > 0:
+        # Modo acumulativo: o prêmio É o acumulado salvo no DB
+        premio = round(premio_acumulado_anterior, 2)
     else:
-        premio_base = round(total_depositado * float(config.get('percentual', 50)) / 100, 2)
-    premio_base = max(premio_base, 1.0)
+        # Fallback: calcular 50% se acumulado ainda for zero
+        premio = round(total_depositado * float(config.get('percentual', 50)) / 100, 2)
+    premio = max(premio, 1.0)
 
-    # Somar acumulado de rodadas anteriores
-    premio = round(premio_base + premio_acumulado_anterior, 2)
-    print(f'🏆 Prêmio: base R${premio_base:.2f} + acumulado R${premio_acumulado_anterior:.2f} = TOTAL R${premio:.2f}', flush=True)
+    print(f'🏆 Prêmio a pagar: R${premio:.2f} (acumulado no DB: R${premio_acumulado_anterior:.2f})', flush=True)
 
     sorteio_id  = f"sorteio_{int(time.time())}"
     chave_pix   = ganhador.get('chave_pix') or ''
