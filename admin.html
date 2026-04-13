@@ -588,6 +588,11 @@
       <div class="nav-item" onclick="showTab('paypix')">
         💸 <span>PayPix</span>
       </div>
+      <div class="nav-section">Bots</div>
+      <div class="nav-item" onclick="showTab('bot2')">
+        🤖 <span>Bot 2 — @paypix_nex</span>
+        <span class="badge" id="badge-bot2" style="background:#555">OFF</span>
+      </div>
       <div class="nav-section">Desenvolvedores</div>
       <div class="nav-item" onclick="showTab('api')">
         🔌 <span>API & Webhooks</span>
@@ -1278,6 +1283,138 @@
 
       </div><!-- /tab-paypix -->
 
+      <!-- ═══ BOT 2 — @paypix_nex ═══ -->
+      <div id="tab-bot2" class="tab-content">
+
+        <!-- Status do Bot2 -->
+        <div class="metrics-grid" style="margin-bottom:20px">
+          <div class="metric-card blue">
+            <div class="metric-icon">🤖</div>
+            <div class="metric-label">Bot 2 Status</div>
+            <div class="metric-value" id="b2-status-text" style="font-size:18px">—</div>
+            <div class="metric-sub" id="b2-sub">@paypix_nex</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-icon">💰</div>
+            <div class="metric-label">Saldo Bot 2</div>
+            <div class="metric-value" id="b2-saldo">R$ —</div>
+            <div class="metric-sub">
+              <span id="b2-saldo-hora" style="font-size:11px;color:#666">clique 🔄 para atualizar</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card principal -->
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header">
+            <h3>🤖 Bot 2 — @paypix_nex</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span id="b2-badge" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#1a2a1a;color:#4caf50">Verificando...</span>
+              <button onclick="bot2AtualizarSaldo()" style="padding:6px 14px;background:#1a3a5c;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔄 Saldo</button>
+              <button onclick="bot2CheckStatus()" style="padding:6px 14px;background:#222;border:none;border-radius:8px;color:#aaa;font-size:13px;cursor:pointer">↻ Status</button>
+            </div>
+          </div>
+          <div style="padding:20px">
+
+            <!-- Info do bot -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+              <div style="background:#0a0a14;border-radius:10px;padding:14px">
+                <div style="color:#666;font-size:11px;margin-bottom:4px">USERNAME</div>
+                <div style="color:#fff;font-weight:700">@paypix_nex</div>
+              </div>
+              <div style="background:#0a0a14;border-radius:10px;padding:14px">
+                <div style="color:#666;font-size:11px;margin-bottom:4px">SESSÃO</div>
+                <div id="b2-sessao-info" style="color:#fff;font-weight:700">Verificando...</div>
+              </div>
+              <div style="background:#0a0a14;border-radius:10px;padding:14px">
+                <div style="color:#666;font-size:11px;margin-bottom:4px">CONEXÃO</div>
+                <div id="b2-conn-info" style="color:#fff;font-weight:700">—</div>
+              </div>
+              <div style="background:#0a0a14;border-radius:10px;padding:14px">
+                <div style="color:#666;font-size:11px;margin-bottom:4px">API</div>
+                <div style="color:#aaa;font-size:12px">Configurar depois</div>
+              </div>
+            </div>
+
+            <!-- Alerta se offline -->
+            <div id="b2-alert" style="display:none;background:linear-gradient(135deg,#2d1a0e,#3d2010);border:1px solid #ff6b35;border-radius:12px;padding:16px;margin-bottom:20px;text-align:center">
+              <div style="font-size:28px;margin-bottom:8px">⚠️</div>
+              <div style="color:#ff6b35;font-weight:700;font-size:16px">Bot 2 Desconectado</div>
+              <div style="color:#aaa;font-size:13px;margin-top:4px">Faça login com uma conta Telegram abaixo</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Login Bot2 -->
+        <div class="table-card" style="margin-top:16px">
+          <div class="table-header">
+            <h3>🔑 Conectar Conta Telegram — Bot 2</h3>
+          </div>
+          <div style="padding:20px">
+
+            <!-- Passo 1 -->
+            <div id="b2-step1" style="margin-bottom:20px">
+              <div style="color:var(--text2);font-size:13px;margin-bottom:12px">
+                <b style="color:var(--text)">Passo 1:</b> Número da conta Telegram que vai usar o @paypix_nex
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+                <span style="background:#0a0a14;border:2px solid #333;border-radius:10px;padding:12px 14px;color:#aaa;font-size:15px;white-space:nowrap">🇧🇷 +55</span>
+                <input type="tel" id="b2-phone-input" placeholder="DDD + número (ex: 11999887766)" maxlength="13"
+                  style="flex:1;padding:12px 14px;background:#0a0a14;border:2px solid #1a6fc4;border-radius:10px;color:#fff;font-size:16px;font-weight:600;letter-spacing:1px"
+                  onkeypress="if(event.key==='Enter') bot2SolicitarCodigo()">
+              </div>
+              <button onclick="bot2SolicitarCodigo()" id="b2-btn-solicitar"
+                style="width:100%;padding:14px;background:linear-gradient(135deg,#1a6fc4,#0d47a1);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">
+                📱 Enviar código para o Telegram
+              </button>
+              <div id="b2-msg-solicitar" style="margin-top:10px;font-size:13px;text-align:center"></div>
+            </div>
+
+            <!-- Passo 2 (oculto) -->
+            <div id="b2-step2" style="display:none;border-top:1px solid #ffffff11;padding-top:20px">
+              <div style="color:var(--text2);font-size:13px;margin-bottom:12px">
+                <b style="color:var(--text)">Passo 2:</b> Código de 5 dígitos que chegou no Telegram
+              </div>
+              <div style="display:flex;gap:10px">
+                <input type="text" id="b2-codigo-input" maxlength="5" placeholder="Ex: 16379"
+                  style="flex:1;padding:14px;background:#0a0a14;border:2px solid #1a6fc4;border-radius:10px;color:#fff;font-size:20px;letter-spacing:6px;text-align:center;font-weight:700"
+                  onkeypress="if(event.key==='Enter') bot2ConfirmarCodigo()">
+                <button onclick="bot2ConfirmarCodigo()" id="b2-btn-confirmar"
+                  style="padding:14px 20px;background:linear-gradient(135deg,#2e7d32,#1b5e20);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">
+                  ✅ Confirmar
+                </button>
+              </div>
+              <div id="b2-msg-confirmar" style="margin-top:10px;font-size:13px;text-align:center"></div>
+              <div style="margin-top:10px;text-align:center">
+                <a href="#" onclick="bot2SolicitarCodigo();return false" style="color:#666;font-size:12px">↩ Reenviar código</a>
+              </div>
+              <!-- 2FA -->
+              <div id="b2-2fa-box" style="display:none;margin-top:16px;border-top:1px solid #333;padding-top:16px">
+                <div style="color:#aaa;font-size:13px;margin-bottom:8px">🔐 Senha 2FA (verificação em duas etapas)</div>
+                <div style="display:flex;gap:10px">
+                  <input type="password" id="b2-2fa-input" placeholder="Senha do Telegram"
+                    style="flex:1;padding:12px;background:#0a0a14;border:2px solid #ff9800;border-radius:10px;color:#fff;font-size:15px"
+                    onkeypress="if(event.key==='Enter') bot2Confirmar2FA()">
+                  <button onclick="bot2Confirmar2FA()"
+                    style="padding:12px 18px;background:linear-gradient(135deg,#e65100,#bf360c);border:none;border-radius:10px;color:#fff;font-weight:700;cursor:pointer">
+                    🔐 OK
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dica -->
+            <div style="margin-top:16px;padding:12px;background:#0a0a14;border-radius:8px;font-size:12px;color:#666;line-height:1.5">
+              💡 <b style="color:#888">Conta separada:</b> Use um número diferente do Bot 1.
+              A sessão é salva no banco — persiste entre redeploys.
+              <br>🤖 Bot: <b style="color:#4caf50">@paypix_nex</b> — depósito e saque independentes.
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tab-bot2 -->
+
       <!-- API & WEBHOOKS -->
       <div id="tab-api" class="tab-content">
 
@@ -1694,6 +1831,7 @@ function showTab(tab) {
     sistema: '🖥️ Sistema',
     paypix: '💸 PayPix',
     api: '🔌 API & Webhooks',
+    bot2: '🤖 Bot 2 — @paypix_nex',
   };
   document.getElementById('page-title').textContent = titles[tab] || tab;
   fecharSidebar();
@@ -2890,6 +3028,163 @@ async function tgConfirmarCodigo() {
   btn.disabled = false;
   btn.textContent = '✅ Confirmar';
 }
+
+// ════════════════════════════════════════════════════════════════
+// BOT 2 — @paypix_nex — JavaScript
+// ════════════════════════════════════════════════════════════════
+
+async function bot2CheckStatus() {
+  try {
+    const r = await fetch(`${BASE}/api/bot2/status`);
+    const d = await r.json();
+    const online = d.online;
+    const temSessao = d.tem_sessao;
+
+    // Badge no menu
+    const badge = document.getElementById('badge-bot2');
+    if (badge) {
+      badge.textContent = online ? 'ON' : 'OFF';
+      badge.style.background = online ? '#2e7d32' : '#c62828';
+    }
+    // Card métricas
+    const st = document.getElementById('b2-status-text');
+    if (st) st.textContent = online ? '🟢 Online' : '🔴 Offline';
+    const sub = document.getElementById('b2-sub');
+    if (sub) sub.textContent = online ? 'Conectado e operando' : 'Desconectado';
+    // Badge no card
+    const bd = document.getElementById('b2-badge');
+    if (bd) {
+      bd.textContent = online ? '🟢 Online' : '🔴 Offline';
+      bd.style.color  = online ? '#4caf50' : '#f44336';
+    }
+    // Info sessão
+    const si = document.getElementById('b2-sessao-info');
+    if (si) si.textContent = temSessao ? '✅ Salva' : '❌ Sem sessão';
+    const ci = document.getElementById('b2-conn-info');
+    if (ci) ci.textContent = online ? '✅ Conectado' : '❌ Desconectado';
+    // Alerta
+    const alrt = document.getElementById('b2-alert');
+    if (alrt) alrt.style.display = online ? 'none' : 'block';
+  } catch(e) {
+    console.warn('[Bot2] Erro ao checar status:', e);
+  }
+}
+
+async function bot2AtualizarSaldo() {
+  const el = document.getElementById('b2-saldo');
+  const hr = document.getElementById('b2-saldo-hora');
+  if (el) el.textContent = 'Consultando...';
+  try {
+    const r = await fetch(`${BASE}/api/bot2/saldo?secret=${encodeURIComponent(secret)}`);
+    const d = await r.json();
+    const agora = new Date().toLocaleTimeString('pt-BR');
+    if (d.success && d.saldo_bot >= 0) {
+      if (el) el.textContent = `R$ ${d.saldo_bot.toFixed(2).replace('.', ',')}`;
+      if (hr) hr.textContent = `atualizado às ${agora}`;
+    } else {
+      if (el) el.textContent = 'R$ —';
+      if (hr) hr.textContent = d.error || 'Erro ao consultar';
+    }
+  } catch(e) {
+    if (el) el.textContent = 'R$ —';
+    if (hr) hr.textContent = 'Erro de conexão';
+  }
+}
+
+async function bot2SolicitarCodigo() {
+  const phone = document.getElementById('b2-phone-input').value.trim();
+  const btn   = document.getElementById('b2-btn-solicitar');
+  const msg   = document.getElementById('b2-msg-solicitar');
+  if (!phone || phone.length < 8) {
+    msg.innerHTML = '<span style="color:#f44">❌ Digite o número com DDD (ex: 11999887766)</span>';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+  msg.innerHTML = '';
+  try {
+    const r = await fetch(`${BASE}/api/bot2/solicitar-codigo`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      body: JSON.stringify({ phone }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ Código enviado para ${d.phone}! Verifique o Telegram.</span>`;
+      document.getElementById('b2-step2').style.display = 'block';
+      document.getElementById('b2-codigo-input').focus();
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao solicitar'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+  btn.disabled = false;
+  btn.textContent = '📱 Enviar código para o Telegram';
+}
+
+async function bot2ConfirmarCodigo() {
+  const code = document.getElementById('b2-codigo-input').value.trim();
+  const btn  = document.getElementById('b2-btn-confirmar');
+  const msg  = document.getElementById('b2-msg-confirmar');
+  if (!code) { msg.innerHTML = '<span style="color:#f44">❌ Digite o código</span>'; return; }
+  btn.disabled = true;
+  btn.textContent = '⏳ Confirmando...';
+  msg.innerHTML = '';
+  try {
+    const r = await fetch(`${BASE}/api/bot2/confirmar-codigo`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      body: JSON.stringify({ code }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message}</span>`;
+      document.getElementById('b2-step2').style.display = 'none';
+      document.getElementById('b2-alert').style.display = 'none';
+      setTimeout(bot2CheckStatus, 2000);
+    } else if (d.needs_2fa) {
+      msg.innerHTML = '<span style="color:#ff9800">🔐 2FA necessário — preencha a senha abaixo</span>';
+      document.getElementById('b2-2fa-box').style.display = 'block';
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao confirmar'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+  btn.disabled = false;
+  btn.textContent = '✅ Confirmar';
+}
+
+async function bot2Confirmar2FA() {
+  const senha = document.getElementById('b2-2fa-input').value.trim();
+  const code  = document.getElementById('b2-codigo-input').value.trim();
+  const msg   = document.getElementById('b2-msg-confirmar');
+  if (!senha) { msg.innerHTML = '<span style="color:#f44">❌ Digite a senha 2FA</span>'; return; }
+  try {
+    const r = await fetch(`${BASE}/api/bot2/confirmar-codigo`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      body: JSON.stringify({ code, password: senha }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message}</span>`;
+      document.getElementById('b2-2fa-box').style.display = 'none';
+      document.getElementById('b2-step2').style.display = 'none';
+      setTimeout(bot2CheckStatus, 2000);
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`;
+  }
+}
+
+// Checar status do Bot2 ao carregar e a cada 60s
+bot2CheckStatus();
+setInterval(bot2CheckStatus, 60000);
+
 </script>
 </body>
 </html>

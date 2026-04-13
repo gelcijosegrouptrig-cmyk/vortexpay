@@ -47,6 +47,27 @@ _telegram_reconectando = False   # flag para evitar reconexões simultâneas
 _sessao_salva_em = 0             # timestamp do último save de sessão
 PHONE_NUMBER = os.environ.get('TELEGRAM_PHONE', '')  # número de telefone Telegram (env var preferida)
 
+# ══════════════════════════════════════════════════════════════════
+# ─── BOT 2 — @paypix_nex (paralelo, independente do Bot 1) ───────
+# ══════════════════════════════════════════════════════════════════
+BOT2_USERNAME   = os.environ.get('BOT2_USERNAME', 'paypix_nex')
+SESSION_STR2    = os.environ.get('SESSION_STR2', '')
+if not SESSION_STR2:
+    try:
+        SESSION_STR2 = open('session_string2.txt').read().strip()
+    except:
+        pass
+
+client2                  = TelegramClient(StringSession(SESSION_STR2), API_ID, API_HASH)
+_lock2                   = asyncio.Lock()
+_saque_lock2             = asyncio.Lock()
+_telegram2_ready         = False
+_telegram2_session_inv   = False
+_telegram2_ultimo_ping   = 0
+_telegram2_reconectando  = False
+_login_state2            = {}        # estado do fluxo solicitar/confirmar código Bot2
+PHONE_NUMBER2            = os.environ.get('TELEGRAM_PHONE2', '')
+
 # ─── BANCO DE DADOS — PostgreSQL persistente + fallback SQLite ───────────────
 DB_PATH = '/tmp/transacoes.db'
 _USE_PG = False
@@ -216,6 +237,42 @@ def _carregar_sessao_db():
     except Exception as e:
         print(f'⚠️ Erro ao carregar sessão do DB: {e}', flush=True)
 
+# ── Bot2: salvar/carregar sessão ─────────────────────────────────
+def _salvar_sessao2_db(session_str):
+    """Salva sessão do Bot2 (@paypix_nex) no PostgreSQL"""
+    try:
+        if not DATABASE_URL: return
+        import psycopg2
+        pg = psycopg2.connect(DATABASE_URL)
+        cur = pg.cursor()
+        cur.execute("""INSERT INTO configuracoes (chave, valor, updated_at)
+                       VALUES ('telegram_session2', %s, %s)
+                       ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor, updated_at=EXCLUDED.updated_at""",
+                    (session_str, datetime.now().isoformat()))
+        pg.commit(); pg.close()
+        print('✅ [Bot2] Sessão salva no PostgreSQL!', flush=True)
+    except Exception as e:
+        print(f'⚠️ [Bot2] Erro ao salvar sessão: {e}', flush=True)
+
+def _carregar_sessao2_db():
+    """Carrega sessão do Bot2 do PostgreSQL"""
+    global SESSION_STR2, client2
+    try:
+        if not DATABASE_URL: return
+        import psycopg2
+        from telethon.sessions import StringSession
+        pg = psycopg2.connect(DATABASE_URL)
+        cur = pg.cursor()
+        cur.execute("SELECT valor FROM configuracoes WHERE chave='telegram_session2'")
+        row = cur.fetchone()
+        pg.close()
+        if row and row[0] and len(row[0]) > 50:
+            SESSION_STR2 = row[0]
+            client2 = TelegramClient(StringSession(SESSION_STR2), API_ID, API_HASH)
+            print('✅ [Bot2] Sessão carregada do PostgreSQL!', flush=True)
+    except Exception as e:
+        print(f'⚠️ [Bot2] Erro ao carregar sessão: {e}', flush=True)
+
 def _pg_exec_safe(pg, sql, params=None):
     """Executa SQL no PostgreSQL com rollback automático em caso de erro.
     Usado apenas no init_db onde a conexão NÃO tem autocommit."""
@@ -327,6 +384,7 @@ def init_db():
             print('✅ PostgreSQL conectado — banco PERSISTENTE ativo!', flush=True)
             # Tentar carregar sessão salva no banco
             _carregar_sessao_db()
+            _carregar_sessao2_db()   # ← Bot2 (@paypix_nex)
             return  # Sai sem criar SQLite
         except ImportError:
             print('⚠️ psycopg2 não instalado, usando SQLite', flush=True)
@@ -1652,6 +1710,135 @@ async def conectar_telegram():
         print(f'🔄 Reconectando em {espera}s...', flush=True)
         await asyncio.sleep(espera)
 
+# ══════════════════════════════════════════════════════════════════
+# ─── BOT 2 — Conexão e Watchdog (@paypix_nex) ────────────────────
+# ══════════════════════════════════════════════════════════════════
+
+async def conectar_telegram2():
+    """Conexão inicial do Bot2 (@paypix_nex) com retry automático."""
+    global _telegram2_ready, _telegram2_session_inv
+    await asyncio.sleep(15)  # aguarda Bot1 iniciar primeiro
+    print('🔄 [Bot2] Conectando @paypix_nex...', flush=True)
+    tentativas2 = 0
+    while True:
+        if not SESSION_STR2:
+            print('⚠️ [Bot2] Sem sessão configurada — aguardando login pelo admin...', flush=True)
+            await asyncio.sleep(60)
+            continue
+        tentativas2 += 1
+        try:
+            if client2.is_connected():
+                await client2.disconnect()
+            await asyncio.sleep(1)
+            await client2.connect()
+            if not await client2.is_user_authorized():
+                print('❌ [Bot2] Sessão inválida — reconexão necessária via admin', flush=True)
+                _telegram2_session_inv = True
+                _telegram2_ready = False
+                await asyncio.sleep(60)
+                continue
+            me2 = await client2.get_me()
+            print(f'✅ [Bot2] @paypix_nex conectado: {me2.first_name} ({me2.id})', flush=True)
+            _telegram2_ready = True
+            _telegram2_session_inv = False
+            await client2.run_until_disconnected()
+        except Exception as e2:
+            nome2 = type(e2).__name__
+            print(f'❌ [Bot2] Erro ({nome2}): {e2}', flush=True)
+            if 'AuthKeyDuplicated' in nome2 or 'AuthKeyDuplicated' in str(e2):
+                print('🚫 [Bot2] Sessão revogada. Pausando 5min...', flush=True)
+                _telegram2_session_inv = True
+                _telegram2_ready = False
+                await asyncio.sleep(300)
+                continue
+        _telegram2_ready = False
+        espera2 = min(120, tentativas2 * 10)
+        print(f'🔄 [Bot2] Reconectando em {espera2}s...', flush=True)
+        await asyncio.sleep(espera2)
+
+async def watchdog_telegram2():
+    """Watchdog do Bot2 — ping a cada 2min, reconecta se cair."""
+    global _telegram2_ready, _telegram2_ultimo_ping
+    await asyncio.sleep(45)  # aguarda Bot2 inicializar
+    print('🔍 [Watchdog Bot2] Iniciado', flush=True)
+    PING_INTERVAL2 = 120
+    while True:
+        try:
+            if _telegram2_ready:
+                try:
+                    me2 = await asyncio.wait_for(client2.get_me(), timeout=15)
+                    if me2:
+                        _telegram2_ultimo_ping = time.time()
+                        await asyncio.sleep(PING_INTERVAL2)
+                        continue
+                except Exception:
+                    pass
+                print('⚠️ [Watchdog Bot2] Ping falhou!', flush=True)
+                _telegram2_ready = False
+            else:
+                if SESSION_STR2:
+                    print('🔄 [Watchdog Bot2] Tentando reconectar...', flush=True)
+                    try:
+                        from telethon.sessions import StringSession as _SS2W
+                        if client2.is_connected():
+                            await client2.disconnect()
+                        await asyncio.sleep(2)
+                        await client2.connect()
+                        if await client2.is_user_authorized():
+                            _telegram2_ready = True
+                            print('✅ [Watchdog Bot2] Reconectado!', flush=True)
+                    except Exception as ew2:
+                        print(f'⚠️ [Watchdog Bot2] Reconexão falhou: {ew2}', flush=True)
+                await asyncio.sleep(30)
+        except Exception as ewg2:
+            print(f'[Watchdog Bot2] Exceção: {ewg2}', flush=True)
+            await asyncio.sleep(30)
+
+async def _loop_verificar_pagamentos_bot2():
+    """Verifica a cada 30s pagamentos confirmados pelo @paypix_nex"""
+    await asyncio.sleep(20)
+    while True:
+        try:
+            if not _telegram2_ready:
+                await asyncio.sleep(30)
+                continue
+            conn = sqlite3_connect()
+            cur = conn.execute("""SELECT tx_id, valor, extra FROM transacoes
+                         WHERE status='pendente' AND (tx_id LIKE 'txn2_%')
+                         ORDER BY created_at DESC LIMIT 10""")
+            pendentes = cur.fetchall()
+            conn.close()
+            if not pendentes:
+                await asyncio.sleep(30)
+                continue
+            import datetime as _dt
+            bot2 = await client2.get_entity(BOT2_USERNAME)
+            msgs = await client2.get_messages(bot2, limit=20)
+            padroes = [
+                r'Depósito de R\$', r'✅ Depósito', r'depósito.*recebido',
+                r'pagamento.*confirmado', r'Valor creditado', r'depósito aprovado',
+                r'recebemos.*R\$', r'crédito.*R\$', r'pix.*recebido', r'transferência.*recebida',
+            ]
+            for msg in msgs:
+                if not msg.text: continue
+                if hasattr(msg, 'date') and msg.date:
+                    idade = (_dt.datetime.now(_dt.timezone.utc) - msg.date).total_seconds()
+                    if idade > 600: continue
+                if not any(re.search(p, msg.text, re.IGNORECASE) for p in padroes): continue
+                val_match = re.search(r'R\$\s*([\d.,]+)', msg.text)
+                if not val_match: continue
+                valor_msg = float(val_match.group(1).replace(',', '.'))
+                for tx_id, valor_db, extra_json in pendentes:
+                    if abs(valor_msg - valor_db) < 0.02:
+                        conn2 = sqlite3_connect()
+                        conn2.execute("UPDATE transacoes SET status='confirmado' WHERE tx_id=?", (tx_id,))
+                        conn2.commit(); conn2.close()
+                        print(f'✅ [Bot2] Pagamento confirmado: {tx_id} R${valor_db}', flush=True)
+                        break
+        except Exception as e2lp:
+            print(f'[Bot2 loop pagamentos] erro: {e2lp}', flush=True)
+        await asyncio.sleep(30)
+
 # ─── GERAR PIX - Garante conexão antes de gerar ────────────
 async def verificar_saldo_bot() -> float:
     """Consulta saldo atual no bot clicando em CARTEIRA"""
@@ -1690,6 +1877,134 @@ async def verificar_saldo_bot() -> float:
     except Exception as e:
         print(f'[saldo_bot] erro: {e}', flush=True)
     return -1.0
+
+# ══════════════════════════════════════════════════════════════════
+# ─── BOT 2 — @paypix_nex — Funções espelhadas ────────────────────
+# ══════════════════════════════════════════════════════════════════
+
+async def verificar_saldo_bot2() -> float:
+    """Consulta saldo atual no @paypix_nex clicando em CARTEIRA"""
+    try:
+        bot2 = await client2.get_entity(BOT2_USERNAME)
+        await client2.send_message(bot2, '/start')
+        await asyncio.sleep(2)
+        msgs = await client2.get_messages(bot2, limit=5)
+        for msg in msgs:
+            if msg.buttons:
+                for row in msg.buttons:
+                    for btn in row:
+                        if 'CARTEIRA' in (btn.text or '').upper():
+                            await btn.click()
+                            await asyncio.sleep(3)
+                            break
+        msgs2 = await client2.get_messages(bot2, limit=5)
+        for msg in msgs2:
+            if not msg.text:
+                continue
+            m = re.search(r'Saldo Atual[:\s]*R\$\s*([\d,.]+)', msg.text)
+            if m:
+                return float(m.group(1).replace(',', '.'))
+            m2 = re.search(r'Saldo[^`\n]*[`:]\s*R\$\s*([\d,.]+)', msg.text)
+            if m2:
+                return float(m2.group(1).replace(',', '.'))
+            m3 = re.search(r'💰[^\n]*R\$\s*([\d,.]+)', msg.text)
+            if m3:
+                return float(m3.group(1).replace(',', '.'))
+    except Exception as e:
+        print(f'[saldo_bot2] erro: {e}', flush=True)
+    return -1.0
+
+async def gerar_pix_bot2(valor, cliente_id=None, webhook_url=None, participante_dados=None, tx_id_override=None):
+    """Gera Pix via @paypix_nex (Bot 2). Mesma lógica do Bot 1."""
+    # Espera Bot2 ficar pronto (até 30s)
+    for _ in range(30):
+        if _telegram2_ready:
+            break
+        await asyncio.sleep(1)
+    if not _telegram2_ready:
+        return {'success': False, 'error': '[Bot2] Serviço temporariamente indisponível. Tente novamente.'}
+
+    try:
+        await asyncio.wait_for(_lock2.acquire(), timeout=120)
+    except asyncio.TimeoutError:
+        return {'success': False, 'error': '[Bot2] Sistema ocupado. Tente novamente em instantes.'}
+
+    try:
+        bot2 = await client2.get_entity(BOT2_USERNAME)
+
+        await client2.send_message(bot2, '/start')
+        await asyncio.sleep(2)
+
+        messages = await client2.get_messages(bot2, limit=5)
+        clicou = False
+        for msg in messages:
+            if msg.buttons:
+                for row in msg.buttons:
+                    for btn in row:
+                        if 'DEPOSITAR' in btn.text:
+                            await btn.click()
+                            await asyncio.sleep(2)
+                            clicou = True; break
+                    if clicou: break
+            if clicou: break
+
+        if not clicou:
+            return {'success': False, 'error': '[Bot2] Botão DEPOSITAR não encontrado.'}
+
+        valor_str = str(int(valor)) if valor == int(valor) else f"{valor:.2f}"
+        import datetime as _dt
+        hora_envio = _dt.datetime.now(_dt.timezone.utc)
+        cutoff = hora_envio - _dt.timedelta(seconds=3)
+        await client2.send_message(bot2, valor_str)
+        print(f'[gerar_pix_bot2] Valor {valor_str} enviado, aguardando resposta...', flush=True)
+
+        for tentativa in range(30):
+            await asyncio.sleep(2)
+            msgs = await client2.get_messages(bot2, limit=10)
+            for msg in msgs:
+                if not msg.text: continue
+                if msg.date and msg.date < cutoff: continue
+                txt = msg.text or ''
+                print(f'[gerar_pix_bot2] [{tentativa}] {txt[:100]}', flush=True)
+                if '00020101' in txt:
+                    pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', txt)
+                    pix_code  = pix_match.group(1) if pix_match else None
+                    tx_match  = re.search(r'txn_([a-f0-9]+)', txt)
+                    tx_id     = f"txn_{tx_match.group(1)}" if tx_match else f"txn2_{int(time.time())}"
+                    val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', txt)
+                    valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
+                    if pix_code:
+                        if not tx_id_override:
+                            salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
+                        print(f'✅ [Bot2] Pix gerado: {tx_id} R${valor}', flush=True)
+                        return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
+                                'valor': f"R$ {valor_conf}", 'status': 'pendente', 'bot': 'bot2'}
+                if 'PIX Copia e Cola' in txt or 'Copia e Cola' in txt:
+                    pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', txt)
+                    pix_code  = pix_match.group(1) if pix_match else None
+                    tx_match  = re.search(r'txn_([a-f0-9]+)', txt)
+                    tx_id     = f"txn_{tx_match.group(1)}" if tx_match else f"txn2_{int(time.time())}"
+                    val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', txt)
+                    valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
+                    if pix_code:
+                        if not tx_id_override:
+                            salvar_transacao(tx_id, valor, pix_code, cliente_id, webhook_url, participante_dados)
+                        print(f'✅ [Bot2] Pix gerado (copia-cola): {tx_id} R${valor}', flush=True)
+                        return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
+                                'valor': f"R$ {valor_conf}", 'status': 'pendente', 'bot': 'bot2'}
+
+        print(f'[gerar_pix_bot2] Timeout — nenhum código Pix recebido', flush=True)
+        return {'success': False, 'error': '[Bot2] Bot demorou para responder. Tente novamente.'}
+    except Exception as e:
+        print(f'❌ [Bot2] Erro gerar_pix_bot2: {e}', flush=True)
+        return {'success': False, 'error': str(e)}
+    finally:
+        try:
+            _lock2.release()
+        except Exception:
+            pass
+
+# ──────────────────────────────────────────────────────────────────
 
 async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados=None, tx_id_override=None):
     """Gera Pix via bot Telegram.
@@ -4701,6 +5016,147 @@ async def route_paypix_fila(request):
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)})
 
+# ══════════════════════════════════════════════════════════════════
+# ─── ROTAS BOT 2 — @paypix_nex ───────────────────────────────────
+# ══════════════════════════════════════════════════════════════════
+
+async def route_bot2_status(request):
+    """Status e health do Bot 2 (@paypix_nex)"""
+    return web.json_response({
+        'success':   True,
+        'bot':       'bot2',
+        'username':  BOT2_USERNAME,
+        'online':    _telegram2_ready,
+        'sessao_ok': not _telegram2_session_inv,
+        'ultimo_ping': _telegram2_ultimo_ping,
+        'tem_sessao': bool(SESSION_STR2),
+    })
+
+async def route_bot2_saldo(request):
+    """Saldo real do @paypix_nex"""
+    secret = request.headers.get('X-PaynexBet-Secret') or request.rel_url.query.get('secret', '')
+    pub    = request.rel_url.query.get('secret', '') == 'pub'
+    if not pub and secret != WEBHOOK_SECRET:
+        return web.json_response({'success': False, 'error': 'Não autorizado'}, status=401)
+    if not _telegram2_ready:
+        return web.json_response({'success': False, 'error': '[Bot2] Offline — conecte a conta primeiro', 'saldo_bot': -1})
+    try:
+        saldo = await verificar_saldo_bot2()
+        if saldo >= 0:
+            return web.json_response({'success': True, 'saldo_bot': saldo, 'bot': 'bot2', 'fonte': 'telegram'})
+        return web.json_response({'success': False, 'saldo_bot': -1, 'error': '[Bot2] Saldo não encontrado'})
+    except Exception as e:
+        return web.json_response({'success': False, 'saldo_bot': -1, 'error': str(e)})
+
+async def route_bot2_pix(request):
+    """Gera Pix via @paypix_nex (mesmas regras do Bot 1)"""
+    try:
+        data  = await request.json()
+        valor = float(data.get('valor', 0))
+        if valor < 1:
+            return web.json_response({'success': False, 'error': 'Valor mínimo R$1,00'})
+        cliente_id       = data.get('cliente_id')
+        webhook_url      = data.get('webhook_url')
+        participante_dados = data.get('participante_dados')
+        resultado = await gerar_pix_bot2(valor, cliente_id, webhook_url, participante_dados)
+        return web.json_response(resultado)
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+async def route_bot2_solicitar_codigo(request):
+    """Passo 1: solicitar código Telegram para a conta do Bot2"""
+    global _login_state2
+    auth = request.headers.get('X-PaynexBet-Secret', '') or request.rel_url.query.get('secret', '')
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        phone_body = str(data.get('phone', '')).strip()
+        if not phone_body:
+            return web.json_response({'error': 'Número obrigatório'}, status=400)
+        import re as _re2b
+        digits = _re2b.sub(r'\D', '', phone_body)
+        if not digits.startswith('55'):
+            digits = '55' + digits
+        phone_use = '+' + digits
+        from telethon.sessions import StringSession as _SS2
+        from telethon.errors import FloodWaitError as _FW2
+        temp2 = TelegramClient(_SS2(), API_ID, API_HASH)
+        await temp2.connect()
+        sent2 = await temp2.send_code_request(phone_use)
+        _login_state2 = {
+            'client':  temp2,
+            'hash':    sent2.phone_code_hash,
+            'session': temp2.session.save(),
+            'phone':   phone_use,
+        }
+        print(f'📱 [Bot2] Código solicitado para {phone_use}', flush=True)
+        return web.json_response({'success': True, 'message': f'Código enviado para {phone_use}!', 'phone': phone_use})
+    except Exception as e:
+        import re as _re3b
+        m = _re3b.search(r'(\d+)', str(e))
+        if 'FloodWait' in type(e).__name__ and m:
+            secs = int(m.group(1)); h = secs // 3600; mi = (secs % 3600) // 60
+            return web.json_response({'success': False, 'error': f'FloodWait: aguarde {h}h{mi}min'})
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+async def route_bot2_confirmar_codigo(request):
+    """Passo 2: confirmar código e salvar sessão do Bot2"""
+    global _login_state2, client2, _telegram2_ready, _telegram2_session_inv, SESSION_STR2
+    auth = request.headers.get('X-PaynexBet-Secret', '') or request.rel_url.query.get('secret', '')
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        code = str(data.get('code', '')).strip()
+        if not code:
+            return web.json_response({'error': 'Código obrigatório'}, status=400)
+        if not _login_state2:
+            return web.json_response({'error': 'Solicite o código primeiro'}, status=400)
+        from telethon.errors import SessionPasswordNeededError as _SPNE2
+        temp2 = _login_state2['client']
+        if not temp2.is_connected():
+            from telethon.sessions import StringSession as _SS2C
+            temp2 = TelegramClient(_SS2C(_login_state2['session']), API_ID, API_HASH)
+            await temp2.connect()
+        phone2 = _login_state2.get('phone', '')
+        try:
+            await temp2.sign_in(phone2, code, phone_code_hash=_login_state2['hash'])
+        except _SPNE2:
+            senha2 = data.get('password', '')
+            if not senha2:
+                return web.json_response({'success': False, 'needs_2fa': True, 'message': 'Digite sua senha 2FA'})
+            await temp2.sign_in(password=senha2)
+        me2 = await temp2.get_me()
+        nova_sessao2 = temp2.session.save()
+        await temp2.disconnect()
+        _login_state2 = {}
+        # Salvar em arquivo local
+        with open('session_string2.txt', 'w') as f:
+            f.write(nova_sessao2)
+        # Salvar no PostgreSQL
+        _salvar_sessao2_db(nova_sessao2)
+        # Atualizar client2 em memória
+        SESSION_STR2 = nova_sessao2
+        from telethon.sessions import StringSession as _SS2U
+        if client2.is_connected():
+            try: await client2.disconnect()
+            except: pass
+        client2.__init__(_SS2U(nova_sessao2), API_ID, API_HASH)
+        await client2.connect()
+        if await client2.is_user_authorized():
+            _telegram2_ready = True
+            _telegram2_session_inv = False
+        print(f'✅ [Bot2] Sessão salva! Conta: {me2.first_name} ({me2.id})', flush=True)
+        return web.json_response({
+            'success': True,
+            'message': f'✅ [Bot2] Conectado como {me2.first_name}!',
+            'nome': me2.first_name,
+            'id': me2.id,
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
 async def route_exportar_csv(request):
     """Exportar depósitos ou saques em CSV"""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
@@ -4845,6 +5301,12 @@ async def main():
     app.router.add_post('/api/telegram/confirmar-codigo', route_confirmar_codigo)
     app.router.add_get('/api/telegram/sessao-atual', route_sessao_atual)
     app.router.add_get('/api/reconectar', route_reconectar_db)
+    # ── Bot 2 (@paypix_nex) ──────────────────────────────────────
+    app.router.add_get('/api/bot2/status',                  route_bot2_status)
+    app.router.add_get('/api/bot2/saldo',                   route_bot2_saldo)
+    app.router.add_post('/api/bot2/pix',                    route_bot2_pix)
+    app.router.add_post('/api/bot2/solicitar-codigo',       route_bot2_solicitar_codigo)
+    app.router.add_post('/api/bot2/confirmar-codigo',       route_bot2_confirmar_codigo)
     # PayPix — parceiro gera Pix e recebe 60%
     app.router.add_get('/paypix', route_paypix_page)
     app.router.add_post('/api/paypix/gerar', route_paypix_gerar)
@@ -4919,7 +5381,7 @@ async def main():
     await site.start()
     print(f'✅ HTTP porta {PORT}', flush=True)
 
-    # Telegram em background com retry automático
+    # Telegram Bot1 em background com retry automático
     asyncio.create_task(conectar_telegram())
 
     # Agendador de sorteio automático
@@ -4930,6 +5392,11 @@ async def main():
 
     # Worker de splits PayPix pendentes — tenta a cada 5 min até finalizar
     asyncio.create_task(_worker_paypix_fila())
+
+    # ── Bot 2 (@paypix_nex) — tasks paralelas ───────────────────
+    asyncio.create_task(conectar_telegram2())
+    asyncio.create_task(watchdog_telegram2())
+    asyncio.create_task(_loop_verificar_pagamentos_bot2())
 
     await asyncio.Event().wait()
 
