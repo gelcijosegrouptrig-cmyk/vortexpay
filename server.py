@@ -2703,6 +2703,31 @@ async def route_db_migrate(request):
                 results.append({'sql': sql[:60], 'ok': True})
             except Exception as e:
                 results.append({'sql': sql[:60], 'ok': False, 'err': str(e)})
+        # ── Patch sorteio.html no PostgreSQL (se enviado via body) ──
+        sorteio_html_result = 'N/A'
+        try:
+            _body = {}
+            try:
+                _body = await request.json()
+            except Exception:
+                pass
+            _sorteio_html = _body.get('sorteio_html', '') or _body.get('html', '')
+            if _sorteio_html and len(_sorteio_html) > 1000:
+                # Verificar colunas da tabela
+                pg2 = psycopg2.connect(DATABASE_URL)
+                pg2.autocommit = True
+                c2 = pg2.cursor()
+                c2.execute("SELECT column_name FROM information_schema.columns WHERE table_name='configuracoes'")
+                _cols = [r[0] for r in c2.fetchall()]
+                if 'atualizado_em' in _cols:
+                    c2.execute("INSERT INTO configuracoes (chave, valor, atualizado_em) VALUES ('sorteio_html_patch', %s, NOW()::text) ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = NOW()::text", (_sorteio_html,))
+                else:
+                    c2.execute("INSERT INTO configuracoes (chave, valor) VALUES ('sorteio_html_patch', %s) ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor", (_sorteio_html,))
+                pg2.close()
+                sorteio_html_result = f'salvo ({len(_sorteio_html)} chars)'
+                print(f'🔧 sorteio.html patch salvo no PostgreSQL via db-migrate: {len(_sorteio_html)} chars', flush=True)
+        except Exception as _es:
+            sorteio_html_result = f'erro: {_es}'
         pg.close()
         # ── Patch home.html: remover participantes/bilhetes da seção stats ──
         html_patch_result = 'N/A'
@@ -2742,7 +2767,7 @@ async def route_db_migrate(request):
                     html_patch_result = 'ja_correto'
         except Exception as _ep:
             html_patch_result = f'erro: {_ep}'
-        return web.json_response({'success': True, 'migrations': results, 'html_patch': html_patch_result})
+        return web.json_response({'success': True, 'migrations': results, 'html_patch': html_patch_result, 'sorteio_html': sorteio_html_result})
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e), 'migrations': results})
 
