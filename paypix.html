@@ -13,7 +13,7 @@
   .logo h1{font-size:1.7rem;font-weight:800;color:#FFD700;letter-spacing:1px}
   .logo p{color:#aaa;font-size:.85rem;margin-top:4px}
 
-  .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;padding:24px;width:100%;max-width:420px}
+  .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;padding:24px;width:100%;max-width:420px;display:flex;flex-direction:column;align-items:flex-start}
 
   /* Badge ativo */
   .badge{display:inline-flex;align-items:center;gap:6px;background:#1a3a1a;border:1px solid #2d6a2d;color:#4ade80;border-radius:20px;padding:5px 14px;font-size:.78rem;font-weight:600;margin-bottom:18px}
@@ -80,7 +80,7 @@
 
   .info-tip{font-size:.75rem;color:#666;text-align:center;margin-top:14px;line-height:1.5}
 
-  .steps-header{display:flex;gap:8px;margin-bottom:20px;justify-content:center}
+  .steps-header{display:flex;gap:8px;margin-bottom:20px;justify-content:center;width:100%}
   .step-dot{width:28px;height:6px;border-radius:3px;background:#2a2a2a;transition:.3s}
   .step-dot.active{background:#FFD700}
   .step-dot.done{background:#4ade80}
@@ -107,7 +107,7 @@
   </div>
 
   <!-- indicador de etapas -->
-  <div class="steps-header" id="steps-header">
+  <div class="steps-header" id="steps-header" style="margin-top:10px">
     <div class="step-dot active" id="dot1"></div>
     <div class="step-dot" id="dot2"></div>
     <div class="step-dot" id="dot3"></div>
