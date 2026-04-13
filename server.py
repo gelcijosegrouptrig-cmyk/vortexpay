@@ -2236,6 +2236,75 @@ async def route_sorteio_acumular(request):
         return web.json_response({'error': str(e)}, status=500)
 
 
+async def route_sorteio_reparar_participante(request):
+    """ADMIN - Corrigir dados de participante (total_depositado e total_numeros)"""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        cpf   = re.sub(r'\D', '', str(data.get('cpf', ''))).strip()
+        total_dep  = float(data.get('total_depositado', 0))
+        total_num  = int(data.get('total_numeros', 0))
+        numeros    = data.get('numeros_sorte', None)  # lista de números, opcional
+        nome       = data.get('nome', None)
+        chave_pix  = data.get('chave_pix', None)
+        tipo_chave = data.get('tipo_chave', None)
+
+        if not cpf:
+            return web.json_response({'error': 'CPF obrigatório'}, status=400)
+
+        import json as _json
+        conn = sqlite3_connect()
+
+        # Montar query dinâmica
+        updates = ['total_depositado=?', 'total_numeros=?', 'updated_at=?']
+        vals = [total_dep, total_num, datetime.now().isoformat()]
+        if numeros is not None:
+            updates.append('numeros_sorte=?')
+            vals.append(_json.dumps(numeros))
+        if nome:
+            updates.append('nome=?')
+            vals.append(nome)
+        if chave_pix:
+            updates.append('chave_pix=?')
+            vals.append(chave_pix)
+        if tipo_chave:
+            updates.append('tipo_chave=?')
+            vals.append(tipo_chave)
+
+        vals.append(cpf)
+        sql = f"UPDATE sorteio_participantes SET {', '.join(updates)} WHERE cpf=? AND sorteio_id='atual'"
+        conn.execute(sql, vals)
+        conn.commit()
+
+        # Corrigir bilhetes (apagar e recriar)
+        cliente_id = f'cli_{cpf}'
+        cur = conn.execute("SELECT total_numeros FROM sorteio_participantes WHERE cpf=? AND sorteio_id='atual'", (cpf,))
+        row = cur.fetchone()
+
+        if numeros is not None:
+            # Recriar bilhetes
+            conn.execute("DELETE FROM sorteio_bilhetes WHERE cliente_id=? AND sorteio_id='atual'", (cliente_id,))
+            for n in numeros:
+                conn.execute("INSERT OR IGNORE INTO sorteio_bilhetes (cliente_id, numero, sorteio_id) VALUES (?,?,'atual')",
+                             (cliente_id, n))
+            conn.commit()
+
+        conn.close()
+        print(f'🔧 [REPARO] Participante CPF:{cpf} → R${total_dep:.2f} / {total_num} bilhetes', flush=True)
+        return web.json_response({
+            'success': True,
+            'cpf': cpf,
+            'total_depositado': total_dep,
+            'total_numeros': total_num,
+            'numeros_sorte': numeros,
+        })
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
+
 async def route_sorteio_set_acumulado(request):
     """ADMIN - Definir valor acumulado manualmente"""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
@@ -4294,6 +4363,7 @@ async def main():
     app.router.add_get('/api/sorteio/participantes', route_sorteio_participantes)
     app.router.add_post('/api/sorteio/acumular', route_sorteio_acumular)
     app.router.add_post('/api/sorteio/set-acumulado', route_sorteio_set_acumulado)
+    app.router.add_post('/api/sorteio/reparar-participante', route_sorteio_reparar_participante)
     # ── Asaas ──────────────────────────────────────────────────────────────────
     app.router.add_post('/api/sorteio/asaas/pix', route_asaas_pix_sorteio)
     app.router.add_get('/api/sorteio/asaas/status/{tx_id}', route_asaas_pix_status)
