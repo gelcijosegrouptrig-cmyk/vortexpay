@@ -164,7 +164,7 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
     <div style="background:linear-gradient(135deg,#1a0a00,#2a1400);border:2px solid #FFD70055;border-radius:16px;padding:14px 12px;text-align:center;margin-bottom:14px">
       <div style="font-size:11px;color:#FFD700;font-weight:700;letter-spacing:1px;margin-bottom:6px">🏆 PRÊMIO DO SORTEIO</div>
       <div id="home-premio" style="font-size:34px;font-weight:900;color:#FFD700;font-family:monospace;line-height:1.1;text-shadow:0 0 20px #FFD70066">R$ --</div>
-      <div id="home-acumulado-label" style="font-size:12px;color:#FFD700;margin-top:5px;display:none;background:#FFD70015;border-radius:8px;padding:4px 10px">🔥 Inclui <strong>R$ <span id="home-acum-valor">0,00</span></strong> acumulado de rodadas anteriores</div>
+      <div id="home-acumulado-label" style="font-size:12px;color:#FFD700;margin-top:5px;display:block;background:#FFD70015;border-radius:8px;padding:4px 10px">🔥 Prêmio acumulado: <strong>R$ <span id="home-acum-valor">0,00</span></strong> de rodadas anteriores</div>
       <div id="home-base-label" style="font-size:11px;color:#aaa;margin-top:4px">💰 Base: <span id="home-base-val">R$ --</span> + <span id="home-pct-label">50</span>% dos depósitos</div>
       <div style="font-size:11px;color:#aaa;margin-top:3px">💸 Enviado via Pix ao ganhador na hora</div>
       <div id="home-proxdata" style="display:none;margin-top:6px;font-size:11px;color:#FFD700">📅 Próximo sorteio: <span id="home-proxdata-val">--</span></div>
@@ -314,9 +314,9 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
           <span style="color:#aaa">💰 Prêmio base (<span id="st-pct">50</span>% dos depósitos)</span>
           <span id="st-base" style="color:#00d68f;font-weight:700">R$ --</span>
         </div>
-        <div id="st-acum-row" style="display:none;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div id="st-acum-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="color:#FFD700">🔥 Acumulado de rodadas anteriores</span>
-          <span id="st-acum-val" style="color:#FFD700;font-weight:700">R$ --</span>
+          <span id="st-acum-val" style="color:#FFD700;font-weight:700">R$ 0,00</span>
         </div>
         <div style="border-top:1px solid #ffffff15;padding-top:6px;display:flex;justify-content:space-between;align-items:center">
           <span style="color:#fff;font-weight:700">🏆 Total do prêmio</span>
@@ -535,14 +535,10 @@ async function carregarInfo() {
       if (elBase)  elBase.textContent  = 'R$ '+premioBase.toFixed(2).replace('.',',');
       if (elPct)   elPct.textContent   = pct.toFixed(0);
       if (elTotalLbl) elTotalLbl.textContent = 'R$ '+premioExato.toFixed(2).replace('.',',');
-      // Linha de acumulado só aparece se > 0
+      // Linha de acumulado sempre visível (mesmo R$0,00)
       if (elAcumRow && elAcumVal) {
-        if (acumExato > 0) {
-          elAcumRow.style.display = 'flex';
-          elAcumVal.textContent = 'R$ '+acumExato.toFixed(2).replace('.',',');
-        } else {
-          elAcumRow.style.display = 'none';
-        }
+        elAcumRow.style.display = 'flex';
+        elAcumVal.textContent = 'R$ '+acumExato.toFixed(2).replace('.',',');
       }
     }
 
@@ -570,14 +566,14 @@ async function carregarInfo() {
       <div class="regra-item"><div class="val">3</div><div class="lbl">nº · R$${(vp*3).toFixed(0)}</div></div>
       <div class="regra-item"><div class="val">+1</div><div class="lbl">a cada R$${vp.toFixed(0)}</div></div>
     `;
-    // ── Exibir acumulado e aviso mínimo participantes ──
+    // ── Exibir acumulado SEMPRE visível (mesmo R$0,00) ──
     const acum = s.premio_acumulado || 0;
     const elAcumLabel = document.getElementById('home-acumulado-label');
     const elAcumValor = document.getElementById('home-acum-valor');
-    if (elAcumLabel && elAcumValor && acum > 0) {
-      elAcumLabel.style.display = 'block';
+    if (elAcumLabel && elAcumValor) {
+      elAcumLabel.style.display = 'block'; // sempre visível
       elAcumValor.textContent = acum.toFixed(2).replace('.',',');
-    } else if (elAcumLabel) { elAcumLabel.style.display = 'none'; }
+    }
     const minPart = s.min_participantes || 5;
     const totalPart = s.total_participantes || 0;
     const elMinAviso = document.getElementById('home-min-aviso');
