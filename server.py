@@ -665,7 +665,17 @@ def load_admin_html():
 
 def load_sorteio_html():
     if os.path.exists('sorteio.html'):
-        return open('sorteio.html', encoding='utf-8').read()
+        import re as _re
+        h = open('sorteio.html', encoding='utf-8').read()
+        # Remove bloco participantes/bilhetes da home
+        h = _re.sub(r'<div style="display:flex;justify-content:center;gap:20px;margin-top:8px">.*?</div>\s*</div>\s*</div>',
+            '<div id="home-part" style="display:none"></div><div id="home-bilhetes" style="display:none"></div>',
+            h, flags=_re.DOTALL, count=1)
+        # Remove linha participantes/bilhetes da aba Sorteio
+        h = _re.sub(r'<div style="font-size:13px;color:#bbb;margin-bottom:6px">.*?bilhetes</div>',
+            '<span id="st-part" style="display:none"></span><span id="st-bilhetes" style="display:none"></span>',
+            h, flags=_re.DOTALL, count=1)
+        return h
     return '<h1>PaynexBet - Sorteio</h1>'
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -3122,7 +3132,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260413-STABLE-v27',
+        'version': 'v20260413-UI-v28',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -4346,7 +4356,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260413-STABLE-v27',
+            'version': 'v20260413-UI-v28',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
