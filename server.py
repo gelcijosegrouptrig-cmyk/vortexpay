@@ -871,18 +871,30 @@ def asaas_confirmar_pagamento_db(payment_id: str) -> dict:
 # ═══════════════════════════════════════════════════════════════════════════════
 # ─── HELPERS SORTEIO ────────────────────────────────────────
 def get_sorteio_config():
+    """Retorna config do sorteio usando SELECT com colunas nomeadas (compatível PG + SQLite)"""
+    cols = ['id','ativo','valor_por_numero','premio_fixo','percentual',
+            'usar_media','dias_media','descricao','proximo_sorteio','updated_at',
+            'paypix_pct','paypix_ativo','paypix_descricao','premio_acumulado',
+            'min_participantes','acumulativo']
+    select_cols = ', '.join(f'COALESCE({c}, NULL) AS {c}' if c not in ('id','ativo','descricao','proximo_sorteio','updated_at') else c for c in cols)
     conn = sqlite3_connect()
-    cur = conn.execute('SELECT * FROM sorteio_config WHERE id=1')
-    row = cur.fetchone(); conn.close()
+    try:
+        cur = conn.execute(f'SELECT {", ".join(cols)} FROM sorteio_config WHERE id=1')
+        row = cur.fetchone()
+    except Exception:
+        # fallback: SELECT * com mapeamento por posição
+        cur = conn.execute('SELECT * FROM sorteio_config WHERE id=1')
+        row = cur.fetchone()
+        conn.close()
+        if row:
+            d = {}
+            for i, col in enumerate(cols):
+                d[col] = row[i] if i < len(row) else None
+            return d
+        return {}
+    conn.close()
     if row:
-        cols = ['id','ativo','valor_por_numero','premio_fixo','percentual',
-                'usar_media','dias_media','descricao','proximo_sorteio','updated_at',
-                'paypix_pct','paypix_ativo','paypix_descricao','premio_acumulado',
-                'min_participantes','acumulativo']
-        d = {}
-        for i, col in enumerate(cols):
-            d[col] = row[i] if i < len(row) else None
-        return d
+        return {col: row[i] for i, col in enumerate(cols)}
     return {}
 
 def get_paypix_config():
@@ -2994,7 +3006,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260414-ACUM-v16',
+        'version': 'v20260414-ACUM-v17',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -4218,7 +4230,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260414-ACUM-v16',
+            'version': 'v20260414-ACUM-v17',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
