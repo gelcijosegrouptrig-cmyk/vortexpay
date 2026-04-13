@@ -2746,6 +2746,34 @@ async def route_db_migrate(request):
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e), 'migrations': results})
 
+async def route_patch_sorteio_html(request):
+    """POST /api/admin/patch-sorteio-html — Salva sorteio.html no PostgreSQL (patch permanente)"""
+    auth = (request.headers.get('X-PaynexBet-Secret','') or request.rel_url.query.get('secret',''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        html_content = data.get('html', '')
+        if not html_content or len(html_content) < 1000:
+            return web.json_response({'success': False, 'error': 'HTML inválido ou muito curto'}, status=400)
+        import psycopg2, datetime as _dt
+        if not DATABASE_URL:
+            return web.json_response({'success': False, 'error': 'DATABASE_URL não configurada'})
+        pg = psycopg2.connect(DATABASE_URL)
+        pg.autocommit = True
+        cur = pg.cursor()
+        cur.execute("""
+            INSERT INTO configuracoes (chave, valor, atualizado_em)
+            VALUES ('sorteio_html_patch', %s, %s)
+            ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = EXCLUDED.atualizado_em
+        """, (html_content, _dt.datetime.utcnow().isoformat()))
+        pg.close()
+        print(f'🔧 sorteio.html patch salvo no PostgreSQL: {len(html_content)} chars', flush=True)
+        return web.json_response({'success': True, 'chars': len(html_content), 'msg': 'sorteio.html atualizado no PostgreSQL'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
 async def route_asaas_status(request):
     """GET /api/asaas/status — Verifica se Asaas está configurado e operacional"""
     if not ASAAS_API_KEY:
@@ -4454,6 +4482,7 @@ async def main():
     app.router.add_post('/api/asaas/configurar', route_asaas_configurar)
     app.router.add_post('/api/railway/set-vars', route_railway_set_vars)
     app.router.add_post('/api/admin/db-migrate', route_db_migrate)
+    app.router.add_post('/api/admin/patch-sorteio-html', route_patch_sorteio_html)
 
     runner = web.AppRunner(app)
     await runner.setup()
