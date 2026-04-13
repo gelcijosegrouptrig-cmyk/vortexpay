@@ -17,8 +17,9 @@ WEBHOOK_SECRET = os.environ.get('WEBHOOK_SECRET', 'vortex_webhook_2024')
 
 # ─── ASAAS ────────────────────────────────────────────────────────────────────
 ASAAS_API_KEY  = os.environ.get('ASAAS_API_KEY', '')   # $aact_xxx (produção) ou $aasa_xxx (sandbox)
-ASAAS_ENV      = os.environ.get('ASAAS_ENV', 'sandbox')  # 'sandbox' ou 'production'
-ASAAS_BASE_URL = 'https://sandbox.asaas.com/api/v3' if ASAAS_ENV == 'sandbox' else 'https://api.asaas.com/api/v3'
+ASAAS_ENV      = os.environ.get('ASAAS_ENV', 'production')  # 'sandbox' ou 'production'
+# URL correta: https://api.asaas.com/v3 (produção) | https://sandbox.asaas.com/v3 (sandbox)
+ASAAS_BASE_URL = 'https://sandbox.asaas.com/v3' if ASAAS_ENV == 'sandbox' else 'https://api.asaas.com/v3'
 ASAAS_WEBHOOK_TOKEN = os.environ.get('ASAAS_WEBHOOK_TOKEN', 'vortex_asaas_2024')  # token secreto webhook Asaas
 
 _SESSION_FALLBACK = '1AZWarzYBuxGBwXPRkJ3GbWfNayG2RvhePLRdUEVqu8eP2bS9H8n2aaW2WeJDSfa_KDsuLUwkvF9tJb8g9tT9xoxyJUa30x2sqpVOCPEPqe5pdXV3HZ_iFdX9BGboi1SZvA_WudKYzn_mNO2z8gf-P0oPTwiRs8NF8fd-ZzJBe6vihX15jqy134gm5Eb0aPVT8sY_mCRcqBRzf4r4FeWtVvXsPneu22HHKHKHgxNgLX3b84665PPcXdJAYFVk0lv1xTjOlEnXQzDg-C4CnFeCn3rRtl1VQzG7KLZN3pMcR_b6MYCCqRnc8Eg5zLo4REufyc-ZewlYdH2feip0Q63Cqr97gnKewKQ='
@@ -2348,12 +2349,16 @@ async def route_asaas_status(request):
             'instrucao': 'Defina a variável de ambiente ASAAS_API_KEY no Railway'
         })
     resp = await asaas_request('GET', '/myAccount')
-    if resp.get('id') or resp.get('name'):
+    conta = resp.get('company') or resp.get('name', '')
+    balance_resp = await asaas_request('GET', '/finance/balance')
+    saldo = balance_resp.get('balance', 0)
+    if conta or resp.get('object') == 'account':
         return web.json_response({
             'configurado': True,
             'ambiente': ASAAS_ENV,
-            'conta': resp.get('name', ''),
-            'id': resp.get('id', ''),
+            'conta': conta,
+            'cpfCnpj': resp.get('cpfCnpj', ''),
+            'saldo': saldo,
             'status': 'ok'
         })
     return web.json_response({
@@ -2362,6 +2367,56 @@ async def route_asaas_status(request):
         'error': resp.get('errors', str(resp)),
         'status': 'erro_api'
     })
+
+
+async def route_asaas_configurar(request):
+    """POST /api/asaas/configurar — Injeta ASAAS_API_KEY em runtime (admin)"""
+    global ASAAS_API_KEY, ASAAS_ENV, ASAAS_BASE_URL
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        nova_key = str(data.get('api_key', '')).strip()
+        novo_env  = str(data.get('env', 'production')).strip()
+
+        if not nova_key or len(nova_key) < 20:
+            return web.json_response({'error': 'api_key inválida'}, status=400)
+
+        # Atualizar variáveis globais em runtime
+        ASAAS_API_KEY = nova_key
+        ASAAS_ENV = novo_env
+        ASAAS_BASE_URL = 'https://sandbox.asaas.com/v3' if novo_env == 'sandbox' else 'https://api.asaas.com/v3'
+
+        # Salvar no PostgreSQL para persistir entre restarts
+        try:
+            conn = sqlite3_connect()
+            conn.execute('''CREATE TABLE IF NOT EXISTS configuracoes (chave TEXT PRIMARY KEY, valor TEXT, updated_at TEXT)''')
+            conn.execute('INSERT OR REPLACE INTO configuracoes (chave, valor, updated_at) VALUES (?,?,?)',
+                        ('asaas_api_key', nova_key, datetime.now().isoformat()))
+            conn.execute('INSERT OR REPLACE INTO configuracoes (chave, valor, updated_at) VALUES (?,?,?)',
+                        ('asaas_env', novo_env, datetime.now().isoformat()))
+            conn.commit(); conn.close()
+            print(f'✅ [Asaas] Chave configurada em runtime + salva no DB | env:{novo_env}', flush=True)
+        except Exception as e:
+            print(f'⚠️ [Asaas] Erro ao salvar no DB: {e}', flush=True)
+
+        # Testar chave
+        resp = await asaas_request('GET', '/finance/balance')
+        saldo = resp.get('balance', '?')
+        conta_resp = await asaas_request('GET', '/myAccount')
+        conta = conta_resp.get('company') or conta_resp.get('name', '')
+
+        return web.json_response({
+            'success': True,
+            'message': f'✅ Asaas configurado! Conta: {conta} | Saldo: R${saldo}',
+            'conta': conta,
+            'saldo': saldo,
+            'ambiente': novo_env,
+        })
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
 
 # ─── ROTAS ────────────────────────────────────────────────
 # ── Estado global para login interativo ──────────────────────────────────────
@@ -2658,7 +2713,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260413-ASAAS-v11',
+        'version': 'v20260413-ASAAS-v12',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -3733,8 +3788,29 @@ async def route_exportar_csv(request):
 
 # ─── MAIN ─────────────────────────────────────────────────
 async def main():
+    global ASAAS_API_KEY, ASAAS_ENV, ASAAS_BASE_URL
     init_db()
     print('✅ DB ok', flush=True)
+
+    # ── Carregar ASAAS_API_KEY do DB se não vier por env var ──────────────
+    if not ASAAS_API_KEY:
+        try:
+            conn = sqlite3_connect()
+            row = conn.execute("SELECT valor FROM configuracoes WHERE chave='asaas_api_key'").fetchone()
+            if row and row[0]:
+                ASAAS_API_KEY = row[0]
+                env_row = conn.execute("SELECT valor FROM configuracoes WHERE chave='asaas_env'").fetchone()
+                ASAAS_ENV = (env_row[0] if env_row and env_row[0] else 'production')
+                ASAAS_BASE_URL = 'https://sandbox.asaas.com/v3' if ASAAS_ENV == 'sandbox' else 'https://api.asaas.com/v3'
+                print(f'✅ [Asaas] Chave carregada do DB | env:{ASAAS_ENV}', flush=True)
+            conn.close()
+        except Exception as e:
+            print(f'⚠️ [Asaas] Erro ao carregar chave do DB: {e}', flush=True)
+
+    if ASAAS_API_KEY:
+        print(f'✅ [Asaas] Configurado | env:{ASAAS_ENV} | URL:{ASAAS_BASE_URL}', flush=True)
+    else:
+        print('⚠️ [Asaas] ASAAS_API_KEY não configurada — gateway PIX indisponível', flush=True)
 
     app = web.Application(middlewares=[cors_middleware])
 
@@ -3859,7 +3935,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260413-ASAAS-v11',
+            'version': 'v20260413-ASAAS-v12',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
@@ -3880,6 +3956,7 @@ async def main():
     app.router.add_post('/api/sorteio/asaas/saque', route_asaas_saque_sorteio)
     app.router.add_post('/webhook/asaas', route_webhook_asaas)
     app.router.add_get('/api/asaas/status', route_asaas_status)
+    app.router.add_post('/api/asaas/configurar', route_asaas_configurar)
 
     runner = web.AppRunner(app)
     await runner.setup()
