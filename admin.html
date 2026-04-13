@@ -1665,8 +1665,8 @@ async function fazerLogin() {
       sessionStorage.setItem('vp_secret', secret);
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('admin-screen').style.display = 'block';
-      loadAllComSaldo(); // primeira carga: busca saldo real do bot
-      setInterval(loadAll, 30000); // auto-refresh 30s: só health + stats (sem Telegram)
+      loadAll(); // carga inicial: só health + stats (SEM consultar bot Telegram)
+      setInterval(loadAll, 30000); // auto-refresh 30s: só health + stats (SEM Telegram)
     } else {
       document.getElementById('login-error').textContent = '❌ Senha incorreta. Tente novamente.';
     }
@@ -1733,17 +1733,9 @@ function toast(msg, type = 'success') {
 //  LOAD ALL
 // ═══════════════════════════════════════════════
 async function loadAll() {
+  // ⚡ NUNCA consulta bot Telegram automaticamente — só health + stats
   document.getElementById('last-update').textContent = '🔄 Atualizando...';
-  // ⚡ loadSaldo com saldo bot FORA do loop automático — evita sobrecarga no Telegram
-  // O saldo do bot só é buscado via botão manual ou na primeira carga
   await Promise.all([loadHealth(), loadStats()]);
-  document.getElementById('last-update').textContent = '⏱ ' + new Date().toLocaleTimeString('pt-BR');
-}
-
-async function loadAllComSaldo() {
-  // Carga completa: health + stats + saldo real do bot (uso manual ou login)
-  document.getElementById('last-update').textContent = '🔄 Atualizando...';
-  await Promise.all([loadHealth(), loadStats(), loadSaldo()]);
   document.getElementById('last-update').textContent = '⏱ ' + new Date().toLocaleTimeString('pt-BR');
 }
 
