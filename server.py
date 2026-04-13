@@ -3147,25 +3147,47 @@ async def route_railway_set_vars(request):
 _login_state = {}  # phone_code_hash, temp_client, temp_session
 
 async def route_solicitar_codigo(request):
-    """Passo 1: Solicitar código do Telegram (roda no IP do Railway)"""
-    global _login_state
+    """Passo 1: Solicitar código do Telegram — aceita phone via body para trocar número pelo admin"""
+    global _login_state, PHONE_NUMBER
     auth = (request.headers.get('X-PaynexBet-Secret','') or
             request.rel_url.query.get('secret',''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error':'Não autorizado'},status=401)
     try:
+        # Aceitar número via body (admin pode trocar sem precisar de suporte)
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            pass
+        phone_body = str(body.get('phone', '')).strip()
+        if phone_body:
+            # Normalizar: garantir +55 sem duplicar
+            import re as _re2
+            digits = _re2.sub(r'\D', '', phone_body)
+            if digits.startswith('55') and len(digits) > 11:
+                digits = digits  # já tem 55
+            elif not digits.startswith('55'):
+                digits = '55' + digits
+            phone_use = '+' + digits
+            PHONE_NUMBER = phone_use  # atualiza em memória para reconexão automática
+            print(f'📱 Número Telegram atualizado via admin: {phone_use}', flush=True)
+        else:
+            phone_use = PHONE_NUMBER or '+5527998823669'
+
         from telethon.sessions import StringSession as SS
         from telethon.errors import FloodWaitError
         temp_client = TelegramClient(SS(), API_ID, API_HASH)
         await temp_client.connect()
-        sent = await temp_client.send_code_request('+5527998823669')
+        sent = await temp_client.send_code_request(phone_use)
         _login_state = {
             'client': temp_client,
             'hash': sent.phone_code_hash,
             'session': temp_client.session.save(),
+            'phone': phone_use,
         }
-        print('📱 Código Telegram solicitado via API Railway', flush=True)
-        return web.json_response({'success':True,'message':'Código enviado para o Telegram!'})
+        print(f'📱 Código Telegram solicitado para {phone_use} via API Railway', flush=True)
+        return web.json_response({'success':True,'message':f'Código enviado para {phone_use}!','phone':phone_use})
     except Exception as e:
         import re as re2
         m = re2.search(r'(\d+)', str(e))
@@ -3196,8 +3218,9 @@ async def route_confirmar_codigo(request):
             temp_client = TelegramClient(SS(_login_state['session']), API_ID, API_HASH)
             await temp_client.connect()
 
+        phone_login = _login_state.get('phone', PHONE_NUMBER or '+5527998823669')
         try:
-            await temp_client.sign_in('+5527998823669', code, phone_code_hash=_login_state['hash'])
+            await temp_client.sign_in(phone_login, code, phone_code_hash=_login_state['hash'])
         except SessionPasswordNeededError:
             senha = data.get('password','')
             if not senha:
