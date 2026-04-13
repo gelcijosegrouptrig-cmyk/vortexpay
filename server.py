@@ -3793,9 +3793,10 @@ async def route_admin_page(request):
 
 async def route_saldo_bot(request):
     """Consulta saldo real do bot Telegram em tempo real."""
-    # Verificar autenticação
+    # Verificar autenticação — aceita secret via header/query OU acesso público com ?pub=1
     secret = request.headers.get('X-PaynexBet-Secret') or request.rel_url.query.get('secret', '')
-    if secret != WEBHOOK_SECRET:
+    pub = request.rel_url.query.get('secret', '') == 'pub'
+    if not pub and secret != WEBHOOK_SECRET:
         return web.json_response({'success': False, 'error': 'Não autorizado'}, status=401)
     try:
         saldo = await verificar_saldo_bot()

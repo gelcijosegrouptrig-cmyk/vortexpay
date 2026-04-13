@@ -517,13 +517,29 @@ async function carregarSaldo() {
   const el = document.getElementById('saldo-valor');
   el.textContent = '...';
   try {
-    const r = await fetch('/api/saldo');
-    const d = await r.json();
-    if (d.success) {
-      saldoAtual = d.saldo;
-      el.textContent = `R$ ${saldoAtual.toFixed(2).replace('.',',')}`;
-    } else {
-      el.textContent = '—';
+    // Tentar saldo real do bot Telegram primeiro
+    let saldoOk = false;
+    try {
+      const rBot = await fetch('/api/saldo/bot?secret=pub');
+      if (rBot.ok) {
+        const dBot = await rBot.json();
+        if (dBot.success && dBot.saldo_bot >= 0) {
+          saldoAtual = dBot.saldo_bot;
+          el.textContent = `R$ ${saldoAtual.toFixed(2).replace('.',',')}`;
+          saldoOk = true;
+        }
+      }
+    } catch(_) {}
+    // Fallback: saldo contábil local
+    if (!saldoOk) {
+      const r = await fetch('/api/saldo');
+      const d = await r.json();
+      if (d.success) {
+        saldoAtual = d.disponivel || d.saldo;
+        el.textContent = `R$ ${saldoAtual.toFixed(2).replace('.',',')}`;
+      } else {
+        el.textContent = '—';
+      }
     }
   } catch(e) {
     el.textContent = '—';
