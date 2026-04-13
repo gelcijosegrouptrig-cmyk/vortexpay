@@ -2127,12 +2127,7 @@ async def route_sorteio_config(request):
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         data = await request.json()
-        conn = sqlite3_connect()
-        conn.execute('''UPDATE sorteio_config SET
-            ativo=?, valor_por_numero=?, percentual=?, usar_media=?, dias_media=?,
-            premio_fixo=?, descricao=?, proximo_sorteio=?, updated_at=?,
-            acumulativo=?, min_participantes=?
-            WHERE id=1''', (
+        params = (
             int(data.get('ativo', 1)),
             float(data.get('valor_por_numero', 10.0)),
             float(data.get('percentual', 50)),
@@ -2143,9 +2138,35 @@ async def route_sorteio_config(request):
             data.get('proximo_sorteio'),
             datetime.now().isoformat(),
             int(data.get('acumulativo', 1)),
-            int(data.get('min_participantes', 1)),
-        ))
-        conn.commit(); conn.close()
+            int(data.get('min_participantes', 5)),
+        )
+        if _USE_PG and DATABASE_URL:
+            # PostgreSQL: rodar migrações primeiro, depois UPDATE com %s
+            import psycopg2
+            pg = psycopg2.connect(DATABASE_URL)
+            pg.autocommit = True
+            cur = pg.cursor()
+            for mig in [
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS acumulativo INTEGER DEFAULT 1",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS min_participantes INTEGER DEFAULT 5",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS premio_acumulado REAL DEFAULT 0",
+            ]:
+                try: cur.execute(mig)
+                except Exception: pass
+            cur.execute('''UPDATE sorteio_config SET
+                ativo=%s, valor_por_numero=%s, percentual=%s, usar_media=%s, dias_media=%s,
+                premio_fixo=%s, descricao=%s, proximo_sorteio=%s, updated_at=%s,
+                acumulativo=%s, min_participantes=%s
+                WHERE id=1''', params)
+            pg.close()
+        else:
+            conn = sqlite3_connect()
+            conn.execute('''UPDATE sorteio_config SET
+                ativo=?, valor_por_numero=?, percentual=?, usar_media=?, dias_media=?,
+                premio_fixo=?, descricao=?, proximo_sorteio=?, updated_at=?,
+                acumulativo=?, min_participantes=?
+                WHERE id=1''', params)
+            conn.commit(); conn.close()
         return web.json_response({'success': True, 'message': 'Configuração salva!'})
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
@@ -2936,7 +2957,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260414-ACUM-v14',
+        'version': 'v20260414-ACUM-v15',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -4160,7 +4181,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260414-ACUM-v14',
+            'version': 'v20260414-ACUM-v15',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
