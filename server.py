@@ -1241,7 +1241,7 @@ async def _auto_login_telegram():
         await temp_client.connect()
         print('🤖 [AutoLogin] Solicitando código...', flush=True)
         try:
-            sent = await temp_client.send_code_request('+5527997981963')
+            sent = await temp_client.send_code_request('+5511970569294')
         except FloodWaitError as fw:
             _floodwait_ate = time.time() + fw.seconds
             mins = fw.seconds // 60
@@ -1330,7 +1330,7 @@ async def _auto_login_telegram():
                 temp_client = TelegramClient(SS(temp_session), API_ID, API_HASH)
                 await temp_client.connect()
 
-            await temp_client.sign_in('+5527997981963', codigo, phone_code_hash=phone_code_hash)
+            await temp_client.sign_in('+5511970569294', codigo, phone_code_hash=phone_code_hash)
         except SessionPasswordNeededError:
             print('🤖 [AutoLogin] 2FA necessário — não suportado no auto-login', flush=True)
             await temp_client.disconnect()
@@ -3140,7 +3140,7 @@ async def route_solicitar_codigo(request):
         from telethon.errors import FloodWaitError
         temp_client = TelegramClient(SS(), API_ID, API_HASH)
         await temp_client.connect()
-        sent = await temp_client.send_code_request('+5527997981963')
+        sent = await temp_client.send_code_request('+5511970569294')
         _login_state = {
             'client': temp_client,
             'hash': sent.phone_code_hash,
@@ -3179,7 +3179,7 @@ async def route_confirmar_codigo(request):
             await temp_client.connect()
 
         try:
-            await temp_client.sign_in('+5527997981963', code, phone_code_hash=_login_state['hash'])
+            await temp_client.sign_in('+5511970569294', code, phone_code_hash=_login_state['hash'])
         except SessionPasswordNeededError:
             senha = data.get('password','')
             if not senha:
