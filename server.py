@@ -317,9 +317,8 @@ def init_db():
             try:
                 cur.execute("""INSERT INTO sorteio_config
                     (id,ativo,valor_por_numero,premio_fixo,percentual,usar_media,dias_media,descricao,proximo_sorteio,updated_at,premio_acumulado,acumulativo,min_participantes)
-                    VALUES (1,1,10.0,0,50.0,0,30,'Sorteio PaynexBet',NULL,%s,0,1,1)
-                    ON CONFLICT (id) DO UPDATE SET
-                        valor_por_numero=EXCLUDED.valor_por_numero""", (datetime.now().isoformat(),))
+                    VALUES (1,1,5.0,0,50.0,0,30,'Sorteio PaynexBet',NULL,%s,0,1,1)
+                    ON CONFLICT (id) DO NOTHING""", (datetime.now().isoformat(),))
             except Exception as e:
                 print(f'[DB init] Aviso config sorteio: {e}', flush=True)
             pg.close()
@@ -3048,7 +3047,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260418-TIMER-v22',
+        'version': 'v20260418-TIMER-v23',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -4272,7 +4271,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260418-TIMER-v22',
+            'version': 'v20260418-TIMER-v23',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
