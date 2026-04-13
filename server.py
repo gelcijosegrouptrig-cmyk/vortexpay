@@ -692,6 +692,25 @@ def load_admin_html():
         return open('admin.html', encoding='utf-8').read()
     return '<h1>PaynexBet - Admin</h1>'
 
+def load_paypix_html():
+    # ── Tentar carregar versão mais recente do PostgreSQL (patch via DB) ──
+    try:
+        if DATABASE_URL:
+            import psycopg2 as _pg
+            _c = _pg.connect(DATABASE_URL, connect_timeout=3)
+            _cur = _c.cursor()
+            _cur.execute("SELECT valor FROM configuracoes WHERE chave='paypix_html_patch'")
+            _row = _cur.fetchone()
+            _c.close()
+            if _row and _row[0] and len(_row[0]) > 1000:
+                return _row[0]
+    except Exception:
+        pass
+    # Fallback: arquivo em disco
+    if os.path.exists('paypix.html'):
+        return open('paypix.html', encoding='utf-8').read()
+    return '<h1>PayPix</h1>'
+
 def load_sorteio_html():
     # ── Tentar carregar versão mais recente do PostgreSQL (patch via DB) ──
     try:
@@ -2899,6 +2918,26 @@ async def route_db_migrate(request):
                 print(f'🔧 sorteio.html patch salvo no PostgreSQL via db-migrate: {len(_sorteio_html)} chars', flush=True)
         except Exception as _es:
             sorteio_html_result = f'erro: {_es}'
+
+        # ── Patch paypix.html no PostgreSQL (se enviado via body) ──
+        paypix_html_result = 'N/A'
+        try:
+            _paypix_html = _body.get('paypix_html', '')
+            if _paypix_html and len(_paypix_html) > 1000:
+                pg3 = psycopg2.connect(DATABASE_URL)
+                pg3.autocommit = True
+                c3 = pg3.cursor()
+                c3.execute("SELECT column_name FROM information_schema.columns WHERE table_name='configuracoes'")
+                _cols3 = [r[0] for r in c3.fetchall()]
+                if 'atualizado_em' in _cols3:
+                    c3.execute("INSERT INTO configuracoes (chave, valor, atualizado_em) VALUES ('paypix_html_patch', %s, NOW()::text) ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = NOW()::text", (_paypix_html,))
+                else:
+                    c3.execute("INSERT INTO configuracoes (chave, valor) VALUES ('paypix_html_patch', %s) ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor", (_paypix_html,))
+                pg3.close()
+                paypix_html_result = f'salvo ({len(_paypix_html)} chars)'
+                print(f'🔧 paypix.html patch salvo no PostgreSQL via db-migrate: {len(_paypix_html)} chars', flush=True)
+        except Exception as _ep:
+            paypix_html_result = f'erro: {_ep}'
         pg.close()
         # ── Patch home.html: remover participantes/bilhetes da seção stats ──
         html_patch_result = 'N/A'
@@ -4096,7 +4135,7 @@ async def route_confirmar_deposito_admin(request):
 
 async def route_paypix_page(request):
     """Página pública /paypix — parceiro gera Pix e recebe 60%"""
-    html = open('paypix.html', encoding='utf-8').read()
+    html = load_paypix_html()
     return web.Response(text=html, content_type='text/html', charset='utf-8')
 
 async def route_paypix_gerar(request):
