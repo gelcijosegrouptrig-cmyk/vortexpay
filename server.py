@@ -645,7 +645,36 @@ def listar_saques(limit=50):
 # ─── HTML ───────────────────────────────────────────────────
 def load_home_html():
     if os.path.exists('home.html'):
-        return open('home.html', encoding='utf-8').read()
+        html = open('home.html', encoding='utf-8').read()
+        # ── Patch v29: remover participantes/bilhetes da seção stats ──
+        import re as _reh
+        # Substituir seção STATS antiga pelos 2 cards corretos (prêmio + por número)
+        html = _reh.sub(
+            r'<!-- STATS -->.*?<!-- URGÊNCIA -->',
+            '<!-- STATS -->\n'
+            '  <div class="divider"><span>🏆 Prêmio atual do sorteio</span></div>\n\n'
+            '  <div class="stats-grid" style="grid-template-columns:1fr 1fr">\n'
+            '    <div class="stat-card">\n'
+            '      <div class="stat-val" id="s-premio">--</div>\n'
+            '      <div class="stat-lbl">🏆 Prêmio estimado</div>\n'
+            '    </div>\n'
+            '    <div class="stat-card">\n'
+            '      <div class="stat-val">R$5</div>\n'
+            '      <div class="stat-lbl">Por número da sorte</div>\n'
+            '    </div>\n'
+            '  </div>\n\n'
+            '  <!-- URGÊNCIA -->',
+            html, flags=_reh.DOTALL
+        )
+        # Corrigir JS: remover referências a s-part e s-bil
+        html = _reh.sub(
+            r"document\.getElementById\('s-part'\)\.textContent=s\.total_participantes\|\|0;\s*"
+            r"document\.getElementById\('s-bil'\)\.textContent=s\.total_bilhetes\|\|0;\s*",
+            '', html
+        )
+        # Corrigir label prêmio acumulado → prêmio estimado
+        html = html.replace('Prêmio acumulado</div>', 'Prêmio estimado</div>')
+        return html
     return '<h1>PaynexBet</h1>'
 
 def load_html():
