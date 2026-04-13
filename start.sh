@@ -1,14 +1,14 @@
 #!/bin/bash
 set -e
-COMMIT_HASH="3a74fe7"
+COMMIT_HASH="60b6018"
 REPO_RAW="https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/${COMMIT_HASH}"
-echo "=== VortexPay Deploy - UI-v28 ==="
+echo "=== VortexPay Deploy - UI-v29 ==="
 echo "Commit: $COMMIT_HASH"
 
 pip install aiohttp telethon aiofiles psycopg2-binary 2>/dev/null | tail -1
 
 # Baixar arquivos do GitHub no commit fixo estável
-for f in server.py admin.html paypix.html sorteio.html; do
+for f in server.py admin.html paypix.html sorteio.html home.html; do
   echo "⬇ Baixando $f..."
   curl -fsSL "$REPO_RAW/$f" -o "$f" 2>/dev/null || echo "⚠ Usando $f local"
 done
