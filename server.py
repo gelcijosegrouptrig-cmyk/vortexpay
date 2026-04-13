@@ -5171,6 +5171,172 @@ async def route_bot2_confirmar_codigo(request):
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
+# ══════════════════════════════════════════════════════════════════
+# ─── ROTAS MP2 — Mercado Pago + @paypix_nexbot (Bot real) ────────
+# ══════════════════════════════════════════════════════════════════
+
+async def route_mp2_status(request):
+    """Status geral do sistema PayPixNex (Bot2 real)."""
+    try:
+        from mp2_api import mp2_stats_admin, mp2_get_config
+        stats = mp2_stats_admin()
+        bot2_token = bool(os.environ.get('BOT2_TOKEN', ''))
+        mp2_token  = bool(os.environ.get('MP2_ACCESS_TOKEN', ''))
+        return web.json_response({
+            'success': True,
+            'bot': '@paypix_nexbot',
+            'bot2_token_configurado': bot2_token,
+            'mp2_token_configurado': mp2_token,
+            'stats': stats,
+            'deposito_minimo': mp2_get_config('deposito_minimo', '5'),
+            'deposito_maximo': mp2_get_config('deposito_maximo', '10000'),
+            'saque_minimo': mp2_get_config('saque_minimo', '20'),
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+async def route_mp2_webhook(request):
+    """
+    Webhook do Mercado Pago para confirmar pagamentos Pix.
+    URL: POST /webhook/mp2
+    Registrar no painel MP: https://SEU_DOMINIO/webhook/mp2
+    """
+    try:
+        body = await request.json()
+        action = body.get('action', '')
+        data   = body.get('data', {})
+
+        # MP envia: {"action":"payment.updated","data":{"id":"12345"}}
+        if action in ('payment.updated', 'payment.created'):
+            payment_id = str(data.get('id', ''))
+            if payment_id:
+                from mp2_api import mp2_verificar_pagamento, mp2_confirmar_pagamento_webhook
+                info = mp2_verificar_pagamento(payment_id)
+                if info.get('status') == 'approved':
+                    external_ref = info.get('external_ref', '')
+                    if external_ref:
+                        processado = mp2_confirmar_pagamento_webhook(external_ref, payment_id)
+                        print(f'✅ [mp2_webhook] {external_ref} processado={processado}', flush=True)
+                        # Notificar usuário via bot (se token configurado)
+                        _mp2_notificar_pagamento(external_ref, info.get('valor', 0))
+                    return web.json_response({'ok': True, 'processado': True})
+
+        return web.json_response({'ok': True, 'action': action})
+    except Exception as e:
+        print(f'[mp2_webhook] Erro: {e}', flush=True)
+        return web.json_response({'ok': False, 'error': str(e)}, status=200)  # sempre 200 pro MP
+
+def _mp2_notificar_pagamento(external_ref: str, valor: float):
+    """Notifica usuário Telegram após confirmação de depósito (fire-and-forget)."""
+    try:
+        import psycopg2, psycopg2.extras
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT telegram_id FROM mp2_transacoes WHERE mp_external_ref = %s", (external_ref,))
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if row:
+            telegram_id = row['telegram_id']
+            bot2_token  = os.environ.get('BOT2_TOKEN', '')
+            if bot2_token and telegram_id:
+                import requests as _req
+                msg = (
+                    f"✅ *Depósito confirmado!*\n"
+                    f"💰 R$ {float(valor):.2f} creditado na sua conta.\n"
+                    f"Use /carteira para verificar seu saldo."
+                )
+                _req.post(
+                    f'https://api.telegram.org/bot{bot2_token}/sendMessage',
+                    json={'chat_id': telegram_id, 'text': msg, 'parse_mode': 'Markdown'},
+                    timeout=10
+                )
+    except Exception as e:
+        print(f'[mp2_notificar] Erro: {e}', flush=True)
+
+async def route_mp2_saques_pendentes(request):
+    """Lista saques pendentes para o admin processar."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        from mp2_api import mp2_listar_saques_pendentes
+        saques = mp2_listar_saques_pendentes()
+        # Serializar datas
+        for s in saques:
+            for k, v in s.items():
+                if hasattr(v, 'isoformat'):
+                    s[k] = v.isoformat()
+        return web.json_response({'success': True, 'saques': saques, 'total': len(saques)})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+async def route_mp2_processar_saque(request):
+    """Admin aprova ou rejeita saque manualmente."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        body = await request.json()
+        saque_id = int(body.get('saque_id', 0))
+        aprovado = bool(body.get('aprovado', False))
+        obs      = body.get('obs', '')
+
+        from mp2_api import mp2_processar_saque, mp2_listar_saques_pendentes
+        ok = mp2_processar_saque(saque_id, aprovado, obs)
+
+        if ok:
+            # Notificar usuário se aprovado
+            if aprovado:
+                _mp2_notificar_saque_aprovado(saque_id)
+            return web.json_response({'success': True, 'saque_id': saque_id, 'status': 'aprovado' if aprovado else 'rejeitado'})
+        return web.json_response({'success': False, 'error': 'Saque não encontrado ou já processado'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+def _mp2_notificar_saque_aprovado(saque_id: int):
+    """Notifica usuário que o saque foi aprovado."""
+    try:
+        import psycopg2, psycopg2.extras, requests as _req
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT * FROM mp2_saques WHERE id = %s", (saque_id,))
+        saque = cur.fetchone()
+        cur.close(); conn.close()
+        if saque:
+            bot2_token  = os.environ.get('BOT2_TOKEN', '')
+            telegram_id = saque['telegram_id']
+            valor       = float(saque['valor'])
+            chave       = saque['chave_pix']
+            if bot2_token and telegram_id:
+                msg = (
+                    f"✅ *Saque aprovado!*\n"
+                    f"💰 R$ {valor:.2f} enviado para:\n"
+                    f"`{chave}`\n\n"
+                    f"_Obrigado por usar o PayPixNex!_"
+                )
+                _req.post(
+                    f'https://api.telegram.org/bot{bot2_token}/sendMessage',
+                    json={'chat_id': telegram_id, 'text': msg, 'parse_mode': 'Markdown'},
+                    timeout=10
+                )
+    except Exception as e:
+        print(f'[mp2_notif_saque] Erro: {e}', flush=True)
+
+async def route_mp2_stats(request):
+    """Estatísticas gerais do PayPixNex para o admin."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        from mp2_api import mp2_stats_admin
+        stats = mp2_stats_admin()
+        return web.json_response({'success': True, 'stats': stats})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
 async def route_exportar_csv(request):
     """Exportar depósitos ou saques em CSV"""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
@@ -5321,6 +5487,12 @@ async def main():
     app.router.add_post('/api/bot2/pix',                    route_bot2_pix)
     app.router.add_post('/api/bot2/solicitar-codigo',       route_bot2_solicitar_codigo)
     app.router.add_post('/api/bot2/confirmar-codigo',       route_bot2_confirmar_codigo)
+    # ── MP2 — PayPixNex (Bot real @paypix_nexbot + Mercado Pago) ────
+    app.router.add_get('/api/mp2/status',                   route_mp2_status)
+    app.router.add_get('/api/mp2/stats',                    route_mp2_stats)
+    app.router.add_post('/webhook/mp2',                     route_mp2_webhook)
+    app.router.add_get('/api/mp2/saques',                   route_mp2_saques_pendentes)
+    app.router.add_post('/api/mp2/saques/processar',        route_mp2_processar_saque)
     # PayPix — parceiro gera Pix e recebe 60%
     app.router.add_get('/paypix', route_paypix_page)
     app.router.add_post('/api/paypix/gerar', route_paypix_gerar)
@@ -5407,10 +5579,29 @@ async def main():
     # Worker de splits PayPix pendentes — tenta a cada 5 min até finalizar
     asyncio.create_task(_worker_paypix_fila())
 
-    # ── Bot 2 (@paypix_nexbot) — tasks paralelas ───────────────────
+    # ── Bot 2 (@paypix_nexbot) — tasks paralelas (userbot Telethon legado) ──
     asyncio.create_task(conectar_telegram2())
     asyncio.create_task(watchdog_telegram2())
     asyncio.create_task(_loop_verificar_pagamentos_bot2())
+
+    # ── Bot 2 REAL — @paypix_nexbot (python-telegram-bot + Mercado Pago) ──
+    try:
+        from mp2_api import init_mp2_db
+        from bot2_handler import build_bot2_app
+        init_mp2_db()
+        bot2_app = build_bot2_app()
+        if bot2_app:
+            async def _rodar_bot2():
+                await bot2_app.initialize()
+                await bot2_app.start()
+                await bot2_app.updater.start_polling(allowed_updates=['message', 'callback_query'])
+                print('✅ [Bot2 Real] @paypix_nexbot polling ativo!', flush=True)
+                await asyncio.Event().wait()  # manter vivo
+            asyncio.create_task(_rodar_bot2())
+        else:
+            print('⚠️ [Bot2 Real] BOT2_TOKEN não configurado — bot desativado', flush=True)
+    except Exception as e_bot2:
+        print(f'⚠️ [Bot2 Real] Erro ao iniciar: {e_bot2}', flush=True)
 
     await asyncio.Event().wait()
 
