@@ -2500,6 +2500,38 @@ async def route_asaas_saque_sorteio(request):
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
 
+async def route_db_migrate(request):
+    """POST /api/admin/db-migrate — Roda migrações pendentes no PostgreSQL"""
+    auth = (request.headers.get('X-PaynexBet-Secret','') or request.rel_url.query.get('secret',''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    results = []
+    migrations = [
+        "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS premio_acumulado REAL DEFAULT 0",
+        "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS acumulativo INTEGER DEFAULT 1",
+        "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS min_participantes INTEGER DEFAULT 5",
+        "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_pct REAL DEFAULT 0.6",
+        "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_ativo INTEGER DEFAULT 1",
+        "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_descricao TEXT DEFAULT 'Gere seu Pix e receba sua % do valor'",
+        "UPDATE sorteio_config SET valor_por_numero=10.0 WHERE id=1 AND valor_por_numero=5.0",
+        "UPDATE sorteio_config SET min_participantes=5, acumulativo=1, percentual=50 WHERE id=1",
+    ]
+    try:
+        import os, psycopg2
+        pg = psycopg2.connect(os.environ['DATABASE_URL'])
+        pg.autocommit = True
+        cur = pg.cursor()
+        for sql in migrations:
+            try:
+                cur.execute(sql)
+                results.append({'sql': sql[:60], 'ok': True})
+            except Exception as e:
+                results.append({'sql': sql[:60], 'ok': False, 'err': str(e)})
+        pg.close()
+        return web.json_response({'success': True, 'migrations': results})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e), 'migrations': results})
+
 async def route_asaas_status(request):
     """GET /api/asaas/status — Verifica se Asaas está configurado e operacional"""
     if not ASAAS_API_KEY:
@@ -4206,6 +4238,7 @@ async def main():
     app.router.add_get('/api/asaas/status', route_asaas_status)
     app.router.add_post('/api/asaas/configurar', route_asaas_configurar)
     app.router.add_post('/api/railway/set-vars', route_railway_set_vars)
+    app.router.add_post('/api/admin/db-migrate', route_db_migrate)
 
     runner = web.AppRunner(app)
     await runner.setup()
