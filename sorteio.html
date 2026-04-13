@@ -165,7 +165,8 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
       <div style="font-size:11px;color:#FFD700;font-weight:700;letter-spacing:1px;margin-bottom:6px">🏆 PRÊMIO DO SORTEIO</div>
       <div id="home-premio" style="font-size:34px;font-weight:900;color:#FFD700;font-family:monospace;line-height:1.1;text-shadow:0 0 20px #FFD70066">R$ --</div>
       <div id="home-acumulado-label" style="font-size:12px;color:#FFD700;margin-top:5px;display:block;background:#FFD70015;border-radius:8px;padding:4px 10px">🔥 Prêmio acumulado: <strong>R$ <span id="home-acum-valor">0,00</span></strong> de rodadas anteriores</div>
-      <div id="home-base-label" style="font-size:11px;color:#aaa;margin-top:4px">💰 Base: <span id="home-base-val">R$ --</span> + <span id="home-pct-label">50</span>% dos depósitos</div>
+      <!-- Base oculto (hidden) -->
+      <div id="home-base-label" style="display:none"><span id="home-base-val">R$ --</span><span id="home-pct-label">50</span></div>
       <div style="font-size:11px;color:#aaa;margin-top:3px">💸 Enviado via Pix ao ganhador na hora</div>
       <div id="home-proxdata" style="display:none;margin-top:6px;font-size:11px;color:#FFD700">📅 Próximo sorteio: <span id="home-proxdata-val">--</span></div>
       <!-- Mini countdown na home -->
@@ -308,12 +309,11 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
       <div id="st-premio" style="font-size:34px;font-weight:900;color:#00d68f;font-family:monospace;margin:8px 0;text-shadow:0 0 18px #00d68f66">-</div>
       <div style="font-size:12px;color:#aaa;margin-bottom:10px">💸 Valor exato que será sacado ao ganhador via Pix</div>
 
-      <!-- Breakdown: base + acumulado -->
+      <!-- Breakdown: apenas acumulado + total (base oculto) -->
       <div id="st-breakdown" style="display:none;background:#ffffff08;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="color:#aaa">💰 Prêmio base (<span id="st-pct">50</span>% dos depósitos)</span>
-          <span id="st-base" style="color:#00d68f;font-weight:700">R$ --</span>
-        </div>
+        <!-- Prêmio base oculto (hidden) -->
+        <span id="st-base" style="display:none">R$ --</span>
+        <span id="st-pct" style="display:none">50</span>
         <div id="st-acum-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="color:#FFD700">🔥 Acumulado de rodadas anteriores</span>
           <span id="st-acum-val" style="color:#FFD700;font-weight:700">R$ 0,00</span>
