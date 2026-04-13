@@ -665,7 +665,33 @@ def load_admin_html():
 
 def load_sorteio_html():
     if os.path.exists('sorteio.html'):
-        return open('sorteio.html', encoding='utf-8').read()
+        html = open('sorteio.html', encoding='utf-8').read()
+        # Remove bloco de participantes/bilhetes da home (card prêmio acumulado)
+        import re
+        html = re.sub(
+            r'<div style="display:flex;justify-content:center;gap:20px;margin-top:8px">\s*'
+            r'<div style="text-align:center">\s*'
+            r'<div id="home-part"[^>]*>.*?</div>\s*'
+            r'<div style="font-size:10px;color:#666">participantes</div>\s*'
+            r'</div>\s*'
+            r'<div style="width:1px;background:#333"></div>\s*'
+            r'<div style="text-align:center">\s*'
+            r'<div id="home-bilhetes"[^>]*>.*?</div>\s*'
+            r'<div style="font-size:10px;color:#666">bilhetes</div>\s*'
+            r'</div>\s*'
+            r'</div>',
+            '<div id="home-part" style="display:none"></div><div id="home-bilhetes" style="display:none"></div>',
+            html, flags=re.DOTALL
+        )
+        # Remove linha de participantes/bilhetes da aba Sorteio
+        html = re.sub(
+            r'<div style="font-size:13px;color:#bbb;margin-bottom:6px">[^<]*'
+            r'<span id="st-part">.*?</span>[^<]*·[^<]*'
+            r'<span id="st-bilhetes">.*?</span>[^<]*bilhetes</div>',
+            '<span id="st-part" style="display:none"></span><span id="st-bilhetes" style="display:none"></span>',
+            html, flags=re.DOTALL
+        )
+        return html
     return '<h1>PaynexBet - Sorteio</h1>'
 
 # ═══════════════════════════════════════════════════════════════════════════════
