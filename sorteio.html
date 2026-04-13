@@ -166,6 +166,26 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
       <div id="home-premio" style="font-size:32px;font-weight:900;color:#FFD700;font-family:monospace;line-height:1.1;text-shadow:0 0 20px #FFD70066">R$ --</div>
       <div id="home-acumulado-label" style="font-size:11px;color:#FFD700;margin-top:3px;display:none">🔥 Inclui R$ <span id="home-acum-valor">0,00</span> acumulado de rodadas anteriores</div>
       <div style="font-size:11px;color:#aaa;margin-top:5px">💸 Enviado via Pix ao ganhador na hora</div>
+      <div id="home-proxdata" style="display:none;margin-top:6px;font-size:11px;color:#FFD700">📅 Próximo sorteio: <span id="home-proxdata-val">--</span></div>
+      <!-- Mini countdown na home -->
+      <div id="home-cdown" style="margin-top:8px;display:flex;justify-content:center;gap:10px">
+        <div style="text-align:center;background:#FFD70015;border-radius:8px;padding:5px 10px">
+          <div id="hcd-d" style="font-size:18px;font-weight:900;color:#FFD700;font-family:monospace">--</div>
+          <div style="font-size:9px;color:#888">Dias</div>
+        </div>
+        <div style="text-align:center;background:#FFD70015;border-radius:8px;padding:5px 10px">
+          <div id="hcd-h" style="font-size:18px;font-weight:900;color:#FFD700;font-family:monospace">--</div>
+          <div style="font-size:9px;color:#888">Horas</div>
+        </div>
+        <div style="text-align:center;background:#FFD70015;border-radius:8px;padding:5px 10px">
+          <div id="hcd-m" style="font-size:18px;font-weight:900;color:#FFD700;font-family:monospace">--</div>
+          <div style="font-size:9px;color:#888">Min</div>
+        </div>
+        <div style="text-align:center;background:#FFD70015;border-radius:8px;padding:5px 10px">
+          <div id="hcd-s" style="font-size:18px;font-weight:900;color:#FFD700;font-family:monospace">--</div>
+          <div style="font-size:9px;color:#888">Seg</div>
+        </div>
+      </div>
       <div id="home-min-aviso" style="display:none;margin-top:8px;background:#FF6B0020;border:1px solid #FF6B0055;border-radius:8px;padding:6px 10px;font-size:11px;color:#FF6B00">⏳ Aguardando mínimo de <span id="home-min-num">5</span> participantes para sortear</div>
       <div style="display:flex;justify-content:center;gap:20px;margin-top:8px">
         <div style="text-align:center">
@@ -505,10 +525,27 @@ async function carregarInfo() {
       elMinAviso.style.display = (totalPart < minPart) ? 'block' : 'none';
     }
     if (s.proximo_sorteio) {
-      iniciarCountdown(new Date(s.proximo_sorteio));
-      document.getElementById('prox-data').textContent = new Date(s.proximo_sorteio).toLocaleString('pt-BR');
+      // Converter para horário de Brasília (UTC-3)
+      let dtProx = new Date(s.proximo_sorteio);
+      // Se não tem timezone na string, assumir horário de Brasília (adicionar 3h para converter de BRT para UTC)
+      if (!s.proximo_sorteio.includes('Z') && !s.proximo_sorteio.includes('+')) {
+        dtProx = new Date(s.proximo_sorteio + '-03:00');
+      }
+      iniciarCountdown(dtProx);
+      iniciarCountdownHome(dtProx);
+      const dtStr = dtProx.toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
+      const elProxData = document.getElementById('prox-data');
+      if (elProxData) elProxData.textContent = dtStr + ' (horário de Brasília)';
+      const elHomeProxData = document.getElementById('home-proxdata');
+      const elHomeProxVal  = document.getElementById('home-proxdata-val');
+      if (elHomeProxData && elHomeProxVal) {
+        elHomeProxVal.textContent = dtStr;
+        elHomeProxData.style.display = 'block';
+      }
+      const elHomeCdown = document.getElementById('home-cdown');
+      if (elHomeCdown) elHomeCdown.style.display = 'flex';
     }
-  } catch(e) {}
+  } catch(e) { console.error('carregarInfo erro:', e); }
 }
 
 // ── UTILIDADES ──
@@ -1027,14 +1064,29 @@ function iniciarCountdown(alvo) {
   if (cdInt) clearInterval(cdInt);
   function upd() {
     const diff = alvo - new Date();
-    if (diff <= 0) { clearInterval(cdInt); ['d','h','m','s'].forEach(x => document.getElementById('cd-'+x).textContent='00'); return; }
+    if (diff <= 0) { clearInterval(cdInt); ['d','h','m','s'].forEach(x => { const el = document.getElementById('cd-'+x); if(el) el.textContent='00'; }); return; }
     const d=Math.floor(diff/86400000), h=Math.floor(diff%86400000/3600000), m=Math.floor(diff%3600000/60000), s=Math.floor(diff%60000/1000);
-    document.getElementById('cd-d').textContent=String(d).padStart(2,'0');
-    document.getElementById('cd-h').textContent=String(h).padStart(2,'0');
-    document.getElementById('cd-m').textContent=String(m).padStart(2,'0');
-    document.getElementById('cd-s').textContent=String(s).padStart(2,'0');
+    const cd = document.getElementById('cd-d'); if(cd) cd.textContent=String(d).padStart(2,'0');
+    const ch = document.getElementById('cd-h'); if(ch) ch.textContent=String(h).padStart(2,'0');
+    const cm = document.getElementById('cd-m'); if(cm) cm.textContent=String(m).padStart(2,'0');
+    const cs = document.getElementById('cd-s'); if(cs) cs.textContent=String(s).padStart(2,'0');
   }
   upd(); cdInt = setInterval(upd, 1000);
+}
+
+let hcdInt = null;
+function iniciarCountdownHome(alvo) {
+  if (hcdInt) clearInterval(hcdInt);
+  function upd() {
+    const diff = alvo - new Date();
+    if (diff <= 0) { clearInterval(hcdInt); ['d','h','m','s'].forEach(x => { const el = document.getElementById('hcd-'+x); if(el) el.textContent='00'; }); return; }
+    const d=Math.floor(diff/86400000), h=Math.floor(diff%86400000/3600000), m=Math.floor(diff%3600000/60000), s=Math.floor(diff%60000/1000);
+    const cd = document.getElementById('hcd-d'); if(cd) cd.textContent=String(d).padStart(2,'0');
+    const ch = document.getElementById('hcd-h'); if(ch) ch.textContent=String(h).padStart(2,'0');
+    const cm = document.getElementById('hcd-m'); if(cm) cm.textContent=String(m).padStart(2,'0');
+    const cs = document.getElementById('hcd-s'); if(cs) cs.textContent=String(s).padStart(2,'0');
+  }
+  upd(); hcdInt = setInterval(upd, 1000);
 }
 </script>
 </body>
