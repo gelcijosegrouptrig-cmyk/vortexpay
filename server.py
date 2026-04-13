@@ -298,12 +298,28 @@ def init_db():
                     cur.execute(sql)
                 except Exception as e:
                     print(f'[DB init] Aviso ao criar tabela: {e}', flush=True)
+            # Migrações PostgreSQL — adicionar colunas novas se não existirem
+            pg_migrations = [
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS premio_acumulado REAL DEFAULT 0",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS acumulativo INTEGER DEFAULT 1",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS min_participantes INTEGER DEFAULT 1",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_pct REAL DEFAULT 0.6",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_ativo INTEGER DEFAULT 1",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_descricao TEXT DEFAULT 'Gere seu Pix e receba sua % do valor'",
+            ]
+            for mig_sql in pg_migrations:
+                try:
+                    cur.execute(mig_sql)
+                except Exception as e:
+                    print(f'[DB migrate] {e}', flush=True)
+
             # Config padrão sorteio (cada query é independente com autocommit)
             try:
                 cur.execute("""INSERT INTO sorteio_config
-                    (id,ativo,valor_por_numero,premio_fixo,percentual,usar_media,dias_media,descricao,proximo_sorteio,updated_at,premio_acumulado)
-                    VALUES (1,1,10.0,0,50.0,0,30,'Sorteio PaynexBet',NULL,%s,0)
-                    ON CONFLICT (id) DO NOTHING""", (datetime.now().isoformat(),))
+                    (id,ativo,valor_por_numero,premio_fixo,percentual,usar_media,dias_media,descricao,proximo_sorteio,updated_at,premio_acumulado,acumulativo,min_participantes)
+                    VALUES (1,1,10.0,0,50.0,0,30,'Sorteio PaynexBet',NULL,%s,0,1,1)
+                    ON CONFLICT (id) DO UPDATE SET
+                        valor_por_numero=EXCLUDED.valor_por_numero""", (datetime.now().isoformat(),))
             except Exception as e:
                 print(f'[DB init] Aviso config sorteio: {e}', flush=True)
             pg.close()
@@ -2252,13 +2268,15 @@ async def route_asaas_pix_sorteio(request):
 
         if not cpf:
             return web.json_response({'success': False, 'error': 'CPF obrigatório'}, status=400)
-        if valor < 1:
-            return web.json_response({'success': False, 'error': 'Valor mínimo R$ 1,00'}, status=400)
         if not ASAAS_API_KEY:
             return web.json_response({'success': False, 'error': 'Gateway PIX não configurado. Informe ASAAS_API_KEY.'}, status=503)
 
         config = get_sorteio_config()
         vp = float(config.get('valor_por_numero') or 10.0)
+        if valor < vp:
+            return web.json_response({'success': False, 'error': f'Valor mínimo R$ {vp:.2f}'}, status=400)
+        if valor % vp != 0:
+            return web.json_response({'success': False, 'error': f'Valor deve ser múltiplo de R$ {vp:.0f}'}, status=400)
         qtd_numeros = int(valor // vp)
 
         print(f'🎰 [Asaas/Sorteio] Gerando PIX R${valor:.2f} para CPF:{cpf} ({nome})', flush=True)
@@ -2958,10 +2976,12 @@ async def route_pix(request):
     try:
         data = await request.json()
         valor = float(data.get('valor', 0))
-        if valor < 5:
-            return web.json_response({'success': False, 'error': 'Valor mínimo R$ 5,00'})
-        if valor % 5 != 0:
-            return web.json_response({'success': False, 'error': 'Valor deve ser múltiplo de R$ 5'})
+        cfg_pix = get_sorteio_config()
+        vp_pix = float(cfg_pix.get('valor_por_numero') or 10.0)
+        if valor < vp_pix:
+            return web.json_response({'success': False, 'error': f'Valor mínimo R$ {vp_pix:.2f}'})
+        if valor % vp_pix != 0:
+            return web.json_response({'success': False, 'error': f'Valor deve ser múltiplo de R$ {vp_pix:.0f}'})
 
         participante_dados = data.get('participante_dados')
         cliente_id = data.get('cliente_id')

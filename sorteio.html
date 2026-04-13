@@ -574,7 +574,7 @@ function mostrarParticipante(p) {
 
   const dep = p.total_depositado || 0;
   const qtd = p.total_numeros || 0;
-  const vp  = info?.sorteio?.valor_por_numero || 5;
+  const vp  = info?.sorteio?.valor_por_numero || 10;
   const depAtual = dep % vp;
   const pct = vp > 0 ? (depAtual / vp * 100) : 0;
   const falta = vp - depAtual;
@@ -629,7 +629,7 @@ function abrirModalParticipacao(apenasDeposito) {
   }
 
   // Reset teclado e exibição
-  const vp = info?.sorteio?.valor_por_numero || 5;
+  const vp = info?.sorteio?.valor_por_numero || 10;
   const hint = document.getElementById('m-hint');
   if (hint) hint.textContent = `Mínimo R$ ${vp.toFixed(0)} • Apenas múltiplos de R$ ${vp.toFixed(0)}`;
   atualizarDisplayDep();
@@ -664,7 +664,7 @@ function tecla(v) {
 function atualizarDisplayDep() {
   const num = parseInt(rawDep || '0');
   const reais = num / 100;
-  const vp = info?.sorteio?.valor_por_numero || 5;
+  const vp = info?.sorteio?.valor_por_numero || 10;
   const btn = document.getElementById('m-btn-gerar');
   const prev = document.getElementById('m-numeros-preview');
   const aviso = document.getElementById('m-aviso-multiplo');
@@ -692,7 +692,7 @@ function atualizarDisplayDep() {
 async function gerarPixSorteio() {
   const num = parseInt(rawDep || '0');
   const valor = num / 100;
-  const vp = info?.sorteio?.valor_por_numero || 5;
+  const vp = info?.sorteio?.valor_por_numero || 10;
   if (valor < vp || valor % vp !== 0) return;
 
   // Validar dados do participante (se não for só depósito)
