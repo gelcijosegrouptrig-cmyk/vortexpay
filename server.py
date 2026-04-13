@@ -1901,24 +1901,22 @@ async def _executar_sorteio_completo():
 
     if acumulativo_cfg and total_part_atual < min_part_cfg:
         conn.close()
-        # Calcular quanto acumula desta rodada (50% dos depósitos atuais)
+        # Não arquivar — participantes e bilhetes continuam na rodada
+        # O prêmio acumulado já é calculado dinamicamente (50% do total_dep + acum_anterior)
+        acum_atual = float(config.get('premio_acumulado') or 0)
         total_dep_temp = sum(p['total_depositado'] or 0 for p in participantes)
         percentual_cfg = float(config.get('percentual', 50)) / 100
         base_temp = round(total_dep_temp * percentual_cfg, 2)
-        acum_anterior = float(config.get('premio_acumulado') or 0)
-        total_acum = round(base_temp + acum_anterior, 2)
-        # ✅ SALVAR acumulado no banco para próxima rodada
-        conn3 = sqlite3_connect()
-        conn3.execute('UPDATE sorteio_config SET premio_acumulado=? WHERE id=1', (total_acum,))
-        conn3.commit(); conn3.close()
-        print(f'🎰 [Acumulativo] Poucos participantes ({total_part_atual}/{min_part_cfg}). Prêmio acumulado: R${total_acum:.2f}', flush=True)
+        premio_exibido = round(base_temp + acum_atual, 2)
+        print(f'🎰 [Acumulativo] Poucos participantes ({total_part_atual}/{min_part_cfg}). Prêmio estimado: R${premio_exibido:.2f}', flush=True)
         return {
             'success': False,
             'acumulando': True,
-            'error': f'Mínimo {min_part_cfg} participantes. Atual: {total_part_atual}. Prêmio acumulado: R${total_acum:.2f}',
+            'error': f'Mínimo {min_part_cfg} participantes. Atual: {total_part_atual}. Aguardando mais participantes.',
             'total_participantes': total_part_atual,
             'min_participantes': min_part_cfg,
-            'premio_acumulado': total_acum,
+            'premio_acumulado': acum_atual,
+            'premio_estimado': premio_exibido,
         }
 
     # Sortear 1 bilhete aleatório (cada bilhete = igual chance)
@@ -2187,7 +2185,11 @@ async def route_sorteio_config(request):
         return web.json_response({'error': str(e)}, status=500)
 
 async def route_sorteio_acumular(request):
-    """ADMIN - Encerrar rodada sem ganhador e acumular prêmio para próxima"""
+    """ADMIN - Acumular prêmio extra manualmente (sem arquivar participantes)
+    Útil quando se quer adicionar um bônus ao prêmio acumulado.
+    Body (opcional): { "valor": 10.0 }  → adiciona valor específico
+    Sem body: adiciona 50% do total depositado atual
+    """
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
@@ -2195,38 +2197,39 @@ async def route_sorteio_acumular(request):
     try:
         config = get_sorteio_config()
         conn = sqlite3_connect()
-        cur1 = conn.execute("SELECT COALESCE(SUM(total_depositado),0), COUNT(*) FROM sorteio_participantes WHERE sorteio_id='atual'")
-        total_dep_rod, total_part_rod = cur1.fetchone()
-        total_dep_rod = float(total_dep_rod or 0)
 
-        # Calcular prêmio desta rodada
-        _pf = float(config.get('premio_fixo') or 0)
-        _pct = float(config.get('percentual') or 50)
-        premio_rod = _pf if _pf > 0 else round(total_dep_rod * _pct / 100, 2)
-        premio_rod = max(premio_rod, 0.0)
+        # Verificar se há valor específico no body
+        valor_extra = 0.0
+        try:
+            body = await request.json()
+            valor_extra = float(body.get('valor', 0))
+        except:
+            pass
+
+        if valor_extra <= 0:
+            # Usar 50% do total depositado atual como bônus
+            cur1 = conn.execute("SELECT COALESCE(SUM(total_depositado),0), COUNT(*) FROM sorteio_participantes WHERE sorteio_id='atual'")
+            total_dep_rod, total_part_rod = cur1.fetchone()
+            total_dep_rod = float(total_dep_rod or 0)
+            _pf = float(config.get('premio_fixo') or 0)
+            _pct = float(config.get('percentual') or 50)
+            valor_extra = _pf if _pf > 0 else round(total_dep_rod * _pct / 100, 2)
+            valor_extra = max(valor_extra, 0.0)
 
         acumulado_anterior = float(config.get('premio_acumulado') or 0)
-        novo_acumulado = round(acumulado_anterior + premio_rod, 2)
+        novo_acumulado = round(acumulado_anterior + valor_extra, 2)
 
-        # Arquivar participantes desta rodada (sem ganhador)
-        sorteio_id_acum = f"acumulado_{int(time.time())}"
-        conn.execute("INSERT OR IGNORE INTO sorteio_historico (sorteio_id, data_sorteio, premio_pago, saque_status, total_participantes, total_bilhetes, total_depositado, observacao) VALUES (?,?,?,?,?,?,?,?)",
-            (sorteio_id_acum, datetime.now().isoformat(), 0, 'acumulado',
-             int(total_part_rod), 0, total_dep_rod,
-             f'Rodada encerrada sem ganhador. Prêmio R${premio_rod:.2f} acumulado para próxima rodada.'))
-        conn.execute("UPDATE sorteio_participantes SET sorteio_id=? WHERE sorteio_id='atual'", (sorteio_id_acum,))
-        conn.execute("UPDATE sorteio_bilhetes SET sorteio_id=? WHERE sorteio_id='atual'", (sorteio_id_acum,))
-        # Salvar novo acumulado
+        # Salvar novo acumulado SEM arquivar participantes (eles continuam na próxima rodada)
         conn.execute("UPDATE sorteio_config SET premio_acumulado=?, updated_at=? WHERE id=1",
                      (novo_acumulado, datetime.now().isoformat()))
         conn.commit(); conn.close()
 
-        print(f'🔄 Rodada acumulada: R${premio_rod:.2f} adicionado. Acumulado total: R${novo_acumulado:.2f}', flush=True)
+        print(f'🔄 Acumulado manual: +R${valor_extra:.2f} → Total acumulado: R${novo_acumulado:.2f}', flush=True)
         return web.json_response({
             'success': True,
-            'message': f'Rodada encerrada. Prêmio R${premio_rod:.2f} acumulado!',
+            'message': f'R${valor_extra:.2f} adicionado ao prêmio acumulado!',
             'premio_acumulado': novo_acumulado,
-            'sorteio_id_encerrado': sorteio_id_acum,
+            'acumulado_anterior': acumulado_anterior,
         })
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
@@ -2412,16 +2415,51 @@ async def route_webhook_asaas(request):
         if event not in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'):
             return web.Response(text='ok', status=200)
 
+        # ── IDEMPOTÊNCIA: verificar se payment_id já foi processado ──
+        _conn_idem = sqlite3_connect()
+        _conn_idem.execute('''CREATE TABLE IF NOT EXISTS asaas_processados (
+            payment_id TEXT PRIMARY KEY,
+            processado_at TEXT
+        )''')
+        _conn_idem.commit()
+        _ja_processado = _conn_idem.execute(
+            'SELECT payment_id FROM asaas_processados WHERE payment_id=?', (payment_id,)
+        ).fetchone()
+        if _ja_processado:
+            _conn_idem.close()
+            print(f'⏭️ [Webhook Asaas] payment_id {payment_id} já processado. Ignorando duplicata.', flush=True)
+            return web.Response(text='ok', status=200)
+        # Marcar como processado ANTES de executar (evita race condition)
+        _conn_idem.execute(
+            'INSERT OR IGNORE INTO asaas_processados (payment_id, processado_at) VALUES (?,?)',
+            (payment_id, datetime.now().isoformat())
+        )
+        _conn_idem.commit()
+        _conn_idem.close()
+
         # Buscar no DB local
         dados = asaas_confirmar_pagamento_db(payment_id)
         if not dados:
-            # Tentar via externalReference (cpf extraído)
-            print(f'⚠️ [Webhook Asaas] payment_id {payment_id} não encontrado no DB local', flush=True)
-            return web.Response(text='ok', status=200)
+            # FALLBACK: extrair CPF do externalReference (ex: sorteio_cpf_11013430794_xxx)
+            cpf_ext = ''
+            if external_ref and 'cpf_' in external_ref:
+                import re as _re
+                m = _re.search(r'cpf_(\d{11})', external_ref)
+                if m:
+                    cpf_ext = m.group(1)
+            if cpf_ext:
+                print(f'🔄 [Webhook Asaas] Usando externalReference CPF:{cpf_ext} para payment_id:{payment_id}', flush=True)
+                # Salvar no DB para rastreamento futuro
+                asaas_salvar_pagamento_db(payment_id, f'asaas_{payment_id}', cpf_ext, 'Participante', valor, 'sorteio')
+                asaas_confirmar_pagamento_db(payment_id)
+                dados = {'cpf': cpf_ext, 'nome': 'Participante', 'tipo': 'sorteio', 'valor': valor}
+            else:
+                print(f'⚠️ [Webhook Asaas] payment_id {payment_id} não encontrado. ExtRef:{external_ref}', flush=True)
+                return web.Response(text='ok', status=200)
 
-        cpf   = dados.get('cpf', '')
-        nome  = dados.get('nome', '')
-        tipo  = dados.get('tipo', 'sorteio')
+        cpf      = dados.get('cpf', '')
+        nome     = dados.get('nome', '')
+        tipo     = dados.get('tipo', 'sorteio')
         valor_db = dados.get('valor', valor)
 
         print(f'✅ [Webhook Asaas] Pagamento confirmado! CPF:{cpf} | R${valor_db:.2f} | tipo:{tipo}', flush=True)
