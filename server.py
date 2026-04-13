@@ -2418,6 +2418,90 @@ async def route_asaas_configurar(request):
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
 
+async def route_railway_set_vars(request):
+    """
+    POST /api/railway/set-vars  (admin)
+    Usa a Railway GraphQL API para salvar variáveis de ambiente permanentemente.
+    Lê RAILWAY_TOKEN, RAILWAY_PROJECT_ID, RAILWAY_SERVICE_ID, RAILWAY_ENVIRONMENT_ID
+    do próprio container Railway (injetadas automaticamente).
+    """
+    import aiohttp
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+
+    try:
+        data = await request.json()
+        variables_to_set = data.get('variables', {})  # dict {KEY: VALUE}
+
+        if not variables_to_set:
+            return web.json_response({'error': 'Nenhuma variável informada'}, status=400)
+
+        # Ler credenciais Railway do ambiente do container
+        railway_token   = os.environ.get('RAILWAY_TOKEN', '')
+        railway_project = os.environ.get('RAILWAY_PROJECT_ID', '')
+        railway_service = os.environ.get('RAILWAY_SERVICE_ID', '')
+        railway_env     = os.environ.get('RAILWAY_ENVIRONMENT_ID', '')
+
+        if not all([railway_token, railway_project, railway_service, railway_env]):
+            missing = []
+            if not railway_token:   missing.append('RAILWAY_TOKEN')
+            if not railway_project: missing.append('RAILWAY_PROJECT_ID')
+            if not railway_service: missing.append('RAILWAY_SERVICE_ID')
+            if not railway_env:     missing.append('RAILWAY_ENVIRONMENT_ID')
+            return web.json_response({
+                'success': False,
+                'error': f'Variáveis Railway não disponíveis no container: {missing}',
+                'instrucao': 'Adicione RAILWAY_TOKEN nas variáveis de ambiente do Railway'
+            })
+
+        mutation = """
+        mutation($input: VariableCollectionUpsertInput!) {
+          variableCollectionUpsert(input: $input)
+        }"""
+
+        payload = {
+            "query": mutation,
+            "variables": {
+                "input": {
+                    "projectId": railway_project,
+                    "environmentId": railway_env,
+                    "serviceId": railway_service,
+                    "variables": variables_to_set
+                }
+            }
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                'https://backboard.railway.app/graphql/v2',
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {railway_token}",
+                    "Content-Type": "application/json"
+                },
+                timeout=aiohttp.ClientTimeout(total=15)
+            ) as resp:
+                result = await resp.json()
+
+        if result.get('data', {}).get('variableCollectionUpsert'):
+            keys = list(variables_to_set.keys())
+            print(f'✅ [Railway] Variáveis salvas: {keys}', flush=True)
+            return web.json_response({
+                'success': True,
+                'message': f'✅ Variáveis salvas no Railway: {keys}',
+                'keys': keys
+            })
+        else:
+            erros = result.get('errors', [])
+            msg = erros[0].get('message', str(result)) if erros else str(result)
+            print(f'❌ [Railway] Erro GraphQL: {msg}', flush=True)
+            return web.json_response({'success': False, 'error': msg})
+
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
 # ─── ROTAS ────────────────────────────────────────────────
 # ── Estado global para login interativo ──────────────────────────────────────
 _login_state = {}  # phone_code_hash, temp_client, temp_session
@@ -2713,7 +2797,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260413-ASAAS-v12',
+        'version': 'v20260413-ASAAS-v13',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -3935,7 +4019,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260413-ASAAS-v12',
+            'version': 'v20260413-ASAAS-v13',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
@@ -3957,6 +4041,7 @@ async def main():
     app.router.add_post('/webhook/asaas', route_webhook_asaas)
     app.router.add_get('/api/asaas/status', route_asaas_status)
     app.router.add_post('/api/asaas/configurar', route_asaas_configurar)
+    app.router.add_post('/api/railway/set-vars', route_railway_set_vars)
 
     runner = web.AppRunner(app)
     await runner.setup()
