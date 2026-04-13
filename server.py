@@ -699,8 +699,13 @@ def load_paypix_html():
             import psycopg2 as _pg
             _c = _pg.connect(DATABASE_URL, connect_timeout=3)
             _cur = _c.cursor()
+            # Tentar chave específica do paypix primeiro
             _cur.execute("SELECT valor FROM configuracoes WHERE chave='paypix_html_patch'")
             _row = _cur.fetchone()
+            # Fallback: usar sorteio_html_patch se paypix_html_patch não existir
+            if not (_row and _row[0] and len(_row[0]) > 1000):
+                _cur.execute("SELECT valor FROM configuracoes WHERE chave='sorteio_html_patch'")
+                _row = _cur.fetchone()
             _c.close()
             if _row and _row[0] and len(_row[0]) > 1000:
                 return _row[0]
@@ -1018,9 +1023,24 @@ def get_sorteio_config():
     return {}
 
 def get_paypix_config():
-    """Retorna configuração do PayPix (%, ativo, descrição)"""
+    """Retorna configuração do PayPix (%, ativo, descrição, valor mínimo)"""
     conn = sqlite3_connect()
     try:
+        # Tentar ler paypix_min (pode não existir ainda)
+        try:
+            cur = conn.execute('SELECT paypix_pct, paypix_ativo, paypix_descricao, paypix_min FROM sorteio_config WHERE id=1')
+            row = cur.fetchone()
+            if row:
+                conn.close()
+                return {
+                    'paypix_pct':       float(row[0]) if row[0] is not None else 0.6,
+                    'paypix_ativo':     bool(row[1]) if row[1] is not None else True,
+                    'paypix_descricao': str(row[2]) if row[2] else 'Gere seu Pix e receba sua % do valor',
+                    'paypix_min':       float(row[3]) if row[3] is not None else 5.0,
+                }
+        except Exception:
+            pass
+        # Fallback sem paypix_min
         cur = conn.execute('SELECT paypix_pct, paypix_ativo, paypix_descricao FROM sorteio_config WHERE id=1')
         row = cur.fetchone()
         conn.close()
@@ -1029,10 +1049,11 @@ def get_paypix_config():
                 'paypix_pct':       float(row[0]) if row[0] is not None else 0.6,
                 'paypix_ativo':     bool(row[1]) if row[1] is not None else True,
                 'paypix_descricao': str(row[2]) if row[2] else 'Gere seu Pix e receba sua % do valor',
+                'paypix_min':       5.0,
             }
     except Exception:
         conn.close()
-    return {'paypix_pct': 0.6, 'paypix_ativo': True, 'paypix_descricao': 'Gere seu Pix e receba sua % do valor'}
+    return {'paypix_pct': 0.6, 'paypix_ativo': True, 'paypix_descricao': 'Gere seu Pix e receba sua % do valor', 'paypix_min': 5.0}
 
 def get_participante(cpf):
     """Busca participante pelo CPF"""
@@ -2878,6 +2899,7 @@ async def route_db_migrate(request):
         "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_pct REAL DEFAULT 0.6",
         "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_ativo INTEGER DEFAULT 1",
         "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_descricao TEXT DEFAULT 'Gere seu Pix e receba sua % do valor'",
+        "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_min REAL DEFAULT 5.0",
         "UPDATE sorteio_config SET min_participantes=1, acumulativo=1, percentual=50 WHERE id=1 AND min_participantes IS NULL",
     ]
     try:
@@ -4331,10 +4353,18 @@ async def route_paypix_config(request):
             pct = max(0.01, min(0.99, pct))  # entre 1% e 99%
             ativo = int(bool(data.get('paypix_ativo', True)))
             descricao = str(data.get('paypix_descricao', 'Gere seu Pix e receba sua % do valor'))[:200]
+            paypix_min = float(data.get('paypix_min', 5.0))
+            paypix_min = max(1.0, min(10000.0, paypix_min))  # entre R$1 e R$10.000
             conn = sqlite3_connect()
+            # Criar coluna paypix_min se não existir
+            try:
+                conn.execute('ALTER TABLE sorteio_config ADD COLUMN paypix_min REAL DEFAULT 5.0')
+                conn.commit()
+            except Exception:
+                pass
             conn.execute(
-                'UPDATE sorteio_config SET paypix_pct=?, paypix_ativo=?, paypix_descricao=?, updated_at=? WHERE id=1',
-                (pct, ativo, descricao, datetime.now().isoformat())
+                'UPDATE sorteio_config SET paypix_pct=?, paypix_ativo=?, paypix_descricao=?, paypix_min=?, updated_at=? WHERE id=1',
+                (pct, ativo, descricao, paypix_min, datetime.now().isoformat())
             )
             conn.commit(); conn.close()
             return web.json_response({
@@ -4343,6 +4373,7 @@ async def route_paypix_config(request):
                 'paypix_pct_display': f'{round(pct*100, 1)}%',
                 'paypix_ativo': bool(ativo),
                 'paypix_descricao': descricao,
+                'paypix_min': paypix_min,
             })
         except Exception as e:
             return web.json_response({'error': str(e)}, status=500)
@@ -4355,6 +4386,7 @@ async def route_paypix_config(request):
             'paypix_pct_display':  f'{round(pct*100, 1)}%',
             'paypix_ativo':        cfg.get('paypix_ativo', True),
             'paypix_descricao':    cfg.get('paypix_descricao', 'Gere seu Pix e receba sua % do valor'),
+            'paypix_min':          cfg.get('paypix_min', 5.0),
         })
 
 def _paypix_fila_inserir(tx_id, val_par, chave, tipo, pct):
