@@ -912,6 +912,63 @@ def asaas_confirmar_pagamento_db(payment_id: str) -> dict:
     conn.close()
     return d
 
+
+async def asaas_polling_pagamento(payment_id: str, cpf: str, nome: str, valor: float,
+                                   tipo: str = 'sorteio', intervalo: int = 10, max_tentativas: int = 60):
+    """
+    Polling automático: consulta Asaas a cada `intervalo` segundos por até
+    `max_tentativas` vezes (padrão 60x10s = 10 min) até confirmar o pagamento.
+    Quando confirmado, processa automaticamente o depósito no sorteio.
+    """
+    print(f'🔄 [Polling] Iniciando para payment_id={payment_id} CPF={cpf} R${valor:.2f}', flush=True)
+    for tentativa in range(1, max_tentativas + 1):
+        await asyncio.sleep(intervalo)
+        try:
+            # Checar DB local primeiro (pode ter sido confirmado pelo webhook)
+            conn = sqlite3_connect()
+            row = conn.execute('SELECT status FROM asaas_pagamentos WHERE payment_id=?',
+                               (payment_id,)).fetchone()
+            conn.close()
+            if row and row[0] == 'confirmado':
+                print(f'✅ [Polling] payment_id={payment_id} já confirmado via webhook. Encerrando polling.', flush=True)
+                return
+
+            # Consultar Asaas em tempo real
+            resp = await asaas_request('GET', f'/payments/{payment_id}')
+            status_asaas = resp.get('status', 'PENDING')
+            print(f'🔍 [Polling {tentativa}/{max_tentativas}] payment_id={payment_id} status={status_asaas}', flush=True)
+
+            if status_asaas in ('RECEIVED', 'CONFIRMED'):
+                # Marcar como confirmado no DB local
+                dados = asaas_confirmar_pagamento_db(payment_id)
+                if not dados:
+                    asaas_salvar_pagamento_db(payment_id, f'asaas_{payment_id}', cpf, nome, valor, tipo)
+                    asaas_confirmar_pagamento_db(payment_id)
+
+                print(f'✅ [Polling] Pagamento confirmado! CPF={cpf} R${valor:.2f} tipo={tipo}', flush=True)
+
+                # Processar depósito no sorteio
+                if tipo == 'sorteio':
+                    await _processar_deposito_sorteio_asaas(cpf, nome, valor)
+                return
+
+            # Pagamento expirado ou cancelado — encerrar polling
+            if status_asaas in ('OVERDUE', 'REFUNDED', 'REFUND_REQUESTED', 'CHARGEBACK_REQUESTED',
+                                 'CHARGEBACK_DISPUTE', 'AWAITING_CHARGEBACK_REVERSAL',
+                                 'DUNNING_REQUESTED', 'DUNNING_RECEIVED', 'AWAITING_RISK_ANALYSIS'):
+                print(f'⛔ [Polling] payment_id={payment_id} status={status_asaas}. Encerrando polling.', flush=True)
+                # Marcar como cancelado no DB local
+                conn = sqlite3_connect()
+                conn.execute("UPDATE asaas_pagamentos SET status='cancelado' WHERE payment_id=?", (payment_id,))
+                conn.commit()
+                conn.close()
+                return
+
+        except Exception as e:
+            print(f'⚠️ [Polling {tentativa}] Erro consultando payment_id={payment_id}: {e}', flush=True)
+
+    print(f'⏰ [Polling] Timeout após {max_tentativas} tentativas para payment_id={payment_id}. Encerrando.', flush=True)
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # ─── HELPERS SORTEIO ────────────────────────────────────────
 def get_sorteio_config():
@@ -2465,6 +2522,14 @@ async def route_asaas_pix_sorteio(request):
             resultado['payment_id'], tx_id, cpf, nome, valor, 'sorteio'
         )
 
+        # ── POLLING AUTOMÁTICO: inicia task em background para monitorar pagamento ──
+        asyncio.create_task(asaas_polling_pagamento(
+            payment_id=resultado['payment_id'],
+            cpf=cpf, nome=nome, valor=valor, tipo='sorteio',
+            intervalo=10, max_tentativas=60  # 10s × 60 = 10 minutos
+        ))
+        print(f'🚀 [Asaas/Sorteio] Polling automático iniciado para payment_id={resultado["payment_id"]}', flush=True)
+
         return web.json_response({
             'success': True,
             'tx_id': tx_id,
@@ -2484,35 +2549,73 @@ async def route_asaas_pix_status(request):
     """
     GET /api/sorteio/asaas/status/{tx_id}
     Consulta status do pagamento Asaas pelo tx_id local.
+    Retorna dados ricos para o frontend exibir progresso em tempo real.
     """
     try:
         tx_id = request.match_info.get('tx_id', '')
         payment_id = tx_id.replace('asaas_', '')
 
-        # Checar no DB local primeiro
+        if not payment_id:
+            return web.json_response({'success': False, 'error': 'tx_id inválido'}, status=400)
+
+        # Checar no DB local primeiro (polling do servidor pode ter confirmado)
         conn = sqlite3_connect()
-        row = conn.execute('SELECT status, cpf, nome, valor FROM asaas_pagamentos WHERE payment_id=?',
-                           (payment_id,)).fetchone()
+        row = conn.execute(
+            'SELECT status, cpf, nome, valor, confirmed_at FROM asaas_pagamentos WHERE payment_id=?',
+            (payment_id,)).fetchone()
         conn.close()
 
         if row and row[0] == 'confirmado':
+            cpf_conf = row[1] or ''
+            # Buscar dados atualizados do participante
+            part = get_participante(cpf_conf) if cpf_conf else None
             return web.json_response({
-                'success': True, 'status': 'confirmado',
-                'pago': True, 'cpf': row[1], 'nome': row[2], 'valor': row[3]
+                'success': True, 'status': 'confirmado', 'pago': True,
+                'cpf': cpf_conf, 'nome': row[2], 'valor': row[3],
+                'confirmed_at': row[4],
+                'bilhetes': part['total_numeros'] if part else None,
+                'numeros': part['numeros_sorte'] if part else [],
             })
 
-        # Consultar Asaas em tempo real
-        resp = await asaas_request('GET', f'/payments/{payment_id}')
-        status_asaas = resp.get('status', 'PENDING')
+        if row and row[0] == 'cancelado':
+            return web.json_response({
+                'success': True, 'status': 'cancelado', 'pago': False,
+                'valor': row[3],
+            })
 
-        pago = status_asaas in ('RECEIVED', 'CONFIRMED')
-        return web.json_response({
-            'success': True,
-            'status': 'confirmado' if pago else 'pendente',
-            'pago': pago,
-            'status_asaas': status_asaas,
-            'valor': resp.get('value', 0),
-        })
+        # Consultar Asaas em tempo real (fallback caso polling ainda não tenha rodado)
+        try:
+            resp = await asaas_request('GET', f'/payments/{payment_id}')
+            status_asaas = resp.get('status', 'PENDING')
+            pago = status_asaas in ('RECEIVED', 'CONFIRMED')
+
+            if pago and row:
+                # Confirmar via polling se ainda não foi processado
+                cpf_db = row[1] or ''
+                nome_db = row[2] or ''
+                valor_db = float(row[3] or 0)
+                dados = asaas_confirmar_pagamento_db(payment_id)
+                if dados:
+                    asyncio.create_task(_processar_deposito_sorteio_asaas(cpf_db, nome_db, valor_db))
+
+            return web.json_response({
+                'success': True,
+                'status': 'confirmado' if pago else 'pendente',
+                'pago': pago,
+                'status_asaas': status_asaas,
+                'valor': resp.get('value', 0),
+                'polling_ativo': True,
+            })
+        except Exception as e_asaas:
+            # Se Asaas falhar, retornar status local
+            status_local = row[0] if row else 'pendente'
+            return web.json_response({
+                'success': True,
+                'status': status_local,
+                'pago': status_local == 'confirmado',
+                'polling_ativo': True,
+                'erro_asaas': str(e_asaas),
+            })
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 

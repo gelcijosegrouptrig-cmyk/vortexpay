@@ -463,6 +463,9 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
       <div class="status-pix" id="m-status-pix" style="background:#FFD70015;border:1px solid #FFD70033;color:#FFD700">
         ⏳ Aguardando pagamento...
       </div>
+      <div id="m-polling-info" style="font-size:11px;color:#666;text-align:center;margin-top:4px;display:none">
+        🔄 Verificando automaticamente a cada 5s... <span id="m-poll-count"></span>
+      </div>
 
       <button class="btn btn-outline" onclick="voltarValor()" style="padding:10px;font-size:13px">
         ← Alterar valor / dados
@@ -1078,14 +1081,27 @@ function voltarValor() {
 
 function iniciarPollingDep(txId, valor, participante_dados, pollRoute) {
   let tentativas = 0;
-  const MAX = 90; // 3 minutos (Asaas confirma instantâneo via webhook)
+  const MAX = 120; // 10 minutos (120 × 5s) — sincronizado com polling do servidor
   const statusEl = document.getElementById('m-status-pix');
+  const infoEl = document.getElementById('m-polling-info');
+  const countEl = document.getElementById('m-poll-count');
   const rota = pollRoute || (BASE + '/api/status/' + txId);
+
+  // Mostrar barra de polling
+  if (infoEl) infoEl.style.display = 'block';
 
   pollingDep = setInterval(async () => {
     tentativas++;
+
+    // Atualizar contador visual
+    const tempoRestante = Math.max(0, (MAX - tentativas) * 5);
+    const min = Math.floor(tempoRestante / 60);
+    const seg = tempoRestante % 60;
+    if (countEl) countEl.textContent = `(${String(min).padStart(2,'0')}:${String(seg).padStart(2,'0')} restantes)`;
+
     if (tentativas > MAX) {
       clearInterval(pollingDep); pollingDep = null;
+      if (infoEl) infoEl.style.display = 'none';
       statusEl.style.background = '#ff444415';
       statusEl.style.borderColor = '#ff444433';
       statusEl.style.color = '#ff8888';
@@ -1096,15 +1112,21 @@ function iniciarPollingDep(txId, valor, participante_dados, pollRoute) {
     try {
       const r = await fetch(rota);
       const d = await r.json();
-      if (d.pago) {
+      const pago = d.pago || d.status === 'confirmado';
+
+      if (pago) {
         clearInterval(pollingDep); pollingDep = null;
+        if (infoEl) infoEl.style.display = 'none';
         statusEl.style.background = '#00d68f22';
         statusEl.style.borderColor = '#00d68f44';
         statusEl.style.color = '#00d68f';
-        statusEl.textContent = '✅ Pagamento confirmado! Seus números foram gerados!';
+
+        // Mostrar bilhetes ganhos se disponível
+        const bilhetes = d.bilhetes || Math.floor(valor / (info?.valor_por_numero || 5));
+        statusEl.innerHTML = `✅ Pagamento confirmado! <strong>${bilhetes} número(s)</strong> gerado(s)!`;
 
         // Determinar CPF para consultar
-        const cpfPart = participante_dados?.cpf || localStorage.getItem('sorteio_cpf');
+        const cpfPart = participante_dados?.cpf || d.cpf || localStorage.getItem('sorteio_cpf');
 
         setTimeout(async () => {
           fecharDeposito();
@@ -1129,9 +1151,26 @@ function iniciarPollingDep(txId, valor, participante_dados, pollRoute) {
           }
           carregarInfo();
         }, 1500);
+      } else if (d.status === 'cancelado') {
+        clearInterval(pollingDep); pollingDep = null;
+        if (infoEl) infoEl.style.display = 'none';
+        statusEl.style.background = '#ff444415';
+        statusEl.style.borderColor = '#ff444433';
+        statusEl.style.color = '#ff8888';
+        statusEl.textContent = '❌ Pagamento cancelado ou expirado. Gere um novo Pix.';
+      } else {
+        // Ainda pendente — atualizar mensagem com progresso
+        const progresso = ['⏳', '🔄', '📡', '💳'][tentativas % 4];
+        statusEl.style.background = '#FFD70015';
+        statusEl.style.borderColor = '#FFD70033';
+        statusEl.style.color = '#FFD700';
+        statusEl.textContent = `${progresso} Aguardando confirmação do pagamento...`;
       }
-    } catch(e) {}
-  }, 2000);
+    } catch(e) {
+      // Erro de rede — manter polling
+      if (statusEl) statusEl.textContent = '📡 Verificando pagamento... (tentativa ' + tentativas + ')';
+    }
+  }, 5000); // 5 segundos entre consultas
 }
 
 // ── HISTÓRICO ──
