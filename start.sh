@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-COMMIT_HASH=1abe1cd86de84cd2f4691f28bb1e779fe6c32bef
+COMMIT_HASH=65385e8c31986f5424d257f0c4d940449208d203
 REPO_RAW="https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/${COMMIT_HASH}"
 echo "=== VortexPay Deploy - UI-v29 ==="
 echo "Commit: $COMMIT_HASH"
