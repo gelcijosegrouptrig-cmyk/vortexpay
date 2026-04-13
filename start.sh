@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
-COMMIT_HASH=8454d089cbcc769cf76578a79b3d4273e116b6aa
+COMMIT_HASH=55eec89fb97f17d9da95c0dbce2487eaa0eba1fd
 REPO_RAW="https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/${COMMIT_HASH}"
-echo "=== VortexPay Deploy - UI-v29 ==="
+echo "=== VortexPay Deploy - UI-v30 ==="
 echo "Commit: $COMMIT_HASH"
 
 pip install aiohttp telethon aiofiles psycopg2-binary 2>/dev/null | tail -1
