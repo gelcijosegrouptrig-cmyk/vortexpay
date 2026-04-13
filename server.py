@@ -15,6 +15,12 @@ BOT_USERNAME = 'VortexBank_bot'
 PORT = int(os.environ.get('PORT', 8080))
 WEBHOOK_SECRET = os.environ.get('WEBHOOK_SECRET', 'vortex_webhook_2024')
 
+# ─── ASAAS ────────────────────────────────────────────────────────────────────
+ASAAS_API_KEY  = os.environ.get('ASAAS_API_KEY', '')   # $aact_xxx (produção) ou $aasa_xxx (sandbox)
+ASAAS_ENV      = os.environ.get('ASAAS_ENV', 'sandbox')  # 'sandbox' ou 'production'
+ASAAS_BASE_URL = 'https://sandbox.asaas.com/api/v3' if ASAAS_ENV == 'sandbox' else 'https://api.asaas.com/api/v3'
+ASAAS_WEBHOOK_TOKEN = os.environ.get('ASAAS_WEBHOOK_TOKEN', 'vortex_asaas_2024')  # token secreto webhook Asaas
+
 _SESSION_FALLBACK = '1AZWarzYBuxGBwXPRkJ3GbWfNayG2RvhePLRdUEVqu8eP2bS9H8n2aaW2WeJDSfa_KDsuLUwkvF9tJb8g9tT9xoxyJUa30x2sqpVOCPEPqe5pdXV3HZ_iFdX9BGboi1SZvA_WudKYzn_mNO2z8gf-P0oPTwiRs8NF8fd-ZzJBe6vihX15jqy134gm5Eb0aPVT8sY_mCRcqBRzf4r4FeWtVvXsPneu22HHKHKHgxNgLX3b84665PPcXdJAYFVk0lv1xTjOlEnXQzDg-C4CnFeCn3rRtl1VQzG7KLZN3pMcR_b6MYCCqRnc8Eg5zLo4REufyc-ZewlYdH2feip0Q63Cqr97gnKewKQ='
 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:EfJgSbrAkQbFlQJWdxIpIZftseKsDVKs@metro.proxy.rlwy.net:53914/railway')
@@ -636,6 +642,208 @@ def load_sorteio_html():
         return open('sorteio.html', encoding='utf-8').read()
     return '<h1>PaynexBet - Sorteio</h1>'
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── ASAAS — INTEGRAÇÃO PIX CASH-IN / CASH-OUT ─────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def asaas_request(method: str, path: str, data: dict = None) -> dict:
+    """Faz requisição autenticada à API Asaas (aiohttp)"""
+    import aiohttp
+    if not ASAAS_API_KEY:
+        return {'error': 'ASAAS_API_KEY não configurada', 'success': False}
+    url = f"{ASAAS_BASE_URL}{path}"
+    headers = {
+        'access_token': ASAAS_API_KEY,
+        'Content-Type': 'application/json',
+        'User-Agent': 'VortexPay/1.0'
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            if method.upper() == 'GET':
+                async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as r:
+                    return await r.json()
+            elif method.upper() == 'POST':
+                async with session.post(url, headers=headers, json=data or {}, timeout=aiohttp.ClientTimeout(total=30)) as r:
+                    return await r.json()
+            elif method.upper() == 'DELETE':
+                async with session.delete(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as r:
+                    return await r.json()
+    except Exception as e:
+        print(f'❌ [Asaas] Erro na requisição {method} {path}: {e}', flush=True)
+        return {'error': str(e), 'success': False}
+
+
+async def asaas_criar_ou_buscar_customer(cpf: str, nome: str, email: str = '') -> dict:
+    """Busca ou cria um customer no Asaas pelo CPF"""
+    cpf_limpo = re.sub(r'\D', '', cpf)
+    # Buscar customer existente
+    resp = await asaas_request('GET', f'/customers?cpfCnpj={cpf_limpo}&limit=1')
+    if resp.get('data') and len(resp['data']) > 0:
+        c = resp['data'][0]
+        print(f'✅ [Asaas] Customer existente: {c["id"]} ({c["name"]})', flush=True)
+        return {'success': True, 'customer_id': c['id'], 'novo': False}
+
+    # Criar novo customer
+    payload = {
+        'name': nome or f'Participante {cpf_limpo[-4:]}',
+        'cpfCnpj': cpf_limpo,
+        'notificationDisabled': True,
+    }
+    if email:
+        payload['email'] = email
+
+    resp = await asaas_request('POST', '/customers', payload)
+    if resp.get('id'):
+        print(f'✅ [Asaas] Customer criado: {resp["id"]} ({resp["name"]})', flush=True)
+        return {'success': True, 'customer_id': resp['id'], 'novo': True}
+
+    print(f'❌ [Asaas] Erro ao criar customer: {resp}', flush=True)
+    return {'success': False, 'error': resp.get('errors', [{}])[0].get('description', str(resp))}
+
+
+async def asaas_gerar_pix_sorteio(cpf: str, nome: str, valor: float,
+                                   descricao: str = 'Participação no Sorteio PaynexBet',
+                                   email: str = '') -> dict:
+    """
+    Gera cobrança PIX Asaas para o sorteio.
+    Retorna: {success, payment_id, pix_code, qr_image_b64, expiration}
+    """
+    # 1. Criar/buscar customer
+    cust = await asaas_criar_ou_buscar_customer(cpf, nome, email)
+    if not cust['success']:
+        return {'success': False, 'error': cust['error']}
+
+    customer_id = cust['customer_id']
+
+    # 2. Criar cobrança PIX
+    from datetime import date, timedelta
+    due = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
+    payment_payload = {
+        'customer': customer_id,
+        'billingType': 'PIX',
+        'value': round(valor, 2),
+        'dueDate': due,
+        'description': descricao,
+        'externalReference': f'sorteio_cpf_{re.sub(chr(92) + "D", "", cpf)}_{int(time.time())}',
+    }
+    resp = await asaas_request('POST', '/payments', payment_payload)
+    if not resp.get('id'):
+        erros = resp.get('errors', [{}])
+        msg = erros[0].get('description', str(resp)) if erros else str(resp)
+        print(f'❌ [Asaas] Erro ao criar cobrança: {msg}', flush=True)
+        return {'success': False, 'error': f'Asaas: {msg}'}
+
+    payment_id = resp['id']
+    print(f'✅ [Asaas] Cobrança criada: {payment_id} | R${valor:.2f} | CPF:{cpf}', flush=True)
+
+    # 3. Buscar QR Code PIX
+    await asyncio.sleep(1)  # pequena pausa para Asaas processar
+    qr_resp = await asaas_request('GET', f'/payments/{payment_id}/pixQrCode')
+    if not qr_resp.get('payload'):
+        print(f'⚠️ [Asaas] QR Code não disponível ainda para {payment_id}', flush=True)
+        return {'success': False, 'error': 'QR Code PIX não disponível. Tente novamente em instantes.'}
+
+    print(f'✅ [Asaas] QR Code gerado para {payment_id}', flush=True)
+    return {
+        'success': True,
+        'payment_id': payment_id,
+        'pix_code': qr_resp['payload'],
+        'qr_image_b64': qr_resp.get('encodedImage', ''),
+        'expiration': qr_resp.get('expirationDate', ''),
+        'value': valor,
+    }
+
+
+async def asaas_enviar_pix(chave_pix: str, tipo_chave: str, valor: float,
+                            descricao: str = 'Prêmio Sorteio PaynexBet') -> dict:
+    """
+    Envia PIX via Asaas (cash-out) — substitui Telegram para saques do sorteio.
+    tipo_chave: cpf | cnpj | email | phone | evp
+    """
+    if not ASAAS_API_KEY:
+        return {'success': False, 'error': 'Asaas não configurado (ASAAS_API_KEY ausente)'}
+
+    # Mapeamento de tipo_chave para pixAddressKeyType Asaas
+    tipo_map = {
+        'cpf': 'CPF', 'cnpj': 'CNPJ',
+        'email': 'EMAIL', 'phone': 'PHONE',
+        'celular': 'PHONE', 'telefone': 'PHONE',
+        'evp': 'EVP', 'aleatoria': 'EVP', 'aleatório': 'EVP',
+    }
+    pix_type = tipo_map.get(tipo_chave.lower(), 'CPF')
+
+    # Limpar chave se CPF/CNPJ/Phone
+    chave_limpa = chave_pix.strip()
+    if pix_type in ('CPF', 'CNPJ'):
+        chave_limpa = re.sub(r'\D', '', chave_limpa)
+    elif pix_type == 'PHONE':
+        chave_limpa = re.sub(r'\D', '', chave_limpa)
+        if not chave_limpa.startswith('55'):
+            chave_limpa = '55' + chave_limpa
+
+    payload = {
+        'value': round(valor, 2),
+        'pixAddressKey': chave_limpa,
+        'pixAddressKeyType': pix_type,
+        'description': descricao,
+    }
+    print(f'💸 [Asaas] Enviando PIX R${valor:.2f} → {pix_type}: {chave_limpa}', flush=True)
+    resp = await asaas_request('POST', '/transfers', payload)
+
+    if resp.get('id') and resp.get('status') in ('PENDING', 'DONE', 'BANK_PROCESSING'):
+        print(f'✅ [Asaas] PIX enviado! ID:{resp["id"]} status:{resp["status"]}', flush=True)
+        return {
+            'success': True,
+            'transfer_id': resp['id'],
+            'status': resp['status'],
+            'mensagem_bot': f'PIX enviado via Asaas | ID:{resp["id"]} | Status:{resp["status"]}',
+        }
+
+    erros = resp.get('errors', [{}])
+    msg = erros[0].get('description', str(resp)) if erros else str(resp)
+    print(f'❌ [Asaas] Falha ao enviar PIX: {msg}', flush=True)
+    return {'success': False, 'error': f'Asaas PIX: {msg}'}
+
+
+def asaas_salvar_pagamento_db(payment_id: str, tx_id: str, cpf: str,
+                               nome: str, valor: float, tipo: str = 'sorteio'):
+    """Salva mapeamento payment_id Asaas → tx_id local no SQLite"""
+    conn = sqlite3_connect()
+    conn.execute('''CREATE TABLE IF NOT EXISTS asaas_pagamentos (
+        payment_id TEXT PRIMARY KEY,
+        tx_id TEXT,
+        cpf TEXT,
+        nome TEXT,
+        valor REAL,
+        tipo TEXT,
+        status TEXT DEFAULT 'pendente',
+        created_at TEXT,
+        confirmed_at TEXT
+    )''')
+    conn.execute('''INSERT OR REPLACE INTO asaas_pagamentos
+        (payment_id, tx_id, cpf, nome, valor, tipo, status, created_at)
+        VALUES (?,?,?,?,?,?,'pendente',?)''',
+        (payment_id, tx_id, cpf, nome, valor, tipo, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+
+
+def asaas_confirmar_pagamento_db(payment_id: str) -> dict:
+    """Marca pagamento Asaas como confirmado e retorna dados"""
+    conn = sqlite3_connect()
+    row = conn.execute('SELECT * FROM asaas_pagamentos WHERE payment_id=?', (payment_id,)).fetchone()
+    if not row:
+        conn.close()
+        return {}
+    cols = ['payment_id','tx_id','cpf','nome','valor','tipo','status','created_at','confirmed_at']
+    d = {cols[i]: row[i] for i in range(min(len(cols), len(row)))}
+    conn.execute('UPDATE asaas_pagamentos SET status=?, confirmed_at=? WHERE payment_id=?',
+                 ('confirmado', datetime.now().isoformat(), payment_id))
+    conn.commit()
+    conn.close()
+    return d
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # ─── HELPERS SORTEIO ────────────────────────────────────────
 def get_sorteio_config():
     conn = sqlite3_connect()
@@ -1686,39 +1894,45 @@ async def _executar_sorteio_completo():
     print(f'🎉 SORTEIO {sorteio_id}: bilhete {numero_vencedor} → {ganhador["nome"]} ganhou R${premio:.2f} → {tipo_chave}: {chave_pix}', flush=True)
 
     # ── SAQUE AUTOMÁTICO ──────────────────────────────────────
+    # Prioridade: 1) Asaas (se configurado), 2) Telegram Bot, 3) Pendente
     saque_result = {'success': False, 'error': 'Chave Pix não cadastrada'}
     saque_id_gerado = None
 
-    if chave_pix and _telegram_ready:
-        print(f'💸 Iniciando saque automático R${premio:.2f} → {tipo_chave}: {chave_pix}', flush=True)
+    if chave_pix:
         import hashlib as _hl
         saque_id_gerado = 'saq_sorteio_' + _hl.md5(f"{sorteio_id}{chave_pix}".encode()).hexdigest()[:10]
         salvar_saque(saque_id_gerado, premio, chave_pix, tipo_chave)
-        saque_result = await executar_saque_bot(premio, tipo_chave, chave_pix)
 
-        # Atualizar status no banco de saques
-        novo_status = saque_result.get('status', 'erro') if saque_result.get('success') else 'erro'
-        obs = saque_result.get('mensagem_bot', saque_result.get('error', ''))[:500]
+        if ASAAS_API_KEY:
+            # ── ASAAS: PIX direto, sem depender do Telegram ────────
+            print(f'💸 [Asaas] Enviando prêmio R${premio:.2f} → {tipo_chave}: {chave_pix}', flush=True)
+            saque_result = await asaas_enviar_pix(chave_pix, tipo_chave, premio,
+                descricao=f'Prêmio Sorteio PaynexBet - {ganhador["nome"]}')
+            novo_status = 'enviado' if saque_result.get('success') else 'erro'
+            obs = saque_result.get('mensagem_bot', saque_result.get('error', ''))[:500]
+
+        elif _telegram_ready:
+            # ── TELEGRAM: fallback se Asaas não configurado ─────────
+            print(f'💸 [Telegram] Iniciando saque R${premio:.2f} → {tipo_chave}: {chave_pix}', flush=True)
+            saque_result = await executar_saque_bot(premio, tipo_chave, chave_pix)
+            novo_status = saque_result.get('status', 'erro') if saque_result.get('success') else 'erro'
+            obs = saque_result.get('mensagem_bot', saque_result.get('error', ''))[:500]
+
+        else:
+            # ── PENDENTE: nenhum gateway disponível ─────────────────
+            novo_status = 'aguardando_gateway'
+            obs = 'Asaas não configurado e Telegram offline — saque pendente'
+            saque_result = {'success': False, 'error': obs}
+            print(f'⚠️ Nenhum gateway disponível — saque pendente: {saque_id_gerado}', flush=True)
+
+        # Atualizar DB
         conn2 = sqlite3_connect()
         conn2.execute('UPDATE saques SET status=?, processado_at=?, observacao=? WHERE saque_id=?',
             (novo_status, datetime.now().isoformat(), obs, saque_id_gerado))
-        # Atualizar histórico com saque_id e status
         conn2.execute('UPDATE sorteio_historico SET saque_id=?, saque_status=? WHERE sorteio_id=?',
             (saque_id_gerado, novo_status, sorteio_id))
         conn2.commit(); conn2.close()
-        print(f'💸 Saque automático: {novo_status} | {obs[:80]}', flush=True)
-
-    elif chave_pix and not _telegram_ready:
-        # Telegram offline — salvar saque pendente para processar depois
-        import hashlib as _hl
-        saque_id_gerado = 'saq_sorteio_' + _hl.md5(f"{sorteio_id}{chave_pix}".encode()).hexdigest()[:10]
-        salvar_saque(saque_id_gerado, premio, chave_pix, tipo_chave)
-        conn2 = sqlite3_connect()
-        conn2.execute('UPDATE sorteio_historico SET saque_id=?, saque_status=? WHERE sorteio_id=?',
-            (saque_id_gerado, 'aguardando_telegram', sorteio_id))
-        conn2.commit(); conn2.close()
-        saque_result = {'success': False, 'error': 'Telegram offline — saque salvo, será processado quando reconectar'}
-        print(f'⚠️ Telegram offline — saque do sorteio salvo como pendente: {saque_id_gerado}', flush=True)
+        print(f'💸 Saque sorteio: {novo_status} | {obs[:80]}', flush=True)
 
     return {
         'success': True,
@@ -1895,6 +2109,258 @@ async def route_sorteio_participantes(request):
         'total_bilhetes': int(total_bill),
         'com_pix': len([p for p in participantes if p.get('chave_pix')]),
         'sem_pix': len([p for p in participantes if not p.get('chave_pix')]),
+    })
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── ROTAS ASAAS — SORTEIO PIX ─────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def route_asaas_pix_sorteio(request):
+    """
+    POST /api/sorteio/asaas/pix
+    Gera QR Code PIX via Asaas para participação no sorteio.
+    Body: { cpf, nome, valor, email? }
+    """
+    try:
+        data = await request.json()
+        cpf   = re.sub(r'\D', '', str(data.get('cpf', ''))).strip()
+        nome  = str(data.get('nome', '')).strip()
+        valor = float(data.get('valor', 0))
+        email = str(data.get('email', '')).strip()
+
+        if not cpf:
+            return web.json_response({'success': False, 'error': 'CPF obrigatório'}, status=400)
+        if valor < 1:
+            return web.json_response({'success': False, 'error': 'Valor mínimo R$ 1,00'}, status=400)
+        if not ASAAS_API_KEY:
+            return web.json_response({'success': False, 'error': 'Gateway PIX não configurado. Informe ASAAS_API_KEY.'}, status=503)
+
+        config = get_sorteio_config()
+        vp = float(config.get('valor_por_numero') or 5.0)
+        qtd_numeros = int(valor // vp)
+
+        print(f'🎰 [Asaas/Sorteio] Gerando PIX R${valor:.2f} para CPF:{cpf} ({nome})', flush=True)
+        resultado = await asaas_gerar_pix_sorteio(cpf, nome, valor,
+            descricao=f'Sorteio PaynexBet - {qtd_numeros} número(s) da sorte', email=email)
+
+        if not resultado['success']:
+            return web.json_response({'success': False, 'error': resultado['error']}, status=500)
+
+        # Salvar no DB local para rastrear confirmação via webhook
+        tx_id = f"asaas_{resultado['payment_id']}"
+        asaas_salvar_pagamento_db(
+            resultado['payment_id'], tx_id, cpf, nome, valor, 'sorteio'
+        )
+
+        return web.json_response({
+            'success': True,
+            'tx_id': tx_id,
+            'payment_id': resultado['payment_id'],
+            'pix_code': resultado['pix_code'],
+            'qr_image_b64': resultado.get('qr_image_b64', ''),
+            'expiration': resultado.get('expiration', ''),
+            'valor': valor,
+            'qtd_numeros': qtd_numeros,
+        })
+    except Exception as e:
+        print(f'❌ [Asaas/Sorteio] Erro: {e}', flush=True)
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_asaas_pix_status(request):
+    """
+    GET /api/sorteio/asaas/status/{tx_id}
+    Consulta status do pagamento Asaas pelo tx_id local.
+    """
+    try:
+        tx_id = request.match_info.get('tx_id', '')
+        payment_id = tx_id.replace('asaas_', '')
+
+        # Checar no DB local primeiro
+        conn = sqlite3_connect()
+        row = conn.execute('SELECT status, cpf, nome, valor FROM asaas_pagamentos WHERE payment_id=?',
+                           (payment_id,)).fetchone()
+        conn.close()
+
+        if row and row[0] == 'confirmado':
+            return web.json_response({
+                'success': True, 'status': 'confirmado',
+                'pago': True, 'cpf': row[1], 'nome': row[2], 'valor': row[3]
+            })
+
+        # Consultar Asaas em tempo real
+        resp = await asaas_request('GET', f'/payments/{payment_id}')
+        status_asaas = resp.get('status', 'PENDING')
+
+        pago = status_asaas in ('RECEIVED', 'CONFIRMED')
+        return web.json_response({
+            'success': True,
+            'status': 'confirmado' if pago else 'pendente',
+            'pago': pago,
+            'status_asaas': status_asaas,
+            'valor': resp.get('value', 0),
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_webhook_asaas(request):
+    """
+    POST /webhook/asaas
+    Recebe eventos de pagamento do Asaas e processa automaticamente.
+    Evento principal: PAYMENT_RECEIVED → credita bilhetes no sorteio.
+    """
+    import json as _json
+    try:
+        # Validar token Asaas
+        token = request.headers.get('asaas-access-token', '')
+        if ASAAS_WEBHOOK_TOKEN and token != ASAAS_WEBHOOK_TOKEN:
+            print(f'⚠️ [Webhook Asaas] Token inválido: {token[:20]}...', flush=True)
+            return web.json_response({'error': 'Token inválido'}, status=401)
+
+        body = await request.json()
+        event = body.get('event', '')
+        payment = body.get('payment', {})
+        payment_id = payment.get('id', '')
+        valor = float(payment.get('value', 0))
+        external_ref = payment.get('externalReference', '')
+
+        print(f'📨 [Webhook Asaas] Evento: {event} | ID:{payment_id} | R${valor:.2f}', flush=True)
+
+        # Só processa pagamentos recebidos
+        if event not in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'):
+            return web.Response(text='ok', status=200)
+
+        # Buscar no DB local
+        dados = asaas_confirmar_pagamento_db(payment_id)
+        if not dados:
+            # Tentar via externalReference (cpf extraído)
+            print(f'⚠️ [Webhook Asaas] payment_id {payment_id} não encontrado no DB local', flush=True)
+            return web.Response(text='ok', status=200)
+
+        cpf   = dados.get('cpf', '')
+        nome  = dados.get('nome', '')
+        tipo  = dados.get('tipo', 'sorteio')
+        valor_db = dados.get('valor', valor)
+
+        print(f'✅ [Webhook Asaas] Pagamento confirmado! CPF:{cpf} | R${valor_db:.2f} | tipo:{tipo}', flush=True)
+
+        # Processar conforme tipo
+        if tipo == 'sorteio':
+            await _processar_deposito_sorteio_asaas(cpf, nome, valor_db)
+
+        return web.Response(text='ok', status=200)
+
+    except Exception as e:
+        print(f'❌ [Webhook Asaas] Erro: {e}', flush=True)
+        return web.Response(text='ok', status=200)  # sempre 200 para Asaas não pausar a fila
+
+
+async def _processar_deposito_sorteio_asaas(cpf: str, nome: str, valor: float):
+    """
+    Processa depósito confirmado pelo Asaas:
+    - Se participante existe: adiciona bilhetes
+    - Se não existe: apenas registra no log (usuário precisa se cadastrar)
+    """
+    import json as _json
+    config = get_sorteio_config()
+    vp = float(config.get('valor_por_numero') or 5.0)
+
+    part = get_participante(cpf)
+    if not part:
+        print(f'⚠️ [Asaas/Sorteio] CPF {cpf} pagou mas não está cadastrado no sorteio', flush=True)
+        # Salvar como crédito pendente para quando o participante se cadastrar
+        conn = sqlite3_connect()
+        conn.execute('''CREATE TABLE IF NOT EXISTS asaas_creditos_pendentes (
+            cpf TEXT PRIMARY KEY,
+            nome TEXT,
+            valor_total REAL DEFAULT 0,
+            created_at TEXT,
+            updated_at TEXT
+        )''')
+        conn.execute('''INSERT INTO asaas_creditos_pendentes (cpf, nome, valor_total, created_at, updated_at)
+            VALUES (?,?,?,?,?)
+            ON CONFLICT(cpf) DO UPDATE SET
+                valor_total = valor_total + ?,
+                nome = excluded.nome,
+                updated_at = excluded.updated_at''',
+            (cpf, nome, valor, datetime.now().isoformat(), datetime.now().isoformat(), valor))
+        conn.commit()
+        conn.close()
+        return
+
+    novo_total = (part['total_depositado'] or 0) + valor
+    numeros_antes = int(part['total_numeros'] or 0)
+    numeros_total = calcular_numeros(novo_total, vp)
+    novos = numeros_total - numeros_antes
+
+    numeros_atuais = list(part['numeros_sorte'] or [])
+    if novos > 0:
+        novos_numeros = gerar_bilhetes_unicos(part['cliente_id'], novos)
+        numeros_atuais.extend(novos_numeros)
+
+    conn = sqlite3_connect()
+    conn.execute('''UPDATE sorteio_participantes
+        SET total_depositado=?, total_numeros=?, numeros_sorte=?, updated_at=?
+        WHERE cpf=? AND sorteio_id='atual' ''',
+        (novo_total, numeros_total, _json.dumps(numeros_atuais),
+         datetime.now().isoformat(), cpf))
+    conn.commit()
+    conn.close()
+
+    print(f'🎫 [Asaas/Sorteio] {nome} (CPF:{cpf}) | +R${valor:.2f} | +{novos} bilhetes | Total:{numeros_total} bilhetes', flush=True)
+
+
+async def route_asaas_saque_sorteio(request):
+    """
+    POST /api/sorteio/asaas/saque  (admin)
+    Envia prêmio do sorteio via Asaas PIX.
+    Body: { chave_pix, tipo_chave, valor, descricao? }
+    """
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        chave_pix  = str(data.get('chave_pix', '')).strip()
+        tipo_chave = str(data.get('tipo_chave', 'cpf')).strip()
+        valor      = float(data.get('valor', 0))
+        descricao  = str(data.get('descricao', 'Prêmio Sorteio PaynexBet'))
+
+        if not chave_pix:
+            return web.json_response({'success': False, 'error': 'chave_pix obrigatória'}, status=400)
+        if valor < 1:
+            return web.json_response({'success': False, 'error': 'Valor mínimo R$ 1,00'}, status=400)
+
+        resultado = await asaas_enviar_pix(chave_pix, tipo_chave, valor, descricao)
+        return web.json_response(resultado)
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_asaas_status(request):
+    """GET /api/asaas/status — Verifica se Asaas está configurado e operacional"""
+    if not ASAAS_API_KEY:
+        return web.json_response({
+            'configurado': False,
+            'error': 'ASAAS_API_KEY não definida',
+            'instrucao': 'Defina a variável de ambiente ASAAS_API_KEY no Railway'
+        })
+    resp = await asaas_request('GET', '/myAccount')
+    if resp.get('id') or resp.get('name'):
+        return web.json_response({
+            'configurado': True,
+            'ambiente': ASAAS_ENV,
+            'conta': resp.get('name', ''),
+            'id': resp.get('id', ''),
+            'status': 'ok'
+        })
+    return web.json_response({
+        'configurado': True,
+        'ambiente': ASAAS_ENV,
+        'error': resp.get('errors', str(resp)),
+        'status': 'erro_api'
     })
 
 # ─── ROTAS ────────────────────────────────────────────────
@@ -2192,7 +2658,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260412-RECONDB-v10',
+        'version': 'v20260413-ASAAS-v11',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -3393,7 +3859,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260412-RECONDB-v10',
+            'version': 'v20260413-ASAAS-v11',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
@@ -3408,6 +3874,12 @@ async def main():
     app.router.add_post('/api/sorteio/realizar', route_sorteio_realizar)
     app.router.add_post('/api/sorteio/config', route_sorteio_config)
     app.router.add_get('/api/sorteio/participantes', route_sorteio_participantes)
+    # ── Asaas ──────────────────────────────────────────────────────────────────
+    app.router.add_post('/api/sorteio/asaas/pix', route_asaas_pix_sorteio)
+    app.router.add_get('/api/sorteio/asaas/status/{tx_id}', route_asaas_pix_status)
+    app.router.add_post('/api/sorteio/asaas/saque', route_asaas_saque_sorteio)
+    app.router.add_post('/webhook/asaas', route_webhook_asaas)
+    app.router.add_get('/api/asaas/status', route_asaas_status)
 
     runner = web.AppRunner(app)
     await runner.setup()

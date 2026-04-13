@@ -718,40 +718,82 @@ async function gerarPixSorteio() {
   }
 
   try {
-    // Passo 1: POST /api/pix — resposta imediata com tx_id
+    // ── Detectar gateway: Asaas (novo) ou PayPix (legado) ──────────────────
     if (loadingMsg) loadingMsg.textContent = '⏳ Iniciando...';
-    const r = await fetch(BASE + '/api/pix', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(body)
-    });
-    const d = await r.json();
 
-    if (!d.success && d.status !== 'gerando') {
-      document.getElementById('etapa-loading').classList.add('hidden');
-      document.getElementById('etapa-valor').style.display = 'block';
-      alert('❌ ' + (d.error || 'Erro ao gerar Pix. Tente novamente.'));
-      return;
+    // Tentar Asaas primeiro (resposta imediata com QR Code)
+    const cpfPagador = participante_dados ? participante_dados.cpf : localStorage.getItem('sorteio_cpf');
+    const nomePagador = participante_dados ? participante_dados.nome : (localStorage.getItem('sorteio_nome') || 'Participante');
+
+    let pixData = null;
+
+    if (cpfPagador) {
+      if (loadingMsg) loadingMsg.textContent = '⏳ Gerando QR Code PIX...';
+      try {
+        const rAsaas = await fetch(BASE + '/api/sorteio/asaas/pix', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ cpf: cpfPagador, nome: nomePagador, valor })
+        });
+        const dAsaas = await rAsaas.json();
+
+        if (dAsaas.success && dAsaas.pix_code) {
+          // ✅ Asaas funcionou — QR Code disponível imediatamente!
+          pixData = {
+            success: true,
+            pix_code: dAsaas.pix_code,
+            qr_image_b64: dAsaas.qr_image_b64 || '',
+            tx_id: dAsaas.tx_id,
+            gateway: 'asaas',
+          };
+          console.log('✅ Gateway Asaas OK');
+        } else if (dAsaas.error && dAsaas.error.includes('ASAAS_API_KEY')) {
+          // Asaas não configurado — fallback PayPix
+          console.log('⚠️ Asaas não configurado, usando PayPix');
+        } else {
+          console.warn('Asaas retornou erro:', dAsaas.error);
+        }
+      } catch(eAsaas) {
+        console.warn('Asaas indisponível, usando fallback:', eAsaas);
+      }
     }
 
-    const txIdTemp = d.tx_id;
+    // Fallback: PayPix (fluxo antigo com polling)
+    if (!pixData) {
+      if (loadingMsg) loadingMsg.textContent = '⏳ Gerando Pix (gateway alternativo)...';
+      const r = await fetch(BASE + '/api/pix', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      const d = await r.json();
 
-    // Passo 2: Polling /api/pix/status/:tx_id até ter pix_code (máx 60s)
-    let pixData = null;
-    for (let i = 0; i < 30; i++) {
-      await new Promise(res => setTimeout(res, 2000));
-      if (loadingMsg) loadingMsg.textContent = `⏳ Gerando Pix... ${(i+1)*2}s`;
-      try {
-        const rs = await fetch(BASE + '/api/pix/status/' + txIdTemp);
-        const ds = await rs.json();
-        if (ds.success && ds.pix_code) { pixData = ds; break; }
-        if (ds.status === 'erro') {
-          document.getElementById('etapa-loading').classList.add('hidden');
-          document.getElementById('etapa-valor').style.display = 'block';
-          alert('❌ ' + (ds.error || 'Falha ao gerar Pix. Tente novamente.'));
-          return;
-        }
-      } catch(e2) { /* continuar polling */ }
+      if (!d.success && d.status !== 'gerando') {
+        document.getElementById('etapa-loading').classList.add('hidden');
+        document.getElementById('etapa-valor').style.display = 'block';
+        alert('❌ ' + (d.error || 'Erro ao gerar Pix. Tente novamente.'));
+        return;
+      }
+
+      const txIdTemp = d.tx_id;
+      for (let i = 0; i < 30; i++) {
+        await new Promise(res => setTimeout(res, 2000));
+        if (loadingMsg) loadingMsg.textContent = `⏳ Aguardando QR Code... ${(i+1)*2}s`;
+        try {
+          const rs = await fetch(BASE + '/api/pix/status/' + txIdTemp);
+          const ds = await rs.json();
+          if (ds.success && ds.pix_code) {
+            pixData = { ...ds, gateway: 'paypix' };
+            break;
+          }
+          if (ds.status === 'erro') {
+            document.getElementById('etapa-loading').classList.add('hidden');
+            document.getElementById('etapa-valor').style.display = 'block';
+            alert('❌ ' + (ds.error || 'Falha ao gerar Pix. Tente novamente.'));
+            return;
+          }
+        } catch(e2) { /* continuar polling */ }
+      }
     }
 
     document.getElementById('etapa-loading').classList.add('hidden');
@@ -764,8 +806,24 @@ async function gerarPixSorteio() {
       document.getElementById('m-nums-conf').textContent = qtd;
       document.getElementById('m-pix-code').textContent = pixData.pix_code;
       document.getElementById('etapa-pix').style.display = 'block';
-      gerarQRCodeDep(pixData.pix_code);
-      iniciarPollingDep(pixData.tx_id, valor, participante_dados);
+
+      // Se Asaas retornou imagem base64, usar direto (sem API externa)
+      if (pixData.gateway === 'asaas' && pixData.qr_image_b64) {
+        const box = document.getElementById('m-qr-canvas').parentElement;
+        box.innerHTML = '';
+        const img = document.createElement('img');
+        img.style.cssText = 'width:210px;height:210px;border-radius:8px;display:block;margin:0 auto;background:#fff';
+        img.src = 'data:image/png;base64,' + pixData.qr_image_b64;
+        box.appendChild(img);
+      } else {
+        gerarQRCodeDep(pixData.pix_code);
+      }
+
+      // Polling de confirmação — rota Asaas ou padrão
+      const pollRoute = (pixData.gateway === 'asaas')
+        ? BASE + '/api/sorteio/asaas/status/' + pixData.tx_id
+        : BASE + '/api/status/' + pixData.tx_id;
+      iniciarPollingDep(pixData.tx_id, valor, participante_dados, pollRoute);
     } else {
       document.getElementById('etapa-valor').style.display = 'block';
       alert('⏱️ Demorou mais que o esperado. Tente novamente em alguns segundos.');
@@ -870,10 +928,11 @@ function voltarValor() {
   document.getElementById('etapa-valor').style.display = 'block';
 }
 
-function iniciarPollingDep(txId, valor, participante_dados) {
+function iniciarPollingDep(txId, valor, participante_dados, pollRoute) {
   let tentativas = 0;
-  const MAX = 60; // 2 minutos
+  const MAX = 90; // 3 minutos (Asaas confirma instantâneo via webhook)
   const statusEl = document.getElementById('m-status-pix');
+  const rota = pollRoute || (BASE + '/api/status/' + txId);
 
   pollingDep = setInterval(async () => {
     tentativas++;
@@ -887,7 +946,7 @@ function iniciarPollingDep(txId, valor, participante_dados) {
     }
 
     try {
-      const r = await fetch(BASE + '/api/status/' + txId);
+      const r = await fetch(rota);
       const d = await r.json();
       if (d.pago) {
         clearInterval(pollingDep); pollingDep = null;
