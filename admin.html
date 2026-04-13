@@ -879,7 +879,65 @@
           </table>
         </div>
 
+        <!-- ═══ PAINEL TELEGRAM ═══ -->
+        <div class="table-card" style="margin-top:16px" id="tg-reconnect-panel">
+          <div class="table-header">
+            <h3>🤖 Reconexão Telegram</h3>
+            <span id="tg-panel-status" style="font-size:13px;padding:4px 12px;border-radius:20px;background:#1a2a1a;color:#4caf50">🟢 Conectado</span>
+          </div>
+          <div style="padding:20px">
 
+            <!-- Status Banner -->
+            <div id="tg-status-banner" style="display:none;background:linear-gradient(135deg,#2d1a0e,#3d2010);border:1px solid #ff6b35;border-radius:12px;padding:16px;margin-bottom:20px;text-align:center">
+              <div style="font-size:28px;margin-bottom:8px">⚠️</div>
+              <div style="color:#ff6b35;font-weight:700;font-size:16px">Telegram Desconectado</div>
+              <div style="color:#aaa;font-size:13px;margin-top:4px" id="tg-banner-motivo">Sessão inválida — reconexão necessária</div>
+            </div>
+
+            <!-- PASSO 1: Número + Solicitar código -->
+            <div id="tg-step1" style="margin-bottom:20px">
+              <div style="color:var(--text2);font-size:13px;margin-bottom:12px">
+                <b style="color:var(--text)">Passo 1:</b> Informe o número e clique para receber o código
+              </div>
+              <!-- Campo número com DDD -->
+              <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+                <span style="background:#0a0a14;border:2px solid #333;border-radius:10px;padding:12px 14px;color:#aaa;font-size:15px;white-space:nowrap">🇧🇷 +55</span>
+                <input type="tel" id="tg-phone-input" placeholder="27998823669" maxlength="13"
+                  style="flex:1;padding:12px 14px;background:#0a0a14;border:2px solid #1a6fc4;border-radius:10px;color:#fff;font-size:16px;font-weight:600;letter-spacing:1px"
+                  onkeypress="if(event.key==='Enter') tgSolicitarCodigo()"
+                  value="27998823669">
+              </div>
+              <button onclick="tgSolicitarCodigo()" id="btn-solicitar" style="width:100%;padding:14px;background:linear-gradient(135deg,#1a6fc4,#0d47a1);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s">
+                📱 Enviar código para o Telegram
+              </button>
+              <div id="msg-solicitar" style="margin-top:10px;font-size:13px;text-align:center"></div>
+            </div>
+
+            <!-- PASSO 2: Inserir código (inicialmente oculto) -->
+            <div id="tg-step2" style="display:none;border-top:1px solid #ffffff11;padding-top:20px">
+              <div style="color:var(--text2);font-size:13px;margin-bottom:12px">
+                <b style="color:var(--text)">Passo 2:</b> Digite o código de 5 dígitos que chegou no Telegram
+              </div>
+              <div style="display:flex;gap:10px">
+                <input type="text" id="tg-codigo-input" maxlength="5" placeholder="Ex: 16379"
+                  style="flex:1;padding:14px;background:#0a0a14;border:2px solid #1a6fc4;border-radius:10px;color:#fff;font-size:20px;letter-spacing:6px;text-align:center;font-weight:700"
+                  onkeypress="if(event.key==='Enter') tgConfirmarCodigo()">
+                <button onclick="tgConfirmarCodigo()" id="btn-confirmar" style="padding:14px 20px;background:linear-gradient(135deg,#2e7d32,#1b5e20);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">
+                  ✅ Confirmar
+                </button>
+              </div>
+              <div id="msg-confirmar" style="margin-top:10px;font-size:13px;text-align:center"></div>
+              <div style="margin-top:10px;text-align:center">
+                <a href="#" onclick="tgSolicitarCodigo();return false" style="color:#666;font-size:12px">↩ Reenviar código</a>
+              </div>
+            </div>
+
+            <!-- Dica -->
+            <div style="margin-top:16px;padding:12px;background:#0a0a14;border-radius:8px;font-size:12px;color:#666;line-height:1.5">
+              💡 <b style="color:#888">Como funciona:</b> Digite seu número (sem +55), clique em "Enviar código", aguarde o código chegar no Telegram e confirme aqui. <b style="color:#FFD700">Você mesmo controla sem precisar de suporte!</b>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ═══ SORTEIO ═══ -->
@@ -1683,7 +1741,7 @@ async function loadHealth() {
     const online = d.telegram;
     const dot = document.getElementById('tg-dot');
     dot.className = 'dot' + (online ? ' online' : '');
-    document.getElementById('tg-status').textContent = online ? '🟢 Telegram Online' : '🔴 Desconectado';
+    document.getElementById('tg-status').textContent = online ? '🟢 Telegram Online' : '🔴 Reconectando...';
     document.getElementById('sys-tg').textContent = online ? '🟢 OK' : '🔴 OFF';
     document.getElementById('sys-tent').textContent = d.tentativas || 0;
     document.getElementById('sys-url').textContent = BASE.replace('https://','');
@@ -1706,7 +1764,107 @@ async function loadHealth() {
       <tr><td style="color:var(--text2)">URL base</td><td>${BASE}</td></tr>
     `;
 
+    // Painel de reconexão: mostrar alerta se Telegram offline
+    atualizarPainelTelegram(online, d.telegram_motivo);
   } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════
+//  PAINEL RECONEXÃO TELEGRAM
+// ═══════════════════════════════════════════════
+function atualizarPainelTelegram(online, motivo) {
+  const banner  = document.getElementById('tg-status-banner');
+  const panelSt = document.getElementById('tg-panel-status');
+  if (!banner || !panelSt) return;
+
+  if (online) {
+    banner.style.display = 'none';
+    panelSt.style.background = '#1a2a1a';
+    panelSt.style.color = '#4caf50';
+    panelSt.textContent = '🟢 Conectado';
+  } else {
+    banner.style.display = 'block';
+    panelSt.style.background = '#2d1a0e';
+    panelSt.style.color = '#ff6b35';
+    panelSt.textContent = '🔴 Desconectado';
+    const mot = document.getElementById('tg-banner-motivo');
+    if (mot) mot.textContent = motivo === 'sessao_invalida'
+      ? 'Sessão inválida — clique em "Enviar código" abaixo'
+      : (motivo || 'Reconexão necessária');
+  }
+}
+
+async function tgSolicitarCodigo() {
+  const btn = document.getElementById('btn-solicitar');
+  const msg = document.getElementById('msg-solicitar');
+  // Pegar número digitado (remover tudo que não for dígito e adicionar +55)
+  const phoneRaw = (document.getElementById('tg-phone-input')?.value || '').replace(/\D/g,'');
+  if (!phoneRaw || phoneRaw.length < 10) {
+    msg.innerHTML = '<span style="color:#f44">❌ Digite o número com DDD (ex: 27998823669)</span>';
+    return;
+  }
+  const phone = '+55' + phoneRaw.replace(/^55/,''); // garante +55 sem duplicar
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+  msg.innerHTML = `<span style="color:#aaa">📲 Enviando código para ${phone}...</span>`;
+  try {
+    const r = await fetch(`${BASE}/api/telegram/solicitar-codigo`, {
+      method: 'POST',
+      headers: { 'X-PaynexBet-Secret': SECRET(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone })
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ Código enviado para ${phone}! Verifique o Telegram.</span>`;
+      document.getElementById('tg-step2').style.display = 'block';
+      setTimeout(() => { document.getElementById('tg-codigo-input').focus(); }, 200);
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || d.message || 'Erro ao solicitar'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ Erro de conexão: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📱 Enviar código para o Telegram';
+  }
+}
+
+async function tgConfirmarCodigo() {
+  const input = document.getElementById('tg-codigo-input');
+  const btn   = document.getElementById('btn-confirmar');
+  const msg   = document.getElementById('msg-confirmar');
+  const code  = input.value.trim();
+  if (!code || code.length < 4) {
+    msg.innerHTML = '<span style="color:#f44">❌ Digite o código de 5 dígitos</span>';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = '⏳ Confirmando...';
+  msg.innerHTML = '';
+  try {
+    const r = await fetch(`${BASE}/api/telegram/confirmar-codigo`, {
+      method: 'POST',
+      headers: { 'X-PaynexBet-Secret': SECRET(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code })
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message || 'Telegram conectado!'}</span>`;
+      input.value = '';
+      document.getElementById('tg-step2').style.display = 'none';
+      document.getElementById('tg-status-banner').style.display = 'none';
+      document.getElementById('tg-panel-status').textContent = '🟢 Conectado';
+      document.getElementById('tg-panel-status').style.color = '#4caf50';
+      setTimeout(() => loadHealth(), 2000);
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || d.message || 'Código inválido'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✅ Confirmar';
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -2635,6 +2793,92 @@ carregarPaypixAdmin = async function() {
   _atualizarBarraManutencao(ativo);
 };
 
+// ═══════════════════════════════════════════════
+//  PAINEL TELEGRAM - RECONEXÃO AUTOMÁTICA
+// ═══════════════════════════════════════════════
+
+// Atualiza o painel de reconexão com base no status do Telegram
+function _atualizarPainelTelegram(online, motivo) {
+  const panel = document.getElementById('tg-reconnect-panel');
+  const banner = document.getElementById('tg-status-banner');
+  const statusBadge = document.getElementById('tg-panel-status');
+  const step1 = document.getElementById('tg-step1');
+  const step2 = document.getElementById('tg-step2');
+  if (!panel) return;
+
+  if (online) {
+    // Telegram OK → esconde banner de alerta
+    if (banner) banner.style.display = 'none';
+    if (statusBadge) {
+      statusBadge.textContent = '🟢 Conectado';
+      statusBadge.style.background = '#1a2a1a';
+      statusBadge.style.color = '#4caf50';
+    }
+    if (step1) step1.querySelector('button').textContent = '📱 Reenviar código (opcional)';
+  } else {
+    // Telegram OFF → mostra banner vermelho
+    if (banner) {
+      banner.style.display = 'block';
+      const motivoEl = document.getElementById('tg-banner-motivo');
+      if (motivoEl) motivoEl.textContent = motivo || 'Sessão inválida — reconexão necessária';
+    }
+    if (statusBadge) {
+      statusBadge.textContent = '🔴 Desconectado';
+      statusBadge.style.background = '#2d1a0e';
+      statusBadge.style.color = '#ff6b35';
+    }
+  }
+}
+
+// Monkeypatch loadHealth para atualizar painel telegram
+const _origLoadHealth = loadHealth;
+loadHealth = async function() {
+  await _origLoadHealth();
+  try {
+    const r = await fetch(`${BASE}/health`);
+    const d = await r.json();
+    _atualizarPainelTelegram(d.telegram, d.telegram_motivo);
+  } catch(e) {}
+};
+
+// tgSolicitarCodigo já definida acima (com campo de número dinâmico)
+
+async function tgConfirmarCodigo() {
+  const input = document.getElementById('tg-codigo-input');
+  const btn = document.getElementById('btn-confirmar');
+  const msg = document.getElementById('msg-confirmar');
+  const codigo = input.value.trim();
+  if (!codigo || codigo.length < 5) {
+    msg.innerHTML = `<span style="color:#f44336">⚠️ Digite o código de 5 dígitos</span>`;
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = '⏳ Confirmando...';
+  msg.innerHTML = '';
+  try {
+    const r = await fetch(`${BASE}/api/telegram/confirmar-codigo`, {
+      method: 'POST',
+      headers: { 'X-PaynexBet-Secret': SECRET, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: codigo })
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message}</span>`;
+      input.value = '';
+      document.getElementById('tg-step2').style.display = 'none';
+      // Atualiza status imediatamente
+      setTimeout(() => loadHealth(), 2000);
+    } else if (d.needs_2fa) {
+      msg.innerHTML = `<span style="color:#ff9800">🔐 2FA necessário — este número tem senha ativada</span>`;
+    } else {
+      msg.innerHTML = `<span style="color:#f44336">❌ ${d.error || 'Código incorreto'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44336">❌ Erro: ${e.message}</span>`;
+  }
+  btn.disabled = false;
+  btn.textContent = '✅ Confirmar';
+}
 </script>
 </body>
 </html>
