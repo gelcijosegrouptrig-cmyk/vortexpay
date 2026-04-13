@@ -2106,26 +2106,25 @@ async def _executar_sorteio_completo():
         salvar_saque(saque_id_gerado, premio, chave_pix, tipo_chave)
 
         if ASAAS_API_KEY:
-            # ── ASAAS: PIX direto, sem depender do Telegram ────────
+            # ── ASAAS: PIX direto, único gateway do sorteio ────────
             print(f'💸 [Asaas] Enviando prêmio R${premio:.2f} → {tipo_chave}: {chave_pix}', flush=True)
             saque_result = await asaas_enviar_pix(chave_pix, tipo_chave, premio,
                 descricao=f'Prêmio Sorteio PaynexBet - {ganhador["nome"]}')
-            novo_status = 'enviado' if saque_result.get('success') else 'erro'
-            obs = saque_result.get('mensagem_bot', saque_result.get('error', ''))[:500]
-
-        elif _telegram_ready:
-            # ── TELEGRAM: fallback se Asaas não configurado ─────────
-            print(f'💸 [Telegram] Iniciando saque R${premio:.2f} → {tipo_chave}: {chave_pix}', flush=True)
-            saque_result = await executar_saque_bot(premio, tipo_chave, chave_pix)
-            novo_status = saque_result.get('status', 'erro') if saque_result.get('success') else 'erro'
-            obs = saque_result.get('mensagem_bot', saque_result.get('error', ''))[:500]
+            if saque_result.get('success'):
+                novo_status = 'enviado'
+                obs = saque_result.get('mensagem_bot', '')[:500]
+            else:
+                # Asaas falhou → pendente para retentativa automática a cada 1h (SEM Telegram)
+                novo_status = 'pendente_asaas'
+                obs = f'Asaas falhou — retentativa automática a cada 1h. Erro: {saque_result.get("error","")}'[:500]
+                print(f'⚠️ [Asaas] Falha no saque — pendente p/ retentativa 1h: {saque_id_gerado}', flush=True)
 
         else:
-            # ── PENDENTE: nenhum gateway disponível ─────────────────
-            novo_status = 'aguardando_gateway'
-            obs = 'Asaas não configurado e Telegram offline — saque pendente'
+            # ── PENDENTE: Asaas não configurado — retentativa a cada 1h ──
+            novo_status = 'pendente_asaas'
+            obs = 'Asaas não configurado — saque pendente para retentativa automática a cada 1h'
             saque_result = {'success': False, 'error': obs}
-            print(f'⚠️ Nenhum gateway disponível — saque pendente: {saque_id_gerado}', flush=True)
+            print(f'⚠️ Asaas não configurado — saque pendente: {saque_id_gerado}', flush=True)
 
         # Atualizar DB
         conn2 = sqlite3_connect()
@@ -2215,31 +2214,50 @@ async def agendador_sorteio():
             print(f'❌ Agendador erro: {e}', flush=True)
 
 async def reprocessar_saques_pendentes_sorteio():
-    """Verifica a cada 5min se há saques de sorteio aguardando Telegram e tenta reprocessar"""
-    print('🔄 Monitor de saques pendentes iniciado', flush=True)
+    """Verifica a cada 1h saques de sorteio pendentes e retenta via Asaas (sem Telegram)"""
+    print('🔄 Monitor de saques pendentes sorteio iniciado (retentativa a cada 1h via Asaas)', flush=True)
     while True:
-        await asyncio.sleep(300)  # 5 minutos
+        await asyncio.sleep(3600)  # 1 hora
         try:
-            if not _telegram_ready:
+            if not ASAAS_API_KEY:
+                print('⚠️ [Monitor Saques] Asaas não configurado — aguardando...', flush=True)
                 continue
-            # Buscar saques de sorteio aguardando telegram
+
+            # Buscar saques de sorteio pendentes (falha Asaas ou Asaas não configurado)
             conn = sqlite3_connect()
             cur = conn.execute("""SELECT h.sorteio_id, h.ganhador_nome, h.ganhador_chave_pix,
                                 h.ganhador_tipo_chave, h.premio_pago, h.saque_id
                          FROM sorteio_historico h
-                         WHERE h.saque_status='aguardando_telegram'
-                         ORDER BY h.data_sorteio DESC LIMIT 5""")
+                         WHERE h.saque_status IN ('pendente_asaas','erro','aguardando_gateway','aguardando_telegram')
+                         ORDER BY h.data_sorteio DESC LIMIT 10""")
             pendentes = cur.fetchall()
             conn.close()
+
+            if not pendentes:
+                print('✅ [Monitor Saques] Nenhum saque pendente.', flush=True)
+                continue
+
+            print(f'💸 [Monitor Saques] {len(pendentes)} saque(s) pendente(s) — tentando via Asaas...', flush=True)
 
             for row in pendentes:
                 sorteio_id, nome, chave_pix, tipo_chave, premio, saque_id = row
                 if not chave_pix:
+                    print(f'⚠️ [Monitor Saques] {sorteio_id} sem chave PIX — pulando', flush=True)
                     continue
-                print(f'💸 Reprocessando saque sorteio {sorteio_id}: R${premio:.2f} → {tipo_chave}:{chave_pix}', flush=True)
-                result = await executar_saque_bot(premio, tipo_chave, chave_pix)
-                novo_status = result.get('status', 'erro') if result.get('success') else 'erro'
-                obs = result.get('mensagem_bot', result.get('error', ''))[:500]
+
+                print(f'💸 [Monitor Saques] Retentativa Asaas: {sorteio_id} | R${premio:.2f} → {tipo_chave}:{chave_pix}', flush=True)
+                result = await asaas_enviar_pix(chave_pix, tipo_chave, float(premio),
+                                                descricao=f'Prêmio Sorteio PaynexBet - {nome} (retentativa)')
+
+                if result.get('success'):
+                    novo_status = 'enviado'
+                    obs = result.get('mensagem_bot', f'Retentativa OK — ID:{result.get("transfer_id","")}')[:500]
+                    print(f'✅ [Monitor Saques] Saque enviado com sucesso: {sorteio_id}', flush=True)
+                else:
+                    novo_status = 'pendente_asaas'
+                    obs = f'Retentativa Asaas falhou — próxima em 1h. Erro: {result.get("error","")}' [:500]
+                    print(f'❌ [Monitor Saques] Falha na retentativa {sorteio_id}: {result.get("error","")}', flush=True)
+
                 conn2 = sqlite3_connect()
                 conn2.execute('UPDATE sorteio_historico SET saque_status=? WHERE sorteio_id=?',
                               (novo_status, sorteio_id))
@@ -2247,9 +2265,9 @@ async def reprocessar_saques_pendentes_sorteio():
                     conn2.execute('UPDATE saques SET status=?, processado_at=?, observacao=? WHERE saque_id=?',
                                   (novo_status, datetime.now().isoformat(), obs, saque_id))
                 conn2.commit(); conn2.close()
-                print(f'💸 Saque reprocessado: {novo_status} | {obs[:60]}', flush=True)
+
         except Exception as e:
-            print(f'❌ Monitor saques erro: {e}', flush=True)
+            print(f'❌ [Monitor Saques] Erro inesperado: {e}', flush=True)
 
 async def route_sorteio_config(request):
     """ADMIN - Configurar parâmetros do sorteio"""
