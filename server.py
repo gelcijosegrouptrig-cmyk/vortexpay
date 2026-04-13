@@ -22,12 +22,11 @@ ASAAS_ENV      = os.environ.get('ASAAS_ENV', 'production')  # 'sandbox' ou 'prod
 ASAAS_BASE_URL = 'https://sandbox.asaas.com/v3' if ASAAS_ENV == 'sandbox' else 'https://api.asaas.com/v3'
 ASAAS_WEBHOOK_TOKEN = os.environ.get('ASAAS_WEBHOOK_TOKEN', 'vortex_asaas_2024')  # token secreto webhook Asaas
 
-_SESSION_FALLBACK = '1AZWarzYBuxGBwXPRkJ3GbWfNayG2RvhePLRdUEVqu8eP2bS9H8n2aaW2WeJDSfa_KDsuLUwkvF9tJb8g9tT9xoxyJUa30x2sqpVOCPEPqe5pdXV3HZ_iFdX9BGboi1SZvA_WudKYzn_mNO2z8gf-P0oPTwiRs8NF8fd-ZzJBe6vihX15jqy134gm5Eb0aPVT8sY_mCRcqBRzf4r4FeWtVvXsPneu22HHKHKHgxNgLX3b84665PPcXdJAYFVk0lv1xTjOlEnXQzDg-C4CnFeCn3rRtl1VQzG7KLZN3pMcR_b6MYCCqRnc8Eg5zLo4REufyc-ZewlYdH2feip0Q63Cqr97gnKewKQ='
+_SESSION_FALLBACK = ''  # Sessão fallback removida por segurança — usar apenas DB/env var
 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:EfJgSbrAkQbFlQJWdxIpIZftseKsDVKs@metro.proxy.rlwy.net:53914/railway')
 
-# Carregar sessão: 1) env var, 2) arquivo local, 3) fallback hardcoded
-# (PostgreSQL é carregado depois do init_db via _carregar_sessao_db)
+# Carregar sessão: 1) env var SESSION_STR, 2) arquivo local session_string.txt, 3) PostgreSQL (após init_db)
 SESSION_STR = os.environ.get('SESSION_STR', '')
 if not SESSION_STR:
     try:
@@ -35,8 +34,7 @@ if not SESSION_STR:
     except:
         pass
 if not SESSION_STR:
-    SESSION_STR = _SESSION_FALLBACK
-    print('⚠️ Usando sessão fallback hardcoded', flush=True)
+    print('⚠️ Nenhuma sessão Telegram encontrada — reconexão necessária pelo admin', flush=True)
 
 client = TelegramClient(StringSession(SESSION_STR), API_ID, API_HASH)
 _lock = asyncio.Lock()
@@ -47,6 +45,7 @@ _telegram_session_invalida = False
 _telegram_ultimo_ping = 0        # timestamp do último ping bem-sucedido
 _telegram_reconectando = False   # flag para evitar reconexões simultâneas
 _sessao_salva_em = 0             # timestamp do último save de sessão
+PHONE_NUMBER = os.environ.get('TELEGRAM_PHONE', '')  # número de telefone Telegram (env var preferida)
 
 # ─── BANCO DE DADOS — PostgreSQL persistente + fallback SQLite ───────────────
 DB_PATH = '/tmp/transacoes.db'
@@ -1280,8 +1279,13 @@ async def _auto_login_telegram():
         temp_client = TelegramClient(SS(), API_ID, API_HASH)
         await temp_client.connect()
         print('🤖 [AutoLogin] Solicitando código...', flush=True)
+        _phone_autologin = PHONE_NUMBER or os.environ.get('TELEGRAM_PHONE', '')
+        if not _phone_autologin:
+            print('🤖 [AutoLogin] Número de telefone não configurado — impossível auto-login', flush=True)
+            _auto_login_em_progresso = False
+            return False
         try:
-            sent = await temp_client.send_code_request('+5527998823669')
+            sent = await temp_client.send_code_request(_phone_autologin)
         except FloodWaitError as fw:
             _floodwait_ate = time.time() + fw.seconds
             mins = fw.seconds // 60
@@ -1370,7 +1374,7 @@ async def _auto_login_telegram():
                 temp_client = TelegramClient(SS(temp_session), API_ID, API_HASH)
                 await temp_client.connect()
 
-            await temp_client.sign_in('+5527998823669', codigo, phone_code_hash=phone_code_hash)
+            await temp_client.sign_in(_phone_autologin, codigo, phone_code_hash=phone_code_hash)
         except SessionPasswordNeededError:
             print('🤖 [AutoLogin] 2FA necessário — não suportado no auto-login', flush=True)
             await temp_client.disconnect()
@@ -3337,7 +3341,7 @@ async def route_solicitar_codigo(request):
             PHONE_NUMBER = phone_use  # atualiza em memória para reconexão automática
             print(f'📱 Número Telegram atualizado via admin: {phone_use}', flush=True)
         else:
-            phone_use = PHONE_NUMBER or '+5527998823669'
+            phone_use = PHONE_NUMBER or ''
 
         from telethon.sessions import StringSession as SS
         from telethon.errors import FloodWaitError
@@ -3382,7 +3386,7 @@ async def route_confirmar_codigo(request):
             temp_client = TelegramClient(SS(_login_state['session']), API_ID, API_HASH)
             await temp_client.connect()
 
-        phone_login = _login_state.get('phone', PHONE_NUMBER or '+5527998823669')
+        phone_login = _login_state.get('phone', PHONE_NUMBER or '')
         try:
             await temp_client.sign_in(phone_login, code, phone_code_hash=_login_state['hash'])
         except SessionPasswordNeededError:
