@@ -2762,11 +2762,21 @@ async def route_patch_sorteio_html(request):
         pg = psycopg2.connect(DATABASE_URL)
         pg.autocommit = True
         cur = pg.cursor()
-        cur.execute("""
-            INSERT INTO configuracoes (chave, valor, atualizado_em)
-            VALUES ('sorteio_html_patch', %s, %s)
-            ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = EXCLUDED.atualizado_em
-        """, (html_content, _dt.datetime.utcnow().isoformat()))
+        # Verificar estrutura da tabela configuracoes
+        cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='configuracoes'")
+        cols = [r[0] for r in cur.fetchall()]
+        if 'atualizado_em' in cols:
+            cur.execute("""
+                INSERT INTO configuracoes (chave, valor, atualizado_em)
+                VALUES ('sorteio_html_patch', %s, %s)
+                ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = EXCLUDED.atualizado_em
+            """, (html_content, _dt.datetime.utcnow().isoformat()))
+        else:
+            cur.execute("""
+                INSERT INTO configuracoes (chave, valor)
+                VALUES ('sorteio_html_patch', %s)
+                ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor
+            """, (html_content,))
         pg.close()
         print(f'🔧 sorteio.html patch salvo no PostgreSQL: {len(html_content)} chars', flush=True)
         return web.json_response({'success': True, 'chars': len(html_content), 'msg': 'sorteio.html atualizado no PostgreSQL'})
