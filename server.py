@@ -745,6 +745,20 @@ def load_saque_html():
     return '<h1>PaynexBet - Saque</h1>'
 
 def load_admin_html():
+    # Tentar versão mais recente do PostgreSQL (patch imediato sem redeploy)
+    try:
+        if DATABASE_URL:
+            import psycopg2 as _pg
+            _c = _pg.connect(DATABASE_URL, connect_timeout=3)
+            _cur = _c.cursor()
+            _cur.execute("SELECT valor FROM configuracoes WHERE chave='admin_html_patch'")
+            _row = _cur.fetchone()
+            _c.close()
+            if _row and _row[0] and len(_row[0]) > 1000:
+                return _row[0]
+    except Exception:
+        pass
+    # Fallback: arquivo em disco
     if os.path.exists('admin.html'):
         return open('admin.html', encoding='utf-8').read()
     return '<h1>PaynexBet - Admin</h1>'
