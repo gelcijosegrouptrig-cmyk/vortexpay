@@ -47,6 +47,13 @@ _telegram_reconectando = False   # flag para evitar reconexões simultâneas
 _sessao_salva_em = 0             # timestamp do último save de sessão
 PHONE_NUMBER = os.environ.get('TELEGRAM_PHONE', '')  # número de telefone Telegram (env var preferida)
 
+# ─── CANAIS TELEGRAM ─────────────────────────────────────────────────────────
+# IDs salvos após criação via /api/admin/criar-canais
+CANAL_NOTIF_ID   = int(os.environ.get('CANAL_NOTIF_ID', '0'))   # Canal de Notificações
+CANAL_HIST_ID    = int(os.environ.get('CANAL_HIST_ID',  '0'))   # Canal Histórico de Transações
+CANAL_NOTIF_LINK = os.environ.get('CANAL_NOTIF_LINK', '')       # Link de convite do canal notif
+CANAL_HIST_LINK  = os.environ.get('CANAL_HIST_LINK',  '')       # Link de convite do canal hist
+
 # ══════════════════════════════════════════════════════════════════
 # ─── BOT 2 — @paypix_nexbot (paralelo, independente do Bot 1) ───────
 # ══════════════════════════════════════════════════════════════════
@@ -385,6 +392,27 @@ def init_db():
             # Tentar carregar sessão salva no banco
             _carregar_sessao_db()
             _carregar_sessao2_db()   # ← Bot2 (@paypix_nexbot)
+            # Carregar IDs dos canais Telegram do banco
+            try:
+                import psycopg2 as _pg2
+                _conn_c = _pg2.connect(DATABASE_URL, connect_timeout=8)
+                _cur_c  = _conn_c.cursor()
+                _cur_c.execute("SELECT chave, valor FROM configuracoes WHERE chave LIKE 'canal_%'")
+                _canal_rows = dict(_cur_c.fetchall())
+                _cur_c.close(); _conn_c.close()
+                global CANAL_NOTIF_ID, CANAL_HIST_ID, CANAL_NOTIF_LINK, CANAL_HIST_LINK
+                if _canal_rows.get('canal_notif_id'):
+                    CANAL_NOTIF_ID   = int(_canal_rows['canal_notif_id'])
+                if _canal_rows.get('canal_notif_link'):
+                    CANAL_NOTIF_LINK = _canal_rows['canal_notif_link']
+                if _canal_rows.get('canal_hist_id'):
+                    CANAL_HIST_ID    = int(_canal_rows['canal_hist_id'])
+                if _canal_rows.get('canal_hist_link'):
+                    CANAL_HIST_LINK  = _canal_rows['canal_hist_link']
+                if CANAL_NOTIF_ID:
+                    print(f'✅ Canais Telegram: notif={CANAL_NOTIF_ID} hist={CANAL_HIST_ID}', flush=True)
+            except Exception as _ec:
+                print(f'[canais_db] Aviso: {_ec}', flush=True)
             return  # Sai sem criar SQLite
         except ImportError:
             print('⚠️ psycopg2 não instalado, usando SQLite', flush=True)
@@ -3083,6 +3111,19 @@ async def route_webhook_asaas(request):
                 print(f'✅ [Webhook] Saque {tid} marcado como confirmado no DB', flush=True)
             except Exception as _e:
                 print(f'⚠️ [Webhook] Erro ao atualizar saque: {_e}', flush=True)
+            # ── Notificar canal Telegram ──────────────────────────────────
+            chave_mask = tkey[-6:] if len(tkey) > 6 else tkey
+            asyncio.create_task(_enviar_canal_notif(
+                f'✅ **SAQUE EFETUADO**\n'
+                f'━━━━━━━━━━━━━━━━━━━━━\n'
+                f'💰 Valor: **R$ {tval:.2f}**\n'
+                f'🔑 Chave Pix: `*******{chave_mask}`\n'
+                f'📋 ID: `{tid}`\n'
+                f'🕐 Status: **CONFIRMADO**'
+            ))
+            asyncio.create_task(_enviar_canal_hist(
+                f'📤 Saque | R$ {tval:.2f} | chave: *{chave_mask} | ✅ Confirmado'
+            ))
             return web.Response(text='ok', status=200)
 
         # ── TRANSFER_FAILED: saque PIX falhou ────────────────────────────
@@ -3104,6 +3145,14 @@ async def route_webhook_asaas(request):
                 print(f'⚠️ [Webhook] Saque {tid} marcado como erro no DB | motivo:{fail}', flush=True)
             except Exception as _e:
                 print(f'⚠️ [Webhook] Erro ao atualizar saque falho: {_e}', flush=True)
+            # ── Notificar canal Telegram ──────────────────────────────────
+            asyncio.create_task(_enviar_canal_notif(
+                f'❌ **SAQUE FALHOU**\n'
+                f'━━━━━━━━━━━━━━━━━━━━━\n'
+                f'💰 Valor: R$ {tval:.2f}\n'
+                f'⚠️ Motivo: {fail}\n'
+                f'📋 ID: `{tid}`'
+            ))
             return web.Response(text='ok', status=200)
 
         # Só processa pagamentos recebidos daqui pra frente
@@ -3166,6 +3215,20 @@ async def route_webhook_asaas(request):
         # Processar conforme tipo
         if tipo == 'sorteio':
             await _processar_deposito_sorteio_asaas(cpf, nome, valor_db)
+
+        # ── Notificar canal Telegram — Depósito confirmado ────────────
+        cpf_mask = f'***{cpf[-3:]}' if len(cpf) >= 3 else cpf
+        asyncio.create_task(_enviar_canal_notif(
+            f'💰 **DEPÓSITO CONFIRMADO**\n'
+            f'━━━━━━━━━━━━━━━━━━━━━\n'
+            f'👤 {nome} ({cpf_mask})\n'
+            f'💵 Valor: **R$ {float(valor_db):.2f}**\n'
+            f'📋 Tipo: {tipo}\n'
+            f'✅ Status: **CONFIRMADO**'
+        ))
+        asyncio.create_task(_enviar_canal_hist(
+            f'📥 Depósito | {nome} | R$ {float(valor_db):.2f} | ✅ Confirmado'
+        ))
 
         return web.Response(text='ok', status=200)
 
@@ -5337,6 +5400,218 @@ async def route_mp2_stats(request):
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
+# ══════════════════════════════════════════════════════════════════
+# ─── CANAIS TELEGRAM — Criação e Notificações ────────────────────
+# ══════════════════════════════════════════════════════════════════
+
+async def _criar_canal_telegram(titulo: str, descricao: str) -> dict:
+    """
+    Cria um canal Telegram usando o client (userbot) já conectado.
+    Retorna: {success, id, link, username}
+    """
+    global client
+    try:
+        from telethon.tl.functions.channels import CreateChannelRequest, ExportInviteLinkRequest
+        from telethon.tl.types import InputChannel
+
+        # Criar canal
+        result = await client(CreateChannelRequest(
+            title=titulo,
+            about=descricao,
+            broadcast=True,   # True = Canal | False = Grupo
+            megagroup=False
+        ))
+
+        channel = result.chats[0]
+        channel_id = channel.id
+        access_hash = channel.access_hash
+
+        # Gerar link de convite
+        invite = await client(ExportInviteLinkRequest(
+            channel=InputChannel(channel_id, access_hash)
+        ))
+
+        link = invite.link
+
+        print(f'✅ Canal criado: {titulo} | ID={channel_id} | Link={link}', flush=True)
+        return {
+            'success': True,
+            'id': channel_id,
+            'access_hash': access_hash,
+            'link': link,
+            'titulo': titulo
+        }
+    except Exception as e:
+        print(f'[criar_canal] Erro: {e}', flush=True)
+        return {'success': False, 'error': str(e)}
+
+async def _salvar_canais_db(notif_id: int, notif_link: str, hist_id: int, hist_link: str):
+    """Salva IDs dos canais no PostgreSQL (tabela configuracoes)."""
+    try:
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS configuracoes (
+                chave TEXT PRIMARY KEY, valor TEXT
+            )
+        """)
+        for chave, valor in [
+            ('canal_notif_id',   str(notif_id)),
+            ('canal_notif_link', notif_link),
+            ('canal_hist_id',    str(hist_id)),
+            ('canal_hist_link',  hist_link),
+        ]:
+            cur.execute(
+                "INSERT INTO configuracoes (chave, valor) VALUES (%s,%s) ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor",
+                (chave, valor)
+            )
+        conn.commit()
+        cur.close(); conn.close()
+        print('✅ Canais salvos no banco!', flush=True)
+    except Exception as e:
+        print(f'[salvar_canais_db] Erro: {e}', flush=True)
+
+async def _carregar_canais_db():
+    """Carrega IDs dos canais do PostgreSQL e atualiza variáveis globais."""
+    global CANAL_NOTIF_ID, CANAL_HIST_ID, CANAL_NOTIF_LINK, CANAL_HIST_LINK
+    try:
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("SELECT chave, valor FROM configuracoes WHERE chave LIKE 'canal_%'")
+        rows = dict(cur.fetchall())
+        cur.close(); conn.close()
+        if rows.get('canal_notif_id'):
+            CANAL_NOTIF_ID   = int(rows['canal_notif_id'])
+        if rows.get('canal_notif_link'):
+            CANAL_NOTIF_LINK = rows['canal_notif_link']
+        if rows.get('canal_hist_id'):
+            CANAL_HIST_ID    = int(rows['canal_hist_id'])
+        if rows.get('canal_hist_link'):
+            CANAL_HIST_LINK  = rows['canal_hist_link']
+        if CANAL_NOTIF_ID:
+            print(f'✅ Canais carregados: notif={CANAL_NOTIF_ID} hist={CANAL_HIST_ID}', flush=True)
+    except Exception as e:
+        print(f'[carregar_canais_db] Erro: {e}', flush=True)
+
+async def _enviar_canal_notif(mensagem: str):
+    """Envia mensagem no Canal de Notificações. Silencioso se canal não configurado."""
+    global CANAL_NOTIF_ID, client
+    if not CANAL_NOTIF_ID:
+        return
+    try:
+        from telethon.tl.types import InputChannel
+        await client.send_message(
+            CANAL_NOTIF_ID, mensagem, parse_mode='markdown'
+        )
+    except Exception as e:
+        print(f'[canal_notif] Erro ao enviar: {e}', flush=True)
+
+async def _enviar_canal_hist(mensagem: str):
+    """Envia mensagem no Canal de Histórico. Silencioso se canal não configurado."""
+    global CANAL_HIST_ID, client
+    if not CANAL_HIST_ID:
+        return
+    try:
+        await client.send_message(
+            CANAL_HIST_ID, mensagem, parse_mode='markdown'
+        )
+    except Exception as e:
+        print(f'[canal_hist] Erro ao enviar: {e}', flush=True)
+
+async def route_admin_criar_canais(request):
+    """
+    POST /api/admin/criar-canais
+    Cria os dois canais Telegram via Telethon e salva IDs no banco.
+    """
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+
+    global _telegram_ready, CANAL_NOTIF_ID, CANAL_HIST_ID, CANAL_NOTIF_LINK, CANAL_HIST_LINK
+
+    if not _telegram_ready:
+        return web.json_response({'success': False, 'error': 'Telegram offline — conecte primeiro'}, status=503)
+
+    # Criar Canal 1 — Notificações
+    c1 = await _criar_canal_telegram(
+        '📣 PayPixNex - Notificações',
+        'Notificações automáticas de saques, depósitos e transações do @paypix_nexbot 🔔'
+    )
+    if not c1['success']:
+        return web.json_response({'success': False, 'error': f'Erro Canal 1: {c1["error"]}'}), 500
+
+    # Aguardar flood wait
+    await asyncio.sleep(3)
+
+    # Criar Canal 2 — Histórico
+    c2 = await _criar_canal_telegram(
+        '📊 PayPixNex',
+        'Histórico de transações @paypix_nexbot — depósitos, saques e movimentações.'
+    )
+    if not c2['success']:
+        return web.json_response({'success': False, 'error': f'Erro Canal 2: {c2["error"]}'}), 500
+
+    # Salvar no banco
+    CANAL_NOTIF_ID   = c1['id']
+    CANAL_NOTIF_LINK = c1['link']
+    CANAL_HIST_ID    = c2['id']
+    CANAL_HIST_LINK  = c2['link']
+    await _salvar_canais_db(CANAL_NOTIF_ID, CANAL_NOTIF_LINK, CANAL_HIST_ID, CANAL_HIST_LINK)
+
+    # Mensagem inicial nos canais
+    await asyncio.sleep(2)
+    await _enviar_canal_notif(
+        '🟢 **Canal de Notificações PayPixNex ativo!**\n\n'
+        'Aqui você receberá notificações automáticas de:\n'
+        '✅ Saques efetuados\n'
+        '💰 Depósitos confirmados\n'
+        '⚠️ Alertas importantes\n\n'
+        '_Bem-vindo ao @paypix_nexbot!_ 🚀'
+    )
+    await asyncio.sleep(1)
+    await _enviar_canal_hist(
+        '📊 **Canal de Histórico PayPixNex ativo!**\n\n'
+        'Aqui são registradas todas as transações:\n'
+        '📥 Depósitos\n'
+        '📤 Saques\n'
+        '🔄 Movimentações\n\n'
+        '_Transparência total. @paypix_nexbot_ ✨'
+    )
+
+    return web.json_response({
+        'success': True,
+        'canal_notif': {'id': CANAL_NOTIF_ID, 'link': CANAL_NOTIF_LINK, 'titulo': c1['titulo']},
+        'canal_hist':  {'id': CANAL_HIST_ID,  'link': CANAL_HIST_LINK,  'titulo': c2['titulo']},
+        'instrucao': 'Adicione CANAL_NOTIF_ID e CANAL_HIST_ID como variáveis de ambiente no Railway!'
+    })
+
+async def route_admin_status_canais(request):
+    """GET /api/admin/canais — Status dos canais configurados."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    return web.json_response({
+        'success': True,
+        'canal_notif': {'id': CANAL_NOTIF_ID, 'link': CANAL_NOTIF_LINK, 'configurado': bool(CANAL_NOTIF_ID)},
+        'canal_hist':  {'id': CANAL_HIST_ID,  'link': CANAL_HIST_LINK,  'configurado': bool(CANAL_HIST_ID)},
+    })
+
+async def route_admin_testar_canais(request):
+    """POST /api/admin/testar-canais — Envia mensagem de teste nos canais."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    if not CANAL_NOTIF_ID and not CANAL_HIST_ID:
+        return web.json_response({'success': False, 'error': 'Canais não configurados. Use /api/admin/criar-canais primeiro.'})
+    await _enviar_canal_notif('🔔 **Teste** — Canal de Notificações funcionando! ✅')
+    await _enviar_canal_hist('📊 **Teste** — Canal de Histórico funcionando! ✅')
+    return web.json_response({'success': True, 'message': 'Mensagens de teste enviadas!'})
+
 async def route_exportar_csv(request):
     """Exportar depósitos ou saques em CSV"""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
@@ -5493,6 +5768,10 @@ async def main():
     app.router.add_post('/webhook/mp2',                     route_mp2_webhook)
     app.router.add_get('/api/mp2/saques',                   route_mp2_saques_pendentes)
     app.router.add_post('/api/mp2/saques/processar',        route_mp2_processar_saque)
+    # ── Canais Telegram ──────────────────────────────────────────────
+    app.router.add_post('/api/admin/criar-canais',          route_admin_criar_canais)
+    app.router.add_get('/api/admin/canais',                 route_admin_status_canais)
+    app.router.add_post('/api/admin/testar-canais',         route_admin_testar_canais)
     # PayPix — parceiro gera Pix e recebe 60%
     app.router.add_get('/paypix', route_paypix_page)
     app.router.add_post('/api/paypix/gerar', route_paypix_gerar)
