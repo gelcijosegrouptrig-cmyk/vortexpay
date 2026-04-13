@@ -2676,6 +2676,32 @@ async def route_db_migrate(request):
     auth = (request.headers.get('X-PaynexBet-Secret','') or request.rel_url.query.get('secret',''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
+    # Patch sorteio.html: remove participantes/bilhetes visíveis
+    html_patch_result = 'skipped'
+    try:
+        import re as _re2
+        if os.path.exists('sorteio.html'):
+            _h = open('sorteio.html', encoding='utf-8').read()
+            _antes = _h.count('color:#666">participantes') + _h.count('participantes · 🎟️')
+            _h = _re2.sub(
+                r'<div style="display:flex;justify-content:center;gap:20px;margin-top:8px">\s*'
+                r'<div style="text-align:center">\s*<div id="home-part"[^>]*>.*?</div>\s*'
+                r'<div style="font-size:10px;color:#666">participantes</div>\s*</div>\s*'
+                r'<div style="width:1px;background:#333"></div>\s*<div style="text-align:center">\s*'
+                r'<div id="home-bilhetes"[^>]*>.*?</div>\s*'
+                r'<div style="font-size:10px;color:#666">bilhetes</div>\s*</div>\s*</div>',
+                '<div id="home-part" style="display:none"></div><div id="home-bilhetes" style="display:none"></div>',
+                _h, flags=_re2.DOTALL)
+            _h = _re2.sub(
+                r'<div style="font-size:13px;color:#bbb;margin-bottom:6px">.*?'
+                r'<span id="st-part">.*?</span>.*?bilhetes</div>',
+                '<span id="st-part" style="display:none"></span><span id="st-bilhetes" style="display:none"></span>',
+                _h, flags=_re2.DOTALL)
+            open('sorteio.html','w',encoding='utf-8').write(_h)
+            _depois = _h.count('color:#666">participantes') + _h.count('participantes · 🎟️')
+            html_patch_result = f'removidos {_antes - _depois} blocos'
+    except Exception as _ep:
+        html_patch_result = f'erro: {_ep}'
     results = []
     migrations = [
         "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS premio_acumulado REAL DEFAULT 0",
@@ -2700,9 +2726,9 @@ async def route_db_migrate(request):
             except Exception as e:
                 results.append({'sql': sql[:60], 'ok': False, 'err': str(e)})
         pg.close()
-        return web.json_response({'success': True, 'migrations': results})
+        return web.json_response({'success': True, 'migrations': results, 'html_patch': html_patch_result})
     except Exception as e:
-        return web.json_response({'success': False, 'error': str(e), 'migrations': results})
+        return web.json_response({'success': False, 'error': str(e), 'migrations': results, 'html_patch': html_patch_result})
 
 async def route_asaas_status(request):
     """GET /api/asaas/status — Verifica se Asaas está configurado e operacional"""
