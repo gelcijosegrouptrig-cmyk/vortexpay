@@ -14,9 +14,9 @@ for f in server.py admin.html paypix.html sorteio.html home.html; do
 done
 
 # ── Variáveis de ambiente garantidas (fallback se não vierem do Railway) ──
-export ASAAS_API_KEY="${ASAAS_API_KEY:-\ASAAS_KEY_REMOVED}"
+export ASAAS_API_KEY="${ASAAS_API_KEY}"
 export ASAAS_ENV="${ASAAS_ENV:-production}"
 
-echo "✅ Asaas configurado: env=$ASAAS_ENV"
+echo "✅ Asaas configurado: env=$ASAAS_ENV (chave via Railway env var)"
 echo "🚀 Iniciando servidor..."
 python3 server.py
