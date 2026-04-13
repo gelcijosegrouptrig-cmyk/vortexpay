@@ -2671,7 +2671,45 @@ async def route_db_migrate(request):
             except Exception as e:
                 results.append({'sql': sql[:60], 'ok': False, 'err': str(e)})
         pg.close()
-        return web.json_response({'success': True, 'migrations': results})
+        # ── Patch home.html: remover participantes/bilhetes da seção stats ──
+        html_patch_result = 'N/A'
+        try:
+            import re as _reh
+            if os.path.exists('home.html'):
+                _htxt = open('home.html', encoding='utf-8').read()
+                # Remover bloco stats antigo (participantes + bilhetes + acumulado + por número)
+                _htxt2 = _reh.sub(
+                    r'<!-- STATS -->.*?<div class="divider"><span>🎲 Entre agora!',
+                    '<!-- STATS -->\n'
+                    '  <div class="divider"><span>🏆 Prêmio atual do sorteio</span></div>\n'
+                    '  <div class="stats-grid" style="grid-template-columns:1fr 1fr">\n'
+                    '    <div class="stat-card">\n'
+                    '      <div class="stat-val" id="s-premio">--</div>\n'
+                    '      <div class="stat-lbl">🏆 Prêmio estimado</div>\n'
+                    '    </div>\n'
+                    '    <div class="stat-card">\n'
+                    '      <div class="stat-val">R$5</div>\n'
+                    '      <div class="stat-lbl">Por número da sorte</div>\n'
+                    '    </div>\n'
+                    '  </div>\n\n'
+                    '  <!-- URGÊNCIA -->\n'
+                    '  <div class="divider"><span>🎲 Entre agora!',
+                    _htxt, flags=_reh.DOTALL
+                )
+                # Corrigir JS: remover referências a s-part e s-bil
+                _htxt2 = _reh.sub(
+                    r"document\.getElementById\('s-part'\)\.textContent=s\.total_participantes\|\|0;\s*"
+                    r"document\.getElementById\('s-bil'\)\.textContent=s\.total_bilhetes\|\|0;\s*",
+                    '', _htxt2
+                )
+                if _htxt2 != _htxt:
+                    open('home.html', 'w', encoding='utf-8').write(_htxt2)
+                    html_patch_result = 'aplicado'
+                else:
+                    html_patch_result = 'ja_correto'
+        except Exception as _ep:
+            html_patch_result = f'erro: {_ep}'
+        return web.json_response({'success': True, 'migrations': results, 'html_patch': html_patch_result})
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e), 'migrations': results})
 
