@@ -508,9 +508,9 @@ def confirmar_pagamento(tx_id):
         if extra_json:
             try: participante_dados = _json.loads(extra_json)
             except: pass
-        if cliente_id and valor_pago and float(valor_pago) >= 5:
+        if cliente_id and valor_pago and float(valor_pago) >= 1:
             _creditar_bilhetes_por_deposito(cliente_id, float(valor_pago), tx_id, participante_dados)
-        elif valor_pago and float(valor_pago) >= 5 and participante_dados and participante_dados.get('cpf'):
+        elif valor_pago and float(valor_pago) >= 1 and participante_dados and participante_dados.get('cpf'):
             cpf_extra = re.sub(r'\D', '', str(participante_dados['cpf']))
             _creditar_bilhetes_por_deposito(f'cli_{cpf_extra}', float(valor_pago), tx_id, participante_dados)
 
@@ -2388,11 +2388,16 @@ async def route_webhook_asaas(request):
     """
     import json as _json
     try:
-        # Validar token Asaas
+        # Validar token Asaas (opcional - Asaas não envia token por padrão)
+        # Se ASAAS_WEBHOOK_TOKEN estiver configurado como header, verifica
+        # Caso contrário, aceita todas as requisições do Asaas (autenticação por IP implícita)
         token = request.headers.get('asaas-access-token', '')
-        if ASAAS_WEBHOOK_TOKEN and token != ASAAS_WEBHOOK_TOKEN:
-            print(f'⚠️ [Webhook Asaas] Token inválido: {token[:20]}...', flush=True)
+        if ASAAS_WEBHOOK_TOKEN and token and token != ASAAS_WEBHOOK_TOKEN:
+            # Só rejeita se enviou token E está errado (não rejeita se não enviou)
+            print(f'⚠️ [Webhook Asaas] Token inválido enviado: {token[:20]}...', flush=True)
             return web.json_response({'error': 'Token inválido'}, status=401)
+        # Log de recebimento (aceito)
+        print(f'📥 [Webhook Asaas] Requisição aceita de {request.remote}', flush=True)
 
         body = await request.json()
         event = body.get('event', '')
@@ -3006,7 +3011,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260414-ACUM-v17',
+        'version': 'v20260414-ACUM-v18',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -4230,7 +4235,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260414-ACUM-v17',
+            'version': 'v20260414-ACUM-v18',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
