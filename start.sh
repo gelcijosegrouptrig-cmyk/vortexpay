@@ -1,13 +1,13 @@
 #!/bin/bash
 set -e
-COMMIT_HASH="83ffaa8"
-REPO_RAW="https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/main"
-echo "=== VortexPay Deploy - ASAAS-v13 ==="
+COMMIT_HASH="3a74fe7"
+REPO_RAW="https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/${COMMIT_HASH}"
+echo "=== VortexPay Deploy - UI-v28 ==="
 echo "Commit: $COMMIT_HASH"
 
-pip install aiohttp telethon aiofiles 2>/dev/null | tail -1
+pip install aiohttp telethon aiofiles psycopg2-binary 2>/dev/null | tail -1
 
-# Baixar arquivos do GitHub
+# Baixar arquivos do GitHub no commit fixo estável
 for f in server.py admin.html paypix.html sorteio.html; do
   echo "⬇ Baixando $f..."
   curl -fsSL "$REPO_RAW/$f" -o "$f" 2>/dev/null || echo "⚠ Usando $f local"
