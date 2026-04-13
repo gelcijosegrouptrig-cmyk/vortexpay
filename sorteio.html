@@ -613,11 +613,20 @@ function mostrarParticipante(p) {
   const qtd = p.total_numeros || 0;
   const vp  = info?.sorteio?.valor_por_numero || 5;
   const depAtual = dep % vp;
-  const pct = vp > 0 ? (depAtual / vp * 100) : 0;
+  // Se depAtual == 0 e tem depósito, significa múltiplo exato → progresso cheio
+  const depRestante = (depAtual === 0 && dep > 0) ? 0 : depAtual;
+  const pct = (depAtual === 0 && dep > 0) ? 100 : (vp > 0 ? (depAtual / vp * 100) : 0);
   const falta = vp - depAtual;
 
   document.getElementById('p-dep').textContent  = `R$ ${dep.toFixed(2).replace('.',',')} depositados`;
-  document.getElementById('p-prox').textContent = qtd > 0 ? `Próximo: faltam R$ ${falta.toFixed(2).replace('.',',')}` : `Deposite R$ ${vp.toFixed(0)} para 1 número`;
+  // Só mostrar "faltam" se realmente falta parte de um número (depAtual > 0)
+  if (qtd === 0) {
+    document.getElementById('p-prox').textContent = `Deposite R$ ${vp.toFixed(0)} para 1 número`;
+  } else if (depAtual > 0) {
+    document.getElementById('p-prox').textContent = `Próximo número: faltam R$ ${falta.toFixed(2).replace('.',',')} `;
+  } else {
+    document.getElementById('p-prox').textContent = `✅ ${qtd} número${qtd > 1 ? 's' : ''} na sorte!`;
+  }
   document.getElementById('p-prog').style.width = pct.toFixed(0)+'%';
   document.getElementById('p-qtd').textContent  = qtd;
 
