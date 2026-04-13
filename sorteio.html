@@ -143,10 +143,10 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
   <div class="regra-box">
     <div class="titulo">🎫 Como ganhar números da sorte</div>
     <div class="regra-itens" id="regra-itens">
-      <div class="regra-item"><div class="val">1</div><div class="lbl">nº · R$10</div></div>
-      <div class="regra-item"><div class="val">2</div><div class="lbl">nº · R$20</div></div>
-      <div class="regra-item"><div class="val">3</div><div class="lbl">nº · R$30</div></div>
-      <div class="regra-item"><div class="val">+1</div><div class="lbl">a cada R$10</div></div>
+      <div class="regra-item"><div class="val">1</div><div class="lbl">nº · R$5</div></div>
+      <div class="regra-item"><div class="val">2</div><div class="lbl">nº · R$10</div></div>
+      <div class="regra-item"><div class="val">3</div><div class="lbl">nº · R$15</div></div>
+      <div class="regra-item"><div class="val">+1</div><div class="lbl">a cada R$5</div></div>
     </div>
   </div>
 
@@ -356,13 +356,13 @@ body{background:#0a0a0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
       <!-- Valor -->
       <div class="valor-display">
         <div><span class="cifrao">R$</span> <span class="valor" id="m-valor-display">0,00</span></div>
-        <div class="hint" id="m-hint">Mínimo R$ 10,00 • Apenas múltiplos de R$ 10</div>
+        <div class="hint" id="m-hint">Mínimo R$ 5,00 • Apenas múltiplos de R$ 5</div>
       </div>
       <div class="numeros-preview" id="m-numeros-preview" style="display:none">
         🎫 Você vai ganhar <strong id="m-qtd-nums">0</strong> número(s) da sorte!
       </div>
       <div id="m-aviso-multiplo" style="display:none;background:#ff444415;border:1px solid #ff444433;border-radius:10px;padding:8px 12px;text-align:center;font-size:13px;color:#ff8888;margin-bottom:8px">
-        ⚠️ Digite um valor múltiplo de R$ 10 (ex: 10, 20, 30, 40...)
+        ⚠️ Digite um valor múltiplo de R$ 5 (ex: 5, 10, 15, 20...)
       </div>
       <div class="teclado">
         <div class="key" onclick="tecla('1')">1</div>
@@ -480,7 +480,7 @@ async function carregarInfo() {
     if (elHomePart)   elHomePart.textContent   = s.total_participantes || 0;
     if (elHomeBil)    elHomeBil.textContent     = s.total_bilhetes || 0;
 
-    const vp = s.valor_por_numero || 10;
+    const vp = s.valor_por_numero || 5;
     const ri = document.getElementById('regra-itens');
     if (ri) ri.innerHTML = `
       <div class="regra-item"><div class="val">1</div><div class="lbl">nº · R$${vp.toFixed(0)}</div></div>
@@ -574,7 +574,7 @@ function mostrarParticipante(p) {
 
   const dep = p.total_depositado || 0;
   const qtd = p.total_numeros || 0;
-  const vp  = info?.sorteio?.valor_por_numero || 10;
+  const vp  = info?.sorteio?.valor_por_numero || 5;
   const depAtual = dep % vp;
   const pct = vp > 0 ? (depAtual / vp * 100) : 0;
   const falta = vp - depAtual;
@@ -629,7 +629,7 @@ function abrirModalParticipacao(apenasDeposito) {
   }
 
   // Reset teclado e exibição
-  const vp = info?.sorteio?.valor_por_numero || 10;
+  const vp = info?.sorteio?.valor_por_numero || 5;
   const hint = document.getElementById('m-hint');
   if (hint) hint.textContent = `Mínimo R$ ${vp.toFixed(0)} • Apenas múltiplos de R$ ${vp.toFixed(0)}`;
   atualizarDisplayDep();
@@ -664,7 +664,7 @@ function tecla(v) {
 function atualizarDisplayDep() {
   const num = parseInt(rawDep || '0');
   const reais = num / 100;
-  const vp = info?.sorteio?.valor_por_numero || 10;
+  const vp = info?.sorteio?.valor_por_numero || 5;
   const btn = document.getElementById('m-btn-gerar');
   const prev = document.getElementById('m-numeros-preview');
   const aviso = document.getElementById('m-aviso-multiplo');
@@ -692,7 +692,7 @@ function atualizarDisplayDep() {
 async function gerarPixSorteio() {
   const num = parseInt(rawDep || '0');
   const valor = num / 100;
-  const vp = info?.sorteio?.valor_por_numero || 10;
+  const vp = info?.sorteio?.valor_por_numero || 5;
   if (valor < vp || valor % vp !== 0) return;
 
   // Validar dados do participante (se não for só depósito)

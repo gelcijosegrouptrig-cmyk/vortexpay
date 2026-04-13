@@ -255,7 +255,7 @@ def init_db():
                     created_at TEXT, processado_at TEXT, observacao TEXT)""",
                 """CREATE TABLE IF NOT EXISTS sorteio_config (
                     id INTEGER PRIMARY KEY, ativo INTEGER DEFAULT 1,
-                    valor_por_numero REAL DEFAULT 10.0, premio_fixo REAL DEFAULT 0,
+                    valor_por_numero REAL DEFAULT 5.0, premio_fixo REAL DEFAULT 0,
                     percentual REAL DEFAULT 50.0, usar_media INTEGER DEFAULT 0,
                     dias_media INTEGER DEFAULT 30, descricao TEXT DEFAULT 'Sorteio PaynexBet',
                     proximo_sorteio TEXT, updated_at TEXT,
@@ -361,7 +361,7 @@ def init_db():
     conn.execute('''CREATE TABLE IF NOT EXISTS sorteio_config (
         id INTEGER PRIMARY KEY,
         ativo INTEGER DEFAULT 1,
-        valor_por_numero REAL DEFAULT 10.0,
+        valor_por_numero REAL DEFAULT 5.0,
         premio_fixo REAL DEFAULT 0,
         percentual REAL DEFAULT 50.0,
         usar_media INTEGER DEFAULT 0,
@@ -375,7 +375,7 @@ def init_db():
     )''')
     conn.commit()
     # Migrações de colunas — cada ALTER TABLE em transação separada
-    for col in ["valor_por_numero REAL DEFAULT 10.0",
+    for col in ["valor_por_numero REAL DEFAULT 5.0",
                 "usar_media INTEGER DEFAULT 0",
                 "dias_media INTEGER DEFAULT 30",
                 "paypix_pct REAL DEFAULT 0.6",
@@ -569,7 +569,7 @@ def _creditar_bilhetes_por_deposito(cliente_id, valor, tx_id, participante_dados
 
         # Ler config do sorteio
         cfg = get_sorteio_config()
-        vp = float(cfg.get('valor_por_numero') or 10.0)
+        vp = float(cfg.get('valor_por_numero') or 5.0)
 
         novo_total = total_dep + float(valor)
         novos_total_num = calcular_numeros(novo_total, vp)
@@ -930,7 +930,7 @@ def get_participante(cpf):
     except: d['numeros_sorte'] = []
     return d
 
-def calcular_numeros(total_depositado, valor_por_numero=10.0):
+def calcular_numeros(total_depositado, valor_por_numero=5.0):
     """Calcula quantos números a pessoa tem: R$5=1, R$10=2, R$15=3..."""
     return max(0, int(total_depositado // valor_por_numero))
 
@@ -1668,7 +1668,7 @@ async def route_sorteio_info(request):
             d[col] = r[i] if i < len(r) else None
         historico.append(d)
 
-    vp = float(config.get('valor_por_numero') or 10.0)
+    vp = float(config.get('valor_por_numero') or 5.0)
     # Cálculo idêntico ao usado no sorteio real (max R$1,00 mínimo)
     _premio_fixo = float(config.get('premio_fixo') or 0)
     _percentual  = float(config.get('percentual') or 50)
@@ -1802,7 +1802,7 @@ async def route_sorteio_adicionar_deposito(request):
             return web.json_response({'error': 'Participante não cadastrado. Cadastre-se primeiro em /sorteio'}, status=404)
 
         config = get_sorteio_config()
-        vp = float(config.get('valor_por_numero') or 10.0)
+        vp = float(config.get('valor_por_numero') or 5.0)
 
         novo_total = (part['total_depositado'] or 0) + valor
         numeros_antes = int(part['total_numeros'] or 0)
@@ -2141,7 +2141,7 @@ async def route_sorteio_config(request):
         data = await request.json()
         params = (
             int(data.get('ativo', 1)),
-            float(data.get('valor_por_numero', 10.0)),
+            float(data.get('valor_por_numero', 5.0)),
             float(data.get('percentual', 50)),
             int(data.get('usar_media', 0)),
             int(data.get('dias_media', 30)),
@@ -2308,7 +2308,7 @@ async def route_asaas_pix_sorteio(request):
             return web.json_response({'success': False, 'error': 'Gateway PIX não configurado. Informe ASAAS_API_KEY.'}, status=503)
 
         config = get_sorteio_config()
-        vp = float(config.get('valor_por_numero') or 10.0)
+        vp = float(config.get('valor_por_numero') or 5.0)
         if valor < vp:
             return web.json_response({'success': False, 'error': f'Valor mínimo R$ {vp:.2f}'}, status=400)
         if valor % vp != 0:
@@ -2445,7 +2445,7 @@ async def _processar_deposito_sorteio_asaas(cpf: str, nome: str, valor: float):
     """
     import json as _json
     config = get_sorteio_config()
-    vp = float(config.get('valor_por_numero') or 10.0)
+    vp = float(config.get('valor_por_numero') or 5.0)
 
     part = get_participante(cpf)
     if not part:
@@ -2533,8 +2533,7 @@ async def route_db_migrate(request):
         "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_pct REAL DEFAULT 0.6",
         "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_ativo INTEGER DEFAULT 1",
         "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_descricao TEXT DEFAULT 'Gere seu Pix e receba sua % do valor'",
-        "UPDATE sorteio_config SET valor_por_numero=10.0 WHERE id=1 AND valor_por_numero=5.0",
-        "UPDATE sorteio_config SET min_participantes=5, acumulativo=1, percentual=50 WHERE id=1",
+        "UPDATE sorteio_config SET min_participantes=1, acumulativo=1, percentual=50 WHERE id=1 AND min_participantes IS NULL",
     ]
     try:
         import psycopg2
@@ -3011,7 +3010,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260414-ACUM-v18',
+        'version': 'v20260414-ACUM-v19',
         'telegram': _telegram_ready,
         'telegram_motivo': motivo,
         'watchdog': 'ativo',
@@ -3052,7 +3051,7 @@ async def route_pix(request):
         data = await request.json()
         valor = float(data.get('valor', 0))
         cfg_pix = get_sorteio_config()
-        vp_pix = float(cfg_pix.get('valor_por_numero') or 10.0)
+        vp_pix = float(cfg_pix.get('valor_por_numero') or 5.0)
         if valor < vp_pix:
             return web.json_response({'success': False, 'error': f'Valor mínimo R$ {vp_pix:.2f}'})
         if valor % vp_pix != 0:
@@ -4235,7 +4234,7 @@ async def main():
             'lock_estava_preso': lock_antes,
             'lock_resetado': lock_resetado,
             'telegram_ready': _telegram_ready,
-            'version': 'v20260414-ACUM-v18',
+            'version': 'v20260414-ACUM-v19',
             'msg': 'Lock resetado! Tente gerar Pix agora.' if lock_resetado else 'Lock estava livre, nenhuma ação necessária.'
         })
     app.router.add_get('/api/lock/reset', route_lock_reset)
