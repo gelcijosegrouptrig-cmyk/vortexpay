@@ -1829,43 +1829,6 @@ async function tgSolicitarCodigo() {
   }
 }
 
-async function tgConfirmarCodigo() {
-  const input = document.getElementById('tg-codigo-input');
-  const btn   = document.getElementById('btn-confirmar');
-  const msg   = document.getElementById('msg-confirmar');
-  const code  = input.value.trim();
-  if (!code || code.length < 4) {
-    msg.innerHTML = '<span style="color:#f44">❌ Digite o código de 5 dígitos</span>';
-    return;
-  }
-  btn.disabled = true;
-  btn.textContent = '⏳ Confirmando...';
-  msg.innerHTML = '';
-  try {
-    const r = await fetch(`${BASE}/api/telegram/confirmar-codigo`, {
-      method: 'POST',
-      headers: { 'X-PaynexBet-Secret': SECRET(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: code })
-    });
-    const d = await r.json();
-    if (d.success) {
-      msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message || 'Telegram conectado!'}</span>`;
-      input.value = '';
-      document.getElementById('tg-step2').style.display = 'none';
-      document.getElementById('tg-status-banner').style.display = 'none';
-      document.getElementById('tg-panel-status').textContent = '🟢 Conectado';
-      document.getElementById('tg-panel-status').style.color = '#4caf50';
-      setTimeout(() => loadHealth(), 2000);
-    } else {
-      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || d.message || 'Código inválido'}</span>`;
-    }
-  } catch(e) {
-    msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '✅ Confirmar';
-  }
-}
 
 // ═══════════════════════════════════════════════
 //  SALDO
@@ -2858,7 +2821,7 @@ async function tgConfirmarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/telegram/confirmar-codigo`, {
       method: 'POST',
-      headers: { 'X-PaynexBet-Secret': SECRET, 'Content-Type': 'application/json' },
+      headers: { 'X-PaynexBet-Secret': SECRET(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: codigo })
     });
     const d = await r.json();
@@ -2866,7 +2829,6 @@ async function tgConfirmarCodigo() {
       msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message}</span>`;
       input.value = '';
       document.getElementById('tg-step2').style.display = 'none';
-      // Atualiza status imediatamente
       setTimeout(() => loadHealth(), 2000);
     } else if (d.needs_2fa) {
       msg.innerHTML = `<span style="color:#ff9800">🔐 2FA necessário — este número tem senha ativada</span>`;
