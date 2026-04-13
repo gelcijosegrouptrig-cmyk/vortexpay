@@ -1,13 +1,13 @@
 #!/bin/bash
 set -e
-COMMIT_HASH=28d23a90cb2bc6f40051b6c5f53dfe455214696d
-REPO_RAW="https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/${COMMIT_HASH}"
+# Sempre baixar do main (sem hash fixo — sempre pega versão mais recente)
+REPO_RAW="https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/main"
 echo "=== VortexPay Deploy - UI-v30 ==="
-echo "Commit: $COMMIT_HASH"
+echo "Branch: main (sempre atualizado)"
 
 pip install aiohttp telethon aiofiles psycopg2-binary 2>/dev/null | tail -1
 
-# Baixar arquivos do GitHub no commit fixo estável
+# Baixar arquivos sempre da branch main (versão mais recente)
 for f in server.py admin.html paypix.html sorteio.html home.html; do
   echo "⬇ Baixando $f..."
   curl -fsSL "$REPO_RAW/$f" -o "$f" 2>/dev/null || echo "⚠ Usando $f local"
