@@ -15,19 +15,8 @@
 
   .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;padding:24px;width:100%;max-width:420px;display:flex;flex-direction:column;align-items:stretch}
 
-  /* Topo do card: badge + dots na mesma linha */
-  .card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-  .badge{display:inline-flex;align-items:center;gap:6px;background:#1a3a1a;border:1px solid #2d6a2d;color:#4ade80;border-radius:20px;padding:5px 14px;font-size:.78rem;font-weight:600;margin:0}
-  .badge span{width:8px;height:8px;background:#4ade80;border-radius:50%;animation:pulse 1.5s infinite}
-  .badge.inativo{background:#2a1a1a;border-color:#6a2d2d;color:#f87171}
-  .badge.inativo span{background:#f87171;animation:none}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-
-  /* Manutenção banner */
-  .manutencao-banner{background:#1a1000;border:1px solid #6a4400;border-radius:12px;padding:20px;text-align:center;margin-bottom:4px}
-  .manutencao-banner .ico{font-size:2.5rem;margin-bottom:8px}
-  .manutencao-banner h2{color:#FFD700;font-size:1.1rem;margin-bottom:6px}
-  .manutencao-banner p{color:#aaa;font-size:.82rem;line-height:1.5}
+  /* Topo do card: dots centralizados */
+  .steps-header{display:flex;justify-content:center;gap:8px;width:100%;margin-bottom:18px}
 
   label{display:block;font-size:.8rem;color:#aaa;margin-bottom:6px;font-weight:500}
   input,select{width:100%;background:#111;border:1px solid #333;border-radius:10px;padding:12px 14px;color:#fff;font-size:.95rem;outline:none;transition:border .2s}
@@ -81,7 +70,7 @@
 
   .info-tip{font-size:.75rem;color:#666;text-align:center;margin-top:14px;line-height:1.5}
 
-  .steps-header{display:flex;gap:8px;justify-content:flex-end;margin:0}
+  .steps-header{display:flex;gap:8px;justify-content:flex-end;margin:0;flex-shrink:0}
   .step-dot{width:28px;height:6px;border-radius:3px;background:#2a2a2a;transition:.3s}
   .step-dot.active{background:#FFD700}
   .step-dot.done{background:#4ade80}
@@ -98,22 +87,16 @@
 </div>
 
 <div class="card">
-  <!-- Topo: badge + dots na mesma linha reta -->
-  <div class="card-top">
-    <div class="badge" id="badge-status"><span></span> <span id="badge-txt">Sistema ativo</span></div>
-    <div class="steps-header" id="steps-header">
-      <div class="step-dot active" id="dot1"></div>
-      <div class="step-dot" id="dot2"></div>
-      <div class="step-dot" id="dot3"></div>
-    </div>
+  <!-- Steps dots (sem badge de status) -->
+  <div class="steps-header" id="steps-header" style="display:flex;justify-content:center;margin-bottom:18px">
+    <div class="step-dot active" id="dot1"></div>
+    <div class="step-dot" id="dot2"></div>
+    <div class="step-dot" id="dot3"></div>
   </div>
 
-  <!-- Banner manutenção (oculto por padrão) -->
-  <div class="manutencao-banner" id="manutencao-banner" style="display:none">
-    <div class="ico">🔧</div>
-    <h2>Sistema em Manutenção</h2>
-    <p>O PayPix está temporariamente fora do ar para melhorias.<br>Volte em breve!</p>
-  </div>
+  <!-- Banner manutenção oculto (mantido para JS, nunca exibido) -->
+  <div id="manutencao-banner" style="display:none"></div>
+  <div id="badge-status" style="display:none"><span id="badge-txt"></span></div>
 
   <!-- ─── ETAPA 1: formulário ─── -->
   <div class="step active" id="step1">
@@ -131,7 +114,7 @@
       <input type="text" id="chave_pix" placeholder="Ex: 11999998888"/>
     </div>
     <div class="field">
-      <label>Valor a cobrar (R$) — mínimo R$ 5,00</label>
+      <label id="lbl-valor">Valor a cobrar (R$) — mínimo R$ 5,00</label>
       <input type="number" id="valor" min="5" step="1" placeholder="Ex: 50"/>
     </div>
 
@@ -202,6 +185,7 @@ let _pollInterval = null;
 let _pixCode = null;
 let _valor = 0;
 let _pct = 0.6; // será sobrescrito pela API
+let _minValor = 5; // valor mínimo, editável pelo admin
 let _sistemaAtivo = true;
 
 // ─── FORMATAR VALOR ───
@@ -215,7 +199,14 @@ async function carregarConfigPaypix() {
     const r = await fetch(`${BASE}/api/paypix/config`);
     const d = await r.json();
     _pct = typeof d.paypix_pct === 'number' ? d.paypix_pct : 0.6;
+    _minValor = typeof d.paypix_min === 'number' ? d.paypix_min : 5;
     _sistemaAtivo = d.paypix_ativo !== false;
+
+    // Atualizar label e input do valor mínimo
+    const lblValor = document.getElementById('lbl-valor');
+    if (lblValor) lblValor.textContent = `Valor a cobrar (R$) — mínimo R$ ${_minValor.toFixed(2).replace('.',',')`;
+    const inputValor = document.getElementById('valor');
+    if (inputValor) { inputValor.min = _minValor; inputValor.placeholder = `Ex: ${_minValor * 10}`; }
 
     const pctDisplay  = Math.round(_pct * 100) + '%';
     const platDisplay = Math.round((1 - _pct) * 100) + '%';
@@ -287,7 +278,7 @@ async function gerarPix() {
   const valor = parseFloat(document.getElementById('valor').value) || 0;
 
   if (!chave) return alert('⚠️ Informe sua chave Pix!');
-  if (valor < 5) return alert('⚠️ Valor mínimo é R$ 5,00!');
+  if (valor < _minValor) return alert(`⚠️ Valor mínimo é R$ ${_minValor.toFixed(2).replace('.',',')}!`);
   if (valor > 10000) return alert('⚠️ Valor máximo é R$ 10.000,00!');
 
   const btn = document.getElementById('btn-gerar');
