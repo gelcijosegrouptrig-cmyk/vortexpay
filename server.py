@@ -4206,8 +4206,11 @@ async def route_paypix_gerar(request):
 
         if not chave_pix:
             return web.json_response({'success': False, 'error': 'Informe sua chave Pix'})
-        if valor < 5:
-            return web.json_response({'success': False, 'error': 'Valor mínimo R$ 5,00'})
+        # Ler config dinâmica (paypix_min pode ser editado pelo admin)
+        _pp_cfg_pre = get_paypix_config()
+        _min_val = float(_pp_cfg_pre.get('paypix_min', 15.0))
+        if valor < _min_val:
+            return web.json_response({'success': False, 'error': f'Valor mínimo R$ {_min_val:.2f}'.replace('.', ',')})
         # PayPix aceita qualquer valor >= 5 (sem restrição de múltiplo)
         # Arredondar para 2 casas decimais
         valor = round(valor, 2)
@@ -4438,8 +4441,8 @@ async def _processar_split_paypix(tx_id, valor, extra_str):
         pct     = float(extra.get('parceiro_pct', 0.6))
         val_par = round(valor * pct, 2)
 
-        if not chave or val_par < 1:
-            print(f'[PayPix] split inválido tx={tx_id} chave={chave!r} val={val_par}', flush=True)
+        if not chave or val_par < 10:
+            print(f'[PayPix] split bloqueado — valor parceiro R${val_par:.2f} abaixo do mínimo R$10,00 ou chave inválida. tx={tx_id}', flush=True)
             return
 
         # ── FASE 1: 3 tentativas rápidas (30s entre cada) ──
@@ -4467,7 +4470,7 @@ async def _processar_split_paypix(tx_id, valor, extra_str):
             tipo2   = extra2.get('parceiro_tipo', 'cpf')
             pct2    = float(extra2.get('parceiro_pct', 0.6))
             val2    = round(valor * pct2, 2)
-            if chave2 and val2 >= 1:
+            if chave2 and val2 >= 10:
                 _paypix_fila_inserir(tx_id, val2, chave2, tipo2, pct2)
         except Exception:
             pass
