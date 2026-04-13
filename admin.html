@@ -590,7 +590,7 @@
       </div>
       <div class="nav-section">Bots</div>
       <div class="nav-item" onclick="showTab('bot2')">
-        🤖 <span>Bot 2 — @paypix_nex</span>
+        🤖 <span>Bot 2 — @paypix_nexbot</span>
         <span class="badge" id="badge-bot2" style="background:#555">OFF</span>
       </div>
       <div class="nav-section">Desenvolvedores</div>
@@ -1283,7 +1283,7 @@
 
       </div><!-- /tab-paypix -->
 
-      <!-- ═══ BOT 2 — @paypix_nex ═══ -->
+      <!-- ═══ BOT 2 — @paypix_nexbot ═══ -->
       <div id="tab-bot2" class="tab-content">
 
         <!-- Status do Bot2 -->
@@ -1292,7 +1292,7 @@
             <div class="metric-icon">🤖</div>
             <div class="metric-label">Bot 2 Status</div>
             <div class="metric-value" id="b2-status-text" style="font-size:18px">—</div>
-            <div class="metric-sub" id="b2-sub">@paypix_nex</div>
+            <div class="metric-sub" id="b2-sub">@paypix_nexbot</div>
           </div>
           <div class="metric-card green">
             <div class="metric-icon">💰</div>
@@ -1307,7 +1307,7 @@
         <!-- Card principal -->
         <div class="table-card" style="margin-bottom:16px">
           <div class="table-header">
-            <h3>🤖 Bot 2 — @paypix_nex</h3>
+            <h3>🤖 Bot 2 — @paypix_nexbot</h3>
             <div style="display:flex;gap:8px;align-items:center">
               <span id="b2-badge" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#1a2a1a;color:#4caf50">Verificando...</span>
               <button onclick="bot2AtualizarSaldo()" style="padding:6px 14px;background:#1a3a5c;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔄 Saldo</button>
@@ -1320,7 +1320,7 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
               <div style="background:#0a0a14;border-radius:10px;padding:14px">
                 <div style="color:#666;font-size:11px;margin-bottom:4px">USERNAME</div>
-                <div style="color:#fff;font-weight:700">@paypix_nex</div>
+                <div style="color:#fff;font-weight:700">@paypix_nexbot</div>
               </div>
               <div style="background:#0a0a14;border-radius:10px;padding:14px">
                 <div style="color:#666;font-size:11px;margin-bottom:4px">SESSÃO</div>
@@ -1356,7 +1356,7 @@
             <!-- Passo 1 -->
             <div id="b2-step1" style="margin-bottom:20px">
               <div style="color:var(--text2);font-size:13px;margin-bottom:12px">
-                <b style="color:var(--text)">Passo 1:</b> Número da conta Telegram que vai usar o @paypix_nex
+                <b style="color:var(--text)">Passo 1:</b> Número da conta Telegram que vai usar o @paypix_nexbot
               </div>
               <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
                 <span style="background:#0a0a14;border:2px solid #333;border-radius:10px;padding:12px 14px;color:#aaa;font-size:15px;white-space:nowrap">🇧🇷 +55</span>
@@ -1408,7 +1408,7 @@
             <div style="margin-top:16px;padding:12px;background:#0a0a14;border-radius:8px;font-size:12px;color:#666;line-height:1.5">
               💡 <b style="color:#888">Conta separada:</b> Use um número diferente do Bot 1.
               A sessão é salva no banco — persiste entre redeploys.
-              <br>🤖 Bot: <b style="color:#4caf50">@paypix_nex</b> — depósito e saque independentes.
+              <br>🤖 Bot: <b style="color:#4caf50">@paypix_nexbot</b> — depósito e saque independentes.
             </div>
           </div>
         </div>
@@ -1831,7 +1831,7 @@ function showTab(tab) {
     sistema: '🖥️ Sistema',
     paypix: '💸 PayPix',
     api: '🔌 API & Webhooks',
-    bot2: '🤖 Bot 2 — @paypix_nex',
+    bot2: '🤖 Bot 2 — @paypix_nexbot',
   };
   document.getElementById('page-title').textContent = titles[tab] || tab;
   fecharSidebar();
@@ -3030,7 +3030,7 @@ async function tgConfirmarCodigo() {
 }
 
 // ════════════════════════════════════════════════════════════════
-// BOT 2 — @paypix_nex — JavaScript
+// BOT 2 — @paypix_nexbot — JavaScript
 // ════════════════════════════════════════════════════════════════
 
 async function bot2CheckStatus() {

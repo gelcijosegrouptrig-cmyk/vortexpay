@@ -48,9 +48,9 @@ _sessao_salva_em = 0             # timestamp do último save de sessão
 PHONE_NUMBER = os.environ.get('TELEGRAM_PHONE', '')  # número de telefone Telegram (env var preferida)
 
 # ══════════════════════════════════════════════════════════════════
-# ─── BOT 2 — @paypix_nex (paralelo, independente do Bot 1) ───────
+# ─── BOT 2 — @paypix_nexbot (paralelo, independente do Bot 1) ───────
 # ══════════════════════════════════════════════════════════════════
-BOT2_USERNAME   = os.environ.get('BOT2_USERNAME', 'paypix_nex')
+BOT2_USERNAME   = os.environ.get('BOT2_USERNAME', 'paypix_nexbot')
 SESSION_STR2    = os.environ.get('SESSION_STR2', '')
 if not SESSION_STR2:
     try:
@@ -239,7 +239,7 @@ def _carregar_sessao_db():
 
 # ── Bot2: salvar/carregar sessão ─────────────────────────────────
 def _salvar_sessao2_db(session_str):
-    """Salva sessão do Bot2 (@paypix_nex) no PostgreSQL"""
+    """Salva sessão do Bot2 (@paypix_nexbot) no PostgreSQL"""
     try:
         if not DATABASE_URL: return
         import psycopg2
@@ -384,7 +384,7 @@ def init_db():
             print('✅ PostgreSQL conectado — banco PERSISTENTE ativo!', flush=True)
             # Tentar carregar sessão salva no banco
             _carregar_sessao_db()
-            _carregar_sessao2_db()   # ← Bot2 (@paypix_nex)
+            _carregar_sessao2_db()   # ← Bot2 (@paypix_nexbot)
             return  # Sai sem criar SQLite
         except ImportError:
             print('⚠️ psycopg2 não instalado, usando SQLite', flush=True)
@@ -1711,14 +1711,14 @@ async def conectar_telegram():
         await asyncio.sleep(espera)
 
 # ══════════════════════════════════════════════════════════════════
-# ─── BOT 2 — Conexão e Watchdog (@paypix_nex) ────────────────────
+# ─── BOT 2 — Conexão e Watchdog (@paypix_nexbot) ────────────────────
 # ══════════════════════════════════════════════════════════════════
 
 async def conectar_telegram2():
-    """Conexão inicial do Bot2 (@paypix_nex) com retry automático."""
+    """Conexão inicial do Bot2 (@paypix_nexbot) com retry automático."""
     global _telegram2_ready, _telegram2_session_inv
     await asyncio.sleep(15)  # aguarda Bot1 iniciar primeiro
-    print('🔄 [Bot2] Conectando @paypix_nex...', flush=True)
+    print('🔄 [Bot2] Conectando @paypix_nexbot...', flush=True)
     tentativas2 = 0
     while True:
         if not SESSION_STR2:
@@ -1738,7 +1738,7 @@ async def conectar_telegram2():
                 await asyncio.sleep(60)
                 continue
             me2 = await client2.get_me()
-            print(f'✅ [Bot2] @paypix_nex conectado: {me2.first_name} ({me2.id})', flush=True)
+            print(f'✅ [Bot2] @paypix_nexbot conectado: {me2.first_name} ({me2.id})', flush=True)
             _telegram2_ready = True
             _telegram2_session_inv = False
             await client2.run_until_disconnected()
@@ -1795,7 +1795,7 @@ async def watchdog_telegram2():
             await asyncio.sleep(30)
 
 async def _loop_verificar_pagamentos_bot2():
-    """Verifica a cada 30s pagamentos confirmados pelo @paypix_nex"""
+    """Verifica a cada 30s pagamentos confirmados pelo @paypix_nexbot"""
     await asyncio.sleep(20)
     while True:
         try:
@@ -1879,11 +1879,11 @@ async def verificar_saldo_bot() -> float:
     return -1.0
 
 # ══════════════════════════════════════════════════════════════════
-# ─── BOT 2 — @paypix_nex — Funções espelhadas ────────────────────
+# ─── BOT 2 — @paypix_nexbot — Funções espelhadas ────────────────────
 # ══════════════════════════════════════════════════════════════════
 
 async def verificar_saldo_bot2() -> float:
-    """Consulta saldo atual no @paypix_nex clicando em CARTEIRA"""
+    """Consulta saldo atual no @paypix_nexbot clicando em CARTEIRA"""
     try:
         bot2 = await client2.get_entity(BOT2_USERNAME)
         await client2.send_message(bot2, '/start')
@@ -1915,7 +1915,7 @@ async def verificar_saldo_bot2() -> float:
     return -1.0
 
 async def gerar_pix_bot2(valor, cliente_id=None, webhook_url=None, participante_dados=None, tx_id_override=None):
-    """Gera Pix via @paypix_nex (Bot 2). Mesma lógica do Bot 1."""
+    """Gera Pix via @paypix_nexbot (Bot 2). Mesma lógica do Bot 1."""
     # Espera Bot2 ficar pronto (até 30s)
     for _ in range(30):
         if _telegram2_ready:
@@ -5017,11 +5017,11 @@ async def route_paypix_fila(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 # ══════════════════════════════════════════════════════════════════
-# ─── ROTAS BOT 2 — @paypix_nex ───────────────────────────────────
+# ─── ROTAS BOT 2 — @paypix_nexbot ───────────────────────────────────
 # ══════════════════════════════════════════════════════════════════
 
 async def route_bot2_status(request):
-    """Status e health do Bot 2 (@paypix_nex)"""
+    """Status e health do Bot 2 (@paypix_nexbot)"""
     return web.json_response({
         'success':   True,
         'bot':       'bot2',
@@ -5033,7 +5033,7 @@ async def route_bot2_status(request):
     })
 
 async def route_bot2_saldo(request):
-    """Saldo real do @paypix_nex"""
+    """Saldo real do @paypix_nexbot"""
     secret = request.headers.get('X-PaynexBet-Secret') or request.rel_url.query.get('secret', '')
     pub    = request.rel_url.query.get('secret', '') == 'pub'
     if not pub and secret != WEBHOOK_SECRET:
@@ -5049,7 +5049,7 @@ async def route_bot2_saldo(request):
         return web.json_response({'success': False, 'saldo_bot': -1, 'error': str(e)})
 
 async def route_bot2_pix(request):
-    """Gera Pix via @paypix_nex (mesmas regras do Bot 1)"""
+    """Gera Pix via @paypix_nexbot (mesmas regras do Bot 1)"""
     try:
         data  = await request.json()
         valor = float(data.get('valor', 0))
@@ -5301,7 +5301,7 @@ async def main():
     app.router.add_post('/api/telegram/confirmar-codigo', route_confirmar_codigo)
     app.router.add_get('/api/telegram/sessao-atual', route_sessao_atual)
     app.router.add_get('/api/reconectar', route_reconectar_db)
-    # ── Bot 2 (@paypix_nex) ──────────────────────────────────────
+    # ── Bot 2 (@paypix_nexbot) ──────────────────────────────────────
     app.router.add_get('/api/bot2/status',                  route_bot2_status)
     app.router.add_get('/api/bot2/saldo',                   route_bot2_saldo)
     app.router.add_post('/api/bot2/pix',                    route_bot2_pix)
@@ -5393,7 +5393,7 @@ async def main():
     # Worker de splits PayPix pendentes — tenta a cada 5 min até finalizar
     asyncio.create_task(_worker_paypix_fila())
 
-    # ── Bot 2 (@paypix_nex) — tasks paralelas ───────────────────
+    # ── Bot 2 (@paypix_nexbot) — tasks paralelas ───────────────────
     asyncio.create_task(conectar_telegram2())
     asyncio.create_task(watchdog_telegram2())
     asyncio.create_task(_loop_verificar_pagamentos_bot2())
