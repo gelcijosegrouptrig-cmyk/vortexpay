@@ -693,6 +693,20 @@ def load_admin_html():
     return '<h1>PaynexBet - Admin</h1>'
 
 def load_sorteio_html():
+    # ── Tentar carregar versão mais recente do PostgreSQL (patch via DB) ──
+    try:
+        if DATABASE_URL:
+            import psycopg2 as _pg
+            _c = _pg.connect(DATABASE_URL, connect_timeout=3)
+            _cur = _c.cursor()
+            _cur.execute("SELECT valor FROM configuracoes WHERE chave='sorteio_html_patch'")
+            _row = _cur.fetchone()
+            _c.close()
+            if _row and _row[0] and len(_row[0]) > 1000:
+                return _row[0]
+    except Exception:
+        pass
+    # Fallback: arquivo em disco
     if os.path.exists('sorteio.html'):
         return open('sorteio.html', encoding='utf-8').read()
     return '<h1>PaynexBet - Sorteio</h1>'
