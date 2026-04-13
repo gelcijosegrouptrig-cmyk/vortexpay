@@ -444,7 +444,7 @@ def init_db():
     # Config padrão
     conn.execute('''INSERT OR IGNORE INTO sorteio_config
         (id, ativo, valor_por_numero, premio_fixo, percentual, usar_media, dias_media, descricao, proximo_sorteio, updated_at, premio_acumulado)
-        VALUES (1, 1, 10.0, 0, 50.0, 0, 30, 'Sorteio PaynexBet', NULL, ?, 0)''',
+        VALUES (1, 1, 5.0, 0, 50.0, 0, 30, 'Sorteio PaynexBet', NULL, ?, 0)''',
         (datetime.now().isoformat(),))
 
     # Tabela de fila de splits PayPix (agenda persistente)
@@ -2415,26 +2415,30 @@ async def route_webhook_asaas(request):
             return web.Response(text='ok', status=200)
 
         # ── IDEMPOTÊNCIA: verificar se payment_id já foi processado ──
-        _conn_idem = sqlite3_connect()
-        _conn_idem.execute('''CREATE TABLE IF NOT EXISTS asaas_processados (
-            payment_id TEXT PRIMARY KEY,
-            processado_at TEXT
-        )''')
-        _conn_idem.commit()
-        _ja_processado = _conn_idem.execute(
-            'SELECT payment_id FROM asaas_processados WHERE payment_id=?', (payment_id,)
-        ).fetchone()
-        if _ja_processado:
-            _conn_idem.close()
-            print(f'⏭️ [Webhook Asaas] payment_id {payment_id} já processado. Ignorando duplicata.', flush=True)
-            return web.Response(text='ok', status=200)
-        # Marcar como processado ANTES de executar (evita race condition)
-        _conn_idem.execute(
-            'INSERT OR IGNORE INTO asaas_processados (payment_id, processado_at) VALUES (?,?)',
-            (payment_id, datetime.now().isoformat())
-        )
-        _conn_idem.commit()
-        _conn_idem.close()
+        # Usa PostgreSQL diretamente para garantir persistência entre reinicializações
+        try:
+            import psycopg2 as _pg2_idem
+            _pg_idem = _pg2_idem.connect(DATABASE_URL)
+            _pg_idem.autocommit = True
+            _cur_idem = _pg_idem.cursor()
+            _cur_idem.execute('''CREATE TABLE IF NOT EXISTS asaas_processados (
+                payment_id TEXT PRIMARY KEY,
+                processado_at TEXT
+            )''')
+            _cur_idem.execute('SELECT payment_id FROM asaas_processados WHERE payment_id=%s', (payment_id,))
+            _ja_processado = _cur_idem.fetchone()
+            if _ja_processado:
+                _pg_idem.close()
+                print(f'⏭️ [Webhook Asaas] payment_id {payment_id} já processado. Ignorando duplicata.', flush=True)
+                return web.Response(text='ok', status=200)
+            # Marcar como processado ANTES de executar (evita race condition)
+            _cur_idem.execute(
+                'INSERT INTO asaas_processados (payment_id, processado_at) VALUES (%s,%s) ON CONFLICT (payment_id) DO NOTHING',
+                (payment_id, datetime.now().isoformat())
+            )
+            _pg_idem.close()
+        except Exception as _e_idem:
+            print(f'⚠️ [Webhook] Idempotência falhou (sem bloqueio): {_e_idem}', flush=True)
 
         # Buscar no DB local
         dados = asaas_confirmar_pagamento_db(payment_id)
