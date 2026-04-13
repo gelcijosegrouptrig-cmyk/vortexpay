@@ -4355,6 +4355,54 @@ async def main():
         return web.json_response({'status': 'restarting', 'msg': 'Processo encerrando para Railway reiniciar com código novo'})
     app.router.add_get('/api/restart', route_force_restart)
 
+    # Endpoint para corrigir sorteio.html em produção (remove participantes/bilhetes)
+    async def route_patch_sorteio_html(request):
+        secret = request.rel_url.query.get('secret', '')
+        if secret != WEBHOOK_SECRET:
+            return web.json_response({'error': 'unauthorized'}, status=401)
+        try:
+            import re as _re
+            if not os.path.exists('sorteio.html'):
+                return web.json_response({'error': 'sorteio.html not found'}, status=404)
+            html = open('sorteio.html', encoding='utf-8').read()
+            antes_part = html.count('color:#666">participantes')
+            antes_bil  = html.count('participantes · 🎟️')
+            # Remove bloco participantes/bilhetes da home
+            html = _re.sub(
+                r'<div style="display:flex;justify-content:center;gap:20px;margin-top:8px">\s*'
+                r'<div style="text-align:center">\s*'
+                r'<div id="home-part"[^>]*>.*?</div>\s*'
+                r'<div style="font-size:10px;color:#666">participantes</div>\s*'
+                r'</div>\s*'
+                r'<div style="width:1px;background:#333"></div>\s*'
+                r'<div style="text-align:center">\s*'
+                r'<div id="home-bilhetes"[^>]*>.*?</div>\s*'
+                r'<div style="font-size:10px;color:#666">bilhetes</div>\s*'
+                r'</div>\s*'
+                r'</div>',
+                '<div id="home-part" style="display:none"></div><div id="home-bilhetes" style="display:none"></div>',
+                html, flags=_re.DOTALL
+            )
+            # Remove linha participantes/bilhetes da aba Sorteio
+            html = _re.sub(
+                r'<div style="font-size:13px;color:#bbb;margin-bottom:6px">.*?'
+                r'<span id="st-part">.*?</span>.*?bilhetes</div>',
+                '<span id="st-part" style="display:none"></span><span id="st-bilhetes" style="display:none"></span>',
+                html, flags=_re.DOTALL
+            )
+            open('sorteio.html', 'w', encoding='utf-8').write(html)
+            depois_part = html.count('color:#666">participantes')
+            depois_bil  = html.count('participantes · 🎟️')
+            return web.json_response({
+                'success': True,
+                'removidos_home': antes_part - depois_part,
+                'removidos_sorteio': antes_bil - depois_bil,
+                'msg': 'sorteio.html corrigido com sucesso'
+            })
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    app.router.add_get('/api/patch-sorteio', route_patch_sorteio_html)
+
     # Endpoint para resetar o lock preso + diagnóstico completo
     async def route_lock_reset(request):
         global _lock
