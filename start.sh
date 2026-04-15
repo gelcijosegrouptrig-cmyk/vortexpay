@@ -2,13 +2,13 @@
 set -e
 # Sempre baixar do main (sem hash fixo — sempre pega versão mais recente)
 REPO_RAW="https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/main"
-echo "=== VortexPay Deploy - UI-v30 ==="
+echo "=== VortexPay Deploy - UI-v31 ==="
 echo "Branch: main (sempre atualizado)"
 
 pip install aiohttp telethon aiofiles psycopg2-binary 2>/dev/null | tail -1
 
-# Baixar arquivos sempre da branch main (versão mais recente)
-for f in server.py admin.html paypix.html sorteio.html home.html; do
+# Baixar TODOS os arquivos sempre da branch main (versão mais recente)
+for f in server.py admin.html paypix.html sorteio.html home.html mp2_api.py bot2_handler.py bot_pix.html; do
   echo "⬇ Baixando $f..."
   curl -fsSL "$REPO_RAW/$f" -o "$f" 2>/dev/null || echo "⚠ Usando $f local"
 done
