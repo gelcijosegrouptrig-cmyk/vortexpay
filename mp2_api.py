@@ -844,22 +844,27 @@ def mp2_pagar_comissao_parceiro(parceiro_codigo: str, valor: float) -> dict:
 # ─── RECORRÊNCIA / ASSINATURAS ────────────────────────────────────────────────
 
 def init_recorrentes_db():
-    """Cria tabela mp2_recorrentes para cobranças mensais automáticas."""
+    """Cria tabelas de recorrência e adiciona colunas de preapproval se não existirem."""
     ddl = """
     CREATE TABLE IF NOT EXISTS mp2_recorrentes (
         id SERIAL PRIMARY KEY,
-        nome TEXT NOT NULL,                      -- Nome do assinante
-        email TEXT,                              -- E-mail (opcional)
-        telefone TEXT,                           -- Telefone/WhatsApp para notificação
-        valor NUMERIC(12,2) NOT NULL,            -- Valor da mensalidade
-        descricao TEXT DEFAULT 'Mensalidade',    -- Descrição da cobrança
-        parceiro_ref TEXT,                       -- Código do parceiro afiliado (opcional)
-        status TEXT DEFAULT 'ativo',             -- 'ativo' | 'pausado' | 'cancelado'
-        dia_vencimento INTEGER DEFAULT 1,        -- Dia do mês para cobrar (1-28)
-        proximo_vencimento DATE,                 -- Data da próxima cobrança
-        total_cobrado INTEGER DEFAULT 0,         -- Quantas vezes já cobrou
-        total_pago NUMERIC(12,2) DEFAULT 0,      -- Total pago até agora
-        ultimo_payment_id TEXT,                  -- ID do último pagamento MP
+        nome TEXT NOT NULL,
+        email TEXT,
+        telefone TEXT,
+        valor NUMERIC(12,2) NOT NULL,
+        descricao TEXT DEFAULT 'Mensalidade',
+        parceiro_ref TEXT,
+        status TEXT DEFAULT 'ativo',
+        tipo TEXT DEFAULT 'manual',              -- 'manual' | 'preapproval'
+        dia_vencimento INTEGER DEFAULT 1,
+        proximo_vencimento DATE,
+        total_cobrado INTEGER DEFAULT 0,
+        total_pago NUMERIC(12,2) DEFAULT 0,
+        ultimo_payment_id TEXT,
+        preapproval_id TEXT,                     -- ID do preapproval no MP (débito automático)
+        preapproval_plan_id TEXT,                -- ID do plano no MP
+        preapproval_init_point TEXT,             -- Link de autorização que o cliente acessa
+        preapproval_status TEXT DEFAULT 'pending', -- 'pending'|'authorized'|'paused'|'cancelled'
         criado_em TIMESTAMP DEFAULT NOW(),
         atualizado_em TIMESTAMP DEFAULT NOW()
     );
@@ -870,13 +875,22 @@ def init_recorrentes_db():
         payment_id TEXT,
         external_ref TEXT,
         valor NUMERIC(12,2),
-        status TEXT DEFAULT 'pendente',           -- 'pendente' | 'pago' | 'expirado' | 'erro'
+        status TEXT DEFAULT 'pendente',
         pix_copia_cola TEXT,
         pix_qr_base64 TEXT,
         vencimento DATE,
         pago_em TIMESTAMP,
         criado_em TIMESTAMP DEFAULT NOW()
     );
+
+    -- Adiciona colunas novas se a tabela já existia sem elas
+    DO $$ BEGIN
+        BEGIN ALTER TABLE mp2_recorrentes ADD COLUMN tipo TEXT DEFAULT 'manual'; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE mp2_recorrentes ADD COLUMN preapproval_id TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE mp2_recorrentes ADD COLUMN preapproval_plan_id TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE mp2_recorrentes ADD COLUMN preapproval_init_point TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE mp2_recorrentes ADD COLUMN preapproval_status TEXT DEFAULT 'pending'; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    END $$;
     """
     try:
         conn = _get_conn()
@@ -887,6 +901,206 @@ def init_recorrentes_db():
         print('✅ [recorrentes] Tabelas mp2_recorrentes criadas/verificadas!', flush=True)
     except Exception as e:
         print(f'❌ [recorrentes] Erro criar tabelas: {e}', flush=True)
+
+
+# ─── PREAPPROVAL (DÉBITO AUTOMÁTICO PIX) ──────────────────────────────────────
+
+def mp2_criar_plano_preapproval(titulo: str, valor: float, descricao: str = '') -> dict:
+    """
+    Cria ou reutiliza um preapproval_plan no Mercado Pago com pagamento exclusivo via PIX.
+    Retorna: { success, plan_id, init_point }
+    """
+    try:
+        headers = {
+            'Authorization': f'Bearer {MP2_ACCESS_TOKEN}',
+            'Content-Type': 'application/json',
+        }
+        payload = {
+            'reason': titulo,
+            'auto_recurring': {
+                'frequency':          1,
+                'frequency_type':     'months',
+                'transaction_amount': round(float(valor), 2),
+                'currency_id':        'BRL',
+            },
+            'payment_methods_allowed': {
+                'payment_types':    [{'id': 'bank_transfer'}],
+                'payment_methods':  [{'id': 'pix'}],
+            },
+            'back_url': 'https://paynexbet.com/assinar/obrigado',
+            'status':   'active',
+        }
+        r = requests.post(
+            f'{MP2_BASE_URL}/preapproval_plan',
+            headers=headers, json=payload, timeout=12
+        )
+        d = r.json()
+        if r.status_code in (200, 201) and d.get('id'):
+            plan_id    = d['id']
+            init_point = d.get('init_point', '')
+            # Persiste no banco para reutilizar
+            conn = _get_conn()
+            cur  = conn.cursor()
+            cur.execute("""
+                INSERT INTO mp2_config (chave, valor) VALUES ('preapproval_plan_id', %s)
+                ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor
+            """, (plan_id,))
+            cur.execute("""
+                INSERT INTO mp2_config (chave, valor) VALUES ('preapproval_init_point', %s)
+                ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor
+            """, (init_point,))
+            conn.commit(); cur.close(); conn.close()
+            print(f'✅ [preapproval] Plano criado: {plan_id}', flush=True)
+            return {'success': True, 'plan_id': plan_id, 'init_point': init_point}
+        else:
+            return {'success': False, 'error': d.get('message', str(d))}
+    except Exception as e:
+        print(f'[preapproval] Erro criar plano: {e}', flush=True)
+        return {'success': False, 'error': str(e)}
+
+
+def mp2_criar_preapproval(nome: str, email: str, plano_id: str,
+                           valor: float, descricao: str,
+                           parceiro_ref: str = '', telefone: str = '') -> dict:
+    """
+    Cria um preapproval (subscription) para um cliente específico.
+    O cliente recebe o init_point e autoriza o débito automático via PIX no app MP.
+    Retorna: { success, preapproval_id, init_point, recorrente_id }
+    """
+    try:
+        headers = {
+            'Authorization': f'Bearer {MP2_ACCESS_TOKEN}',
+            'Content-Type': 'application/json',
+        }
+
+        # Se tiver plano, vincula; senão cria sem plano
+        if plano_id:
+            payload = {
+                'preapproval_plan_id': plano_id,
+                'reason':   descricao,
+                'back_url': 'https://paynexbet.com/assinar/obrigado',
+                'status':   'pending',
+            }
+            if email:
+                payload['payer_email'] = email
+        else:
+            payload = {
+                'reason': descricao,
+                'auto_recurring': {
+                    'frequency':          1,
+                    'frequency_type':     'months',
+                    'transaction_amount': round(float(valor), 2),
+                    'currency_id':        'BRL',
+                },
+                'payment_methods_allowed': {
+                    'payment_types':   [{'id': 'bank_transfer'}],
+                    'payment_methods': [{'id': 'pix'}],
+                },
+                'back_url': 'https://paynexbet.com/assinar/obrigado',
+                'status':   'pending',
+            }
+            if email:
+                payload['payer_email'] = email
+
+        r = requests.post(
+            f'{MP2_BASE_URL}/preapproval',
+            headers=headers, json=payload, timeout=12
+        )
+        d = r.json()
+        if r.status_code in (200, 201) and d.get('id'):
+            pre_id     = d['id']
+            init_point = d.get('init_point', '')
+
+            # Salva assinante na tabela local
+            rec = mp2_criar_recorrente(
+                nome=nome, valor=valor, dia_vencimento=1,
+                descricao=descricao, email=email, telefone=telefone,
+                parceiro_ref=parceiro_ref
+            )
+            rec_id = rec.get('recorrente', {}).get('id')
+
+            # Atualiza com dados do preapproval
+            if rec_id:
+                conn = _get_conn()
+                cur  = conn.cursor()
+                cur.execute("""
+                    UPDATE mp2_recorrentes
+                    SET tipo                  = 'preapproval',
+                        preapproval_id        = %s,
+                        preapproval_plan_id   = %s,
+                        preapproval_init_point= %s,
+                        preapproval_status    = 'pending',
+                        atualizado_em         = NOW()
+                    WHERE id = %s
+                """, (pre_id, plano_id or '', init_point, rec_id))
+                conn.commit(); cur.close(); conn.close()
+
+            print(f'✅ [preapproval] Criado para {nome}: {pre_id}', flush=True)
+            return {
+                'success':        True,
+                'preapproval_id': pre_id,
+                'init_point':     init_point,
+                'recorrente_id':  rec_id,
+            }
+        else:
+            return {'success': False, 'error': d.get('message', str(d))}
+    except Exception as e:
+        print(f'[preapproval] Erro criar: {e}', flush=True)
+        return {'success': False, 'error': str(e)}
+
+
+def mp2_get_plano_ativo() -> dict:
+    """Retorna o plano preapproval ativo do banco (cria se não existir)."""
+    try:
+        conn = _get_conn()
+        cur  = conn.cursor()
+        cur.execute("""
+            SELECT chave, valor FROM mp2_config
+            WHERE chave IN ('preapproval_plan_id','preapproval_init_point',
+                            'assinar_titulo','assinar_valor','assinar_descricao')
+        """)
+        cfg = dict(cur.fetchall())
+        cur.close(); conn.close()
+        return {
+            'plan_id':    cfg.get('preapproval_plan_id', ''),
+            'init_point': cfg.get('preapproval_init_point', ''),
+            'titulo':     cfg.get('assinar_titulo', 'Mensalidade'),
+            'valor':      float(cfg.get('assinar_valor', 10)),
+            'descricao':  cfg.get('assinar_descricao', 'Mensalidade'),
+        }
+    except Exception as e:
+        return {'plan_id': '', 'init_point': '', 'titulo': 'Mensalidade', 'valor': 10.0, 'descricao': 'Mensalidade'}
+
+
+def mp2_webhook_preapproval(preapproval_id: str) -> bool:
+    """
+    Chamado pelo webhook quando o status de um preapproval muda.
+    Busca o status no MP e atualiza o banco local.
+    """
+    try:
+        headers = {'Authorization': f'Bearer {MP2_ACCESS_TOKEN}'}
+        r = requests.get(f'{MP2_BASE_URL}/preapproval/{preapproval_id}',
+                         headers=headers, timeout=8)
+        d = r.json()
+        novo_status = d.get('status', 'pending')
+        # Atualiza no banco
+        conn = _get_conn()
+        cur  = conn.cursor()
+        cur.execute("""
+            UPDATE mp2_recorrentes
+            SET preapproval_status = %s,
+                status = CASE WHEN %s = 'authorized' THEN 'ativo'
+                              WHEN %s IN ('cancelled','paused') THEN %s
+                              ELSE status END,
+                atualizado_em = NOW()
+            WHERE preapproval_id = %s
+        """, (novo_status, novo_status, novo_status, novo_status, preapproval_id))
+        conn.commit(); cur.close(); conn.close()
+        print(f'✅ [preapproval webhook] {preapproval_id} → {novo_status}', flush=True)
+        return True
+    except Exception as e:
+        print(f'[preapproval webhook] Erro: {e}', flush=True)
+        return False
 
 
 def mp2_criar_recorrente(nome: str, valor: float, dia_vencimento: int = 1,

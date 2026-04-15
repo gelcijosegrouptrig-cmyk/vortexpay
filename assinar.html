@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
-<title>Assinar — Mensalidade Automática</title>
-<meta name="description" content="Cadastre-se e pague sua mensalidade via PIX. As próximas cobranças são automáticas.">
+<title>Assinar — Débito Automático via PIX</title>
+<meta name="description" content="Autorize uma vez. As próximas mensalidades são debitadas automaticamente do seu Mercado Pago.">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -39,8 +39,7 @@ body{
   padding:36px 20px 28px;
   text-align:center;
   border-bottom:1px solid #9c27b020;
-  position:relative;
-  overflow:hidden;
+  position:relative;overflow:hidden;
 }
 .hero::before{
   content:'';position:absolute;inset:0;
@@ -56,7 +55,7 @@ body{
 }
 .hero-title{font-size:26px;font-weight:900;line-height:1.2;margin-bottom:8px;color:#fff}
 .hero-title span{color:var(--accentL)}
-.hero-sub{font-size:14px;color:var(--text2);max-width:320px;margin:0 auto 20px;line-height:1.5}
+.hero-sub{font-size:14px;color:var(--text2);max-width:340px;margin:0 auto 20px;line-height:1.5}
 .hero-valor{
   display:inline-flex;flex-direction:column;align-items:center;
   background:#9c27b020;border:2px solid #9c27b050;border-radius:18px;
@@ -66,15 +65,31 @@ body{
 .hero-valor-num{font-size:42px;font-weight:900;color:#fff;line-height:1}
 .hero-valor-period{font-size:13px;color:var(--text2);margin-top:4px}
 
-/* ─── BENEFÍCIOS ─── */
-.beneficios-wrap{
+/* ─── COMO FUNCIONA ─── */
+.como-funciona{
   width:100%;max-width:440px;
-  padding:18px 20px 0;
+  padding:20px 20px 0;
 }
-.beneficio-item{
+.como-title{font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+.step-list{display:flex;flex-direction:column;gap:10px}
+.step-item{
   display:flex;align-items:flex-start;gap:12px;
-  padding:10px 0;border-bottom:1px solid var(--border);
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:13px 15px;
 }
+.step-num{
+  min-width:28px;height:28px;
+  background:var(--accent);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:900;color:#fff;flex-shrink:0;
+}
+.step-txt strong{display:block;font-size:13px;font-weight:800;color:#fff;margin-bottom:2px}
+.step-txt span{font-size:12px;color:var(--text2);line-height:1.4}
+.step-item.done .step-num{background:var(--green)}
+
+/* ─── BENEFÍCIOS ─── */
+.beneficios-wrap{width:100%;max-width:440px;padding:16px 20px 0}
+.beneficio-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
 .beneficio-item:last-child{border-bottom:none}
 .bene-icon{font-size:22px;flex-shrink:0;margin-top:1px}
 .bene-txt strong{display:block;font-size:14px;font-weight:700;color:#fff}
@@ -82,13 +97,9 @@ body{
 
 /* ─── FORMULÁRIO ─── */
 .form-card{
-  width:100%;max-width:440px;
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:20px;
-  margin:20px 20px 0;
-  width:calc(100% - 40px);
-  overflow:hidden;
+  width:calc(100% - 40px);max-width:440px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:20px;margin:20px 0 0;overflow:hidden;
   box-shadow:0 8px 40px rgba(0,0,0,.6);
 }
 .form-header{
@@ -113,19 +124,7 @@ body{
 }
 .field-input:focus{border-color:var(--accent);background:#9c27b010}
 .field-input::placeholder{color:var(--text3)}
-
-/* Seletor dia */
-.dia-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px}
-.dia-btn{
-  aspect-ratio:1;
-  display:flex;align-items:center;justify-content:center;
-  background:#ffffff08;border:1.5px solid var(--border);border-radius:8px;
-  font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;
-  transition:.15s;user-select:none;
-}
-.dia-btn:hover{background:#9c27b020;border-color:#9c27b060;color:#fff}
-.dia-btn.sel{background:var(--accent);border-color:var(--accent);color:#fff;transform:scale(1.05)}
-.dia-hint{font-size:11px;color:var(--text3);margin-top:6px}
+.field-hint{font-size:11px;color:var(--text3);margin-top:5px}
 
 /* Resumo do plano */
 .resumo-box{
@@ -137,6 +136,16 @@ body{
 .resumo-key{color:var(--text2)}
 .resumo-val{font-weight:800;color:#fff}
 .resumo-val.accent{color:var(--accentL)}
+
+/* Alert MP */
+.mp-info{
+  background:#009ee310;border:1px solid #009ee340;border-radius:12px;
+  padding:13px 15px;margin-bottom:16px;
+  display:flex;gap:10px;align-items:flex-start;
+}
+.mp-info-icon{font-size:20px;flex-shrink:0}
+.mp-info-txt{font-size:12px;color:#80d8ff;line-height:1.5}
+.mp-info-txt strong{color:#29b6f6;display:block;margin-bottom:3px}
 
 /* Botão principal */
 .btn-assinar{
@@ -157,48 +166,66 @@ body{
 .spinner{width:50px;height:50px;border:4px solid #9c27b030;border-top:4px solid var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 18px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .step-loading p{font-size:14px;color:var(--text2)}
+.step-loading .load-sub{font-size:12px;color:var(--text3);margin-top:6px}
 
-/* Step PIX */
-.step-pix{display:none;padding:0}
-.pix-header{background:linear-gradient(135deg,#9c27b022,#9c27b008);padding:18px 22px;border-bottom:1px solid var(--border)}
-.pix-header h3{font-size:16px;font-weight:800;color:var(--accentL)}
-.pix-header p{font-size:12px;color:var(--text2);margin-top:3px}
-.pix-body{padding:22px}
-.qr-wrap{text-align:center;margin-bottom:18px}
-.qr-img{width:210px;height:210px;border-radius:14px;border:3px solid var(--accent);background:#fff;padding:6px}
-.qr-placeholder{width:210px;height:210px;margin:0 auto;border-radius:14px;border:2px dashed var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text3);font-size:13px}
-.valor-destaque{text-align:center;font-size:28px;font-weight:900;color:var(--accentL);margin-bottom:16px}
+/* Step Autorização MP */
+.step-auth{display:none;padding:0}
+.auth-header{background:linear-gradient(135deg,#009ee322,#009ee308);padding:18px 22px;border-bottom:1px solid var(--border)}
+.auth-header h3{font-size:16px;font-weight:800;color:#29b6f6}
+.auth-header p{font-size:12px;color:var(--text2);margin-top:3px}
+.auth-body{padding:22px}
 
-.pix-code-box{background:#ffffff08;border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:14px}
-.pix-code-label{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:6px;letter-spacing:.5px}
-.pix-code-txt{font-size:10px;color:var(--text2);word-break:break-all;line-height:1.5;max-height:60px;overflow:hidden;font-family:monospace}
+.mp-btn{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  width:100%;padding:20px;
+  background:linear-gradient(135deg,#009ee3,#006db3);
+  border:none;border-radius:16px;color:#fff;
+  font-size:17px;font-weight:900;cursor:pointer;
+  transition:.2s;box-shadow:0 4px 24px #009ee340;
+  text-decoration:none;margin-bottom:16px;
+}
+.mp-btn:hover{transform:translateY(-2px);box-shadow:0 6px 32px #009ee360}
+.mp-btn-icon{font-size:28px}
+.mp-btn-txt{}
+.mp-btn-main{display:block;font-size:17px;font-weight:900}
+.mp-btn-sub{display:block;font-size:11px;opacity:.85;margin-top:2px}
 
-.btn-copiar{width:100%;padding:14px;background:var(--green);border:none;border-radius:12px;color:#000;font-size:15px;font-weight:800;cursor:pointer;transition:.2s;margin-bottom:12px}
-.btn-copiar:hover{background:var(--green2)}
-.btn-copiar.copied{background:#ccc;color:#333}
+.instrucoes{
+  background:#ffffff08;border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;margin-bottom:16px;
+}
+.instrucoes-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.inst-item{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+.inst-item:last-child{border-bottom:none}
+.inst-num{min-width:20px;height:20px;background:#9c27b030;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:var(--accentL);flex-shrink:0}
+.inst-txt{color:var(--text2);line-height:1.4}
+.inst-txt strong{color:#fff}
 
-.timer-box{text-align:center;margin-top:14px}
-.timer-label{font-size:11px;color:var(--text3);margin-bottom:5px}
-.timer-bar-wrap{background:#ffffff10;border-radius:6px;height:6px;overflow:hidden;margin-bottom:6px}
-.timer-bar{height:100%;background:var(--accent);border-radius:6px;transition:width .5s linear}
-.timer-txt{font-size:22px;font-weight:900;font-variant-numeric:tabular-nums;color:#fff}
-.polling-txt{font-size:11px;color:var(--text3);margin-top:6px;animation:pulsar 1.5s ease-in-out infinite}
+.polling-auth{text-align:center;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+.polling-auth p{font-size:12px;color:var(--text3);animation:pulsar 1.5s ease-in-out infinite}
 @keyframes pulsar{0%,100%{opacity:1}50%{opacity:.3}}
+.btn-verificar{
+  margin-top:10px;padding:12px 24px;
+  background:#ffffff10;border:1px solid var(--border);
+  border-radius:10px;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;
+  transition:.2s;
+}
+.btn-verificar:hover{background:#9c27b020;border-color:#9c27b050;color:var(--accentL)}
 
-/* Step sucesso */
+/* Step Sucesso */
 .step-ok{display:none;padding:36px 22px;text-align:center}
 .ok-icon{font-size:72px;margin-bottom:14px;animation:bounce .6s ease}
 @keyframes bounce{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
 .step-ok h3{font-size:24px;font-weight:900;color:var(--green);margin-bottom:8px}
 .step-ok p{font-size:14px;color:var(--text2);line-height:1.6}
-.ok-card{background:#9c27b015;border:1px solid #9c27b040;border-radius:14px;padding:16px;margin-top:18px;text-align:left}
-.ok-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #9c27b020}
+.ok-card{background:#00c85310;border:1px solid #00c85340;border-radius:14px;padding:16px;margin-top:18px;text-align:left}
+.ok-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #00c85320}
 .ok-row:last-child{border-bottom:none}
 .ok-key{color:var(--text2)}
 .ok-val{font-weight:800;color:#fff}
 .ok-sub{margin-top:14px;font-size:12px;color:var(--text3);background:#0a0a1a;border-radius:10px;padding:12px;line-height:1.6}
 
-/* Step erro */
+/* Step Erro */
 .step-erro{display:none;padding:32px 22px;text-align:center}
 .erro-icon{font-size:52px;margin-bottom:12px}
 .step-erro h3{font-size:18px;font-weight:800;color:var(--red);margin-bottom:6px}
@@ -216,13 +243,41 @@ body{
 
 <!-- ─── HERO ─── -->
 <div class="hero">
-  <div class="hero-badge">🔄 Assinatura Mensal</div>
-  <h1 class="hero-title" id="hero-titulo">Assine e pague <span>todo mês via PIX</span></h1>
-  <p class="hero-sub" id="hero-sub">Cadastre-se uma vez. As cobranças são automáticas!</p>
+  <div class="hero-badge">🔄 Débito Automático PIX</div>
+  <h1 class="hero-title" id="hero-titulo">Autorize uma vez, <span>pague sempre</span></h1>
+  <p class="hero-sub" id="hero-sub">Sem precisar pagar manualmente todo mês. O Mercado Pago debita automaticamente!</p>
   <div class="hero-valor">
-    <div class="hero-valor-label">Valor da mensalidade</div>
+    <div class="hero-valor-label">Mensalidade</div>
     <div class="hero-valor-num" id="hero-valor">R$ 10,00</div>
-    <div class="hero-valor-period">por mês · PIX automático</div>
+    <div class="hero-valor-period">por mês · via Mercado Pago</div>
+  </div>
+</div>
+
+<!-- ─── COMO FUNCIONA ─── -->
+<div class="como-funciona">
+  <div class="como-title">Como funciona</div>
+  <div class="step-list">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div class="step-txt">
+        <strong>Preencha seus dados</strong>
+        <span>Nome e WhatsApp para contato</span>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div class="step-txt">
+        <strong>Autorize no Mercado Pago</strong>
+        <span>Clique no botão azul e autorize o débito no app ou site do MP</span>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div class="step-txt">
+        <strong>Pronto! Automático para sempre</strong>
+        <span>Todo mês o Mercado Pago debita automaticamente — sem ação necessária</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -240,7 +295,7 @@ body{
       <div class="form-header-icon">📋</div>
       <div>
         <h2>Seus dados</h2>
-        <p>Preencha uma única vez — renovações são automáticas</p>
+        <p>Preencha e autorize o débito automático</p>
       </div>
     </div>
     <div class="form-body">
@@ -253,12 +308,13 @@ body{
       <div class="field-group">
         <div class="field-label">WhatsApp (opcional)</div>
         <input class="field-input" id="f-tel" type="tel" placeholder="(11) 99999-9999" maxlength="20" autocomplete="tel"/>
+        <div class="field-hint">Para avisos sobre sua assinatura</div>
       </div>
 
-      <div class="field-group" id="dia-group">
-        <div class="field-label">Dia de preferência para pagar</div>
-        <div class="dia-grid" id="dia-grid"></div>
-        <div class="dia-hint" id="dia-hint">Próx. cobrança em <strong id="prox-data">—</strong></div>
+      <div class="field-group">
+        <div class="field-label">E-mail (opcional)</div>
+        <input class="field-input" id="f-email" type="email" placeholder="seu@email.com" maxlength="120" autocomplete="email"/>
+        <div class="field-hint">Mercado Pago usará para autenticar</div>
       </div>
 
       <!-- Resumo -->
@@ -273,23 +329,32 @@ body{
         </div>
         <div class="resumo-row">
           <span class="resumo-key">Frequência</span>
-          <span class="resumo-val">Mensal (todo dia <span id="resumo-dia">1</span>)</span>
+          <span class="resumo-val">Mensal · Automático</span>
         </div>
         <div class="resumo-row">
           <span class="resumo-key">Forma de pagamento</span>
-          <span class="resumo-val">PIX 🔄</span>
+          <span class="resumo-val">Mercado Pago 🔄</span>
         </div>
       </div>
 
-      <button class="btn-assinar" id="btn-assinar" onclick="confirmarAssinatura()">
+      <!-- Aviso MP -->
+      <div class="mp-info">
+        <div class="mp-info-icon">ℹ️</div>
+        <div class="mp-info-txt">
+          <strong>Como funciona o débito automático</strong>
+          Após clicar no botão abaixo, você será redirecionado ao Mercado Pago para autorizar uma única vez. A partir daí, as cobranças são automáticas todo mês — sem precisar fazer nada!
+        </div>
+      </div>
+
+      <button class="btn-assinar" id="btn-assinar" onclick="iniciarAssinatura()">
         <div>
-          <div>🔄 Assinar e pagar agora</div>
-          <div class="btn-sub">1º pagamento hoje · próximos automáticos</div>
+          <div>🔄 Assinar com débito automático</div>
+          <div class="btn-sub">Você será redirecionado ao Mercado Pago</div>
         </div>
       </button>
 
       <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text3)">
-        Ao assinar você concorda com as cobranças mensais automáticas via PIX
+        Ao assinar, você autoriza cobranças mensais automáticas via Mercado Pago
       </div>
     </div>
   </div>
@@ -297,51 +362,69 @@ body{
   <!-- STEP 2 — Gerando -->
   <div class="step-loading" id="step-loading">
     <div class="spinner"></div>
-    <p>Cadastrando e gerando seu<br>QR Code PIX...</p>
+    <p>Criando sua assinatura...</p>
+    <div class="load-sub">Gerando link de autorização no Mercado Pago</div>
   </div>
 
-  <!-- STEP 3 — PIX gerado (1ª mensalidade) -->
-  <div class="step-pix" id="step-pix">
-    <div class="pix-header">
-      <h3>✅ Assinatura criada! Pague agora</h3>
-      <p>Escaneie ou copie o código para ativar sua assinatura</p>
+  <!-- STEP 3 — Autorização MP -->
+  <div class="step-auth" id="step-auth">
+    <div class="auth-header">
+      <h3>🔗 Autorize no Mercado Pago</h3>
+      <p>Clique no botão abaixo e autorize o débito automático</p>
     </div>
-    <div class="pix-body">
-      <div class="valor-destaque" id="pix-valor-txt">R$ —</div>
-      <div class="qr-wrap">
-        <img id="qr-img" src="" alt="QR Code PIX" class="qr-img" style="display:none"/>
-        <div class="qr-placeholder" id="qr-placeholder">
-          <span style="font-size:40px">📲</span>
-          <span>QR Code PIX</span>
-        </div>
-      </div>
-      <div class="pix-code-box">
-        <div class="pix-code-label">Código PIX — Copia e Cola</div>
-        <div class="pix-code-txt" id="pix-code-txt">—</div>
-      </div>
-      <button class="btn-copiar" id="btn-copiar" onclick="copiarPix()">📋 Copiar código PIX</button>
+    <div class="auth-body">
 
-      <div class="timer-box">
-        <div class="timer-label">Aguardando confirmação do pagamento</div>
-        <div class="timer-bar-wrap">
-          <div class="timer-bar" id="timer-bar" style="width:100%"></div>
+      <a id="mp-link" href="#" target="_blank" class="mp-btn" onclick="onClickMP()">
+        <div class="mp-btn-icon">💙</div>
+        <div class="mp-btn-txt">
+          <span class="mp-btn-main">Autorizar no Mercado Pago</span>
+          <span class="mp-btn-sub">Abre o app ou site do Mercado Pago</span>
         </div>
-        <div class="timer-txt" id="timer-txt">30:00</div>
-        <div class="polling-txt" id="polling-txt">🔍 Verificando pagamento automaticamente...</div>
+      </a>
+
+      <div class="instrucoes">
+        <div class="instrucoes-title">Passo a passo</div>
+        <div class="inst-item">
+          <div class="inst-num">1</div>
+          <div class="inst-txt">Clique no botão azul acima — o Mercado Pago abrirá</div>
+        </div>
+        <div class="inst-item">
+          <div class="inst-num">2</div>
+          <div class="inst-txt">Faça login na sua conta do <strong>Mercado Pago</strong></div>
+        </div>
+        <div class="inst-item">
+          <div class="inst-num">3</div>
+          <div class="inst-txt">Confirme a assinatura e clique em <strong>"Autorizar"</strong></div>
+        </div>
+        <div class="inst-item">
+          <div class="inst-num">4</div>
+          <div class="inst-txt">Pronto! As cobranças serão automáticas todo mês</div>
+        </div>
       </div>
+
+      <div class="polling-auth">
+        <p id="polling-auth-txt">🔍 Aguardando sua autorização no Mercado Pago...</p>
+        <button class="btn-verificar" onclick="verificarAutorizacao(true)">✅ Já autorizei — verificar</button>
+      </div>
+
     </div>
   </div>
 
-  <!-- STEP 4 — Pagamento confirmado! -->
+  <!-- STEP 4 — Sucesso -->
   <div class="step-ok" id="step-ok">
     <div class="ok-icon">🎉</div>
-    <h3>Assinatura ativada!</h3>
-    <p>Seu pagamento foi confirmado.<br>As próximas mensalidades são automáticas!</p>
-    <div class="ok-card" id="ok-card"></div>
+    <h3>Assinatura Ativa!</h3>
+    <p>Débito automático autorizado com sucesso.<br>As próximas mensalidades são cobradas automaticamente!</p>
+    <div class="ok-card" id="ok-card">
+      <div class="ok-row"><span class="ok-key">Status</span><span class="ok-val" style="color:var(--green)">✅ Autorizado</span></div>
+      <div class="ok-row"><span class="ok-key">Tipo</span><span class="ok-val">🔄 Débito Automático</span></div>
+      <div class="ok-row"><span class="ok-key">Valor</span><span class="ok-val" id="ok-valor">R$ 10,00/mês</span></div>
+    </div>
     <div class="ok-sub">
-      🔄 <strong>Como funciona agora:</strong><br>
-      Todo mês, no dia escolhido, um novo QR PIX é gerado automaticamente.
-      Você só precisa pagar — sem precisar se cadastrar novamente!
+      🔄 <strong>Débito Automático Ativo:</strong><br>
+      Todo mês o Mercado Pago debitará automaticamente da sua conta.
+      Você receberá notificação no app a cada cobrança.<br><br>
+      🚫 <strong>Para cancelar:</strong> Acesse o app Mercado Pago → Assinaturas.
     </div>
   </div>
 
@@ -350,7 +433,7 @@ body{
     <div class="erro-icon">⚠️</div>
     <h3>Algo deu errado</h3>
     <p id="erro-msg">Tente novamente em instantes.</p>
-    <button class="btn-retry" onclick="voltarForm()">Tentar novamente</button>
+    <button class="btn-retry" onclick="voltarForm()">← Tentar novamente</button>
   </div>
 
 </div><!-- /form-card -->
@@ -358,114 +441,89 @@ body{
 <div class="footer">
   <div class="secure-row">
     <div class="secure-badge">🔒 Pagamento seguro</div>
-    <div class="secure-badge">✅ Mercado Pago</div>
-    <div class="secure-badge">🔄 Renovação automática</div>
+    <div class="secure-badge">💙 Mercado Pago</div>
+    <div class="secure-badge">🔄 100% automático</div>
   </div>
-  <div style="margin-top:10px">Powered by <a href="https://www.mercadopago.com.br" target="_blank">Mercado Pago</a></div>
+  <div style="margin-top:10px">Processado por <a href="https://www.mercadopago.com.br" target="_blank">Mercado Pago</a></div>
 </div>
 
 <script>
 const BASE = '';
-let cfg      = {};
-let diaSel   = 1;
-let payId    = '';
-let recId    = null;
-let pollingT = null;
-let timerT   = null;
+let cfg       = {};
+let preId     = '';   // ID do preapproval criado
+let pollingT  = null;
+let mpJaAbriu = false;
 
 // ── Inicialização ─────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
-  // Params da URL
-  const p   = new URLSearchParams(location.search);
+  const p = new URLSearchParams(location.search);
   window._ref   = p.get('ref')   || '';
   window._valor = parseFloat(p.get('valor') || 0);
+
+  // Verifica se voltou da autorização MP
+  const statusUrl = p.get('status');
+  const preIdUrl  = p.get('preapproval_id');
+  if (statusUrl && preIdUrl) {
+    // Retornou do MP — verifica automaticamente
+    preId = preIdUrl;
+    showStep('loading');
+    document.querySelector('.step-loading p').textContent = 'Verificando autorização...';
+    setTimeout(() => verificarAutorizacao(false), 1500);
+    return;
+  }
 
   // Carrega config do plano
   try {
     const r = await fetch(`${BASE}/api/assinar/config`);
     cfg     = await r.json();
-  } catch(e) { cfg = {titulo:'Assine agora',valor:10,dia:1,descricao:'Mensalidade',ativo:true}; }
+  } catch(e) {
+    cfg = {titulo:'Assine agora',valor:10,descricao:'Mensalidade',ativo:true};
+  }
 
   if (!cfg.ativo) {
     showErro('Assinaturas temporariamente indisponíveis. Tente mais tarde.');
     return;
   }
 
-  // Valor override via URL
   if (window._valor > 0) cfg.valor = window._valor;
 
   // Atualiza UI
   document.getElementById('hero-titulo').innerHTML =
-    (cfg.titulo || 'Assine e pague todo mês via PIX').replace(/(via PIX|automática)/g, '<span>$1</span>');
-  document.getElementById('hero-sub').textContent  = cfg.descricao || '';
-  const vFmt = 'R$ ' + parseFloat(cfg.valor).toFixed(2).replace('.',',');
+    (cfg.titulo || 'Autorize uma vez, pague sempre')
+      .replace(/(automática|automático|débito|sempre|PIX)/gi, '<span>$1</span>');
+  document.getElementById('hero-sub').textContent  = cfg.descricao || 'Assinatura mensal automática';
+  const vFmt = 'R$ ' + parseFloat(cfg.valor||10).toFixed(2).replace('.',',');
   document.getElementById('hero-valor').textContent  = vFmt;
   document.getElementById('resumo-valor').textContent = vFmt;
-  document.getElementById('resumo-plano').textContent = cfg.descricao || 'Mensalidade';
-  document.getElementById('pix-valor-txt').textContent = vFmt;
+  document.getElementById('resumo-plano').textContent = cfg.titulo || 'Mensalidade';
+  document.getElementById('ok-valor').textContent     = vFmt + '/mês';
 
   // Benefícios
   if (cfg.beneficios) {
     const benes = cfg.beneficios.split('\n').filter(b => b.trim());
     if (benes.length) {
-      const wrap = document.getElementById('beneficios-wrap');
+      const wrap  = document.getElementById('beneficios-wrap');
       const lista = document.getElementById('beneficios-lista');
       wrap.style.display = 'block';
       lista.innerHTML = benes.map(b => {
-        const [icon, ...rest] = b.trim().split(' ');
+        const parts = b.trim().split(' ');
+        const icon  = parts[0];
+        const txt   = parts.slice(1).join(' ');
         return `<div class="beneficio-item">
           <div class="bene-icon">${icon}</div>
-          <div class="bene-txt"><strong>${rest.join(' ')}</strong></div>
+          <div class="bene-txt"><strong>${txt}</strong></div>
         </div>`;
       }).join('');
     }
   }
-
-  // Dia padrão
-  diaSel = parseInt(cfg.dia) || 1;
-  buildDiaGrid();
-  atualizarProxData();
 });
 
-// ── Grid de dias ───────────────────────────────────────────────
-function buildDiaGrid() {
-  const grid = document.getElementById('dia-grid');
-  grid.innerHTML = '';
-  for (let d = 1; d <= 28; d++) {
-    const btn = document.createElement('button');
-    btn.className = 'dia-btn' + (d === diaSel ? ' sel' : '');
-    btn.textContent = d;
-    btn.onclick = () => selecionarDia(d);
-    grid.appendChild(btn);
-  }
-}
+// ── Iniciar assinatura ─────────────────────────────────────────
+async function iniciarAssinatura() {
+  const nome  = document.getElementById('f-nome').value.trim();
+  const tel   = document.getElementById('f-tel').value.trim();
+  const email = document.getElementById('f-email').value.trim();
 
-function selecionarDia(d) {
-  diaSel = d;
-  document.querySelectorAll('.dia-btn').forEach((b, i) => {
-    b.classList.toggle('sel', i + 1 === d);
-  });
-  document.getElementById('resumo-dia').textContent = d;
-  atualizarProxData();
-}
-
-function atualizarProxData() {
-  const hoje = new Date();
-  let ano = hoje.getFullYear(), mes = hoje.getMonth();
-  let prox = new Date(ano, mes, diaSel);
-  if (prox <= hoje) {
-    mes++;
-    if (mes > 11) { mes = 0; ano++; }
-    prox = new Date(ano, mes, diaSel);
-  }
-  document.getElementById('prox-data').textContent =
-    prox.toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
-}
-
-// ── Confirmar assinatura ────────────────────────────────────────
-async function confirmarAssinatura() {
-  const nome = document.getElementById('f-nome').value.trim();
-  const tel  = document.getElementById('f-tel').value.trim();
   if (!nome) {
     document.getElementById('f-nome').focus();
     document.getElementById('f-nome').style.borderColor = '#f44336';
@@ -477,115 +535,98 @@ async function confirmarAssinatura() {
   document.getElementById('btn-assinar').disabled = true;
 
   try {
-    const body = {
-      nome,
-      telefone: tel,
-      dia:      diaSel,
-      ref:      window._ref || '',
-    };
-
-    const r = await fetch(`${BASE}/api/recorrente/autocadastro`, {
-      method: 'POST',
+    const r = await fetch(`${BASE}/api/assinar/preapproval`, {
+      method:  'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body)
+      body:    JSON.stringify({ nome, telefone: tel, email, ref: window._ref || '' })
     });
     const d = await r.json();
 
-    if (!d.success) { showErro(d.error || 'Erro ao cadastrar'); return; }
-
-    recId  = d.recorrente_id;
-    payId  = d.payment_id;
-
-    const vFmt = 'R$ ' + parseFloat(d.valor || cfg.valor).toFixed(2).replace('.',',');
-    document.getElementById('pix-valor-txt').textContent = vFmt;
-
-    // QR Code
-    if (d.qr_base64) {
-      const img = document.getElementById('qr-img');
-      img.src = 'data:image/png;base64,' + d.qr_base64;
-      img.style.display = 'block';
-      document.getElementById('qr-placeholder').style.display = 'none';
+    if (!d.success) {
+      showErro(d.error || 'Erro ao criar assinatura. Tente novamente.');
+      return;
     }
-    document.getElementById('pix-code-txt').textContent = d.pix_copia_cola || '—';
 
-    showStep('pix');
-    iniciarPolling();
-    iniciarTimer(30 * 60);
+    preId = d.preapproval_id;
+    const initPoint = d.init_point;
 
-    // Preenche card de sucesso (para quando confirmar)
-    const prox = d.proximo_vencimento || '—';
+    // Atualiza botão de link MP
+    document.getElementById('mp-link').href = initPoint;
+
+    // Atualiza card de sucesso com nome
+    const vFmt = 'R$ ' + parseFloat(cfg.valor||10).toFixed(2).replace('.',',');
     document.getElementById('ok-card').innerHTML = `
+      <div class="ok-row"><span class="ok-key">Status</span><span class="ok-val" style="color:var(--green)">✅ Autorizado</span></div>
       <div class="ok-row"><span class="ok-key">Assinante</span><span class="ok-val">${nome}</span></div>
+      <div class="ok-row"><span class="ok-key">Tipo</span><span class="ok-val">🔄 Débito Automático</span></div>
       <div class="ok-row"><span class="ok-key">Valor</span><span class="ok-val">${vFmt}/mês</span></div>
-      <div class="ok-row"><span class="ok-key">Dia de pagamento</span><span class="ok-val">Todo dia ${diaSel}</span></div>
-      <div class="ok-row"><span class="ok-key">Próxima cobrança</span><span class="ok-val">${prox}</span></div>
       ${tel ? `<div class="ok-row"><span class="ok-key">WhatsApp</span><span class="ok-val">${tel}</span></div>` : ''}
     `;
+
+    showStep('auth');
+    iniciarPollingAutorizacao();
 
   } catch(e) {
     showErro('Erro de rede: ' + e.message);
   }
 }
 
-// ── Polling ────────────────────────────────────────────────────
-function iniciarPolling() {
+// ── Quando clica no botão MP ────────────────────────────────────
+function onClickMP() {
+  mpJaAbriu = true;
+  // Após 3s começa a verificar com mais frequência
+  setTimeout(() => {
+    document.getElementById('polling-auth-txt').textContent = '🔍 Verificando autorização no Mercado Pago...';
+  }, 3000);
+}
+
+// ── Polling de autorização ──────────────────────────────────────
+function iniciarPollingAutorizacao() {
   if (pollingT) clearInterval(pollingT);
-  pollingT = setInterval(verificarPagamento, 3000);
+  // Verifica a cada 5 segundos
+  pollingT = setInterval(() => verificarAutorizacao(false), 5000);
 }
 
-async function verificarPagamento() {
-  if (!payId) return;
+async function verificarAutorizacao(manual) {
+  if (!preId) return;
+
+  if (manual) {
+    document.getElementById('polling-auth-txt').textContent = '⏳ Verificando...';
+  }
+
   try {
-    const r = await fetch(`${BASE}/api/bot/status/${payId}`);
+    const r = await fetch(`${BASE}/api/assinar/status/${preId}`);
     const d = await r.json();
-    if (d.confirmado || d.approved || d.status === 'approved') {
-      pararPolling(); pararTimer();
+
+    if (d.success && d.autorizado) {
+      pararPolling();
       showStep('ok');
+    } else if (manual) {
+      document.getElementById('polling-auth-txt').textContent =
+        '⏳ Ainda não autorizado. Verifique no Mercado Pago e clique novamente.';
     }
-  } catch(e) {}
+  } catch(e) {
+    if (manual) {
+      document.getElementById('polling-auth-txt').textContent = '❌ Erro ao verificar. Tente novamente.';
+    }
+  }
 }
 
-function pararPolling() { if(pollingT){clearInterval(pollingT);pollingT=null;} }
-
-// ── Timer ──────────────────────────────────────────────────────
-function iniciarTimer(seg) {
-  const total = seg;
-  let rest = seg;
-  pararTimer();
-  timerT = setInterval(() => {
-    rest--;
-    const m = Math.floor(rest/60).toString().padStart(2,'0');
-    const s = (rest%60).toString().padStart(2,'0');
-    document.getElementById('timer-txt').textContent = `${m}:${s}`;
-    const pct = rest / total * 100;
-    const bar = document.getElementById('timer-bar');
-    bar.style.width = pct + '%';
-    bar.style.background = pct < 20 ? '#f44336' : pct < 50 ? '#FFD700' : '#9c27b0';
-    if (rest <= 0) {
-      pararTimer(); pararPolling();
-      document.getElementById('polling-txt').textContent = '⏰ QR Code expirado. Volte e gere um novo.';
-    }
-  }, 1000);
-}
-function pararTimer() { if(timerT){clearInterval(timerT);timerT=null;} }
-
-// ── Copiar PIX ─────────────────────────────────────────────────
-async function copiarPix() {
-  const txt = document.getElementById('pix-code-txt').textContent;
-  try {
-    await navigator.clipboard.writeText(txt);
-    const btn = document.getElementById('btn-copiar');
-    btn.textContent = '✅ Copiado!'; btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = '📋 Copiar código PIX'; btn.classList.remove('copied'); }, 2500);
-  } catch(e) { prompt('Copie o código PIX:', txt); }
+function pararPolling() {
+  if (pollingT) { clearInterval(pollingT); pollingT = null; }
 }
 
 // ── Utils ──────────────────────────────────────────────────────
 function showStep(step) {
-  ['form','loading','pix','ok','erro'].forEach(s => {
-    document.getElementById('step-' + s).style.display = s === step ? 'block' : 'none';
+  const steps = ['form','loading','auth','ok','erro'];
+  steps.forEach(s => {
+    const el = document.getElementById('step-' + s);
+    if (el) el.style.display = s === step ? 'block' : 'none';
   });
-  if (step !== 'loading') document.getElementById('btn-assinar').disabled = false;
+  if (step !== 'loading') {
+    const btn = document.getElementById('btn-assinar');
+    if (btn) btn.disabled = false;
+  }
 }
 
 function showErro(msg) {
@@ -594,7 +635,9 @@ function showErro(msg) {
 }
 
 function voltarForm() {
-  pararPolling(); pararTimer(); payId = '';
+  pararPolling();
+  preId = '';
+  mpJaAbriu = false;
   showStep('form');
 }
 </script>

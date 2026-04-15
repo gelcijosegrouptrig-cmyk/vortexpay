@@ -1900,9 +1900,24 @@
             </div>
           </div>
 
-          <!-- Formulário: adicionar novo assinante -->
+          <!-- Painel Preapproval / Débito Automático -->
+          <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:#060612">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:12px;font-weight:700;color:#009ee3">💙 Plano Débito Automático (Mercado Pago)</div>
+              <button onclick="recCriarPlanoMP()" class="action-btn" style="font-size:12px;padding:7px 14px;background:#009ee3;color:#fff;border-color:#009ee3">⚡ Criar/Atualizar Plano MP</button>
+            </div>
+            <div style="font-size:11px;color:#555;background:#ffffff05;border-radius:8px;padding:10px;margin-bottom:10px;line-height:1.5">
+              🔄 <strong style="color:#29b6f6">Como funciona o Débito Automático:</strong> O cliente acessa <code style="color:#ce93d8">/assinar</code>, preenche nome/email e clica em <em>"Autorizar no Mercado Pago"</em>. Após autorizar UMA vez, o MP debita automaticamente todo mês — sem o cliente precisar fazer nada.
+            </div>
+            <div id="rec-plano-status" style="font-size:12px;color:#aaa;background:#009ee310;border:1px solid #009ee330;border-radius:8px;padding:10px;display:none">
+              Carregando status do plano...
+            </div>
+            <div id="rec-criar-plano-msg" style="font-size:12px;margin-top:8px;display:none"></div>
+          </div>
+
+          <!-- Formulário: adicionar novo assinante manual -->
           <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:#0a0a1a">
-            <div style="font-size:12px;font-weight:700;color:#9c27b0;margin-bottom:10px">➕ Cadastrar Novo Assinante</div>
+            <div style="font-size:12px;font-weight:700;color:#9c27b0;margin-bottom:10px">➕ Cadastrar Assinante Manual (PIX gerado pelo admin)</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
               <div>
                 <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">Nome *</div>
@@ -1929,7 +1944,7 @@
                 <input id="rec-ref" type="text" placeholder="Código parceiro" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
               </div>
             </div>
-            <button onclick="recCadastrar()" class="action-btn" style="background:#9c27b0;color:#fff;border-color:#9c27b0;padding:9px 20px;font-size:13px">✅ Cadastrar e Gerar Primeiro PIX</button>
+            <button onclick="recCadastrar()" class="action-btn" style="background:#9c27b0;color:#fff;border-color:#9c27b0;padding:9px 20px;font-size:13px">✅ Cadastrar e Gerar PIX Manual</button>
             <div id="rec-cadastro-msg" style="font-size:12px;margin-top:8px;display:none"></div>
           </div>
 
@@ -1937,19 +1952,18 @@
           <div style="overflow-x:auto;padding:0 16px 16px">
             <table class="data-table">
               <thead><tr>
-                <th>ID</th><th>Nome</th><th>Valor</th><th>Dia</th><th>Próx. Venc.</th>
-                <th>Cobranças</th><th>Total Pago</th><th>Status</th><th>Ações</th>
+                <th>ID</th><th>Nome</th><th>Tipo</th><th>Valor</th><th>Próx. Venc.</th>
+                <th>Total Pago</th><th>Status</th><th>Ações</th>
               </tr></thead>
               <tbody id="rec-tbody">
-                <tr><td colspan="9" style="text-align:center;color:#666;padding:20px">Clique em 🔄 Atualizar para carregar</td></tr>
+                <tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Clique em 🔄 Atualizar para carregar</td></tr>
               </tbody>
             </table>
           </div>
 
           <div style="padding:12px 16px;background:#0a0a1a;border-top:1px solid var(--border);font-size:11px;color:#555;border-radius:0 0 12px 12px">
-            🔄 <b style="color:#9c27b0">Como funciona:</b> No dia do vencimento, o job automático (a cada 6h) gera um QR PIX para cada assinante ativo.
-            O cliente recebe o link <code style="color:#ce93d8">/pagar/{id}</code> e paga. O webhook do Mercado Pago confirma automaticamente.
-            Você pode também clicar em ⚡ Cobrar Vencidos para disparar imediatamente.
+            💙 <b style="color:#009ee3">Débito Automático (Preapproval):</b> Cliente autoriza 1× no MP → cobranças automáticas todo mês sem ação necessária.<br>
+            🔄 <b style="color:#9c27b0">PIX Manual:</b> Job automático (a cada 6h) gera QR PIX no dia do vencimento. Cliente acessa <code style="color:#ce93d8">/pagar/{id}</code> para pagar.
           </div>
         </div><!-- /assinaturas recorrentes -->
 
@@ -4226,7 +4240,8 @@ document.addEventListener('DOMContentLoaded', () => {
   mp2CarregarComissoes();
   bot2CarregarTotaisParcerios();
   botConfigCarregar();  // carrega configurações da página /bot e /pix
-  recCarregarStats();   // carrega stats de recorrências
+  recCarregarStats();      // carrega stats de recorrências
+  recCarregarPlanoStatus(); // carrega status do plano preapproval
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -4261,26 +4276,31 @@ async function recCarregarLista() {
     }
     const fmt    = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',');
     const status_cor = {ativo:'#00c853',pausado:'#f59e0b',cancelado:'#f44336'};
-    tbody.innerHTML = d.recorrentes.map(r => `
+    tbody.innerHTML = d.recorrentes.map(r => {
+      const isAuto = r.tipo === 'preapproval';
+      const tipoHtml = isAuto
+        ? `<span style="color:#009ee3;font-weight:700;font-size:10px">💙 Auto</span>${r.preapproval_status ? `<br><span style="font-size:10px;color:${r.preapproval_status==='authorized'?'#00c853':r.preapproval_status==='cancelled'?'#f44336':'#f59e0b'}">${r.preapproval_status}</span>` : ''}`
+        : `<span style="color:#9c27b0;font-weight:700;font-size:10px">🔄 Manual</span>`;
+      return `
       <tr>
         <td>#${r.id}</td>
-        <td style="font-weight:700">${r.nome||'—'}</td>
+        <td style="font-weight:700">${r.nome||'—'}<br><span style="font-size:10px;color:#555">${r.telefone||r.email||''}</span></td>
+        <td style="text-align:center">${tipoHtml}</td>
         <td style="color:#009ee3;font-weight:700">${fmt(r.valor)}</td>
-        <td>Todo dia ${r.dia_vencimento||1}</td>
         <td style="color:#f59e0b">${r.proximo_vencimento||'—'}</td>
-        <td>${r.total_cobrado||0}×</td>
         <td style="color:#00c853">${fmt(r.total_pago)}</td>
         <td><span style="color:${status_cor[r.status]||'#888'};font-weight:700">${r.status}</span></td>
         <td style="white-space:nowrap">
-          <button onclick="recCobrarAgora(${r.id})" class="action-btn" style="font-size:11px;padding:4px 9px;background:#009ee3;color:#fff;border-color:#009ee3" title="Gerar PIX agora">💳</button>
+          ${!isAuto ? `<button onclick="recCobrarAgora(${r.id})" class="action-btn" style="font-size:11px;padding:4px 9px;background:#009ee3;color:#fff;border-color:#009ee3" title="Gerar PIX agora">💳</button>` : ''}
           ${r.status==='ativo' ? `<button onclick="recPausar(${r.id},true)" class="action-btn" style="font-size:11px;padding:4px 9px;background:#f59e0b;color:#000;border-color:#f59e0b" title="Pausar">⏸</button>` : ''}
           ${r.status==='pausado' ? `<button onclick="recPausar(${r.id},false)" class="action-btn" style="font-size:11px;padding:4px 9px;background:#00c853;color:#000;border-color:#00c853" title="Reativar">▶️</button>` : ''}
           ${r.status!=='cancelado' ? `<button onclick="recCancelar(${r.id})" class="action-btn" style="font-size:11px;padding:4px 9px;background:#f44336;color:#fff;border-color:#f44336" title="Cancelar">🗑</button>` : ''}
-          <button onclick="copiar('${location.origin}/pagar/${r.id}')" class="action-btn" style="font-size:11px;padding:4px 9px" title="Copiar link">🔗</button>
+          ${!isAuto ? `<button onclick="copiar('${location.origin}/pagar/${r.id}')" class="action-btn" style="font-size:11px;padding:4px 9px" title="Copiar link PIX">🔗</button>` : ''}
+          ${isAuto && r.preapproval_init_point ? `<button onclick="window.open('${r.preapproval_init_point}','_blank')" class="action-btn" style="font-size:11px;padding:4px 9px;background:#009ee315;border-color:#009ee350" title="Link MP">🔗</button>` : ''}
         </td>
-      </tr>
-    `).join('');
-  } catch(e) { tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:red;padding:20px">Erro: ${e.message}</td></tr>`; }
+      </tr>`;
+    }).join('');
+  } catch(e) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red;padding:20px">Erro: ${e.message}</td></tr>`; }
 }
 
 async function recCadastrar() {
@@ -4378,6 +4398,53 @@ async function recCancelar(id) {
     if(d.success){ recCarregarLista(); alert('✅ Assinatura cancelada'); }
     else { alert('❌ ' + (d.error||'Erro')); }
   } catch(e) { alert('Erro: '+e.message); }
+}
+
+async function recCriarPlanoMP() {
+  const msg = document.getElementById('rec-criar-plano-msg');
+  msg.style.display = 'block';
+  msg.style.color   = '#aaa';
+  msg.textContent   = '⏳ Criando plano no Mercado Pago...';
+  try {
+    const r = await fetch(`${BASE}/api/assinar/criar-plano`, {
+      method:  'POST',
+      headers: {'X-PaynexBet-Secret': SECRET()}
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.style.color = '#00c853';
+      msg.innerHTML   = `✅ Plano criado! ID: <code style="color:#ce93d8">${d.plan_id}</code><br>
+        <a href="${d.init_point}" target="_blank" style="color:#009ee3">🔗 Ver plano no Mercado Pago</a>`;
+      // Mostra status do plano
+      const status = document.getElementById('rec-plano-status');
+      status.style.display = 'block';
+      status.innerHTML = `💙 <strong>Plano ativo:</strong> ID <code style="color:#ce93d8">${d.plan_id}</code> | <a href="${d.init_point}" target="_blank" style="color:#009ee3">Abrir no MP</a>`;
+    } else {
+      msg.style.color = '#f44336';
+      msg.textContent = '❌ ' + (d.error || 'Erro ao criar plano');
+    }
+  } catch(e) {
+    msg.style.color = '#f44336';
+    msg.textContent = '❌ Erro: ' + e.message;
+  }
+}
+
+async function recCarregarPlanoStatus() {
+  try {
+    const r = await fetch(`${BASE}/api/assinar/plano?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    const el = document.getElementById('rec-plano-status');
+    if (!el) return;
+    if (d.success && d.plan_id) {
+      el.style.display = 'block';
+      el.innerHTML = `💙 <strong style="color:#29b6f6">Plano ativo no MP:</strong> ID <code style="color:#ce93d8">${d.plan_id}</code> | Valor: <strong>R$ ${parseFloat(d.valor||0).toFixed(2).replace('.',',')}</strong>/mês | <a href="${d.init_point||'#'}" target="_blank" style="color:#009ee3">🔗 Abrir no MP</a>`;
+    } else {
+      el.style.display = 'block';
+      el.style.background = '#f4433610';
+      el.style.borderColor = '#f4433330';
+      el.innerHTML = '⚠️ Nenhum plano configurado ainda. Clique em <strong>⚡ Criar/Atualizar Plano MP</strong> para criar.';
+    }
+  } catch(e) {}
 }
 
 async function recDispararJob() {

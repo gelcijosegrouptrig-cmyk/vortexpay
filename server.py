@@ -6721,6 +6721,235 @@ async def route_assinar_qr_gerado(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 
+# ═══════════════════════════════════════════════════════════════
+#  PREAPPROVAL — DÉBITO AUTOMÁTICO PIX (MERCADO PAGO)
+# ═══════════════════════════════════════════════════════════════
+
+async def _garantir_token_mp():
+    """Garante que mp2_api.MP2_ACCESS_TOKEN está carregado do banco."""
+    import mp2_api
+    if not mp2_api.MP2_ACCESS_TOKEN:
+        try:
+            import psycopg2 as _pg
+            _c  = _pg.connect(DATABASE_URL, connect_timeout=8)
+            _cu = _c.cursor()
+            _cu.execute("SELECT valor FROM mp2_config WHERE chave='mp2_access_token'")
+            _r  = _cu.fetchone()
+            _c.close()
+            if _r and _r[0]:
+                mp2_api.MP2_ACCESS_TOKEN = _r[0]
+        except Exception: pass
+    return bool(mp2_api.MP2_ACCESS_TOKEN)
+
+
+async def route_preapproval_criar_plano(request):
+    """
+    POST /api/assinar/criar-plano
+    Cria (ou recria) o preapproval_plan no MP com PIX obrigatório.
+    Deve ser chamado 1x pelo admin após configurar o plano.
+    """
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+
+    if not await _garantir_token_mp():
+        return web.json_response({'success': False, 'error': 'Access Token do Mercado Pago não configurado'})
+
+    import mp2_api
+    # Lê config do plano
+    try:
+        import psycopg2 as _pg
+        conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("SELECT chave, valor FROM mp2_config WHERE chave IN "
+                    "('assinar_titulo','assinar_valor','assinar_descricao')")
+        cfg = dict(cur.fetchall())
+        cur.close(); conn.close()
+    except Exception:
+        cfg = {}
+
+    titulo = cfg.get('assinar_titulo') or 'Mensalidade'
+    valor  = float(cfg.get('assinar_valor') or 10)
+    result = mp2_api.mp2_criar_plano_preapproval(titulo=titulo, valor=valor)
+    return web.json_response(result)
+
+
+async def route_preapproval_assinar(request):
+    """
+    POST /api/assinar/preapproval
+    Cria um preapproval para um cliente → retorna init_point (link de autorização).
+    Body: { nome, email, telefone, ref }
+    """
+    try:
+        data  = await request.json()
+        nome  = str(data.get('nome', '')).strip()
+        email = str(data.get('email', '')).strip()
+        tel   = str(data.get('telefone', '')).strip()
+        ref   = str(data.get('ref', '')).strip()
+
+        if not nome:
+            return web.json_response({'success': False, 'error': 'Informe seu nome'})
+
+        if not await _garantir_token_mp():
+            return web.json_response({'success': False,
+                                      'error': 'Pagamentos não configurados. Contate o suporte.'})
+
+        import mp2_api
+        # Pega plano ativo (ou cria se não existir)
+        plano = mp2_api.mp2_get_plano_ativo()
+        plan_id = plano.get('plan_id', '')
+        valor   = plano.get('valor', 10.0)
+        desc    = plano.get('descricao', 'Mensalidade')
+
+        # Se não tem plano, cria agora
+        if not plan_id:
+            titulo   = plano.get('titulo', 'Mensalidade')
+            pr = mp2_api.mp2_criar_plano_preapproval(titulo=titulo, valor=valor)
+            if not pr.get('success'):
+                return web.json_response({'success': False,
+                                          'error': f"Erro ao criar plano: {pr.get('error')}"})
+            plan_id = pr['plan_id']
+
+        result = mp2_api.mp2_criar_preapproval(
+            nome=nome, email=email, plano_id=plan_id,
+            valor=valor, descricao=desc,
+            parceiro_ref=ref, telefone=tel
+        )
+        return web.json_response(result)
+
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_preapproval_status(request):
+    """GET /api/assinar/status/{preapproval_id} — verifica status do preapproval no MP."""
+    pre_id = request.match_info.get('preapproval_id', '')
+    if not pre_id:
+        return web.json_response({'success': False, 'error': 'ID não informado'})
+    if not await _garantir_token_mp():
+        return web.json_response({'success': False, 'error': 'Token MP não configurado'})
+    try:
+        import mp2_api, requests as _req
+        r = _req.get(
+            f'https://api.mercadopago.com/preapproval/{pre_id}',
+            headers={'Authorization': f'Bearer {mp2_api.MP2_ACCESS_TOKEN}'},
+            timeout=8
+        )
+        d = r.json()
+        status = d.get('status', 'pending')
+        autorizado = status == 'authorized'
+        # Atualiza banco local
+        if autorizado:
+            mp2_api.mp2_webhook_preapproval(pre_id)
+        return web.json_response({
+            'success':    True,
+            'status':     status,
+            'autorizado': autorizado,
+            'next_payment_date': d.get('next_payment_date', ''),
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_preapproval_webhook(request):
+    """
+    POST /webhook/preapproval
+    Recebe notificações do MP quando um preapproval muda de status.
+    """
+    try:
+        data = await request.json()
+        topic = data.get('type') or data.get('topic', '')
+        res_id = (data.get('data', {}) or {}).get('id') or data.get('id', '')
+
+        if topic in ('subscription_preapproval', 'preapproval') and res_id:
+            if await _garantir_token_mp():
+                import mp2_api
+                mp2_api.mp2_webhook_preapproval(str(res_id))
+                print(f'✅ [webhook preapproval] Processado: {res_id}', flush=True)
+
+        return web.json_response({'status': 'ok'})
+    except Exception as e:
+        print(f'[webhook preapproval] Erro: {e}', flush=True)
+        return web.json_response({'status': 'ok'})  # sempre 200 para o MP
+
+
+async def route_preapproval_plano_info(request):
+    """GET /api/assinar/plano — retorna dados do plano ativo (plan_id + init_point)."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    import mp2_api
+    plano = mp2_api.mp2_get_plano_ativo()
+    return web.json_response({'success': True, **plano})
+
+
+async def route_assinar_obrigado(request):
+    """GET /assinar/obrigado — Página de retorno após autorização no MP."""
+    status  = request.rel_url.query.get('status', '')
+    pre_id  = request.rel_url.query.get('preapproval_id', '')
+    nome    = request.rel_url.query.get('nome', 'Assinante')
+
+    # Atualiza status no banco se veio preapproval_id
+    if pre_id:
+        try:
+            import mp2_api
+            if await _garantir_token_mp():
+                mp2_api.mp2_webhook_preapproval(pre_id)
+        except Exception: pass
+
+    html = f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Assinatura Confirmada — PayPixNex</title>
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{background:#0a0a0f;color:#f0f0f0;font-family:'Segoe UI',system-ui,sans-serif;
+     display:flex;flex-direction:column;align-items:center;justify-content:center;
+     min-height:100vh;padding:30px 20px;text-align:center}}
+.card{{background:#13131e;border:1px solid #9c27b030;border-radius:24px;
+       padding:40px 30px;max-width:420px;width:100%;
+       box-shadow:0 8px 40px rgba(156,39,176,.2)}}
+.icon{{font-size:72px;margin-bottom:20px;animation:pop .5s ease}}
+@keyframes pop{{0%{{transform:scale(0);opacity:0}}70%{{transform:scale(1.2)}}100%{{transform:scale(1);opacity:1}}}}
+h1{{font-size:24px;font-weight:900;color:#ce93d8;margin-bottom:10px}}
+p{{font-size:14px;color:#aaa;line-height:1.6;margin-bottom:20px}}
+.badge{{display:inline-flex;align-items:center;gap:8px;background:#9c27b020;
+        border:1px solid #9c27b050;border-radius:12px;padding:12px 20px;
+        font-size:14px;font-weight:700;color:#ce93d8;margin-bottom:24px}}
+.info-box{{background:#0a0a1a;border-radius:14px;padding:16px;text-align:left;margin-bottom:20px}}
+.info-row{{display:flex;gap:10px;padding:6px 0;font-size:13px;border-bottom:1px solid #ffffff0a}}
+.info-row:last-child{{border-bottom:none}}
+.info-icon{{font-size:18px;flex-shrink:0}}
+.info-txt{{color:#ccc;line-height:1.4}}
+.btn{{display:block;width:100%;padding:16px;background:linear-gradient(135deg,#9c27b0,#6a0080);
+      border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;
+      cursor:pointer;text-decoration:none;margin-top:6px}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">{'🎉' if status != 'failure' else '⚠️'}</div>
+  <h1>{'Assinatura Autorizada!' if status != 'failure' else 'Autorização Pendente'}</h1>
+  <p>{'Parabéns! Você autorizou o débito automático mensal via PIX. A cobrança será processada automaticamente todo mês.' if status != 'failure' else 'A autorização não foi concluída. Você pode tentar novamente na página de assinatura.'}</p>
+  <div class="badge">🔄 Débito Automático Ativo</div>
+  <div class="info-box">
+    <div class="info-row"><span class="info-icon">✅</span><span class="info-txt"><strong>1ª cobrança:</strong> Será processada pelo Mercado Pago em breve</span></div>
+    <div class="info-row"><span class="info-icon">🔄</span><span class="info-txt"><strong>Próximas mensalidades:</strong> Debitadas automaticamente todo mês do seu saldo MP</span></div>
+    <div class="info-row"><span class="info-icon">📱</span><span class="info-txt"><strong>Notificação:</strong> Você receberá aviso no app Mercado Pago a cada cobrança</span></div>
+    <div class="info-row"><span class="info-icon">🚫</span><span class="info-txt"><strong>Para cancelar:</strong> Acesse o app Mercado Pago → Assinaturas</span></div>
+  </div>
+  <a href="/assinar" class="btn">← Voltar</a>
+</div>
+</body>
+</html>"""
+    return web.Response(text=html, content_type='text/html',
+                        headers={'Cache-Control': 'no-store'})
+
+
 async def _criar_canal_telegram(titulo: str, descricao: str) -> dict:
     """
     Cria um canal Telegram usando o client (userbot) já conectado.
@@ -7117,6 +7346,13 @@ async def main():
     app.router.add_get('/api/assinar/config',               route_assinar_config_get)
     app.router.add_post('/api/assinar/config',              route_assinar_config_save)
     app.router.add_get('/api/assinar/qr',                   route_assinar_qr_gerado)
+    # ── Preapproval (Débito Automático PIX) ──────────────────────────
+    app.router.add_post('/api/assinar/criar-plano',         route_preapproval_criar_plano)
+    app.router.add_post('/api/assinar/preapproval',         route_preapproval_assinar)
+    app.router.add_get('/api/assinar/status/{preapproval_id}', route_preapproval_status)
+    app.router.add_get('/api/assinar/plano',                route_preapproval_plano_info)
+    app.router.add_post('/webhook/preapproval',             route_preapproval_webhook)
+    app.router.add_get('/assinar/obrigado',                 route_assinar_obrigado)
     # ── Canais Telegram ──────────────────────────────────────────────
     app.router.add_post('/api/admin/criar-canais',          route_admin_criar_canais)
     app.router.add_get('/api/admin/canais',                 route_admin_status_canais)
