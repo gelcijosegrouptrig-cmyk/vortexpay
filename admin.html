@@ -1832,10 +1832,26 @@
                   <textarea id="qr-beneficios" rows="3" placeholder="🎯 Acesso VIP ao conteúdo&#10;💬 Suporte prioritário&#10;🎁 Bônus exclusivos"
                     style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px;resize:vertical"></textarea>
                 </div>
+                <!-- Seletor de Afiliado -->
                 <div>
-                  <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Código parceiro (ref, opcional)</div>
-                  <input id="qr-ref" type="text" placeholder="codigo_parceiro"
-                    style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
+                  <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Afiliado / Parceiro (opcional)</div>
+                  <div style="display:flex;gap:6px;align-items:center">
+                    <select id="qr-ref-select"
+                      onchange="qrOnAfiliadoChange()"
+                      style="flex:1;padding:7px 10px;background:#1a1a2e;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px;cursor:pointer">
+                      <option value="">🌐 Sem afiliado (link geral)</option>
+                    </select>
+                    <button onclick="qrCarregarAfiliados()" title="Recarregar afiliados"
+                      style="padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#aaa;font-size:13px;cursor:pointer;white-space:nowrap">🔄</button>
+                  </div>
+                  <!-- Campo manual fallback -->
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+                    <input id="qr-ref" type="text" placeholder="ou digite o código manualmente"
+                      oninput="qrOnRefManualChange()"
+                      style="flex:1;padding:6px 10px;background:#ffffff08;border:1px solid #ffffff15;border-radius:8px;color:#aaa;font-size:11px"/>
+                    <span id="qr-ref-badge" style="display:none;font-size:10px;background:#9c27b030;color:#ce93d8;padding:3px 8px;border-radius:20px;white-space:nowrap">✅ afiliado</span>
+                  </div>
+                  <div style="font-size:10px;color:#555;margin-top:3px">O link e QR gerados incluirão o código do afiliado automaticamente</div>
                 </div>
                 <div style="display:flex;gap:8px;margin-top:4px">
                   <button onclick="qrSalvarConfig()" class="action-btn" style="flex:1;background:#9c27b0;color:#fff;border-color:#9c27b0;padding:9px;font-size:12px">💾 Salvar config</button>
@@ -1848,26 +1864,42 @@
             <!-- Coluna direita: QR Code preview -->
             <div style="padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
               <div style="font-size:12px;font-weight:700;color:#ce93d8;margin-bottom:2px">📲 QR para imprimir / compartilhar</div>
+              <!-- Label do afiliado selecionado -->
+              <div id="qr-afiliado-label" style="font-size:11px;background:#9c27b020;border:1px solid #9c27b040;border-radius:20px;padding:3px 12px;color:#ce93d8;display:none">👤 —</div>
               <!-- QR via API externa (não precisa lib Python) -->
               <div style="background:#fff;padding:10px;border-radius:14px;border:3px solid #9c27b0">
                 <img id="qr-preview-img" src="" width="180" height="180" alt="QR Code" style="display:block;border-radius:6px"/>
               </div>
-              <div style="font-size:11px;color:#666;text-align:center" id="qr-link-txt">—</div>
+              <div style="font-size:11px;color:#666;text-align:center;word-break:break-all;max-width:220px" id="qr-link-txt">—</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
                 <button onclick="qrDownload()" class="action-btn" style="font-size:11px;padding:6px 12px">⬇️ Baixar QR</button>
+                <button onclick="qrCopiarLinkAtual()" class="action-btn" style="font-size:11px;padding:6px 12px">📋 Copiar link</button>
                 <button onclick="qrAbrirLink()" class="action-btn" style="font-size:11px;padding:6px 12px;background:#009ee3;color:#fff;border-color:#009ee3">🌐 Abrir página</button>
               </div>
 
               <!-- Instruções -->
-              <div style="background:#0a0a1a;border:1px solid #9c27b020;border-radius:10px;padding:12px;font-size:11px;color:#666;line-height:1.7;width:100%;max-width:200px;text-align:left">
+              <div style="background:#0a0a1a;border:1px solid #9c27b020;border-radius:10px;padding:12px;font-size:11px;color:#666;line-height:1.7;width:100%;max-width:210px;text-align:left">
                 <div style="color:#ce93d8;font-weight:700;margin-bottom:4px">Como usar:</div>
-                1️⃣ Salve a config<br>
-                2️⃣ Imprima ou compartilhe o QR<br>
-                3️⃣ Cliente escaneia e assina<br>
-                4️⃣ Cobranças são automáticas ✅
+                1️⃣ Escolha o afiliado<br>
+                2️⃣ Salve a config<br>
+                3️⃣ Imprima ou compartilhe o QR<br>
+                4️⃣ Cliente assina e paga ✅<br>
+                5️⃣ Comissão vai pro afiliado 💰
               </div>
             </div>
           </div>
+
+          <!-- ─── TABELA QR POR AFILIADO ─── -->
+          <div style="padding:14px 16px;border-top:1px solid var(--border)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:12px;font-weight:700;color:#a855f7">👥 QR Code por Afiliado — link individual por parceiro</div>
+              <button onclick="qrCarregarAfiliados()" class="action-btn" style="font-size:11px;padding:5px 11px">🔄 Atualizar</button>
+            </div>
+            <div id="qr-afiliados-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+              <div style="font-size:12px;color:#555;padding:20px;text-align:center;grid-column:1/-1">Carregando afiliados...</div>
+            </div>
+          </div>
+
         </div><!-- /qr autocadastro -->
 
         <!-- ═══ ASSINATURAS RECORRENTES ═══ -->
@@ -4479,11 +4511,20 @@ async function recGerarQRAssinar() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// QR CODE DE AUTOCADASTRO — /assinar
+// ═══════════════════════════════════════════════════════════════════
+// QR CODE DE AUTOCADASTRO — /assinar  (com suporte a afiliados)
 // ═══════════════════════════════════════════════════════════════════
 
-function qrGetLink() {
-  const ref   = (document.getElementById('qr-ref')?.value||'').trim();
+// Retorna o ref ativo: select tem prioridade, campo manual é fallback
+function qrGetRef() {
+  const sel = (document.getElementById('qr-ref-select')?.value||'').trim();
+  const man = (document.getElementById('qr-ref')?.value||'').trim();
+  return sel || man;
+}
+
+// Monta o link /assinar com os parâmetros corretos
+function qrGetLink(refOverride) {
+  const ref   = refOverride !== undefined ? refOverride : qrGetRef();
   const valor = (document.getElementById('qr-valor')?.value||'').trim();
   let link = `${BASE}/assinar`;
   const params = [];
@@ -4493,14 +4534,154 @@ function qrGetLink() {
   return link;
 }
 
+// Atualiza preview do QR principal
 function qrAtualizarPreview() {
-  const link = `${location.origin}/assinar`;
-  const ref  = (document.getElementById('qr-ref')?.value||'').trim();
-  const fullLink = link + (ref ? `?ref=${encodeURIComponent(ref)}` : '');
-  // Usa API pública de QR (sem dependência Python)
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&color=6a0080&bgcolor=ffffff&data=${encodeURIComponent(fullLink)}&qzone=2`;
+  const ref      = qrGetRef();
+  const fullLink = qrGetLink(ref);
+  const qrUrl    = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&color=6a0080&bgcolor=ffffff&data=${encodeURIComponent(fullLink)}&qzone=2`;
   document.getElementById('qr-preview-img').src = qrUrl;
   document.getElementById('qr-link-txt').textContent = fullLink;
+
+  // Atualiza badge do afiliado selecionado
+  const lbl = document.getElementById('qr-afiliado-label');
+  const sel  = document.getElementById('qr-ref-select');
+  if (ref && lbl) {
+    const nome = sel?.options[sel.selectedIndex]?.dataset?.nome || ref;
+    lbl.textContent = '👤 ' + nome;
+    lbl.style.display = 'inline-block';
+  } else if (lbl) {
+    lbl.style.display = 'none';
+  }
+}
+
+// Quando usuário muda o select de afiliado
+function qrOnAfiliadoChange() {
+  const sel = document.getElementById('qr-ref-select');
+  const val = sel?.value || '';
+  // Limpa campo manual se select tem valor
+  if (val) {
+    const inp = document.getElementById('qr-ref');
+    if (inp) { inp.value = ''; inp.placeholder = 'afiliado selecionado acima'; }
+    const badge = document.getElementById('qr-ref-badge');
+    if (badge) badge.style.display = 'none';
+  }
+  qrAtualizarPreview();
+}
+
+// Quando usuário digita no campo manual
+function qrOnRefManualChange() {
+  const val = (document.getElementById('qr-ref')?.value||'').trim();
+  // Limpa o select se digitou manualmente
+  if (val) {
+    const sel = document.getElementById('qr-ref-select');
+    if (sel) sel.value = '';
+    const badge = document.getElementById('qr-ref-badge');
+    if (badge) { badge.style.display = 'inline-block'; badge.textContent = '✅ ' + val; }
+  }
+  qrAtualizarPreview();
+}
+
+// Carrega lista de afiliados/parceiros no select e na tabela de QRs
+async function qrCarregarAfiliados() {
+  try {
+    const r = await fetch(`${BASE}/api/mp2/parceiros?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    const lista = (d.parceiros || []).filter(p => p.ativo !== false);
+
+    // Atualiza o SELECT
+    const sel = document.getElementById('qr-ref-select');
+    if (sel) {
+      const curVal = sel.value;
+      sel.innerHTML = '<option value="">🌐 Sem afiliado (link geral)</option>';
+      lista.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.codigo;
+        opt.dataset.nome = p.nome;
+        opt.textContent = `👤 ${p.nome} (${p.codigo})`;
+        if (p.comissao_pct) opt.textContent += ` — ${p.comissao_pct}%`;
+        sel.appendChild(opt);
+      });
+      // Restaura seleção anterior se ainda existe
+      if (curVal) sel.value = curVal;
+    }
+
+    // Renderiza tabela de QRs por afiliado
+    qrRenderizarTabelaAfiliados(lista);
+
+    qrAtualizarPreview();
+  } catch(e) {
+    const cont = document.getElementById('qr-afiliados-lista');
+    if (cont) cont.innerHTML = `<div style="font-size:12px;color:#f44336;padding:12px;grid-column:1/-1">❌ Erro ao carregar afiliados: ${e.message}</div>`;
+  }
+}
+
+// Renderiza os cards de QR individuais por afiliado
+function qrRenderizarTabelaAfiliados(lista) {
+  const cont = document.getElementById('qr-afiliados-lista');
+  if (!cont) return;
+
+  if (!lista || !lista.length) {
+    cont.innerHTML = `<div style="font-size:12px;color:#555;padding:20px;text-align:center;grid-column:1/-1">
+      Nenhum afiliado cadastrado. <a href="#" onclick="document.getElementById('mp2-form-parceiro').style.display='block'" style="color:#a855f7">Cadastrar primeiro afiliado →</a>
+    </div>`;
+    return;
+  }
+
+  // Card do link geral (sem afiliado)
+  const linkGeral = `${location.origin}/assinar`;
+  const qrGeral   = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=6a0080&bgcolor=ffffff&data=${encodeURIComponent(linkGeral)}&qzone=2`;
+  let html = `
+    <div style="background:#ffffff08;border:1px solid #ffffff15;border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div style="font-size:11px;font-weight:700;color:#aaa">🌐 Link Geral (sem afiliado)</div>
+      <div style="background:#fff;padding:6px;border-radius:10px;border:2px solid #555">
+        <img src="${qrGeral}" width="120" height="120" style="display:block"/>
+      </div>
+      <div style="font-size:10px;color:#666;word-break:break-all;text-align:center;max-width:190px">${linkGeral}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
+        <button onclick="qrCopiarLinkCustom('${linkGeral}')" class="action-btn" style="font-size:10px;padding:4px 9px">📋 Copiar</button>
+        <button onclick="window.open('${linkGeral}','_blank')" class="action-btn" style="font-size:10px;padding:4px 9px;background:#009ee3;color:#fff;border-color:#009ee3">🌐 Abrir</button>
+      </div>
+    </div>`;
+
+  lista.forEach(p => {
+    const link = `${location.origin}/assinar?ref=${encodeURIComponent(p.codigo)}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=5b21b6&bgcolor=ffffff&data=${encodeURIComponent(link)}&qzone=2`;
+    const statusColor = p.ativo ? '#00c853' : '#f44336';
+    const statusTxt   = p.ativo ? 'ativo' : 'inativo';
+    html += `
+    <div style="background:#ffffff08;border:1px solid #a855f740;border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div style="text-align:center">
+        <div style="font-size:12px;font-weight:700;color:#ce93d8">${p.nome}</div>
+        <div style="font-size:10px;color:#777;margin-top:2px">
+          código: <code style="color:#a855f7">${p.codigo}</code>
+          &nbsp;·&nbsp;<span style="color:${statusColor}">${statusTxt}</span>
+          ${p.comissao_pct ? `&nbsp;·&nbsp;<span style="color:#fbbf24">${p.comissao_pct}% comissão</span>` : ''}
+        </div>
+      </div>
+      <div style="background:#fff;padding:6px;border-radius:10px;border:2px solid #a855f7">
+        <img src="${qrUrl}" width="120" height="120" style="display:block"/>
+      </div>
+      <div style="font-size:10px;color:#666;word-break:break-all;text-align:center;max-width:190px">/assinar?ref=${p.codigo}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
+        <button onclick="qrCopiarLinkCustom('${link}')" class="action-btn" style="font-size:10px;padding:4px 9px">📋 Copiar link</button>
+        <button onclick="qrSelecionarAfiliado('${p.codigo}')" class="action-btn" style="font-size:10px;padding:4px 9px;background:#9c27b0;color:#fff;border-color:#9c27b0">⬆️ Usar no QR</button>
+        <button onclick="window.open('${link}','_blank')" class="action-btn" style="font-size:10px;padding:4px 9px;background:#009ee3;color:#fff;border-color:#009ee3">🌐 Abrir</button>
+      </div>
+    </div>`;
+  });
+
+  cont.innerHTML = html;
+}
+
+// Seleciona um afiliado no dropdown principal e atualiza o QR
+function qrSelecionarAfiliado(codigo) {
+  const sel = document.getElementById('qr-ref-select');
+  if (sel) { sel.value = codigo; }
+  const inp = document.getElementById('qr-ref');
+  if (inp) { inp.value = ''; inp.placeholder = 'afiliado selecionado acima'; }
+  qrAtualizarPreview();
+  // Scroll até o QR principal
+  document.getElementById('qr-preview-img')?.scrollIntoView({behavior:'smooth', block:'center'});
 }
 
 async function qrSalvarConfig() {
@@ -4543,30 +4724,48 @@ async function qrCarregarConfig() {
     if(d.dia)         document.getElementById('qr-dia').value    = d.dia;
     if(d.beneficios)  document.getElementById('qr-beneficios').value = d.beneficios;
   } catch(e) {}
-  qrAtualizarPreview();
+  // Carrega afiliados e depois atualiza o preview
+  await qrCarregarAfiliados();
 }
 
-function qrCopiarLink() {
-  const link = `${location.origin}/assinar`;
-  navigator.clipboard.writeText(link).then(()=>alert('✅ Link copiado!\n'+link));
+// Copia link do QR que está sendo exibido no preview principal
+function qrCopiarLinkAtual() {
+  const link = document.getElementById('qr-link-txt')?.textContent || qrGetLink();
+  if (link && link !== '—') {
+    navigator.clipboard.writeText(link).then(()=>{
+      const btn = event?.target; const orig = btn?.textContent;
+      if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(()=>btn.textContent=orig,2000); }
+    });
+  }
 }
+
+// Copia um link arbitrário (usado nos cards de afiliados)
+function qrCopiarLinkCustom(link) {
+  navigator.clipboard.writeText(link).then(()=>{
+    const btn = event?.target; const orig = btn?.textContent;
+    if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(()=>btn.textContent=orig,1800); }
+  });
+}
+
+// Mantido para compatibilidade com botões antigos
+function qrCopiarLink() { qrCopiarLinkAtual(); }
 
 function qrAbrirLink() {
-  window.open(`${location.origin}/assinar`, '_blank');
+  window.open(qrGetLink(), '_blank');
 }
 
 function qrDownload() {
   const img = document.getElementById('qr-preview-img');
+  const ref = qrGetRef();
   const a   = document.createElement('a');
   a.href     = img.src;
-  a.download = 'qr-assinar.png';
+  a.download = ref ? `qr-assinar-${ref}.png` : 'qr-assinar.png';
   a.target   = '_blank';
   a.click();
 }
 
 // Carrega config QR ao iniciar
 document.addEventListener('DOMContentLoaded', () => {
-  // O listener já existente também chama recCarregarStats, aqui só adicionamos o QR
   setTimeout(qrCarregarConfig, 500);
 });
 
