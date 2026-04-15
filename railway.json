@@ -2,8 +2,8 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "rebuildTimestamp": "20260415151405",
-    "forceBust": "fix-startsh-20260415151405"
+    "rebuildTimestamp": "20260415151904",
+    "forceBust": "fix-parceiros-sql-20260415151904"
   },
   "deploy": {
     "startCommand": "bash start.sh",
