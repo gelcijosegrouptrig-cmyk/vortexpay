@@ -1793,6 +1793,83 @@
         <!-- ═══ Comissões de Parceiros ═══ -->
         <div class="table-card" style="margin-bottom:16px">
 
+        <!-- ═══ QR CODE DE AUTOCADASTRO ═══ -->
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header">
+            <h3>📲 QR Code de Autocadastro</h3>
+            <button onclick="qrAtualizarPreview()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
+
+            <!-- Coluna esquerda: config do plano -->
+            <div style="padding:16px;border-right:1px solid var(--border)">
+              <div style="font-size:12px;font-weight:700;color:#ce93d8;margin-bottom:12px">⚙️ Configurar Plano</div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div>
+                  <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Título da página</div>
+                  <input id="qr-titulo" type="text" placeholder="Assine e pague todo mês via PIX" value="Assine e pague todo mês via PIX"
+                    style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Descrição</div>
+                  <input id="qr-desc" type="text" placeholder="Mensalidade — acesso completo"
+                    style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <div>
+                    <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Valor R$</div>
+                    <input id="qr-valor" type="number" placeholder="10.00" min="1" step="0.01" value="10"
+                      style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Dia padrão</div>
+                    <input id="qr-dia" type="number" placeholder="1" min="1" max="28" value="1"
+                      style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Benefícios (1 por linha)</div>
+                  <textarea id="qr-beneficios" rows="3" placeholder="🎯 Acesso VIP ao conteúdo&#10;💬 Suporte prioritário&#10;🎁 Bônus exclusivos"
+                    style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px;resize:vertical"></textarea>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Código parceiro (ref, opcional)</div>
+                  <input id="qr-ref" type="text" placeholder="codigo_parceiro"
+                    style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:4px">
+                  <button onclick="qrSalvarConfig()" class="action-btn" style="flex:1;background:#9c27b0;color:#fff;border-color:#9c27b0;padding:9px;font-size:12px">💾 Salvar config</button>
+                  <button onclick="qrCopiarLink()" class="action-btn" style="flex:1;padding:9px;font-size:12px">🔗 Copiar link</button>
+                </div>
+                <div id="qr-cfg-msg" style="font-size:11px;display:none"></div>
+              </div>
+            </div>
+
+            <!-- Coluna direita: QR Code preview -->
+            <div style="padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
+              <div style="font-size:12px;font-weight:700;color:#ce93d8;margin-bottom:2px">📲 QR para imprimir / compartilhar</div>
+              <!-- QR via API externa (não precisa lib Python) -->
+              <div style="background:#fff;padding:10px;border-radius:14px;border:3px solid #9c27b0">
+                <img id="qr-preview-img" src="" width="180" height="180" alt="QR Code" style="display:block;border-radius:6px"/>
+              </div>
+              <div style="font-size:11px;color:#666;text-align:center" id="qr-link-txt">—</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+                <button onclick="qrDownload()" class="action-btn" style="font-size:11px;padding:6px 12px">⬇️ Baixar QR</button>
+                <button onclick="qrAbrirLink()" class="action-btn" style="font-size:11px;padding:6px 12px;background:#009ee3;color:#fff;border-color:#009ee3">🌐 Abrir página</button>
+              </div>
+
+              <!-- Instruções -->
+              <div style="background:#0a0a1a;border:1px solid #9c27b020;border-radius:10px;padding:12px;font-size:11px;color:#666;line-height:1.7;width:100%;max-width:200px;text-align:left">
+                <div style="color:#ce93d8;font-weight:700;margin-bottom:4px">Como usar:</div>
+                1️⃣ Salve a config<br>
+                2️⃣ Imprima ou compartilhe o QR<br>
+                3️⃣ Cliente escaneia e assina<br>
+                4️⃣ Cobranças são automáticas ✅
+              </div>
+            </div>
+          </div>
+        </div><!-- /qr autocadastro -->
+
         <!-- ═══ ASSINATURAS RECORRENTES ═══ -->
         <div class="table-card" style="margin-bottom:16px">
           <div class="table-header">
@@ -4315,6 +4392,98 @@ async function recDispararJob() {
     recCarregarLista();
   } catch(e) { alert('Erro: '+e.message); }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// QR CODE DE AUTOCADASTRO — /assinar
+// ═══════════════════════════════════════════════════════════════════
+
+function qrGetLink() {
+  const ref   = (document.getElementById('qr-ref')?.value||'').trim();
+  const valor = (document.getElementById('qr-valor')?.value||'').trim();
+  let link = `${BASE}/assinar`;
+  const params = [];
+  if (ref)   params.push(`ref=${encodeURIComponent(ref)}`);
+  if (valor) params.push(`valor=${encodeURIComponent(valor)}`);
+  if (params.length) link += '?' + params.join('&');
+  return link;
+}
+
+function qrAtualizarPreview() {
+  const link = `${location.origin}/assinar`;
+  const ref  = (document.getElementById('qr-ref')?.value||'').trim();
+  const fullLink = link + (ref ? `?ref=${encodeURIComponent(ref)}` : '');
+  // Usa API pública de QR (sem dependência Python)
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&color=6a0080&bgcolor=ffffff&data=${encodeURIComponent(fullLink)}&qzone=2`;
+  document.getElementById('qr-preview-img').src = qrUrl;
+  document.getElementById('qr-link-txt').textContent = fullLink;
+}
+
+async function qrSalvarConfig() {
+  const titulo    = document.getElementById('qr-titulo').value.trim();
+  const desc      = document.getElementById('qr-desc').value.trim();
+  const valor     = parseFloat(document.getElementById('qr-valor').value||10);
+  const dia       = parseInt(document.getElementById('qr-dia').value||1);
+  const benes     = document.getElementById('qr-beneficios').value.trim();
+  const msg       = document.getElementById('qr-cfg-msg');
+
+  msg.style.display = 'block'; msg.style.color = '#aaa'; msg.textContent = 'Salvando...';
+  try {
+    const r = await fetch(`${BASE}/api/assinar/config`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-PaynexBet-Secret':SECRET()},
+      body: JSON.stringify({titulo, descricao:desc, valor, dia, beneficios:benes, ativo:true})
+    });
+    const d = await r.json();
+    if(d.success){
+      msg.style.color = '#00c853';
+      msg.textContent = '✅ Config salva!';
+      qrAtualizarPreview();
+    } else {
+      msg.style.color = '#f44336';
+      msg.textContent = '❌ ' + (d.error||'Erro');
+    }
+  } catch(e) {
+    msg.style.color = '#f44336'; msg.textContent = '❌ Erro: '+e.message;
+  }
+}
+
+async function qrCarregarConfig() {
+  try {
+    const r = await fetch(`${BASE}/api/assinar/config`);
+    const d = await r.json();
+    if(!d.success) return;
+    if(d.titulo)      document.getElementById('qr-titulo').value = d.titulo;
+    if(d.descricao)   document.getElementById('qr-desc').value   = d.descricao;
+    if(d.valor)       document.getElementById('qr-valor').value  = d.valor;
+    if(d.dia)         document.getElementById('qr-dia').value    = d.dia;
+    if(d.beneficios)  document.getElementById('qr-beneficios').value = d.beneficios;
+  } catch(e) {}
+  qrAtualizarPreview();
+}
+
+function qrCopiarLink() {
+  const link = `${location.origin}/assinar`;
+  navigator.clipboard.writeText(link).then(()=>alert('✅ Link copiado!\n'+link));
+}
+
+function qrAbrirLink() {
+  window.open(`${location.origin}/assinar`, '_blank');
+}
+
+function qrDownload() {
+  const img = document.getElementById('qr-preview-img');
+  const a   = document.createElement('a');
+  a.href     = img.src;
+  a.download = 'qr-assinar.png';
+  a.target   = '_blank';
+  a.click();
+}
+
+// Carrega config QR ao iniciar
+document.addEventListener('DOMContentLoaded', () => {
+  // O listener já existente também chama recCarregarStats, aqui só adicionamos o QR
+  setTimeout(qrCarregarConfig, 500);
+});
 
 // ═══════════════════════════════════════════════════════════════════
 // CONFIGURAÇÃO DA PÁGINA /bot e /pix — VALOR FIXO OU LIVRE

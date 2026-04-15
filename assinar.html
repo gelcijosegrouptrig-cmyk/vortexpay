@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<title>Assinar — Mensalidade Automática</title>
+<meta name="description" content="Cadastre-se e pague sua mensalidade via PIX. As próximas cobranças são automáticas.">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0a0f;
+  --card:#13131e;
+  --card2:#1c1c2e;
+  --border:#ffffff14;
+  --accent:#9c27b0;
+  --accent2:#6a0080;
+  --accentL:#ce93d8;
+  --blue:#009ee3;
+  --green:#00c853;
+  --green2:#00e676;
+  --gold:#FFD700;
+  --red:#f44336;
+  --text:#f0f0f0;
+  --text2:#aaa;
+  --text3:#555;
+}
+html,body{min-height:100vh;background:var(--bg)}
+body{
+  color:var(--text);
+  font-family:'Segoe UI',system-ui,sans-serif;
+  display:flex;flex-direction:column;align-items:center;
+  padding:0 0 60px;
+}
+
+/* ─── HERO ─── */
+.hero{
+  width:100%;
+  background:linear-gradient(160deg,#1a0028 0%,#0d001a 40%,#0a0a0f 100%);
+  padding:36px 20px 28px;
+  text-align:center;
+  border-bottom:1px solid #9c27b020;
+  position:relative;
+  overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 70% 60% at 50% 0%,#9c27b030,transparent);
+  pointer-events:none;
+}
+.hero-badge{
+  display:inline-block;
+  background:#9c27b025;border:1px solid #9c27b060;
+  color:var(--accentL);font-size:11px;font-weight:700;
+  padding:5px 14px;border-radius:20px;margin-bottom:14px;
+  letter-spacing:.5px;text-transform:uppercase;
+}
+.hero-title{font-size:26px;font-weight:900;line-height:1.2;margin-bottom:8px;color:#fff}
+.hero-title span{color:var(--accentL)}
+.hero-sub{font-size:14px;color:var(--text2);max-width:320px;margin:0 auto 20px;line-height:1.5}
+.hero-valor{
+  display:inline-flex;flex-direction:column;align-items:center;
+  background:#9c27b020;border:2px solid #9c27b050;border-radius:18px;
+  padding:14px 32px;margin-bottom:16px;
+}
+.hero-valor-label{font-size:11px;color:var(--accentL);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.hero-valor-num{font-size:42px;font-weight:900;color:#fff;line-height:1}
+.hero-valor-period{font-size:13px;color:var(--text2);margin-top:4px}
+
+/* ─── BENEFÍCIOS ─── */
+.beneficios-wrap{
+  width:100%;max-width:440px;
+  padding:18px 20px 0;
+}
+.beneficio-item{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:10px 0;border-bottom:1px solid var(--border);
+}
+.beneficio-item:last-child{border-bottom:none}
+.bene-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.bene-txt strong{display:block;font-size:14px;font-weight:700;color:#fff}
+.bene-txt span{font-size:12px;color:var(--text2)}
+
+/* ─── FORMULÁRIO ─── */
+.form-card{
+  width:100%;max-width:440px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:20px;
+  margin:20px 20px 0;
+  width:calc(100% - 40px);
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.6);
+}
+.form-header{
+  padding:20px 22px 16px;
+  background:linear-gradient(135deg,var(--card2),var(--card));
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+}
+.form-header-icon{font-size:28px}
+.form-header h2{font-size:17px;font-weight:800}
+.form-header p{font-size:12px;color:var(--text2);margin-top:2px}
+.form-body{padding:20px 22px}
+
+.field-group{margin-bottom:16px}
+.field-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.field-label span{color:var(--red);margin-left:2px}
+.field-input{
+  width:100%;padding:13px 14px;
+  background:#ffffff0d;border:1.5px solid var(--border);
+  border-radius:12px;color:#fff;font-size:15px;
+  outline:none;transition:.2s;
+}
+.field-input:focus{border-color:var(--accent);background:#9c27b010}
+.field-input::placeholder{color:var(--text3)}
+
+/* Seletor dia */
+.dia-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px}
+.dia-btn{
+  aspect-ratio:1;
+  display:flex;align-items:center;justify-content:center;
+  background:#ffffff08;border:1.5px solid var(--border);border-radius:8px;
+  font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;
+  transition:.15s;user-select:none;
+}
+.dia-btn:hover{background:#9c27b020;border-color:#9c27b060;color:#fff}
+.dia-btn.sel{background:var(--accent);border-color:var(--accent);color:#fff;transform:scale(1.05)}
+.dia-hint{font-size:11px;color:var(--text3);margin-top:6px}
+
+/* Resumo do plano */
+.resumo-box{
+  background:#9c27b015;border:1.5px solid #9c27b040;border-radius:14px;
+  padding:14px;margin-bottom:18px;
+}
+.resumo-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px}
+.resumo-row:not(:last-child){border-bottom:1px solid #9c27b020}
+.resumo-key{color:var(--text2)}
+.resumo-val{font-weight:800;color:#fff}
+.resumo-val.accent{color:var(--accentL)}
+
+/* Botão principal */
+.btn-assinar{
+  width:100%;padding:18px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;border-radius:14px;color:#fff;
+  font-size:17px;font-weight:900;cursor:pointer;
+  transition:.2s;letter-spacing:.3px;
+  box-shadow:0 4px 24px #9c27b050;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.btn-assinar:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 32px #9c27b070}
+.btn-assinar:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn-assinar .btn-sub{font-size:11px;opacity:.8;font-weight:400;margin-top:2px}
+
+/* Loading step */
+.step-loading{display:none;text-align:center;padding:40px 22px}
+.spinner{width:50px;height:50px;border:4px solid #9c27b030;border-top:4px solid var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 18px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.step-loading p{font-size:14px;color:var(--text2)}
+
+/* Step PIX */
+.step-pix{display:none;padding:0}
+.pix-header{background:linear-gradient(135deg,#9c27b022,#9c27b008);padding:18px 22px;border-bottom:1px solid var(--border)}
+.pix-header h3{font-size:16px;font-weight:800;color:var(--accentL)}
+.pix-header p{font-size:12px;color:var(--text2);margin-top:3px}
+.pix-body{padding:22px}
+.qr-wrap{text-align:center;margin-bottom:18px}
+.qr-img{width:210px;height:210px;border-radius:14px;border:3px solid var(--accent);background:#fff;padding:6px}
+.qr-placeholder{width:210px;height:210px;margin:0 auto;border-radius:14px;border:2px dashed var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text3);font-size:13px}
+.valor-destaque{text-align:center;font-size:28px;font-weight:900;color:var(--accentL);margin-bottom:16px}
+
+.pix-code-box{background:#ffffff08;border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:14px}
+.pix-code-label{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:6px;letter-spacing:.5px}
+.pix-code-txt{font-size:10px;color:var(--text2);word-break:break-all;line-height:1.5;max-height:60px;overflow:hidden;font-family:monospace}
+
+.btn-copiar{width:100%;padding:14px;background:var(--green);border:none;border-radius:12px;color:#000;font-size:15px;font-weight:800;cursor:pointer;transition:.2s;margin-bottom:12px}
+.btn-copiar:hover{background:var(--green2)}
+.btn-copiar.copied{background:#ccc;color:#333}
+
+.timer-box{text-align:center;margin-top:14px}
+.timer-label{font-size:11px;color:var(--text3);margin-bottom:5px}
+.timer-bar-wrap{background:#ffffff10;border-radius:6px;height:6px;overflow:hidden;margin-bottom:6px}
+.timer-bar{height:100%;background:var(--accent);border-radius:6px;transition:width .5s linear}
+.timer-txt{font-size:22px;font-weight:900;font-variant-numeric:tabular-nums;color:#fff}
+.polling-txt{font-size:11px;color:var(--text3);margin-top:6px;animation:pulsar 1.5s ease-in-out infinite}
+@keyframes pulsar{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Step sucesso */
+.step-ok{display:none;padding:36px 22px;text-align:center}
+.ok-icon{font-size:72px;margin-bottom:14px;animation:bounce .6s ease}
+@keyframes bounce{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+.step-ok h3{font-size:24px;font-weight:900;color:var(--green);margin-bottom:8px}
+.step-ok p{font-size:14px;color:var(--text2);line-height:1.6}
+.ok-card{background:#9c27b015;border:1px solid #9c27b040;border-radius:14px;padding:16px;margin-top:18px;text-align:left}
+.ok-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #9c27b020}
+.ok-row:last-child{border-bottom:none}
+.ok-key{color:var(--text2)}
+.ok-val{font-weight:800;color:#fff}
+.ok-sub{margin-top:14px;font-size:12px;color:var(--text3);background:#0a0a1a;border-radius:10px;padding:12px;line-height:1.6}
+
+/* Step erro */
+.step-erro{display:none;padding:32px 22px;text-align:center}
+.erro-icon{font-size:52px;margin-bottom:12px}
+.step-erro h3{font-size:18px;font-weight:800;color:var(--red);margin-bottom:6px}
+.step-erro p{font-size:13px;color:var(--text2)}
+.btn-retry{margin-top:16px;padding:12px 28px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-weight:800;font-size:14px;cursor:pointer}
+
+/* Rodapé */
+.footer{font-size:11px;color:var(--text3);text-align:center;margin-top:24px;padding:0 20px;line-height:1.6}
+.footer a{color:var(--blue);text-decoration:none}
+.secure-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px;flex-wrap:wrap}
+.secure-badge{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);background:#ffffff08;padding:5px 10px;border-radius:20px}
+</style>
+</head>
+<body>
+
+<!-- ─── HERO ─── -->
+<div class="hero">
+  <div class="hero-badge">🔄 Assinatura Mensal</div>
+  <h1 class="hero-title" id="hero-titulo">Assine e pague <span>todo mês via PIX</span></h1>
+  <p class="hero-sub" id="hero-sub">Cadastre-se uma vez. As cobranças são automáticas!</p>
+  <div class="hero-valor">
+    <div class="hero-valor-label">Valor da mensalidade</div>
+    <div class="hero-valor-num" id="hero-valor">R$ 10,00</div>
+    <div class="hero-valor-period">por mês · PIX automático</div>
+  </div>
+</div>
+
+<!-- ─── BENEFÍCIOS ─── -->
+<div class="beneficios-wrap" id="beneficios-wrap" style="display:none">
+  <div id="beneficios-lista"></div>
+</div>
+
+<!-- ─── CARD PRINCIPAL ─── -->
+<div class="form-card" id="card-main">
+
+  <!-- STEP 1 — Formulário -->
+  <div id="step-form">
+    <div class="form-header">
+      <div class="form-header-icon">📋</div>
+      <div>
+        <h2>Seus dados</h2>
+        <p>Preencha uma única vez — renovações são automáticas</p>
+      </div>
+    </div>
+    <div class="form-body">
+
+      <div class="field-group">
+        <div class="field-label">Seu nome completo <span>*</span></div>
+        <input class="field-input" id="f-nome" type="text" placeholder="Ex: João da Silva" maxlength="80" autocomplete="name"/>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">WhatsApp (opcional)</div>
+        <input class="field-input" id="f-tel" type="tel" placeholder="(11) 99999-9999" maxlength="20" autocomplete="tel"/>
+      </div>
+
+      <div class="field-group" id="dia-group">
+        <div class="field-label">Dia de preferência para pagar</div>
+        <div class="dia-grid" id="dia-grid"></div>
+        <div class="dia-hint" id="dia-hint">Próx. cobrança em <strong id="prox-data">—</strong></div>
+      </div>
+
+      <!-- Resumo -->
+      <div class="resumo-box">
+        <div class="resumo-row">
+          <span class="resumo-key">Plano</span>
+          <span class="resumo-val accent" id="resumo-plano">Mensalidade</span>
+        </div>
+        <div class="resumo-row">
+          <span class="resumo-key">Valor</span>
+          <span class="resumo-val" id="resumo-valor">R$ 10,00</span>
+        </div>
+        <div class="resumo-row">
+          <span class="resumo-key">Frequência</span>
+          <span class="resumo-val">Mensal (todo dia <span id="resumo-dia">1</span>)</span>
+        </div>
+        <div class="resumo-row">
+          <span class="resumo-key">Forma de pagamento</span>
+          <span class="resumo-val">PIX 🔄</span>
+        </div>
+      </div>
+
+      <button class="btn-assinar" id="btn-assinar" onclick="confirmarAssinatura()">
+        <div>
+          <div>🔄 Assinar e pagar agora</div>
+          <div class="btn-sub">1º pagamento hoje · próximos automáticos</div>
+        </div>
+      </button>
+
+      <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text3)">
+        Ao assinar você concorda com as cobranças mensais automáticas via PIX
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 — Gerando -->
+  <div class="step-loading" id="step-loading">
+    <div class="spinner"></div>
+    <p>Cadastrando e gerando seu<br>QR Code PIX...</p>
+  </div>
+
+  <!-- STEP 3 — PIX gerado (1ª mensalidade) -->
+  <div class="step-pix" id="step-pix">
+    <div class="pix-header">
+      <h3>✅ Assinatura criada! Pague agora</h3>
+      <p>Escaneie ou copie o código para ativar sua assinatura</p>
+    </div>
+    <div class="pix-body">
+      <div class="valor-destaque" id="pix-valor-txt">R$ —</div>
+      <div class="qr-wrap">
+        <img id="qr-img" src="" alt="QR Code PIX" class="qr-img" style="display:none"/>
+        <div class="qr-placeholder" id="qr-placeholder">
+          <span style="font-size:40px">📲</span>
+          <span>QR Code PIX</span>
+        </div>
+      </div>
+      <div class="pix-code-box">
+        <div class="pix-code-label">Código PIX — Copia e Cola</div>
+        <div class="pix-code-txt" id="pix-code-txt">—</div>
+      </div>
+      <button class="btn-copiar" id="btn-copiar" onclick="copiarPix()">📋 Copiar código PIX</button>
+
+      <div class="timer-box">
+        <div class="timer-label">Aguardando confirmação do pagamento</div>
+        <div class="timer-bar-wrap">
+          <div class="timer-bar" id="timer-bar" style="width:100%"></div>
+        </div>
+        <div class="timer-txt" id="timer-txt">30:00</div>
+        <div class="polling-txt" id="polling-txt">🔍 Verificando pagamento automaticamente...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4 — Pagamento confirmado! -->
+  <div class="step-ok" id="step-ok">
+    <div class="ok-icon">🎉</div>
+    <h3>Assinatura ativada!</h3>
+    <p>Seu pagamento foi confirmado.<br>As próximas mensalidades são automáticas!</p>
+    <div class="ok-card" id="ok-card"></div>
+    <div class="ok-sub">
+      🔄 <strong>Como funciona agora:</strong><br>
+      Todo mês, no dia escolhido, um novo QR PIX é gerado automaticamente.
+      Você só precisa pagar — sem precisar se cadastrar novamente!
+    </div>
+  </div>
+
+  <!-- STEP 5 — Erro -->
+  <div class="step-erro" id="step-erro">
+    <div class="erro-icon">⚠️</div>
+    <h3>Algo deu errado</h3>
+    <p id="erro-msg">Tente novamente em instantes.</p>
+    <button class="btn-retry" onclick="voltarForm()">Tentar novamente</button>
+  </div>
+
+</div><!-- /form-card -->
+
+<div class="footer">
+  <div class="secure-row">
+    <div class="secure-badge">🔒 Pagamento seguro</div>
+    <div class="secure-badge">✅ Mercado Pago</div>
+    <div class="secure-badge">🔄 Renovação automática</div>
+  </div>
+  <div style="margin-top:10px">Powered by <a href="https://www.mercadopago.com.br" target="_blank">Mercado Pago</a></div>
+</div>
+
+<script>
+const BASE = '';
+let cfg      = {};
+let diaSel   = 1;
+let payId    = '';
+let recId    = null;
+let pollingT = null;
+let timerT   = null;
+
+// ── Inicialização ─────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  // Params da URL
+  const p   = new URLSearchParams(location.search);
+  window._ref   = p.get('ref')   || '';
+  window._valor = parseFloat(p.get('valor') || 0);
+
+  // Carrega config do plano
+  try {
+    const r = await fetch(`${BASE}/api/assinar/config`);
+    cfg     = await r.json();
+  } catch(e) { cfg = {titulo:'Assine agora',valor:10,dia:1,descricao:'Mensalidade',ativo:true}; }
+
+  if (!cfg.ativo) {
+    showErro('Assinaturas temporariamente indisponíveis. Tente mais tarde.');
+    return;
+  }
+
+  // Valor override via URL
+  if (window._valor > 0) cfg.valor = window._valor;
+
+  // Atualiza UI
+  document.getElementById('hero-titulo').innerHTML =
+    (cfg.titulo || 'Assine e pague todo mês via PIX').replace(/(via PIX|automática)/g, '<span>$1</span>');
+  document.getElementById('hero-sub').textContent  = cfg.descricao || '';
+  const vFmt = 'R$ ' + parseFloat(cfg.valor).toFixed(2).replace('.',',');
+  document.getElementById('hero-valor').textContent  = vFmt;
+  document.getElementById('resumo-valor').textContent = vFmt;
+  document.getElementById('resumo-plano').textContent = cfg.descricao || 'Mensalidade';
+  document.getElementById('pix-valor-txt').textContent = vFmt;
+
+  // Benefícios
+  if (cfg.beneficios) {
+    const benes = cfg.beneficios.split('\n').filter(b => b.trim());
+    if (benes.length) {
+      const wrap = document.getElementById('beneficios-wrap');
+      const lista = document.getElementById('beneficios-lista');
+      wrap.style.display = 'block';
+      lista.innerHTML = benes.map(b => {
+        const [icon, ...rest] = b.trim().split(' ');
+        return `<div class="beneficio-item">
+          <div class="bene-icon">${icon}</div>
+          <div class="bene-txt"><strong>${rest.join(' ')}</strong></div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Dia padrão
+  diaSel = parseInt(cfg.dia) || 1;
+  buildDiaGrid();
+  atualizarProxData();
+});
+
+// ── Grid de dias ───────────────────────────────────────────────
+function buildDiaGrid() {
+  const grid = document.getElementById('dia-grid');
+  grid.innerHTML = '';
+  for (let d = 1; d <= 28; d++) {
+    const btn = document.createElement('button');
+    btn.className = 'dia-btn' + (d === diaSel ? ' sel' : '');
+    btn.textContent = d;
+    btn.onclick = () => selecionarDia(d);
+    grid.appendChild(btn);
+  }
+}
+
+function selecionarDia(d) {
+  diaSel = d;
+  document.querySelectorAll('.dia-btn').forEach((b, i) => {
+    b.classList.toggle('sel', i + 1 === d);
+  });
+  document.getElementById('resumo-dia').textContent = d;
+  atualizarProxData();
+}
+
+function atualizarProxData() {
+  const hoje = new Date();
+  let ano = hoje.getFullYear(), mes = hoje.getMonth();
+  let prox = new Date(ano, mes, diaSel);
+  if (prox <= hoje) {
+    mes++;
+    if (mes > 11) { mes = 0; ano++; }
+    prox = new Date(ano, mes, diaSel);
+  }
+  document.getElementById('prox-data').textContent =
+    prox.toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
+}
+
+// ── Confirmar assinatura ────────────────────────────────────────
+async function confirmarAssinatura() {
+  const nome = document.getElementById('f-nome').value.trim();
+  const tel  = document.getElementById('f-tel').value.trim();
+  if (!nome) {
+    document.getElementById('f-nome').focus();
+    document.getElementById('f-nome').style.borderColor = '#f44336';
+    setTimeout(() => document.getElementById('f-nome').style.borderColor = '', 1500);
+    return;
+  }
+
+  showStep('loading');
+  document.getElementById('btn-assinar').disabled = true;
+
+  try {
+    const body = {
+      nome,
+      telefone: tel,
+      dia:      diaSel,
+      ref:      window._ref || '',
+    };
+
+    const r = await fetch(`${BASE}/api/recorrente/autocadastro`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+
+    if (!d.success) { showErro(d.error || 'Erro ao cadastrar'); return; }
+
+    recId  = d.recorrente_id;
+    payId  = d.payment_id;
+
+    const vFmt = 'R$ ' + parseFloat(d.valor || cfg.valor).toFixed(2).replace('.',',');
+    document.getElementById('pix-valor-txt').textContent = vFmt;
+
+    // QR Code
+    if (d.qr_base64) {
+      const img = document.getElementById('qr-img');
+      img.src = 'data:image/png;base64,' + d.qr_base64;
+      img.style.display = 'block';
+      document.getElementById('qr-placeholder').style.display = 'none';
+    }
+    document.getElementById('pix-code-txt').textContent = d.pix_copia_cola || '—';
+
+    showStep('pix');
+    iniciarPolling();
+    iniciarTimer(30 * 60);
+
+    // Preenche card de sucesso (para quando confirmar)
+    const prox = d.proximo_vencimento || '—';
+    document.getElementById('ok-card').innerHTML = `
+      <div class="ok-row"><span class="ok-key">Assinante</span><span class="ok-val">${nome}</span></div>
+      <div class="ok-row"><span class="ok-key">Valor</span><span class="ok-val">${vFmt}/mês</span></div>
+      <div class="ok-row"><span class="ok-key">Dia de pagamento</span><span class="ok-val">Todo dia ${diaSel}</span></div>
+      <div class="ok-row"><span class="ok-key">Próxima cobrança</span><span class="ok-val">${prox}</span></div>
+      ${tel ? `<div class="ok-row"><span class="ok-key">WhatsApp</span><span class="ok-val">${tel}</span></div>` : ''}
+    `;
+
+  } catch(e) {
+    showErro('Erro de rede: ' + e.message);
+  }
+}
+
+// ── Polling ────────────────────────────────────────────────────
+function iniciarPolling() {
+  if (pollingT) clearInterval(pollingT);
+  pollingT = setInterval(verificarPagamento, 3000);
+}
+
+async function verificarPagamento() {
+  if (!payId) return;
+  try {
+    const r = await fetch(`${BASE}/api/bot/status/${payId}`);
+    const d = await r.json();
+    if (d.confirmado || d.approved || d.status === 'approved') {
+      pararPolling(); pararTimer();
+      showStep('ok');
+    }
+  } catch(e) {}
+}
+
+function pararPolling() { if(pollingT){clearInterval(pollingT);pollingT=null;} }
+
+// ── Timer ──────────────────────────────────────────────────────
+function iniciarTimer(seg) {
+  const total = seg;
+  let rest = seg;
+  pararTimer();
+  timerT = setInterval(() => {
+    rest--;
+    const m = Math.floor(rest/60).toString().padStart(2,'0');
+    const s = (rest%60).toString().padStart(2,'0');
+    document.getElementById('timer-txt').textContent = `${m}:${s}`;
+    const pct = rest / total * 100;
+    const bar = document.getElementById('timer-bar');
+    bar.style.width = pct + '%';
+    bar.style.background = pct < 20 ? '#f44336' : pct < 50 ? '#FFD700' : '#9c27b0';
+    if (rest <= 0) {
+      pararTimer(); pararPolling();
+      document.getElementById('polling-txt').textContent = '⏰ QR Code expirado. Volte e gere um novo.';
+    }
+  }, 1000);
+}
+function pararTimer() { if(timerT){clearInterval(timerT);timerT=null;} }
+
+// ── Copiar PIX ─────────────────────────────────────────────────
+async function copiarPix() {
+  const txt = document.getElementById('pix-code-txt').textContent;
+  try {
+    await navigator.clipboard.writeText(txt);
+    const btn = document.getElementById('btn-copiar');
+    btn.textContent = '✅ Copiado!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 Copiar código PIX'; btn.classList.remove('copied'); }, 2500);
+  } catch(e) { prompt('Copie o código PIX:', txt); }
+}
+
+// ── Utils ──────────────────────────────────────────────────────
+function showStep(step) {
+  ['form','loading','pix','ok','erro'].forEach(s => {
+    document.getElementById('step-' + s).style.display = s === step ? 'block' : 'none';
+  });
+  if (step !== 'loading') document.getElementById('btn-assinar').disabled = false;
+}
+
+function showErro(msg) {
+  document.getElementById('erro-msg').textContent = msg;
+  showStep('erro');
+}
+
+function voltarForm() {
+  pararPolling(); pararTimer(); payId = '';
+  showStep('form');
+}
+</script>
+</body>
+</html>

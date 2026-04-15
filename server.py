@@ -6516,6 +6516,211 @@ async def route_recorrente_job_manual(request):
     return web.json_response({'success': True, 'pix_gerados': total})
 
 
+async def route_assinar_page(request):
+    """GET /assinar — Página pública de autocadastro via QR Code."""
+    try:
+        import psycopg2 as _pg
+        conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("SELECT valor FROM mp2_config WHERE chave='assinar_html_patch'")
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if row and row[0]:
+            return web.Response(text=row[0], content_type='text/html',
+                                headers={'Cache-Control': 'no-store'})
+    except Exception: pass
+    if os.path.exists('assinar.html'):
+        return web.Response(text=open('assinar.html', encoding='utf-8').read(),
+                            content_type='text/html',
+                            headers={'Cache-Control': 'no-store'})
+    return web.Response(text='<h1>Página de assinatura não configurada</h1>',
+                        content_type='text/html')
+
+
+async def route_assinar_config_get(request):
+    """GET /api/assinar/config — config pública do plano de assinatura."""
+    try:
+        import psycopg2 as _pg
+        conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        campos = ['assinar_titulo', 'assinar_descricao', 'assinar_valor',
+                  'assinar_dia', 'assinar_ativo', 'assinar_cor', 'assinar_beneficios']
+        cur.execute("SELECT chave, valor FROM mp2_config WHERE chave = ANY(%s)", (campos,))
+        cfg = dict(cur.fetchall())
+        cur.close(); conn.close()
+        return web.json_response({
+            'success':     True,
+            'titulo':      cfg.get('assinar_titulo')      or 'Assine e pague todo mês via PIX',
+            'descricao':   cfg.get('assinar_descricao')   or 'Assinatura mensal automática',
+            'valor':       float(cfg.get('assinar_valor') or 10),
+            'dia':         int(cfg.get('assinar_dia')     or 1),
+            'ativo':       (cfg.get('assinar_ativo') or 'true').lower() == 'true',
+            'cor':         cfg.get('assinar_cor')         or '#9c27b0',
+            'beneficios':  cfg.get('assinar_beneficios')  or '',
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_assinar_config_save(request):
+    """POST /api/assinar/config — salva config do plano."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        body = await request.json()
+        import psycopg2 as _pg
+        conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        pares = [
+            ('assinar_titulo',      str(body.get('titulo', 'Assine agora'))),
+            ('assinar_descricao',   str(body.get('descricao', 'Assinatura mensal'))),
+            ('assinar_valor',       str(float(body.get('valor', 10)))),
+            ('assinar_dia',         str(int(body.get('dia', 1)))),
+            ('assinar_ativo',       'true' if body.get('ativo', True) else 'false'),
+            ('assinar_cor',         str(body.get('cor', '#9c27b0'))),
+            ('assinar_beneficios',  str(body.get('beneficios', ''))),
+        ]
+        for chave, valor in pares:
+            cur.execute("""
+                INSERT INTO mp2_config (chave, valor) VALUES (%s, %s)
+                ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor
+            """, (chave, valor))
+        conn.commit()
+        cur.close(); conn.close()
+        return web.json_response({'success': True, 'mensagem': 'Configurações salvas!'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_autocadastro(request):
+    """
+    POST /api/recorrente/autocadastro
+    Cliente preenche nome + dia → sistema cadastra + gera 1º PIX.
+    Retorna: { success, recorrente_id, pix_copia_cola, qr_base64, payment_id, proximo_vencimento }
+    """
+    try:
+        data  = await request.json()
+        nome  = str(data.get('nome', '')).strip()
+        tel   = str(data.get('telefone', '')).strip()
+        email = str(data.get('email', '')).strip()
+        dia   = int(data.get('dia', 1))
+        ref   = str(data.get('ref', '')).strip()
+
+        if not nome:
+            return web.json_response({'success': False, 'error': 'Informe seu nome'})
+
+        # Busca config do plano
+        import psycopg2 as _pg
+        conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("SELECT chave, valor FROM mp2_config WHERE chave IN "
+                    "('assinar_valor','assinar_dia','assinar_descricao','assinar_ativo')")
+        cfg = dict(cur.fetchall())
+        cur.close(); conn.close()
+
+        if (cfg.get('assinar_ativo') or 'true').lower() != 'true':
+            return web.json_response({'success': False, 'error': 'Assinaturas temporariamente desativadas'})
+
+        valor = float(cfg.get('assinar_valor') or 10)
+        desc  = cfg.get('assinar_descricao') or 'Mensalidade'
+        # dia do plano prevalece se não veio no body
+        if dia <= 0:
+            dia = int(cfg.get('assinar_dia') or 1)
+        dia = max(1, min(28, dia))
+
+        # Garante token MP
+        import mp2_api
+        if not mp2_api.MP2_ACCESS_TOKEN:
+            try:
+                conn2 = _pg.connect(DATABASE_URL, connect_timeout=8)
+                cur2  = conn2.cursor()
+                cur2.execute("SELECT valor FROM mp2_config WHERE chave='mp2_access_token'")
+                row = cur2.fetchone()
+                cur2.close(); conn2.close()
+                if row and row[0]:
+                    mp2_api.MP2_ACCESS_TOKEN = row[0]
+            except Exception: pass
+
+        if not mp2_api.MP2_ACCESS_TOKEN:
+            return web.json_response({'success': False,
+                                      'error': 'Pagamentos não configurados. Contate o suporte.'})
+
+        # 1) Cadastra assinante
+        rec_result = mp2_api.mp2_criar_recorrente(
+            nome=nome, valor=valor, dia_vencimento=dia,
+            descricao=desc, email=email, telefone=tel, parceiro_ref=ref
+        )
+        if not rec_result.get('success'):
+            return web.json_response({'success': False,
+                                      'error': rec_result.get('error', 'Erro ao cadastrar')})
+
+        rec_id = rec_result['recorrente']['id']
+
+        # 2) Gera primeiro PIX
+        pix_result = mp2_api.mp2_cobrar_recorrente(rec_id)
+        if not pix_result.get('success'):
+            return web.json_response({'success': False,
+                                      'error': pix_result.get('error', 'Erro ao gerar PIX'),
+                                      'recorrente_id': rec_id})
+
+        print(f'✅ [autocadastro] {nome} | R${valor:.2f}/mês dia {dia} | PIX {pix_result.get("payment_id","")}', flush=True)
+
+        return web.json_response({
+            'success':            True,
+            'recorrente_id':      rec_id,
+            'nome':               nome,
+            'valor':              valor,
+            'dia':                dia,
+            'proximo_vencimento': pix_result.get('proximo_vencimento', ''),
+            'payment_id':         pix_result.get('payment_id', ''),
+            'external_ref':       pix_result.get('external_ref', ''),
+            'pix_copia_cola':     pix_result.get('pix_copia_cola', ''),
+            'qr_base64':          pix_result.get('qr_base64', ''),
+        })
+
+    except Exception as e:
+        print(f'[autocadastro] Erro: {e}', flush=True)
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_assinar_qr_gerado(request):
+    """GET /api/assinar/qr — gera QR Code PNG do link /assinar para o admin imprimir."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import qrcode, io
+        ref   = request.rel_url.query.get('ref', '')
+        valor = request.rel_url.query.get('valor', '')
+        base  = str(request.url.origin())
+        link  = f'{base}/assinar'
+        if ref:   link += f'?ref={ref}'
+        if valor: link += ('&' if ref else '?') + f'valor={valor}'
+        qr  = qrcode.QRCode(box_size=10, border=4)
+        qr.add_data(link)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color='#9c27b0', back_color='white')
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        buf.seek(0)
+        return web.Response(body=buf.read(), content_type='image/png',
+                            headers={'Content-Disposition': 'inline; filename="qr-assinar.png"'})
+    except ImportError:
+        # fallback: retorna URL para QR externo
+        ref   = request.rel_url.query.get('ref', '')
+        base  = str(request.url.origin())
+        link  = f'{base}/assinar' + (f'?ref={ref}' if ref else '')
+        import urllib.parse
+        qr_url = f'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={urllib.parse.quote(link)}'
+        return web.Response(body=b'', status=302,
+                            headers={'Location': qr_url})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
 async def _criar_canal_telegram(titulo: str, descricao: str) -> dict:
     """
     Cria um canal Telegram usando o client (userbot) já conectado.
@@ -6906,6 +7111,12 @@ async def main():
     app.router.add_get('/api/recorrente/stats',             route_recorrente_stats)
     app.router.add_post('/api/recorrente/job',              route_recorrente_job_manual)
     app.router.add_get('/pagar/{id}',                       route_recorrente_pagar_link)
+    # ── Autocadastro via QR Code ──────────────────────────────────
+    app.router.add_get('/assinar',                          route_assinar_page)
+    app.router.add_post('/api/recorrente/autocadastro',     route_autocadastro)
+    app.router.add_get('/api/assinar/config',               route_assinar_config_get)
+    app.router.add_post('/api/assinar/config',              route_assinar_config_save)
+    app.router.add_get('/api/assinar/qr',                   route_assinar_qr_gerado)
     # ── Canais Telegram ──────────────────────────────────────────────
     app.router.add_post('/api/admin/criar-canais',          route_admin_criar_canais)
     app.router.add_get('/api/admin/canais',                 route_admin_status_canais)
