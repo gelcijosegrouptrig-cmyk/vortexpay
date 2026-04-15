@@ -5746,47 +5746,119 @@ async def route_mp2_testar(request):
 # ══════════════════════════════════════════════════════════════════
 
 async def route_mp2_parceiros_listar(request):
-    """GET /api/mp2/parceiros — Lista todos os parceiros."""
+    """GET /api/mp2/parceiros — Lista todos os parceiros (SQL direto)."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.Response(text='Não autorizado', status=401)
     try:
-        from mp2_api import mp2_listar_parceiros
-        parceiros = mp2_listar_parceiros()
+        import psycopg2, psycopg2.extras
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor(psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT p.id, p.codigo, p.nome, p.chave_pix, p.tipo_chave,
+                   p.comissao_pct, p.ativo, p.link,
+                   COALESCE(p.total_gerado,0) AS total_gerado,
+                   COALESCE(p.total_comissao,0) AS total_comissao,
+                   COALESCE(p.total_pago,0) AS total_pago,
+                   TO_CHAR(p.criado_em, 'DD/MM/YYYY HH24:MI') AS criado_em,
+                   COUNT(t.id) FILTER (WHERE t.status = 'confirmado') AS qtd_pagamentos
+            FROM mp2_parceiros p
+            LEFT JOIN mp2_transacoes t ON t.parceiro_codigo = p.codigo
+            GROUP BY p.id
+            ORDER BY p.criado_em DESC
+        """)
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        parceiros = []
+        for r in rows:
+            d = dict(r)
+            d['comissao_pct']   = float(d['comissao_pct'] or 0)
+            d['total_gerado']   = float(d['total_gerado'] or 0)
+            d['total_comissao'] = float(d['total_comissao'] or 0)
+            d['total_pago']     = float(d['total_pago'] or 0)
+            d['qtd_pagamentos'] = int(d['qtd_pagamentos'] or 0)
+            parceiros.append(d)
         return web.json_response({'success': True, 'parceiros': parceiros, 'total': len(parceiros)})
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
 
 async def route_mp2_parceiros_criar(request):
-    """POST /api/mp2/parceiros — Cria novo parceiro."""
+    """POST /api/mp2/parceiros — Cria novo parceiro (SQL direto)."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.Response(text='Não autorizado', status=401)
     try:
-        body = await request.json()
-        nome        = str(body.get('nome', '')).strip()
-        chave_pix   = str(body.get('chave_pix', '')).strip()
-        tipo_chave  = str(body.get('tipo_chave', 'email')).strip()
+        body         = await request.json()
+        nome         = str(body.get('nome', '')).strip()
+        chave_pix    = str(body.get('chave_pix', '')).strip()
+        tipo_chave   = str(body.get('tipo_chave', 'email')).strip()
         comissao_pct = float(body.get('comissao_pct', 10))
-        codigo      = str(body.get('codigo', '')).strip() or None
+        codigo_req   = str(body.get('codigo', '')).strip()
 
         if not nome:
             return web.json_response({'success': False, 'error': 'Nome obrigatório'})
         if not chave_pix:
             return web.json_response({'success': False, 'error': 'Chave PIX obrigatória'})
 
-        from mp2_api import mp2_criar_parceiro
-        resultado = mp2_criar_parceiro(nome, chave_pix, tipo_chave, comissao_pct, codigo)
-        return web.json_response(resultado)
+        import uuid, re, psycopg2
+        if not codigo_req:
+            base   = re.sub(r'[^a-z0-9]', '', nome.lower())[:12]
+            codigo = f"{base}-{str(uuid.uuid4())[:6]}"
+        else:
+            codigo = codigo_req
+
+        host = request.headers.get('X-Forwarded-Host') or request.host or 'web-production-9f54e.up.railway.app'
+        base_url = f"https://{host}"
+        link = f"{base_url}/bot?ref={codigo}"
+
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mp2_parceiros (
+                id SERIAL PRIMARY KEY,
+                codigo VARCHAR(50) UNIQUE NOT NULL,
+                nome VARCHAR(200) NOT NULL,
+                chave_pix VARCHAR(200) NOT NULL,
+                tipo_chave VARCHAR(20) DEFAULT 'email',
+                comissao_pct NUMERIC(5,2) DEFAULT 10.0,
+                ativo BOOLEAN DEFAULT TRUE,
+                total_gerado NUMERIC(12,2) DEFAULT 0,
+                total_comissao NUMERIC(12,2) DEFAULT 0,
+                total_pago NUMERIC(12,2) DEFAULT 0,
+                criado_em TIMESTAMP DEFAULT NOW(),
+                link TEXT
+            )
+        """)
+        cur.execute("""
+            INSERT INTO mp2_parceiros
+                (codigo, nome, chave_pix, tipo_chave, comissao_pct, ativo, link, criado_em)
+            VALUES (%s, %s, %s, %s, %s, TRUE, %s, NOW())
+            ON CONFLICT (codigo) DO UPDATE
+              SET nome=EXCLUDED.nome, chave_pix=EXCLUDED.chave_pix,
+                  tipo_chave=EXCLUDED.tipo_chave, comissao_pct=EXCLUDED.comissao_pct,
+                  link=EXCLUDED.link
+            RETURNING id, codigo, nome, chave_pix, tipo_chave, comissao_pct, link
+        """, (codigo, nome, chave_pix, tipo_chave, comissao_pct, link))
+        row = cur.fetchone()
+        conn.commit(); cur.close(); conn.close()
+
+        parceiro = {
+            'id': row[0], 'codigo': row[1], 'nome': row[2],
+            'chave_pix': row[3], 'tipo_chave': row[4],
+            'comissao_pct': float(row[5]), 'link': row[6], 'ativo': True
+        }
+        print(f'✅ [parceiro] Criado: {codigo} → {nome} ({comissao_pct}%)', flush=True)
+        return web.json_response({'success': True, 'parceiro': parceiro, 'link': link})
     except Exception as e:
+        print(f'[parceiro_criar] Erro: {e}', flush=True)
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
 
 async def route_mp2_parceiros_deletar(request):
-    """DELETE /api/mp2/parceiros/{codigo} — Desativa parceiro."""
+    """DELETE /api/mp2/parceiros/{codigo} — Desativa parceiro (SQL direto)."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
@@ -5795,9 +5867,12 @@ async def route_mp2_parceiros_deletar(request):
         codigo = request.match_info.get('codigo', '')
         if not codigo:
             return web.json_response({'success': False, 'error': 'Código obrigatório'})
-        from mp2_api import mp2_deletar_parceiro
-        ok = mp2_deletar_parceiro(codigo)
-        return web.json_response({'success': ok})
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("UPDATE mp2_parceiros SET ativo = FALSE WHERE codigo = %s", (codigo,))
+        conn.commit(); cur.close(); conn.close()
+        return web.json_response({'success': True})
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
