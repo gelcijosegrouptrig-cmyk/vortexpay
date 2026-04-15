@@ -821,6 +821,24 @@ def load_paypix_html():
         return open('paypix.html', encoding='utf-8').read()
     return '<h1>PayPix</h1>'
 
+def load_bot_pix_html():
+    """Carrega a página pública /bot — gerar PIX via @paypix_nexbot (Mercado Pago)."""
+    try:
+        if DATABASE_URL:
+            import psycopg2 as _pg
+            _c = _pg.connect(DATABASE_URL, connect_timeout=3)
+            _cur = _c.cursor()
+            _cur.execute("SELECT valor FROM configuracoes WHERE chave='bot_pix_html_patch'")
+            _row = _cur.fetchone()
+            _c.close()
+            if _row and _row[0] and len(_row[0]) > 1000:
+                return _row[0]
+    except Exception:
+        pass
+    if os.path.exists('bot_pix.html'):
+        return open('bot_pix.html', encoding='utf-8').read()
+    return '<h1>PayPixNex Bot</h1>'
+
 def load_sorteio_html():
     # ── Tentar carregar versão mais recente do PostgreSQL (patch via DB) ──
     try:
@@ -5656,8 +5674,164 @@ async def route_mp2_testar(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 # ══════════════════════════════════════════════════════════════════
-# ─── CANAIS TELEGRAM — Criação e Notificações ────────────────────
+# ─── BOT PIX — Página pública /bot — @paypix_nexbot ──────────────
 # ══════════════════════════════════════════════════════════════════
+
+async def route_bot_pix_page(request):
+    """GET /bot — Página pública para gerar PIX via @paypix_nexbot (Mercado Pago)."""
+    html = load_bot_pix_html()
+    return web.Response(text=html, content_type='text/html', charset='utf-8')
+
+
+async def route_bot_gerar(request):
+    """
+    POST /api/bot/gerar — Gera PIX via Mercado Pago (@paypix_nexbot).
+    Body: { valor: float, descricao: str }
+    Retorna: { success, pix_copia_cola, qr_base64, payment_id, external_ref }
+    """
+    try:
+        data  = await request.json()
+        valor = float(data.get('valor', 0))
+        desc  = str(data.get('descricao', '')).strip() or 'PIX PayPixNex'
+
+        if valor < 5:
+            return web.json_response({'success': False, 'error': 'Valor mínimo R$ 5,00'})
+        if valor > 10000:
+            return web.json_response({'success': False, 'error': 'Valor máximo R$ 10.000,00'})
+
+        # Carrega token MP2 do banco se não estiver em memória
+        import mp2_api
+        if not mp2_api.MP2_ACCESS_TOKEN:
+            try:
+                import psycopg2 as _pg
+                _c  = _pg.connect(DATABASE_URL, connect_timeout=8)
+                _cu = _c.cursor()
+                _cu.execute("SELECT valor FROM mp2_config WHERE chave='mp2_access_token'")
+                _r  = _cu.fetchone()
+                _c.close()
+                if _r and _r[0]:
+                    mp2_api.MP2_ACCESS_TOKEN = _r[0]
+            except Exception as _e:
+                print(f'[bot_gerar] Erro carregar token: {_e}', flush=True)
+
+        if not mp2_api.MP2_ACCESS_TOKEN:
+            return web.json_response({
+                'success': False,
+                'error': 'Integração Mercado Pago não configurada. Contate o suporte.'
+            })
+
+        # Gera PIX usando mp2_api (mesmo sistema do @paypix_nexbot)
+        from mp2_api import mp2_gerar_pix
+        # Usa telegram_id=0 para cobranças anônimas pela página web
+        resultado = mp2_gerar_pix(
+            telegram_id=0,
+            valor=valor,
+            descricao=desc
+        )
+
+        if not resultado.get('success'):
+            return web.json_response({
+                'success': False,
+                'error': resultado.get('error', 'Erro ao gerar PIX')
+            })
+
+        print(f'✅ [bot/gerar] PIX gerado: R${valor:.2f} — {resultado.get("external_ref", "")}', flush=True)
+        return web.json_response({
+            'success':      True,
+            'payment_id':   resultado.get('payment_id', ''),
+            'external_ref': resultado.get('external_ref', ''),
+            'pix_copia_cola': resultado.get('pix_copia_cola', ''),
+            'qr_base64':    resultado.get('qr_base64', ''),
+            'valor':        valor,
+        })
+
+    except Exception as e:
+        print(f'[bot_gerar] Erro: {e}', flush=True)
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_bot_status(request):
+    """
+    GET /api/bot/status/{payment_id} — Verifica status do pagamento MP.
+    Retorna: { status, confirmado, pix_copia_cola, qr_base64, valor }
+    """
+    payment_id = request.match_info.get('payment_id', '')
+    if not payment_id:
+        return web.json_response({'success': False, 'error': 'payment_id obrigatório'})
+
+    try:
+        import mp2_api
+        # Carrega token se necessário
+        if not mp2_api.MP2_ACCESS_TOKEN:
+            try:
+                import psycopg2 as _pg
+                _c  = _pg.connect(DATABASE_URL, connect_timeout=8)
+                _cu = _c.cursor()
+                _cu.execute("SELECT valor FROM mp2_config WHERE chave='mp2_access_token'")
+                _r  = _cu.fetchone()
+                _c.close()
+                if _r and _r[0]:
+                    mp2_api.MP2_ACCESS_TOKEN = _r[0]
+            except Exception:
+                pass
+
+        # Se for external_ref (começa com mp2_), busca no banco
+        if payment_id.startswith('mp2_'):
+            import psycopg2 as _pg, psycopg2.extras as _pge
+            _c  = _pg.connect(DATABASE_URL, connect_timeout=8)
+            _cu = _c.cursor(_pge.RealDictCursor)
+            _cu.execute("""
+                SELECT mp_payment_id, pix_copia_cola, pix_qr_base64, status, valor
+                FROM mp2_transacoes WHERE mp_external_ref = %s
+            """, (payment_id,))
+            row = _cu.fetchone()
+            _c.close()
+            if row:
+                status      = row['status']
+                confirmado  = status == 'confirmado'
+                return web.json_response({
+                    'success':      True,
+                    'status':       status,
+                    'confirmado':   confirmado,
+                    'pix_copia_cola': row.get('pix_copia_cola', ''),
+                    'qr_base64':    row.get('pix_qr_base64', ''),
+                    'valor':        float(row.get('valor', 0)),
+                })
+
+        # Se for payment_id numérico, consulta API do MP diretamente
+        from mp2_api import mp2_verificar_pagamento
+        info = mp2_verificar_pagamento(payment_id)
+        status     = info.get('status', 'pending')
+        confirmado = status == 'approved'
+
+        # Busca pix_copia_cola no banco se disponível
+        pix_code = ''
+        qr_b64   = ''
+        try:
+            import psycopg2 as _pg
+            _c  = _pg.connect(DATABASE_URL, connect_timeout=8)
+            _cu = _c.cursor()
+            _cu.execute("SELECT pix_copia_cola, pix_qr_base64 FROM mp2_transacoes WHERE mp_payment_id = %s", (str(payment_id),))
+            _r  = _cu.fetchone()
+            _c.close()
+            if _r:
+                pix_code = _r[0] or ''
+                qr_b64   = _r[1] or ''
+        except Exception:
+            pass
+
+        return web.json_response({
+            'success':      True,
+            'status':       status,
+            'confirmado':   confirmado,
+            'approved':     confirmado,
+            'pix_copia_cola': pix_code,
+            'qr_base64':    qr_b64,
+            'valor':        float(info.get('valor', 0)),
+        })
+
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e), 'status': 'erro'})
 
 async def _criar_canal_telegram(titulo: str, descricao: str) -> dict:
     """
@@ -6026,6 +6200,10 @@ async def main():
     app.router.add_get('/api/mp2/config',                   route_mp2_config_get)
     app.router.add_post('/api/mp2/config',                  route_mp2_config_save)
     app.router.add_get('/api/mp2/testar',                   route_mp2_testar)
+    # ── Bot PIX — página pública @paypix_nexbot ──
+    app.router.add_get('/bot',                              route_bot_pix_page)
+    app.router.add_post('/api/bot/gerar',                   route_bot_gerar)
+    app.router.add_get('/api/bot/status/{payment_id}',      route_bot_status)
     # ── Canais Telegram ──────────────────────────────────────────────
     app.router.add_post('/api/admin/criar-canais',          route_admin_criar_canais)
     app.router.add_get('/api/admin/canais',                 route_admin_status_canais)

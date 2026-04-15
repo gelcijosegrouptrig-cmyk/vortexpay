@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PayPixNex — Gerar PIX via Telegram</title>
+<meta name="description" content="Gere um PIX instantâneo via @paypix_nexbot">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a0f;
+  --card:#12121a;
+  --card2:#1a1a26;
+  --border:#ffffff14;
+  --blue:#009ee3;
+  --blue2:#0077b6;
+  --green:#00c853;
+  --green2:#00e676;
+  --gold:#FFD700;
+  --text:#f0f0f0;
+  --text2:#aaa;
+  --text3:#666;
+  --red:#f44336;
+}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Segoe UI',system-ui,sans-serif;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:20px 16px 60px;
+}
+
+/* ── HEADER ── */
+.header{
+  text-align:center;
+  margin-bottom:28px;
+  padding-top:16px;
+}
+.header-logo{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  background:linear-gradient(135deg,#003087,var(--blue));
+  padding:10px 22px;
+  border-radius:50px;
+  margin-bottom:12px;
+}
+.header-logo span{font-size:22px}
+.header-logo strong{font-size:1.1rem;color:#fff;letter-spacing:.5px}
+.header h1{font-size:1.6rem;font-weight:800;color:var(--text);margin-bottom:6px}
+.header p{color:var(--text2);font-size:.9rem;line-height:1.5}
+.tg-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#0a1a2a;border:1px solid #009ee344;
+  border-radius:20px;padding:5px 14px;font-size:.82rem;
+  color:var(--blue);margin-top:8px;
+}
+
+/* ── CARD ── */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:20px;
+  width:100%;max-width:440px;
+  overflow:hidden;
+}
+.card-header{
+  background:linear-gradient(135deg,#003087,#0055aa);
+  padding:18px 24px;
+  display:flex;align-items:center;gap:12px;
+}
+.card-header-icon{font-size:28px}
+.card-header-title{font-size:1.1rem;font-weight:700;color:#fff}
+.card-header-sub{font-size:.8rem;color:#9bbfe0;margin-top:2px}
+
+/* ── STEPS ── */
+.steps{
+  display:flex;align-items:center;justify-content:center;
+  gap:0;padding:16px 24px 0;
+}
+.step-item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  flex:1;
+}
+.step-circle{
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.8rem;font-weight:700;
+  background:var(--card2);border:2px solid var(--border);
+  color:var(--text3);transition:.3s;
+}
+.step-circle.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.step-circle.done{background:var(--green);border-color:var(--green);color:#fff}
+.step-label{font-size:.7rem;color:var(--text3);text-align:center;transition:.3s}
+.step-label.active{color:var(--blue)}
+.step-label.done{color:var(--green)}
+.step-line{height:2px;flex:1;background:var(--border);transition:.3s;margin-top:-12px}
+.step-line.done{background:var(--green)}
+
+/* ── CONTEÚDO ── */
+.card-body{padding:24px}
+
+/* ── STEP 1: VALOR ── */
+.valor-input-wrap{
+  background:var(--card2);
+  border:2px solid var(--border);
+  border-radius:14px;
+  padding:16px 18px;
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:16px;
+  transition:.3s;
+}
+.valor-input-wrap:focus-within{border-color:var(--blue)}
+.valor-prefix{font-size:1.5rem;font-weight:800;color:var(--text3)}
+.valor-input{
+  flex:1;background:transparent;border:none;outline:none;
+  font-size:2rem;font-weight:900;color:var(--text);
+  font-family:'Segoe UI',monospace;
+  width:100%;
+}
+.valor-input::placeholder{color:var(--text3)}
+
+.limites-row{
+  display:flex;justify-content:space-between;
+  font-size:.75rem;color:var(--text3);
+  margin-bottom:20px;padding:0 4px;
+}
+.limites-row span{display:flex;align-items:center;gap:4px}
+
+/* Presets de valor */
+.presets{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+  margin-bottom:20px;
+}
+.preset-btn{
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:10px;padding:9px 0;
+  color:var(--text2);font-size:.82rem;font-weight:600;
+  cursor:pointer;transition:.2s;text-align:center;
+}
+.preset-btn:hover{background:#1e1e30;border-color:var(--blue);color:var(--blue)}
+.preset-btn.active{background:#003087;border-color:var(--blue);color:#fff}
+
+/* ── IDENTIDADE (telefone/email) ── */
+.field{margin-bottom:16px}
+.field label{
+  display:block;font-size:.78rem;color:var(--text2);
+  margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px;
+}
+.field input{
+  width:100%;background:var(--card2);
+  border:2px solid var(--border);border-radius:10px;
+  padding:12px 14px;color:var(--text);font-size:.95rem;
+  outline:none;transition:.3s;
+}
+.field input:focus{border-color:var(--blue)}
+.field input::placeholder{color:var(--text3)}
+.field-hint{font-size:.72rem;color:var(--text3);margin-top:4px}
+
+/* ── BOTÃO PRINCIPAL ── */
+.btn-gerar{
+  width:100%;padding:16px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,var(--blue2),var(--blue));
+  color:#fff;font-size:1.05rem;font-weight:800;
+  cursor:pointer;transition:.2s;letter-spacing:.3px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  box-shadow:0 4px 20px rgba(0,158,227,.3);
+}
+.btn-gerar:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,158,227,.4)}
+.btn-gerar:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* ── STEP 2: PIX ── */
+.pix-valor-card{
+  background:linear-gradient(135deg,#003087,#005bb5);
+  border-radius:14px;padding:16px 20px;
+  text-align:center;margin-bottom:20px;
+}
+.pix-valor-card .label{font-size:.8rem;color:#9bbfe0;margin-bottom:4px}
+.pix-valor-card .valor{font-size:2.2rem;font-weight:900;color:#fff}
+
+.qr-section{
+  display:flex;flex-direction:column;align-items:center;
+  gap:14px;margin-bottom:20px;
+}
+.qr-box{
+  background:#fff;padding:14px;border-radius:16px;
+  box-shadow:0 4px 20px rgba(0,158,227,.2);
+}
+.qr-box canvas,
+.qr-box img{display:block}
+
+.qr-expira{
+  font-size:.75rem;color:var(--text3);
+  display:flex;align-items:center;gap:6px;
+}
+.qr-expira .timer{color:var(--gold);font-weight:700;font-family:monospace}
+
+/* Código copia-cola */
+.pix-code-wrap{
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:12px;padding:14px 16px;margin-bottom:14px;
+}
+.pix-code-label{font-size:.72rem;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
+.pix-code-text{
+  font-size:.75rem;color:var(--text2);
+  word-break:break-all;line-height:1.6;
+  font-family:monospace;max-height:72px;overflow:hidden;
+}
+
+.btn-copiar{
+  width:100%;padding:14px;border-radius:12px;
+  background:linear-gradient(135deg,#003a00,var(--green2)22);
+  border:2px solid var(--green);
+  color:var(--green2);font-size:.95rem;font-weight:800;
+  cursor:pointer;transition:.2s;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.btn-copiar:hover{background:var(--green)22;transform:translateY(-1px)}
+.btn-copiar.copiado{
+  background:linear-gradient(135deg,#003a00,#00c85322);
+  border-color:var(--green2);color:var(--green2);
+}
+
+.btn-novo-pix{
+  width:100%;padding:12px;border-radius:10px;
+  background:transparent;border:1px solid var(--border);
+  color:var(--text3);font-size:.85rem;cursor:pointer;
+  margin-top:10px;transition:.2s;
+}
+.btn-novo-pix:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── STATUS AGUARDANDO ── */
+.status-aguardando{
+  background:#0a1000;border:1px solid #2d4400;
+  border-radius:12px;padding:14px 16px;
+  display:flex;align-items:center;gap:12px;margin-top:16px;
+}
+.status-aguardando .dot{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--gold);
+  animation:pulse 1.2s ease-in-out infinite;
+  flex-shrink:0;
+}
+.status-aguardando .txt{font-size:.82rem;color:var(--gold);line-height:1.4}
+
+/* ── STEP 3: CONFIRMADO ── */
+.confirmado-wrap{text-align:center;padding:10px 0}
+.confirmado-icon{font-size:64px;margin-bottom:12px;animation:bounceIn .5s ease}
+.confirmado-title{font-size:1.4rem;font-weight:800;color:var(--green2);margin-bottom:6px}
+.confirmado-valor{font-size:2rem;font-weight:900;color:#fff;margin-bottom:4px}
+.confirmado-sub{font-size:.85rem;color:var(--text2);margin-bottom:20px}
+.tg-cta{
+  background:linear-gradient(135deg,#003087,var(--blue));
+  border-radius:14px;padding:16px;text-align:center;
+}
+.tg-cta p{font-size:.85rem;color:#9bbfe0;margin-bottom:10px}
+.tg-cta a{
+  display:inline-flex;align-items:center;gap:8px;
+  background:#fff;border-radius:10px;padding:10px 20px;
+  color:#003087;font-weight:800;text-decoration:none;font-size:.9rem;
+  transition:.2s;
+}
+.tg-cta a:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,158,227,.3)}
+
+/* ── LOADING ── */
+.loading-pix{
+  display:flex;flex-direction:column;align-items:center;
+  gap:14px;padding:20px 0;text-align:center;
+}
+.spinner{
+  width:48px;height:48px;border:3px solid var(--border);
+  border-top-color:var(--blue);border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+.loading-pix p{color:var(--text2);font-size:.9rem}
+
+/* ── ERRO ── */
+.erro-box{
+  background:#1a0a0a;border:1px solid var(--red)44;
+  border-radius:12px;padding:16px;text-align:center;
+}
+.erro-box .icon{font-size:32px;margin-bottom:8px}
+.erro-box p{color:#f87171;font-size:.9rem;margin-bottom:14px;line-height:1.5}
+
+/* ── FOOTER ── */
+.footer{
+  margin-top:28px;text-align:center;
+  font-size:.75rem;color:var(--text3);line-height:1.8;
+}
+.footer a{color:var(--blue);text-decoration:none}
+
+/* ── ANIMAÇÕES ── */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+@keyframes bounceIn{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .4s ease forwards}
+
+/* ── STEP DISPLAY ── */
+#step-valor   { display:block }
+#step-pix     { display:none  }
+#step-ok      { display:none  }
+#step-loading { display:none  }
+#step-erro    { display:none  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <span>💳</span>
+    <strong>PayPixNex</strong>
+  </div>
+  <h1>Gerar Cobrança PIX</h1>
+  <p>Pagamento instantâneo via Mercado Pago</p>
+  <div class="tg-badge">
+    <span>🤖</span> Powered by @paypix_nexbot
+  </div>
+</div>
+
+<!-- STEPS INDICATOR -->
+<div style="width:100%;max-width:440px;margin-bottom:16px">
+  <div class="steps" id="steps-bar">
+    <div class="step-item">
+      <div class="step-circle active" id="dot-1">1</div>
+      <div class="step-label active" id="lbl-1">Valor</div>
+    </div>
+    <div class="step-line" id="line-1"></div>
+    <div class="step-item">
+      <div class="step-circle" id="dot-2">2</div>
+      <div class="step-label" id="lbl-2">PIX</div>
+    </div>
+    <div class="step-line" id="line-2"></div>
+    <div class="step-item">
+      <div class="step-circle" id="dot-3">3</div>
+      <div class="step-label" id="lbl-3">Pago</div>
+    </div>
+  </div>
+</div>
+
+<!-- CARD -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-icon">⚡</div>
+    <div>
+      <div class="card-header-title">PIX Instantâneo</div>
+      <div class="card-header-sub">Mercado Pago · Brasil · Produção</div>
+    </div>
+  </div>
+
+  <div class="card-body">
+
+    <!-- ══ STEP 1: VALOR ══ -->
+    <div id="step-valor">
+      <div class="valor-input-wrap">
+        <span class="valor-prefix">R$</span>
+        <input type="number" id="inp-valor" class="valor-input"
+          placeholder="0,00" min="5" max="10000" step="0.01"
+          oninput="onValorInput()"
+          onkeypress="if(event.key==='Enter') gerarPix()">
+      </div>
+      <div class="limites-row">
+        <span>📌 Mín: <strong id="txt-min">R$ 5,00</strong></span>
+        <span>📋 Máx: <strong>R$ 10.000,00</strong></span>
+      </div>
+
+      <!-- Presets -->
+      <div class="presets">
+        <button class="preset-btn" onclick="setPreset(10)">R$10</button>
+        <button class="preset-btn" onclick="setPreset(20)">R$20</button>
+        <button class="preset-btn" onclick="setPreset(50)">R$50</button>
+        <button class="preset-btn" onclick="setPreset(100)">R$100</button>
+        <button class="preset-btn" onclick="setPreset(200)">R$200</button>
+        <button class="preset-btn" onclick="setPreset(500)">R$500</button>
+        <button class="preset-btn" onclick="setPreset(1000)">R$1k</button>
+        <button class="preset-btn" onclick="setPreset(2000)">R$2k</button>
+      </div>
+
+      <!-- Identificação (opcional) -->
+      <div class="field">
+        <label>👤 Identificação (opcional)</label>
+        <input type="text" id="inp-nome" placeholder="Nome ou descrição do pagamento"
+          maxlength="80">
+        <div class="field-hint">Aparece na descrição do PIX gerado</div>
+      </div>
+
+      <!-- Botão gerar -->
+      <button class="btn-gerar" id="btn-gerar" onclick="gerarPix()">
+        <span>⚡</span> Gerar PIX agora
+      </button>
+
+      <div id="erro-valor" style="color:#f44;font-size:.82rem;text-align:center;margin-top:10px;min-height:18px"></div>
+    </div>
+
+    <!-- ══ LOADING ══ -->
+    <div id="step-loading" class="fade-in">
+      <div class="loading-pix">
+        <div class="spinner"></div>
+        <p>⚡ Gerando seu PIX via Mercado Pago...<br>
+        <span style="font-size:.78rem;color:#555">Isso leva apenas alguns segundos</span></p>
+      </div>
+    </div>
+
+    <!-- ══ STEP 2: PIX GERADO ══ -->
+    <div id="step-pix" class="fade-in">
+
+      <!-- Valor destaque -->
+      <div class="pix-valor-card">
+        <div class="label">💰 Valor a pagar</div>
+        <div class="valor" id="pix-valor-txt">R$ 0,00</div>
+      </div>
+
+      <!-- QR Code -->
+      <div class="qr-section">
+        <div class="qr-box" id="qrcode-box"></div>
+        <div class="qr-expira">
+          ⏰ Expira em <span class="timer" id="timer-txt">30:00</span>
+        </div>
+      </div>
+
+      <!-- Código copia e cola -->
+      <div class="pix-code-wrap">
+        <div class="pix-code-label">📋 Pix Copia e Cola</div>
+        <div class="pix-code-text" id="pix-code-txt">—</div>
+      </div>
+
+      <!-- Botão copiar -->
+      <button class="btn-copiar" id="btn-copiar" onclick="copiarCodigo()">
+        <span id="copiar-icon">📋</span>
+        <span id="copiar-txt">Copiar Código PIX</span>
+      </button>
+
+      <!-- Status aguardando -->
+      <div class="status-aguardando" id="status-aguardando">
+        <div class="dot"></div>
+        <div class="txt">
+          <strong>Aguardando pagamento...</strong><br>
+          Seu saldo será creditado automaticamente após confirmação.
+        </div>
+      </div>
+
+      <button class="btn-novo-pix" onclick="reiniciar()">↩ Gerar novo PIX</button>
+    </div>
+
+    <!-- ══ STEP 3: PAGO ══ -->
+    <div id="step-ok" class="fade-in">
+      <div class="confirmado-wrap">
+        <div class="confirmado-icon">✅</div>
+        <div class="confirmado-title">Pagamento Confirmado!</div>
+        <div class="confirmado-valor" id="ok-valor">R$ 0,00</div>
+        <div class="confirmado-sub" id="ok-sub">Pago via PIX Mercado Pago</div>
+
+        <div class="tg-cta" style="margin-top:20px">
+          <p>Acompanhe suas transações no bot:</p>
+          <a href="https://t.me/paypix_nexbot" target="_blank">
+            🤖 Abrir @paypix_nexbot
+          </a>
+        </div>
+
+        <button class="btn-novo-pix" onclick="reiniciar()" style="margin-top:14px">
+          ⚡ Gerar outro PIX
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ ERRO ══ -->
+    <div id="step-erro" class="fade-in">
+      <div class="erro-box">
+        <div class="icon">❌</div>
+        <p id="erro-msg">Erro ao gerar PIX. Tente novamente.</p>
+        <button class="btn-gerar" onclick="reiniciar()" style="margin-top:4px">
+          ↩ Tentar novamente
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /card-body -->
+</div><!-- /card -->
+
+<!-- FOOTER -->
+<div class="footer">
+  🔒 Pagamento seguro via <strong>Mercado Pago</strong><br>
+  Integração: <a href="https://t.me/paypix_nexbot" target="_blank">@paypix_nexbot</a> · PIX instantâneo 24/7
+</div>
+
+<!-- QR CODE LIB -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────
+const BASE = '';   // mesma origem
+let _txId    = null;
+let _pixCode = null;
+let _valor   = 0;
+let _pollInterval = null;
+let _timerInterval = null;
+let _timerSeg = 30 * 60; // 30 minutos em segundos
+let _qrInstance = null;
+
+// ── STEPS ────────────────────────────────────────────────────────
+function showStep(step) {
+  ['step-valor','step-loading','step-pix','step-ok','step-erro']
+    .forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('step-' + step).style.display = 'block';
+
+  // atualiza dots
+  const steps = {
+    'valor':   [1,false,false],
+    'loading': [1,false,false],
+    'pix':     [1,2,false],
+    'ok':      [1,2,3],
+    'erro':    [1,false,false],
+  }[step] || [1,false,false];
+
+  [1,2,3].forEach(n => {
+    const dot = document.getElementById('dot-'+n);
+    const lbl = document.getElementById('lbl-'+n);
+    if (!dot) return;
+    dot.className = 'step-circle';
+    lbl.className = 'step-label';
+    if (steps[n-1] === n) {
+      if (n < Math.max(...steps.filter(Boolean))) {
+        dot.classList.add('done'); dot.textContent = '✓';
+        lbl.classList.add('done');
+      } else {
+        dot.classList.add('active'); lbl.classList.add('active');
+      }
+    }
+  });
+
+  // linhas
+  for (let i=1;i<=2;i++) {
+    const line = document.getElementById('line-'+i);
+    if (line) line.className = 'step-line' + (steps[i] ? ' done' : '');
+  }
+}
+
+// ── PRESETS ──────────────────────────────────────────────────────
+function setPreset(v) {
+  document.getElementById('inp-valor').value = v;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('erro-valor').textContent = '';
+}
+
+function onValorInput() {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('erro-valor').textContent = '';
+}
+
+// ── GERAR PIX ────────────────────────────────────────────────────
+async function gerarPix() {
+  const valorRaw = document.getElementById('inp-valor').value;
+  const nome     = document.getElementById('inp-nome').value.trim();
+  const erroEl   = document.getElementById('erro-valor');
+
+  const valor = parseFloat(String(valorRaw).replace(',','.'));
+  if (!valor || isNaN(valor) || valor < 5) {
+    erroEl.textContent = '❌ Digite um valor mínimo de R$ 5,00';
+    document.getElementById('inp-valor').focus();
+    return;
+  }
+  if (valor > 10000) {
+    erroEl.textContent = '❌ Valor máximo: R$ 10.000,00';
+    return;
+  }
+
+  _valor = valor;
+  erroEl.textContent = '';
+  showStep('loading');
+
+  try {
+    const r = await fetch('/api/bot/gerar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ valor, descricao: nome || `PIX PayPixNex R$${valor}` })
+    });
+    const d = await r.json();
+
+    if (!d.success) {
+      mostrarErro(d.error || 'Erro ao gerar PIX. Tente novamente.');
+      return;
+    }
+
+    _txId = d.payment_id || d.external_ref;
+
+    if (d.pix_copia_cola) {
+      // PIX já disponível
+      exibirPix(d.pix_copia_cola, valor, d.qr_base64 || '');
+    } else {
+      // Polling
+      iniciarPolling(_txId, valor);
+    }
+
+  } catch(e) {
+    mostrarErro('Erro de conexão: ' + e.message);
+  }
+}
+
+// ── EXIBIR PIX ───────────────────────────────────────────────────
+function exibirPix(pixCode, valor, qrBase64) {
+  _pixCode = pixCode;
+  showStep('pix');
+
+  // Valor
+  document.getElementById('pix-valor-txt').textContent =
+    'R$ ' + valor.toFixed(2).replace('.', ',');
+
+  // Código copia-cola
+  document.getElementById('pix-code-txt').textContent = pixCode;
+
+  // QR Code
+  const box = document.getElementById('qrcode-box');
+  box.innerHTML = '';
+
+  if (qrBase64) {
+    // Usa base64 do MP se disponível
+    const img = document.createElement('img');
+    img.src = 'data:image/png;base64,' + qrBase64;
+    img.width = 200; img.height = 200;
+    img.style.borderRadius = '8px';
+    box.appendChild(img);
+  } else {
+    // Gera QR via biblioteca JS
+    _qrInstance = new QRCode(box, {
+      text: pixCode,
+      width: 200,
+      height: 200,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+
+  // Timer 30 minutos
+  iniciarTimer();
+
+  // Polling de confirmação
+  iniciarPollingConfirmacao(_txId);
+}
+
+// ── POLLING GERAÇÃO ──────────────────────────────────────────────
+function iniciarPolling(txId, valor) {
+  let tentativas = 0;
+  const maxTentativas = 30; // 30 * 2s = 60s
+
+  const poll = setInterval(async () => {
+    tentativas++;
+    try {
+      const r = await fetch(`/api/bot/status/${txId}`);
+      const d = await r.json();
+
+      if (d.pix_copia_cola) {
+        clearInterval(poll);
+        exibirPix(d.pix_copia_cola, valor, d.qr_base64 || '');
+      } else if (d.status === 'erro') {
+        clearInterval(poll);
+        mostrarErro(d.error || 'Falha ao gerar PIX');
+      } else if (tentativas >= maxTentativas) {
+        clearInterval(poll);
+        mostrarErro('Tempo esgotado. Tente novamente.');
+      }
+    } catch(e) {
+      if (tentativas >= maxTentativas) {
+        clearInterval(poll);
+        mostrarErro('Erro de conexão');
+      }
+    }
+  }, 2000);
+}
+
+// ── POLLING CONFIRMAÇÃO ──────────────────────────────────────────
+function iniciarPollingConfirmacao(txId) {
+  if (_pollInterval) clearInterval(_pollInterval);
+  _pollInterval = setInterval(async () => {
+    try {
+      const r = await fetch(`/api/bot/status/${txId}`);
+      const d = await r.json();
+      if (d.status === 'approved' || d.status === 'paid' || d.confirmado) {
+        clearInterval(_pollInterval);
+        clearInterval(_timerInterval);
+        showStep('ok');
+        document.getElementById('ok-valor').textContent =
+          'R$ ' + _valor.toFixed(2).replace('.', ',');
+      }
+    } catch(e) {}
+  }, 5000); // verifica a cada 5s
+}
+
+// ── TIMER ────────────────────────────────────────────────────────
+function iniciarTimer() {
+  _timerSeg = 30 * 60;
+  if (_timerInterval) clearInterval(_timerInterval);
+  atualizarTimer();
+  _timerInterval = setInterval(() => {
+    _timerSeg--;
+    atualizarTimer();
+    if (_timerSeg <= 0) {
+      clearInterval(_timerInterval);
+      document.getElementById('timer-txt').textContent = 'Expirado';
+      document.getElementById('timer-txt').style.color = '#f44';
+    }
+  }, 1000);
+}
+
+function atualizarTimer() {
+  const m = Math.floor(_timerSeg / 60);
+  const s = _timerSeg % 60;
+  const el = document.getElementById('timer-txt');
+  if (el) {
+    el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    el.style.color = _timerSeg < 300 ? '#f44' : '#FFD700';
+  }
+}
+
+// ── COPIAR ───────────────────────────────────────────────────────
+async function copiarCodigo() {
+  if (!_pixCode) return;
+  try {
+    await navigator.clipboard.writeText(_pixCode);
+    const btn  = document.getElementById('btn-copiar');
+    const icon = document.getElementById('copiar-icon');
+    const txt  = document.getElementById('copiar-txt');
+    btn.classList.add('copiado');
+    icon.textContent = '✅';
+    txt.textContent  = 'Código Copiado!';
+    setTimeout(() => {
+      btn.classList.remove('copiado');
+      icon.textContent = '📋';
+      txt.textContent  = 'Copiar Código PIX';
+    }, 3000);
+  } catch(e) {
+    // Fallback para navegadores antigos
+    const ta = document.createElement('textarea');
+    ta.value = _pixCode;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    document.getElementById('copiar-txt').textContent = '✅ Copiado!';
+    setTimeout(() => document.getElementById('copiar-txt').textContent = 'Copiar Código PIX', 2000);
+  }
+}
+
+// ── ERRO ─────────────────────────────────────────────────────────
+function mostrarErro(msg) {
+  document.getElementById('erro-msg').textContent = msg;
+  showStep('erro');
+}
+
+// ── REINICIAR ────────────────────────────────────────────────────
+function reiniciar() {
+  if (_pollInterval)  clearInterval(_pollInterval);
+  if (_timerInterval) clearInterval(_timerInterval);
+  _txId = null; _pixCode = null; _valor = 0;
+  document.getElementById('inp-valor').value = '';
+  document.getElementById('inp-nome').value = '';
+  document.getElementById('qrcode-box').innerHTML = '';
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  showStep('valor');
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+showStep('valor');
+</script>
+</body>
+</html>
