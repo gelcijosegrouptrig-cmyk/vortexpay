@@ -5387,29 +5387,68 @@ async def route_mp2_webhook(request):
         return web.json_response({'ok': False, 'error': str(e)}, status=200)  # sempre 200 pro MP
 
 def _mp2_notificar_pagamento(external_ref: str, valor: float):
-    """Notifica usuário Telegram após confirmação de depósito (fire-and-forget)."""
+    """Notifica usuário + canal Telegram após confirmação de depósito (fire-and-forget)."""
     try:
-        import psycopg2, psycopg2.extras
+        import psycopg2, psycopg2.extras, requests as _req
         conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("SELECT telegram_id FROM mp2_transacoes WHERE mp_external_ref = %s", (external_ref,))
+
+        # Busca dados da transação e do usuário
+        cur.execute("""
+            SELECT t.telegram_id, u.username, u.nome
+            FROM mp2_transacoes t
+            LEFT JOIN mp2_usuarios u ON u.telegram_id = t.telegram_id
+            WHERE t.mp_external_ref = %s
+        """, (external_ref,))
         row = cur.fetchone()
+
+        # Busca canal de notificações
+        cur.execute("SELECT canal_id, invite_link FROM mp2_canais WHERE tipo = 'notificacoes'")
+        canal_row = cur.fetchone()
+
         cur.close(); conn.close()
+
+        bot2_token = os.environ.get('BOT2_TOKEN', '')
+        if not bot2_token:
+            return
+
+        valor_fmt = f"R$ {float(valor):.2f}".replace('.', ',')
+
+        # 1️⃣ Notifica o USUÁRIO via DM
         if row:
             telegram_id = row['telegram_id']
-            bot2_token  = os.environ.get('BOT2_TOKEN', '')
-            if bot2_token and telegram_id:
-                import requests as _req
-                msg = (
-                    f"✅ *Depósito confirmado!*\n"
-                    f"💰 R$ {float(valor):.2f} creditado na sua conta.\n"
-                    f"Use /carteira para verificar seu saldo."
+            if telegram_id:
+                msg_usuario = (
+                    f"✅ *PIX Confirmado!*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"💰 *{valor_fmt}* creditado com sucesso!\n\n"
+                    f"Use /carteira para ver seu saldo atualizado. 🏦"
                 )
                 _req.post(
                     f'https://api.telegram.org/bot{bot2_token}/sendMessage',
-                    json={'chat_id': telegram_id, 'text': msg, 'parse_mode': 'Markdown'},
+                    json={'chat_id': telegram_id, 'text': msg_usuario, 'parse_mode': 'Markdown'},
                     timeout=10
                 )
+
+        # 2️⃣ Notifica o CANAL público
+        if canal_row:
+            canal_id = canal_row['canal_id']
+            username = ''
+            if row:
+                username = f"@{row['username']}" if row.get('username') else (row.get('nome') or 'Usuário')
+            msg_canal = (
+                f"💰 *Depósito Confirmado*\n"
+                f"👤 {username}\n"
+                f"✅ {valor_fmt} recebido via PIX\n"
+                f"🕐 {__import__('datetime').datetime.now().strftime('%d/%m %H:%M')}"
+            )
+            _req.post(
+                f'https://api.telegram.org/bot{bot2_token}/sendMessage',
+                json={'chat_id': canal_id, 'text': msg_canal, 'parse_mode': 'Markdown'},
+                timeout=10
+            )
+            print(f'✅ [mp2_notificar] Canal notificado: {valor_fmt}', flush=True)
+
     except Exception as e:
         print(f'[mp2_notificar] Erro: {e}', flush=True)
 
@@ -5963,16 +6002,24 @@ async def main():
     # ── Bot 2 REAL — @paypix_nexbot (python-telegram-bot + Mercado Pago) ──
     try:
         from mp2_api import init_mp2_db
-        from bot2_handler import build_bot2_app
+        from bot2_handler import build_bot2_app, _bot2_post_startup
         init_mp2_db()
         bot2_app = build_bot2_app()
         if bot2_app:
             async def _rodar_bot2():
-                await bot2_app.initialize()
-                await bot2_app.start()
-                await bot2_app.updater.start_polling(allowed_updates=['message', 'callback_query'])
-                print('✅ [Bot2 Real] @paypix_nexbot polling ativo!', flush=True)
-                await asyncio.Event().wait()  # manter vivo
+                try:
+                    await bot2_app.initialize()
+                    await bot2_app.start()
+                    await bot2_app.updater.start_polling(
+                        drop_pending_updates=True,
+                        allowed_updates=['message', 'callback_query']
+                    )
+                    print('✅ [Bot2] @paypix_nexbot polling ativo!', flush=True)
+                    # Cria canal automaticamente após iniciar
+                    asyncio.create_task(_bot2_post_startup(bot2_app))
+                    await asyncio.Event().wait()  # manter vivo
+                except Exception as e:
+                    print(f'❌ [Bot2] Erro no polling: {e}', flush=True)
             asyncio.create_task(_rodar_bot2())
         else:
             print('⚠️ [Bot2 Real] BOT2_TOKEN não configurado — bot desativado', flush=True)

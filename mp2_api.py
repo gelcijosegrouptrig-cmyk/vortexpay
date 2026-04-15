@@ -77,6 +77,14 @@ def init_mp2_db():
     INSERT INTO mp2_config (chave, valor) VALUES ('deposito_minimo', '5') ON CONFLICT DO NOTHING;
     INSERT INTO mp2_config (chave, valor) VALUES ('deposito_maximo', '10000') ON CONFLICT DO NOTHING;
     INSERT INTO mp2_config (chave, valor) VALUES ('comissao_pct', '5') ON CONFLICT DO NOTHING;
+
+    CREATE TABLE IF NOT EXISTS mp2_canais (
+        tipo TEXT PRIMARY KEY,
+        canal_id BIGINT NOT NULL,
+        invite_link TEXT,
+        nome TEXT,
+        criado_em TIMESTAMP DEFAULT NOW()
+    );
     """
     try:
         conn = _get_conn()
@@ -166,7 +174,7 @@ def mp2_creditar_comissao_indicacao(referidor_id: int, novo_usuario_id: int):
     pass
 
 # ─── GERAR PIX (MERCADO PAGO) ─────────────────────────────────────────────────
-def mp2_gerar_pix(telegram_id: int, valor: float, nome_pagador: str = 'Cliente') -> dict:
+def mp2_gerar_pix(telegram_id: int, valor: float, nome_pagador: str = 'Cliente', descricao: str = '') -> dict:
     """
     Gera cobrança Pix via Mercado Pago.
     Retorna: {success, pix_copia_cola, qr_base64, payment_id, external_ref, valor}
@@ -468,13 +476,83 @@ def mp2_processar_saque(saque_id: int, aprovado: bool, obs: str = '') -> bool:
         return False
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-def mp2_get_config(chave: str, default: str = '') -> str:
+def mp2_get_config(chave: str = None, default: str = '') -> str:
+    """Retorna um ou todos os valores da config."""
     try:
         conn = _get_conn()
         cur = conn.cursor()
-        cur.execute('SELECT valor FROM mp2_config WHERE chave = %s', (chave,))
+        if chave:
+            cur.execute('SELECT valor FROM mp2_config WHERE chave = %s', (chave,))
+            row = cur.fetchone()
+            cur.close(); conn.close()
+            return row[0] if row else default
+        else:
+            # Retorna dict com todas as configs
+            cur.execute('SELECT chave, valor FROM mp2_config')
+            rows = cur.fetchall()
+            cur.close(); conn.close()
+            return {r[0]: r[1] for r in rows}
+    except:
+        return default if chave else {}
+
+# ─── CANAIS ───────────────────────────────────────────────────────────────────
+def mp2_salvar_canal(tipo: str, canal_id: int, invite_link: str, nome: str = '') -> bool:
+    """Salva ou atualiza informações do canal no banco."""
+    try:
+        conn = _get_conn()
+        cur  = conn.cursor()
+        cur.execute("""
+            INSERT INTO mp2_canais (tipo, canal_id, invite_link, nome)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (tipo) DO UPDATE
+              SET canal_id = EXCLUDED.canal_id,
+                  invite_link = EXCLUDED.invite_link,
+                  nome = EXCLUDED.nome,
+                  criado_em = NOW()
+        """, (tipo, canal_id, invite_link, nome))
+        conn.commit()
+        cur.close(); conn.close()
+        print(f'✅ [mp2_canal] Canal {tipo} salvo: {canal_id}', flush=True)
+        return True
+    except Exception as e:
+        print(f'❌ [mp2_canal] Erro salvar canal: {e}', flush=True)
+        return False
+
+def mp2_get_canal(tipo: str = 'notificacoes') -> dict:
+    """Retorna dados do canal ou None se não existir."""
+    try:
+        conn = _get_conn()
+        cur  = conn.cursor()
+        cur.execute('SELECT tipo, canal_id, invite_link, nome FROM mp2_canais WHERE tipo = %s', (tipo,))
         row = cur.fetchone()
         cur.close(); conn.close()
-        return row[0] if row else default
-    except:
-        return default
+        if row:
+            return {'tipo': row[0], 'canal_id': row[1], 'invite_link': row[2], 'nome': row[3]}
+        return None
+    except Exception as e:
+        print(f'[mp2_canal] Erro get_canal: {e}', flush=True)
+        return None
+
+def mp2_notificar_canal_deposito(telegram_id: int, valor: float, payment_id: str):
+    """
+    Notificação salva em fila para ser enviada pelo bot.
+    (O envio assíncrono é feito pelo bot2_handler via asyncio)
+    """
+    try:
+        conn = _get_conn()
+        cur  = conn.cursor()
+        # Busca nome do usuário
+        cur.execute('SELECT nome, username FROM mp2_usuarios WHERE telegram_id = %s', (telegram_id,))
+        row = cur.fetchone()
+        nome     = row[0] if row else 'Usuário'
+        username = row[1] if row else ''
+        cur.close(); conn.close()
+        # Log para o bot consumir
+        print(
+            f'📥 [mp2_notif] DEPOSITO_CONFIRMADO | '
+            f'user={telegram_id} ({username}) | '
+            f'valor=R${valor:.2f} | payment_id={payment_id}',
+            flush=True
+        )
+    except Exception as e:
+        print(f'[mp2_notif] Erro: {e}', flush=True)
