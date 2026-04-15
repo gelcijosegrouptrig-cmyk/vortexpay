@@ -342,6 +342,12 @@ body{
   </div>
 </div>
 
+<!-- Badge de parceiro (aparece quando ?ref= está na URL) -->
+<div id="parceiro-badge" style="display:none;justify-content:center;align-items:center;gap:8px;margin-bottom:12px;background:#1a0a3020;border:1px solid #a855f744;border-radius:10px;padding:10px 16px;font-size:13px;color:#a855f7;max-width:400px;margin-left:auto;margin-right:auto">
+  <span style="font-size:18px">🤝</span>
+  <span>Link de afiliado ativo — seu pagamento suporta um parceiro</span>
+</div>
+
 <!-- CARD -->
 <div class="card">
   <div class="card-header">
@@ -500,6 +506,23 @@ let _timerInterval = null;
 let _timerSeg = 30 * 60; // 30 minutos em segundos
 let _qrInstance = null;
 
+// ── Parceiro afiliado (lê ?ref= da URL) ──────────────────────────
+const _urlParams    = new URLSearchParams(window.location.search);
+const _parceiroCod  = _urlParams.get('ref') || '';
+const _parceiroNome = null;  // preenchido via API ao carregar
+
+// Exibir badge do parceiro se presente
+(async function _initParceiro() {
+  if (!_parceiroCod) return;
+  try {
+    const r = await fetch(`${BASE}/api/mp2/parceiros?secret=public&ref=${encodeURIComponent(_parceiroCod)}`);
+    // Não precisamos buscar dados do parceiro aqui — só armazenar o código
+    // O backend valida e credita automaticamente no webhook
+    const badgeEl = document.getElementById('parceiro-badge');
+    if (badgeEl) badgeEl.style.display = 'flex';
+  } catch(e) {}
+})();
+
 // ── STEPS ────────────────────────────────────────────────────────
 function showStep(step) {
   ['step-valor','step-loading','step-pix','step-ok','step-erro']
@@ -576,7 +599,7 @@ async function gerarPix() {
     const r = await fetch('/api/bot/gerar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ valor, descricao: nome || `PIX PayPixNex R$${valor}` })
+      body: JSON.stringify({ valor, descricao: nome || `PIX PayPixNex R$${valor}`, ref: _parceiroCod || undefined })
     });
     const d = await r.json();
 

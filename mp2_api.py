@@ -556,3 +556,238 @@ def mp2_notificar_canal_deposito(telegram_id: int, valor: float, payment_id: str
         )
     except Exception as e:
         print(f'[mp2_notif] Erro: {e}', flush=True)
+
+# ─── PARCEIROS / AFILIADOS ────────────────────────────────────────────────────
+def mp2_criar_parceiro(nome: str, chave_pix: str, tipo_chave: str = 'email',
+                       comissao_pct: float = None, codigo: str = None) -> dict:
+    """
+    Cria um novo parceiro afiliado.
+    Retorna dict com {success, parceiro, link} ou {success:False, error}.
+    """
+    import re
+    try:
+        # Gerar código único se não fornecido
+        if not codigo:
+            base = re.sub(r'[^a-z0-9]', '', nome.lower())[:12]
+            codigo = f"{base}-{str(uuid.uuid4())[:6]}"
+
+        # Pegar % padrão do config se não especificado
+        if comissao_pct is None:
+            try:
+                pct_str = mp2_get_config('comissao_pct', '10')
+                comissao_pct = float(pct_str)
+            except:
+                comissao_pct = 10.0
+
+        BASE_URL = os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'web-production-9f54e.up.railway.app')
+        if not BASE_URL.startswith('http'):
+            BASE_URL = 'https://' + BASE_URL
+        link = f"{BASE_URL}/bot?ref={codigo}"
+
+        conn = _get_conn()
+        cur  = conn.cursor()
+        cur.execute("""
+            INSERT INTO mp2_parceiros
+                (codigo, nome, chave_pix, tipo_chave, comissao_pct, ativo, link, criado_em)
+            VALUES (%s, %s, %s, %s, %s, TRUE, %s, NOW())
+            ON CONFLICT (codigo) DO UPDATE
+              SET nome = EXCLUDED.nome,
+                  chave_pix = EXCLUDED.chave_pix,
+                  tipo_chave = EXCLUDED.tipo_chave,
+                  comissao_pct = EXCLUDED.comissao_pct,
+                  link = EXCLUDED.link
+            RETURNING id, codigo, nome, chave_pix, tipo_chave, comissao_pct, link, ativo
+        """, (codigo, nome, chave_pix, tipo_chave, comissao_pct, link))
+        row = cur.fetchone()
+        conn.commit()
+        cur.close(); conn.close()
+
+        parceiro = {
+            'id': row[0], 'codigo': row[1], 'nome': row[2],
+            'chave_pix': row[3], 'tipo_chave': row[4],
+            'comissao_pct': float(row[5]), 'link': row[6], 'ativo': row[7]
+        }
+        print(f'✅ [mp2_parceiro] Criado: {codigo} → {nome} ({comissao_pct}%) link={link}', flush=True)
+        return {'success': True, 'parceiro': parceiro, 'link': link}
+    except Exception as e:
+        print(f'[mp2_parceiro] Erro criar: {e}', flush=True)
+        return {'success': False, 'error': str(e)}
+
+
+def mp2_listar_parceiros() -> list:
+    """Retorna lista de todos os parceiros com estatísticas."""
+    try:
+        conn = _get_conn()
+        cur  = conn.cursor(psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT p.id, p.codigo, p.nome, p.chave_pix, p.tipo_chave,
+                   p.comissao_pct, p.ativo, p.link, p.criado_em,
+                   p.total_gerado, p.total_comissao, p.total_pago,
+                   COUNT(t.id) FILTER (WHERE t.status = 'confirmado') AS qtd_pagamentos
+            FROM mp2_parceiros p
+            LEFT JOIN mp2_transacoes t ON t.parceiro_codigo = p.codigo
+            GROUP BY p.id
+            ORDER BY p.criado_em DESC
+        """)
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        result = []
+        for r in rows:
+            d = dict(r)
+            d['comissao_pct'] = float(d['comissao_pct'] or 0)
+            d['total_gerado'] = float(d['total_gerado'] or 0)
+            d['total_comissao'] = float(d['total_comissao'] or 0)
+            d['total_pago'] = float(d['total_pago'] or 0)
+            d['qtd_pagamentos'] = int(d['qtd_pagamentos'] or 0)
+            if d['criado_em']:
+                d['criado_em'] = d['criado_em'].strftime('%d/%m/%Y %H:%M')
+            result.append(d)
+        return result
+    except Exception as e:
+        print(f'[mp2_parceiro] Erro listar: {e}', flush=True)
+        return []
+
+
+def mp2_get_parceiro(codigo: str) -> dict:
+    """Retorna dados de um parceiro pelo código."""
+    try:
+        conn = _get_conn()
+        cur  = conn.cursor(psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT id, codigo, nome, chave_pix, tipo_chave,
+                   comissao_pct, ativo, link, total_gerado, total_comissao, total_pago
+            FROM mp2_parceiros WHERE codigo = %s
+        """, (codigo,))
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if row:
+            d = dict(row)
+            d['comissao_pct'] = float(d['comissao_pct'] or 0)
+            d['total_gerado'] = float(d['total_gerado'] or 0)
+            d['total_comissao'] = float(d['total_comissao'] or 0)
+            d['total_pago'] = float(d['total_pago'] or 0)
+            return d
+        return None
+    except Exception as e:
+        print(f'[mp2_parceiro] Erro get: {e}', flush=True)
+        return None
+
+
+def mp2_deletar_parceiro(codigo: str) -> bool:
+    """Deleta (ou desativa) um parceiro."""
+    try:
+        conn = _get_conn()
+        cur  = conn.cursor()
+        cur.execute("UPDATE mp2_parceiros SET ativo = FALSE WHERE codigo = %s", (codigo,))
+        conn.commit()
+        cur.close(); conn.close()
+        return True
+    except Exception as e:
+        print(f'[mp2_parceiro] Erro deletar: {e}', flush=True)
+        return False
+
+
+def mp2_pagar_comissao_parceiro(parceiro_codigo: str, valor: float) -> dict:
+    """
+    Paga comissão ao parceiro via PIX Mercado Pago.
+    Registra na tabela mp2_comissao_saques.
+    """
+    try:
+        parceiro = mp2_get_parceiro(parceiro_codigo)
+        if not parceiro:
+            return {'success': False, 'error': 'Parceiro não encontrado'}
+        if not parceiro.get('ativo'):
+            return {'success': False, 'error': 'Parceiro inativo'}
+
+        chave_pix  = parceiro['chave_pix']
+        tipo_chave = parceiro['tipo_chave']
+
+        # Registrar saque de comissão
+        conn = _get_conn()
+        cur  = conn.cursor()
+        cur.execute("""
+            INSERT INTO mp2_comissao_saques
+                (parceiro_codigo, valor, chave_pix, tipo_chave, status, criado_em)
+            VALUES (%s, %s, %s, %s, 'pendente', NOW())
+            RETURNING id
+        """, (parceiro_codigo, valor, chave_pix, tipo_chave))
+        saque_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close(); conn.close()
+
+        # Tentar pagar via Mercado Pago (saque automático)
+        token = MP2_ACCESS_TOKEN
+        if not token:
+            try:
+                conn2 = _get_conn()
+                c2 = conn2.cursor()
+                c2.execute("SELECT valor FROM mp2_config WHERE chave='mp2_access_token'")
+                r = c2.fetchone()
+                conn2.close()
+                if r: token = r[0]
+            except: pass
+
+        if token:
+            try:
+                headers = {
+                    'Authorization': f'Bearer {token}',
+                    'Content-Type': 'application/json',
+                    'X-Idempotency-Key': str(uuid.uuid4())
+                }
+                # Mapa tipo_chave → tipo MP
+                tipo_mp_map = {
+                    'cpf': 'CPF', 'cnpj': 'CNPJ',
+                    'email': 'email', 'telefone': 'phone',
+                    'aleatoria': 'random_key'
+                }
+                tipo_mp = tipo_mp_map.get(tipo_chave.lower(), 'email')
+
+                payload = {
+                    'transaction_amount': round(valor, 2),
+                    'description': f'Comissão parceiro {parceiro_codigo}',
+                    'payment_method_id': 'pix',
+                    'pix': {'key_type': tipo_mp, 'key': chave_pix}
+                }
+                resp = requests.post(
+                    f'{MP2_BASE_URL}/v1/payments', json=payload,
+                    headers=headers, timeout=30
+                )
+                resp_data = resp.json()
+                mp_id = resp_data.get('id', '')
+
+                conn3 = _get_conn()
+                c3 = conn3.cursor()
+                if resp.status_code in (200, 201):
+                    c3.execute("""
+                        UPDATE mp2_comissao_saques
+                        SET status='pago', mp_payment_id=%s, processado_em=NOW()
+                        WHERE id=%s
+                    """, (str(mp_id), saque_id))
+                    c3.execute("""
+                        UPDATE mp2_parceiros
+                        SET total_pago = total_pago + %s
+                        WHERE codigo = %s
+                    """, (valor, parceiro_codigo))
+                    conn3.commit()
+                    conn3.close()
+                    print(f'✅ [comissao] Pago R${valor:.2f} → {chave_pix} ({tipo_chave})', flush=True)
+                    return {'success': True, 'mp_payment_id': str(mp_id), 'valor': valor}
+                else:
+                    err = resp_data.get('message', resp.text[:200])
+                    c3.execute("""
+                        UPDATE mp2_comissao_saques
+                        SET status='erro', obs=%s WHERE id=%s
+                    """, (err, saque_id))
+                    conn3.commit()
+                    conn3.close()
+                    print(f'⚠️ [comissao] MP erro: {err}', flush=True)
+                    return {'success': False, 'error': err, 'saque_id': saque_id}
+            except Exception as ex:
+                print(f'[comissao] Erro MP: {ex}', flush=True)
+                return {'success': False, 'error': str(ex), 'saque_id': saque_id}
+        else:
+            return {'success': False, 'error': 'Token MP não configurado', 'saque_id': saque_id}
+
+    except Exception as e:
+        print(f'[mp2_parceiro] Erro pagar_comissao: {e}', flush=True)
+        return {'success': False, 'error': str(e)}

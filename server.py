@@ -5382,7 +5382,7 @@ async def route_mp2_webhook(request):
     try:
         body = await request.json()
         action = body.get('action', '')
-        data   = body.get('data', {})
+        data   = body.get('data', {})\
 
         # MP envia: {"action":"payment.updated","data":{"id":"12345"}}
         if action in ('payment.updated', 'payment.created'):
@@ -5397,6 +5397,8 @@ async def route_mp2_webhook(request):
                         print(f'✅ [mp2_webhook] {external_ref} processado={processado}', flush=True)
                         # Notificar usuário via bot (se token configurado)
                         _mp2_notificar_pagamento(external_ref, info.get('valor', 0))
+                        # Pagar comissão ao parceiro (se houver)
+                        _mp2_pagar_comissao_parceiro_webhook(external_ref, info.get('valor', 0))
                     return web.json_response({'ok': True, 'processado': True})
 
         return web.json_response({'ok': True, 'action': action})
@@ -5470,7 +5472,73 @@ def _mp2_notificar_pagamento(external_ref: str, valor: float):
     except Exception as e:
         print(f'[mp2_notificar] Erro: {e}', flush=True)
 
-async def route_mp2_saques_pendentes(request):
+def _mp2_pagar_comissao_parceiro_webhook(external_ref: str, valor: float):
+    """
+    Verifica se a transação tem parceiro vinculado e paga a comissão automaticamente.
+    Chamado após confirmação de pagamento PIX.
+    """
+    try:
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("""
+            SELECT parceiro_codigo, comissao_valor, comissao_status
+            FROM mp2_transacoes
+            WHERE mp_external_ref = %s AND parceiro_codigo IS NOT NULL
+        """, (external_ref,))
+        row = cur.fetchone()
+        cur.close(); conn.close()
+
+        if not row:
+            return  # Sem parceiro vinculado
+
+        parceiro_codigo = row[0]
+        comissao_valor  = float(row[1] or 0)
+        comissao_status = row[2]
+
+        if comissao_status == 'pago':
+            return  # Já pago
+
+        if comissao_valor <= 0:
+            return
+
+        print(f'💰 [comissao] Pagando R${comissao_valor:.2f} ao parceiro {parceiro_codigo}...', flush=True)
+
+        # Pagar via Mercado Pago
+        from mp2_api import mp2_pagar_comissao_parceiro
+        resultado = mp2_pagar_comissao_parceiro(parceiro_codigo, comissao_valor)
+
+        # Atualizar status na transação
+        conn2 = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur2  = conn2.cursor()
+        novo_status = 'pago' if resultado.get('success') else 'erro'
+        cur2.execute("""
+            UPDATE mp2_transacoes
+            SET comissao_status = %s
+            WHERE mp_external_ref = %s
+        """, (novo_status, external_ref))
+
+        # Atualizar totais do parceiro
+        if resultado.get('success'):
+            cur2.execute("""
+                UPDATE mp2_parceiros
+                SET total_gerado   = total_gerado + %s,
+                    total_comissao = total_comissao + %s
+                WHERE codigo = %s
+            """, (valor, comissao_valor, parceiro_codigo))
+
+        conn2.commit()
+        cur2.close(); conn2.close()
+
+        if resultado.get('success'):
+            print(f'✅ [comissao] Pago R${comissao_valor:.2f} → {parceiro_codigo}', flush=True)
+        else:
+            print(f'⚠️ [comissao] Falha ao pagar {parceiro_codigo}: {resultado.get("error")}', flush=True)
+
+    except Exception as e:
+        print(f'[comissao_webhook] Erro: {e}', flush=True)
+
+
     """Lista saques pendentes para o admin processar."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
@@ -5674,6 +5742,67 @@ async def route_mp2_testar(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 # ══════════════════════════════════════════════════════════════════
+# ─── PARCEIROS / AFILIADOS — /api/mp2/parceiros ──────────────────
+# ══════════════════════════════════════════════════════════════════
+
+async def route_mp2_parceiros_listar(request):
+    """GET /api/mp2/parceiros — Lista todos os parceiros."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        from mp2_api import mp2_listar_parceiros
+        parceiros = mp2_listar_parceiros()
+        return web.json_response({'success': True, 'parceiros': parceiros, 'total': len(parceiros)})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp2_parceiros_criar(request):
+    """POST /api/mp2/parceiros — Cria novo parceiro."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        body = await request.json()
+        nome        = str(body.get('nome', '')).strip()
+        chave_pix   = str(body.get('chave_pix', '')).strip()
+        tipo_chave  = str(body.get('tipo_chave', 'email')).strip()
+        comissao_pct = float(body.get('comissao_pct', 10))
+        codigo      = str(body.get('codigo', '')).strip() or None
+
+        if not nome:
+            return web.json_response({'success': False, 'error': 'Nome obrigatório'})
+        if not chave_pix:
+            return web.json_response({'success': False, 'error': 'Chave PIX obrigatória'})
+
+        from mp2_api import mp2_criar_parceiro
+        resultado = mp2_criar_parceiro(nome, chave_pix, tipo_chave, comissao_pct, codigo)
+        return web.json_response(resultado)
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp2_parceiros_deletar(request):
+    """DELETE /api/mp2/parceiros/{codigo} — Desativa parceiro."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        codigo = request.match_info.get('codigo', '')
+        if not codigo:
+            return web.json_response({'success': False, 'error': 'Código obrigatório'})
+        from mp2_api import mp2_deletar_parceiro
+        ok = mp2_deletar_parceiro(codigo)
+        return web.json_response({'success': ok})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+# ══════════════════════════════════════════════════════════════════
 # ─── BOT PIX — Página pública /bot — @paypix_nexbot ──────────────
 # ══════════════════════════════════════════════════════════════════
 
@@ -5686,18 +5815,27 @@ async def route_bot_pix_page(request):
 async def route_bot_gerar(request):
     """
     POST /api/bot/gerar — Gera PIX via Mercado Pago (@paypix_nexbot).
-    Body: { valor: float, descricao: str }
+    Body: { valor: float, descricao: str, ref: str (opcional - código parceiro) }
     Retorna: { success, pix_copia_cola, qr_base64, payment_id, external_ref }
     """
     try:
-        data  = await request.json()
-        valor = float(data.get('valor', 0))
-        desc  = str(data.get('descricao', '')).strip() or 'PIX PayPixNex'
+        data          = await request.json()
+        valor         = float(data.get('valor', 0))
+        desc          = str(data.get('descricao', '')).strip() or 'PIX PayPixNex'
+        parceiro_ref  = str(data.get('ref', '')).strip()  # código do parceiro afiliado
 
         if valor < 5:
             return web.json_response({'success': False, 'error': 'Valor mínimo R$ 5,00'})
         if valor > 10000:
             return web.json_response({'success': False, 'error': 'Valor máximo R$ 10.000,00'})
+
+        # Validar parceiro (se informado)
+        parceiro = None
+        if parceiro_ref:
+            from mp2_api import mp2_get_parceiro
+            parceiro = mp2_get_parceiro(parceiro_ref)
+            if parceiro and not parceiro.get('ativo'):
+                parceiro = None  # Parceiro inativo = ignora ref
 
         # Carrega token MP2 do banco se não estiver em memória
         import mp2_api
@@ -5735,14 +5873,37 @@ async def route_bot_gerar(request):
                 'error': resultado.get('error', 'Erro ao gerar PIX')
             })
 
-        print(f'✅ [bot/gerar] PIX gerado: R${valor:.2f} — {resultado.get("external_ref", "")}', flush=True)
+        # Vincular parceiro à transação (para pagar comissão no webhook)
+        if parceiro and resultado.get('external_ref'):
+            try:
+                import psycopg2 as _pg
+                pct    = parceiro['comissao_pct']
+                comval = round(valor * pct / 100, 2)
+                _c  = _pg.connect(DATABASE_URL, connect_timeout=8)
+                _cu = _c.cursor()
+                _cu.execute("""
+                    UPDATE mp2_transacoes
+                    SET parceiro_codigo = %s,
+                        comissao_valor  = %s,
+                        comissao_status = 'pendente'
+                    WHERE mp_external_ref = %s
+                """, (parceiro_ref, comval, resultado['external_ref']))
+                _c.commit()
+                _c.close()
+                print(f'✅ [bot_gerar] Parceiro {parceiro_ref} vinculado | comissão R${comval:.2f}', flush=True)
+            except Exception as ex:
+                print(f'[bot_gerar] Erro vincular parceiro: {ex}', flush=True)
+
+        log_ref = f" [ref:{parceiro_ref}]" if parceiro else ""
+        print(f'✅ [bot/gerar] PIX R${valor:.2f} — {resultado.get("external_ref","")}{log_ref}', flush=True)
         return web.json_response({
-            'success':      True,
-            'payment_id':   resultado.get('payment_id', ''),
-            'external_ref': resultado.get('external_ref', ''),
+            'success':        True,
+            'payment_id':     resultado.get('payment_id', ''),
+            'external_ref':   resultado.get('external_ref', ''),
             'pix_copia_cola': resultado.get('pix_copia_cola', ''),
-            'qr_base64':    resultado.get('qr_base64', ''),
-            'valor':        valor,
+            'qr_base64':      resultado.get('qr_base64', ''),
+            'valor':          valor,
+            'parceiro':       parceiro['nome'] if parceiro else None,
         })
 
     except Exception as e:
@@ -6200,6 +6361,9 @@ async def main():
     app.router.add_get('/api/mp2/config',                   route_mp2_config_get)
     app.router.add_post('/api/mp2/config',                  route_mp2_config_save)
     app.router.add_get('/api/mp2/testar',                   route_mp2_testar)
+    app.router.add_get('/api/mp2/parceiros',                route_mp2_parceiros_listar)
+    app.router.add_post('/api/mp2/parceiros',               route_mp2_parceiros_criar)
+    app.router.add_delete('/api/mp2/parceiros/{codigo}',    route_mp2_parceiros_deletar)
     # ── Bot PIX — página pública @paypix_nexbot ──
     app.router.add_get('/bot',                              route_bot_pix_page)
     app.router.add_post('/api/bot/gerar',                   route_bot_gerar)

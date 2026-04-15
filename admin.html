@@ -1518,6 +1518,112 @@
           </div>
         </div>
 
+        <!-- ══ PARCEIROS AFILIADOS ══ -->
+        <div class="table-card" style="margin-top:16px;border-color:#a855f7aa">
+          <div class="table-header" style="background:linear-gradient(135deg,#4c1d9520,#7c3aed20)">
+            <h3>🤝 Parceiros Afiliados</h3>
+            <div style="display:flex;gap:8px">
+              <button onclick="mp2CarregarParceiros()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+              <button onclick="mp2MostrarFormParceiro()" style="padding:6px 14px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer;font-weight:600">+ Novo Parceiro</button>
+            </div>
+          </div>
+          <div style="padding:16px 20px">
+
+            <!-- Explicação -->
+            <div style="background:#0a0a14;border:1px solid #7c3aed44;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:#aaa;line-height:1.6">
+              🔗 Cada parceiro recebe um <b style="color:#a855f7">link único</b>:
+              <code style="color:#a855f7;font-size:12px"> /bot?ref=CODIGO</code><br>
+              Quando alguém paga via esse link, a <b style="color:#4ade80">% de comissão</b> é automaticamente enviada via PIX para a chave do parceiro.
+            </div>
+
+            <!-- Formulário novo parceiro (oculto por padrão) -->
+            <div id="mp2-form-parceiro" style="display:none;background:#0a1020;border:1px solid #7c3aed44;border-radius:12px;padding:20px;margin-bottom:20px">
+              <div style="font-size:14px;font-weight:700;color:#a855f7;margin-bottom:16px">➕ Cadastrar Novo Parceiro</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Nome do Parceiro *</label>
+                  <input type="text" id="p-nome" placeholder="Ex: João Silva"
+                    style="width:100%;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
+                </div>
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Código (opcional)</label>
+                  <input type="text" id="p-codigo" placeholder="joao-silva (gerado automaticamente)"
+                    style="width:100%;background:#0a0a14;border:2px solid #7c3aed22;border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;font-family:monospace">
+                </div>
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Chave PIX *</label>
+                  <input type="text" id="p-chave-pix" placeholder="email@exemplo.com"
+                    style="width:100%;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
+                </div>
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Tipo da Chave *</label>
+                  <select id="p-tipo-chave"
+                    style="width:100%;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
+                    <option value="email">E-mail</option>
+                    <option value="cpf">CPF</option>
+                    <option value="cnpj">CNPJ</option>
+                    <option value="telefone">Telefone</option>
+                    <option value="aleatoria">Chave Aleatória</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">% Comissão *</label>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <input type="number" id="p-comissao" min="1" max="50" value="10"
+                      style="width:80px;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;text-align:center">
+                    <span style="color:#a855f7;font-weight:700;font-size:16px">%</span>
+                    <span style="font-size:12px;color:#666">do valor pago</span>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:16px;display:flex;gap:10px">
+                <button onclick="mp2CriarParceiro()"
+                  style="flex:1;padding:12px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:14px;cursor:pointer">
+                  ✅ Criar Parceiro
+                </button>
+                <button onclick="document.getElementById('mp2-form-parceiro').style.display='none'"
+                  style="padding:12px 20px;background:#0a0a14;border:1px solid #333;border-radius:10px;color:#aaa;font-size:14px;cursor:pointer">
+                  Cancelar
+                </button>
+              </div>
+              <div id="mp2-form-msg" style="margin-top:10px;font-size:13px;text-align:center;min-height:18px"></div>
+            </div>
+
+            <!-- Link gerado após criar parceiro -->
+            <div id="mp2-link-novo" style="display:none;background:#0a2010;border:2px solid #22c55e;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">
+              <div style="font-size:13px;color:#aaa;margin-bottom:8px">🎉 Parceiro criado! Link de afiliado:</div>
+              <div style="display:flex;align-items:center;gap:8px;justify-content:center">
+                <code id="mp2-link-novo-url" style="color:#4ade80;font-size:13px;word-break:break-all"></code>
+                <button onclick="mp2CopiarLinkNovo()"
+                  style="padding:8px 14px;background:#22c55e;border:none;border-radius:8px;color:#000;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap">
+                  📋 Copiar
+                </button>
+              </div>
+            </div>
+
+            <!-- Tabela de parceiros -->
+            <div style="overflow-x:auto">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Parceiro</th>
+                    <th>Chave PIX</th>
+                    <th>% Comissão</th>
+                    <th>Total Gerado</th>
+                    <th>Comissão Paga</th>
+                    <th>Pagamentos</th>
+                    <th>Link</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="mp2-parceiros-tbody">
+                  <tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- ══ STATS BOT2 ══ -->
         <div class="table-card" style="margin-top:16px">
           <div class="table-header">
@@ -3683,7 +3789,152 @@ const _origShowTab = typeof showTab === 'function' ? showTab : null;
 document.addEventListener('DOMContentLoaded', () => {
   mp2CarregarChaves();
   mp2CarregarStats();
+  mp2CarregarParceiros();
 });
+
+// ─── PARCEIROS AFILIADOS ───────────────────────────────────────────────────────
+
+function mp2MostrarFormParceiro() {
+  const f = document.getElementById('mp2-form-parceiro');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('mp2-link-novo').style.display = 'none';
+}
+
+async function mp2CriarParceiro() {
+  const nome       = document.getElementById('p-nome').value.trim();
+  const codigo     = document.getElementById('p-codigo').value.trim();
+  const chavePix   = document.getElementById('p-chave-pix').value.trim();
+  const tipoChave  = document.getElementById('p-tipo-chave').value;
+  const comissao   = parseFloat(document.getElementById('p-comissao').value) || 10;
+  const msg        = document.getElementById('mp2-form-msg');
+
+  if (!nome) { msg.innerHTML = '<span style="color:#f44">Nome obrigatório</span>'; return; }
+  if (!chavePix) { msg.innerHTML = '<span style="color:#f44">Chave PIX obrigatória</span>'; return; }
+
+  msg.innerHTML = '⏳ Criando parceiro...';
+  try {
+    const r = await fetch(`${BASE}/api/mp2/parceiros`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ nome, codigo: codigo || undefined, chave_pix: chavePix, tipo_chave: tipoChave, comissao_pct: comissao })
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = '<span style="color:#4ade80">✅ Parceiro criado!</span>';
+      // Mostrar link gerado
+      const linkEl = document.getElementById('mp2-link-novo-url');
+      linkEl.textContent = d.link || d.parceiro?.link || '';
+      document.getElementById('mp2-link-novo').style.display = 'block';
+      // Limpar form
+      document.getElementById('p-nome').value = '';
+      document.getElementById('p-codigo').value = '';
+      document.getElementById('p-chave-pix').value = '';
+      document.getElementById('p-comissao').value = '10';
+      document.getElementById('mp2-form-parceiro').style.display = 'none';
+      // Recarregar lista
+      await mp2CarregarParceiros();
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao criar'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+}
+
+function mp2CopiarLinkNovo() {
+  const url = document.getElementById('mp2-link-novo-url').textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  });
+}
+
+async function mp2CarregarParceiros() {
+  const tbody = document.getElementById('mp2-parceiros-tbody');
+  if (!tbody) return;
+  try {
+    const r = await fetch(`${BASE}/api/mp2/parceiros?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success || !d.parceiros || d.parceiros.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Nenhum parceiro cadastrado ainda — clique em "+ Novo Parceiro"</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.parceiros.map(p => {
+      const link = p.link || `https://web-production-9f54e.up.railway.app/bot?ref=${p.codigo}`;
+      const statusBadge = p.ativo
+        ? '<span style="color:#4ade80;font-size:11px">● ativo</span>'
+        : '<span style="color:#f44;font-size:11px">● inativo</span>';
+      return `<tr>
+        <td>
+          <div style="font-weight:600">${p.nome}</div>
+          <div style="font-size:11px;color:#666;font-family:monospace">${p.codigo}</div>
+          ${statusBadge}
+        </td>
+        <td>
+          <div style="font-size:13px;font-family:monospace">${p.chave_pix}</div>
+          <div style="font-size:11px;color:#888">${p.tipo_chave}</div>
+        </td>
+        <td style="text-align:center">
+          <span style="color:#a855f7;font-weight:700;font-size:16px">${p.comissao_pct}%</span>
+        </td>
+        <td style="text-align:center">
+          <div style="color:#4ade80;font-weight:600">R$ ${(p.total_gerado||0).toFixed(2).replace('.',',')}</div>
+          <div style="font-size:11px;color:#666">${p.qtd_pagamentos||0} pag.</div>
+        </td>
+        <td style="text-align:center">
+          <div style="color:#fbbf24;font-weight:600">R$ ${(p.total_comissao||0).toFixed(2).replace('.',',')}</div>
+          <div style="font-size:11px;color:#666">pago: R$ ${(p.total_pago||0).toFixed(2).replace('.',',')}</div>
+        </td>
+        <td style="text-align:center;color:#888">${p.qtd_pagamentos||0}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px">
+            <code style="font-size:11px;color:#a855f7;word-break:break-all;max-width:180px">${link}</code>
+            <button onclick="mp2CopiarLink('${link}')"
+              style="padding:4px 8px;background:#7c3aed;border:none;border-radius:6px;color:#fff;font-size:11px;cursor:pointer;white-space:nowrap">📋</button>
+          </div>
+        </td>
+        <td>
+          <button onclick="mp2DesativarParceiro('${p.codigo}','${p.nome}')"
+            style="padding:6px 12px;background:#1a0a0a;border:1px solid #f4433644;border-radius:8px;color:#f44;font-size:12px;cursor:pointer">
+            🗑 Desativar
+          </button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#f44;padding:20px">Erro ao carregar: ${e.message}</td></tr>`;
+  }
+}
+
+function mp2CopiarLink(url) {
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
+}
+
+async function mp2DesativarParceiro(codigo, nome) {
+  if (!confirm(`Desativar parceiro "${nome}" (${codigo})?\nO link deixará de funcionar.`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/mp2/parceiros/${encodeURIComponent(codigo)}`, {
+      method: 'DELETE',
+      headers: { 'X-PaynexBet-Secret': SECRET() }
+    });
+    const d = await r.json();
+    if (d.success) {
+      alert('✅ Parceiro desativado!');
+      await mp2CarregarParceiros();
+    } else {
+      alert('❌ Erro: ' + (d.error || 'desconhecido'));
+    }
+  } catch(e) {
+    alert('❌ Erro: ' + e.message);
+  }
+}
 
 </script>
 </body>
