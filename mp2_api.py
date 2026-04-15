@@ -410,6 +410,18 @@ def mp2_stats_admin() -> dict:
         cur.execute("SELECT COUNT(*) AS total, COALESCE(SUM(valor),0) AS soma FROM mp2_saques WHERE status = 'aprovado'")
         saques_aprov = cur.fetchone()
 
+        # Totais de parceiros/afiliados
+        cur.execute("""
+            SELECT
+              COUNT(*) FILTER (WHERE ativo = TRUE)  AS parceiros_ativos,
+              COUNT(*)                               AS parceiros_total,
+              COALESCE(SUM(total_gerado),0)          AS total_gerado_parceiros,
+              COALESCE(SUM(total_comissao),0)        AS total_comissao_parceiros,
+              COALESCE(SUM(total_pago),0)            AS total_pago_parceiros
+            FROM mp2_parceiros
+        """)
+        parc = cur.fetchone()
+
         cur.close(); conn.close()
         return {
             'total_usuarios': total_usuarios,
@@ -418,7 +430,13 @@ def mp2_stats_admin() -> dict:
             'saques_pendentes': int(saques_pend['total']),
             'valor_saques_pendentes': float(saques_pend['soma']),
             'saques_aprovados': int(saques_aprov['total']),
-            'valor_saques_aprovados': float(saques_aprov['soma'])
+            'valor_saques_aprovados': float(saques_aprov['soma']),
+            # Parceiros/afiliados
+            'parceiros_ativos': int(parc['parceiros_ativos'] or 0),
+            'parceiros_total': int(parc['parceiros_total'] or 0),
+            'total_gerado_parceiros': float(parc['total_gerado_parceiros'] or 0),
+            'total_comissao_parceiros': float(parc['total_comissao_parceiros'] or 0),
+            'total_pago_parceiros': float(parc['total_pago_parceiros'] or 0),
         }
     except Exception as e:
         print(f'[mp2_stats] Erro: {e}', flush=True)

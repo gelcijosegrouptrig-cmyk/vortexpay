@@ -1312,21 +1312,33 @@
           </div>
         </div>
 
-        <!-- Status do Bot2 -->
-        <div class="metrics-grid" style="margin-bottom:20px">
+        <!-- Status do Bot2 — 4 métricas MP -->
+        <div class="metrics-grid" style="margin-bottom:20px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
           <div class="metric-card blue">
             <div class="metric-icon">🤖</div>
-            <div class="metric-label">@paypix_nexbot Status</div>
-            <div class="metric-value" id="b2-status-text" style="font-size:18px">—</div>
-            <div class="metric-sub" id="b2-sub">@paypix_nexbot</div>
+            <div class="metric-label">Mercado Pago API</div>
+            <div class="metric-value" id="b2-status-text" style="font-size:16px">—</div>
+            <div class="metric-sub" id="b2-sub">verificando...</div>
           </div>
           <div class="metric-card green">
-            <div class="metric-icon">💰</div>
-            <div class="metric-label">Saldo @paypix_nexbot</div>
-            <div class="metric-value" id="b2-saldo">R$ —</div>
+            <div class="metric-icon">💳</div>
+            <div class="metric-label">Conta MP</div>
+            <div class="metric-value" id="b2-saldo" style="font-size:13px;word-break:break-all">—</div>
             <div class="metric-sub">
               <span id="b2-saldo-hora" style="font-size:11px;color:#666">clique 🔄 para atualizar</span>
             </div>
+          </div>
+          <div class="metric-card orange">
+            <div class="metric-icon">📊</div>
+            <div class="metric-label">Total Gerado</div>
+            <div class="metric-value" id="b2-total-gerado" style="font-size:16px">R$ —</div>
+            <div class="metric-sub">via links de parceiros</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-icon">🏅</div>
+            <div class="metric-label">Comissões Pagas</div>
+            <div class="metric-value" id="b2-total-pago" style="font-size:16px">R$ —</div>
+            <div class="metric-sub" id="b2-comissao-pend">pendentes: R$ —</div>
           </div>
         </div>
 
@@ -1352,6 +1364,7 @@
               <div style="background:#0a0a14;border-radius:10px;padding:14px">
                 <div style="color:#666;font-size:11px;margin-bottom:4px">MERCADO PAGO</div>
                 <div id="b2-mp-status" style="color:#4ade80;font-size:13px;font-weight:700">Verificando...</div>
+                <div id="b2-mp-email" style="font-size:11px;color:#555;margin-top:4px;word-break:break-all"></div>
               </div>
             </div>
 
@@ -1643,6 +1656,30 @@
                 <div class="metric-icon">📤</div>
                 <div class="metric-label">Saques Pendentes</div>
                 <div class="metric-value" id="mp2-saques-pend">—</div>
+              </div>
+            </div>
+            <!-- Totais de Parceiros/Afiliados -->
+            <div style="margin-top:16px;border-top:1px solid #ffffff11;padding-top:16px">
+              <div style="font-size:12px;color:#888;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">📊 Parceiros / Afiliados</div>
+              <div class="metrics-grid" style="margin:0;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+                <div class="metric-card" style="border-color:#009ee344">
+                  <div class="metric-icon">🤝</div>
+                  <div class="metric-label">Parceiros Ativos</div>
+                  <div class="metric-value" id="mp2-parceiros-ativos" style="color:#009ee3">—</div>
+                  <div class="metric-sub" id="mp2-parceiros-total">de — total</div>
+                </div>
+                <div class="metric-card" style="border-color:#f59e0b44">
+                  <div class="metric-icon">💸</div>
+                  <div class="metric-label">Total Gerado</div>
+                  <div class="metric-value" id="mp2-stats-total-gerado" style="color:#f59e0b;font-size:15px">R$ —</div>
+                  <div class="metric-sub">via links afiliados</div>
+                </div>
+                <div class="metric-card" style="border-color:#22c55e44">
+                  <div class="metric-icon">✅</div>
+                  <div class="metric-label">Comissões Pagas</div>
+                  <div class="metric-value" id="mp2-stats-total-pago" style="color:#4ade80;font-size:15px">R$ —</div>
+                  <div class="metric-sub" id="mp2-stats-pend-comissao">pendente: R$ —</div>
+                </div>
               </div>
             </div>
           </div>
@@ -3418,80 +3455,110 @@ async function tgConfirmarCodigo() {
 // BOT 2 — @paypix_nexbot — JavaScript
 // ════════════════════════════════════════════════════════════════
 
+// bot2CheckStatus — usa API do Mercado Pago (não Telegram)
 async function bot2CheckStatus() {
   try {
-    const r = await fetch(`${BASE}/api/bot2/status`);
+    // Testa conexão com MP via /api/mp2/testar
+    const r = await fetch(`${BASE}/api/mp2/testar?secret=${encodeURIComponent(SECRET())}`);
     const d = await r.json();
-    // online = bot real (BOT2_TOKEN) OU userbot conectado
-    const online    = d.online;
-    const botReal   = d.bot_real;
-    const mp2Ok     = d.mp2_configurado;
-    const temSessao = d.tem_sessao;
+    const mpOk  = d.success === true;
+    const email = d.email || '';
+    const amb   = d.ambiente || 'produção';
 
-    // Badge no menu
+    // Badge no menu lateral
     const badge = document.getElementById('badge-bot2');
     if (badge) {
-      if (botReal) {
-        badge.textContent = 'ON';
-        badge.style.background = '#2e7d32';
-      } else if (online) {
-        badge.textContent = 'ON';
-        badge.style.background = '#1565c0';
-      } else {
-        badge.textContent = 'OFF';
-        badge.style.background = '#c62828';
-      }
+      badge.textContent = mpOk ? 'ON' : 'OFF';
+      badge.style.background = mpOk ? '#2e7d32' : '#c62828';
     }
 
-    // Card métricas
+    // Card métrica status
     const st = document.getElementById('b2-status-text');
-    if (st) {
-      if (botReal) st.textContent = '🟢 Bot Real Ativo';
-      else if (online) st.textContent = '🔵 Userbot Online';
-      else st.textContent = '🔴 Offline';
-    }
+    if (st) st.textContent = mpOk ? '✅ Online' : '❌ Sem token';
     const sub = document.getElementById('b2-sub');
-    if (sub) {
-      if (botReal) sub.textContent = mp2Ok ? 'Bot + MercadoPago ✅' : 'Bot ativo — configure MP2_ACCESS_TOKEN';
-      else sub.textContent = online ? 'Userbot conectado' : 'Desconectado — configure BOT2_TOKEN';
-    }
-    // Badge no card
+    if (sub) sub.textContent = mpOk ? `MP ativo · ${amb}` : 'Configure o Access Token MP';
+
+    // Badge no header do card
     const bd = document.getElementById('b2-badge');
     if (bd) {
-      bd.textContent = online ? (botReal ? '🟢 Bot Real' : '🔵 Userbot') : '🔴 Offline';
-      bd.style.color  = online ? '#4caf50' : '#f44336';
+      bd.textContent = mpOk ? '🟢 MP Ativo' : '🔴 Offline';
+      bd.style.color = mpOk ? '#4caf50' : '#f44336';
+      bd.style.background = mpOk ? '#0a2a0a' : '#2d1010';
     }
-    // Info sessão
-    const si = document.getElementById('b2-sessao-info');
-    if (si) si.textContent = botReal ? '✅ BOT2_TOKEN OK' : (temSessao ? '✅ Sessão salva' : '❌ Sem sessão');
-    const ci = document.getElementById('b2-conn-info');
-    if (ci) ci.textContent = online ? '✅ Conectado' : '❌ Desconectado';
-    // Alerta
-    const alrt = document.getElementById('b2-alert');
-    if (alrt) alrt.style.display = online ? 'none' : 'block';
+
+    // Status no card interno
+    const mpSt = document.getElementById('b2-mp-status');
+    if (mpSt) {
+      mpSt.textContent = mpOk ? '✅ Ativo' : '❌ Token inválido ou não configurado';
+      mpSt.style.color = mpOk ? '#4ade80' : '#f44336';
+    }
+    const mpEmail = document.getElementById('b2-mp-email');
+    if (mpEmail && email) mpEmail.textContent = email;
+
+    // Saldo: mostra email da conta (não há endpoint de saldo MP sem userbot)
+    const saldoEl = document.getElementById('b2-saldo');
+    const saldoHr = document.getElementById('b2-saldo-hora');
+    if (saldoEl && mpOk) {
+      saldoEl.textContent = email || 'Conta ativa';
+      if (saldoHr) saldoHr.textContent = `ambiente: ${amb}`;
+    } else if (saldoEl && !mpOk) {
+      saldoEl.textContent = '— Token ausente';
+    }
+
+    // Carrega stats de parceiros/comissões também
+    await bot2CarregarTotaisParcerios();
   } catch(e) {
-    console.warn('[Bot2] Erro ao checar status:', e);
+    const st = document.getElementById('b2-status-text');
+    if (st) st.textContent = '❓ Erro';
+    console.warn('[Bot2-MP] Erro ao checar status:', e);
   }
 }
 
+// bot2AtualizarSaldo — usa MP2/testar para mostrar conta ativa
 async function bot2AtualizarSaldo() {
   const el = document.getElementById('b2-saldo');
   const hr = document.getElementById('b2-saldo-hora');
   if (el) el.textContent = 'Consultando...';
   try {
-    const r = await fetch(`${BASE}/api/bot2/saldo?secret=${encodeURIComponent(secret)}`);
+    const r = await fetch(`${BASE}/api/mp2/testar?secret=${encodeURIComponent(SECRET())}`);
     const d = await r.json();
     const agora = new Date().toLocaleTimeString('pt-BR');
-    if (d.success && d.saldo_bot >= 0) {
-      if (el) el.textContent = `R$ ${d.saldo_bot.toFixed(2).replace('.', ',')}`;
-      if (hr) hr.textContent = `atualizado às ${agora}`;
+    if (d.success) {
+      if (el) el.textContent = d.email || 'Conta ativa';
+      if (hr) hr.textContent = `${d.ambiente || 'produção'} · ${agora}`;
     } else {
-      if (el) el.textContent = 'R$ —';
-      if (hr) hr.textContent = d.error || 'Erro ao consultar';
+      if (el) el.textContent = '— Sem token';
+      if (hr) hr.textContent = d.error || 'Configure o Access Token';
     }
   } catch(e) {
-    if (el) el.textContent = 'R$ —';
-    if (hr) hr.textContent = 'Erro de conexão';
+    if (el) el.textContent = '— Erro';
+    if (hr) hr.textContent = 'Falha de conexão';
+  }
+  // Atualiza totais de parceiros junto
+  await bot2CarregarTotaisParcerios();
+}
+
+// Carrega totais de parceiros/comissões para os cards de métricas
+async function bot2CarregarTotaisParcerios() {
+  try {
+    const r = await fetch(`${BASE}/api/mp2/parceiros?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) return;
+    const parceiros = d.parceiros || [];
+    let totalGerado = 0, totalComissao = 0, totalPago = 0;
+    parceiros.forEach(p => {
+      totalGerado   += parseFloat(p.total_gerado  || 0);
+      totalComissao += parseFloat(p.total_comissao|| 0);
+      totalPago     += parseFloat(p.total_pago    || 0);
+    });
+    const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+    const el = id => document.getElementById(id);
+    if (el('b2-total-gerado'))  el('b2-total-gerado').textContent  = fmt(totalGerado);
+    if (el('b2-total-pago'))    el('b2-total-pago').textContent    = fmt(totalPago);
+    const pendente = totalComissao - totalPago;
+    if (el('b2-comissao-pend')) el('b2-comissao-pend').textContent = `pendente: ${fmt(pendente > 0 ? pendente : 0)}`;
+  } catch(e) {
+    console.warn('[bot2Totais] Erro:', e);
   }
 }
 
@@ -3743,11 +3810,19 @@ async function mp2CarregarStats() {
     const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
     const s = d.stats || d;
     const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    // Stats gerais
     el('mp2-total-users',      s.total_usuarios || 0);
     el('mp2-dep-confirmados',  s.depositos_confirmados || 0);
     el('mp2-total-dep',        fmt(s.total_depositado || 0));
     el('mp2-saques-pend',      s.saques_pendentes || 0);
-  } catch(e) {}
+    // Parceiros/afiliados
+    el('mp2-parceiros-ativos',     s.parceiros_ativos || 0);
+    el('mp2-parceiros-total',      `de ${s.parceiros_total || 0} total`);
+    el('mp2-stats-total-gerado',   fmt(s.total_gerado_parceiros || 0));
+    el('mp2-stats-total-pago',     fmt(s.total_pago_parceiros || 0));
+    const pendComissao = (s.total_comissao_parceiros || 0) - (s.total_pago_parceiros || 0);
+    el('mp2-stats-pend-comissao',  `pendente: ${fmt(pendComissao > 0 ? pendComissao : 0)}`);
+  } catch(e) { console.warn('mp2CarregarStats:', e); }
 }
 
 // Carrega saques pendentes do bot2
@@ -3893,10 +3968,13 @@ async function mp2PagarComissaoManual(sauqueId, parceiro, valor) {
 // Inicializa painel MP2 ao entrar na aba bot2
 const _origShowTab = typeof showTab === 'function' ? showTab : null;
 document.addEventListener('DOMContentLoaded', () => {
+  // Verifica status MP e carrega totais de parceiros nos cards de métricas
+  bot2CheckStatus();
   mp2CarregarChaves();
   mp2CarregarStats();
   mp2CarregarParceiros();
   mp2CarregarComissoes();
+  bot2CarregarTotaisParcerios();
 });
 
 // ─── PARCEIROS AFILIADOS ───────────────────────────────────────────────────────
