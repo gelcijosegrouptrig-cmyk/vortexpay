@@ -1728,6 +1728,43 @@
           </div>
         </div>
 
+        <!-- ═══ Comissões de Parceiros ═══ -->
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header">
+            <h3>💰 Comissões de Parceiros — Histórico de Repasses</h3>
+            <button onclick="mp2CarregarComissoes()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+
+          <!-- Info sobre como funciona o pagamento -->
+          <div style="margin:0 16px 12px;padding:12px;background:#0a0a1a;border:1px solid #f59e0b33;border-radius:10px">
+            <div style="font-size:12px;color:#f59e0b;font-weight:700;margin-bottom:8px">ℹ️ Como funciona o pagamento de comissão</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:#888">
+              <div style="background:#0a1500;border:1px solid #22c55e33;border-radius:8px;padding:8px">
+                <div style="color:#4ade80;font-weight:700;margin-bottom:4px">✅ Automático via API Mercado Pago</div>
+                <div>Quando o token MP está configurado, o sistema usa <code style="color:#60a5fa">/v1/account/bank_transfers</code> para enviar o PIX direto para a chave do parceiro após cada pagamento confirmado.</div>
+              </div>
+              <div style="background:#150a00;border:1px solid #f59e0b33;border-radius:8px;padding:8px">
+                <div style="color:#f59e0b;font-weight:700;margin-bottom:4px">⏳ Manual (fallback)</div>
+                <div>Se a API recusar (sem saldo MP, limite, conta não verificada), o saque fica como <b>pendente_manual</b> — o admin paga manualmente via app Mercado Pago e clica em ✅ Confirmar aqui.</div>
+              </div>
+            </div>
+            <div style="margin-top:8px;font-size:11px;color:#555">
+              ⚠️ A API do Mercado Pago <b>não permite transferir para contas externas sem verificação prévia da conta</b>. Para pagamentos automáticos funcionarem 100%, a conta MP precisa ser verificada e ter saldo suficiente.
+            </div>
+          </div>
+
+          <div style="overflow-x:auto;padding:0 16px 16px">
+            <table class="data-table">
+              <thead><tr>
+                <th>ID</th><th>Parceiro</th><th>Valor</th><th>Chave PIX</th><th>Status</th><th>Obs</th><th>Data</th><th>Ação</th>
+              </tr></thead>
+              <tbody id="mp2-comissoes-tbody">
+                <tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Clique em 🔄 Atualizar para carregar</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div><!-- /tab-bot2 -->
 
       <!-- API & WEBHOOKS -->
@@ -3838,12 +3875,90 @@ async function mp2RejeitarSaque(id) {
   } catch(e) { alert(`❌ Erro: ${e.message}`); }
 }
 
+// ─── COMISSÕES DE PARCEIROS ───────────────────────────────────────────────────
+
+async function mp2CarregarComissoes() {
+  const tbody = document.getElementById('mp2-comissoes-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">⏳ Carregando...</td></tr>';
+  try {
+    const r = await fetch(`${BASE}/api/mp2/comissoes?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) {
+      tbody.innerHTML = `<tr><td colspan="8" style="color:#f44;text-align:center;padding:20px">Erro: ${d.error}</td></tr>`;
+      return;
+    }
+    if (!d.saques || d.saques.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Nenhuma comissão registrada ainda</td></tr>';
+      return;
+    }
+    const statusBadge = (st) => {
+      const map = {
+        'pago':            '<span style="background:#0a2a0a;color:#4ade80;border:1px solid #22c55e44;padding:2px 8px;border-radius:12px;font-size:11px">✅ Pago</span>',
+        'pendente':        '<span style="background:#1a1a0a;color:#fbbf24;border:1px solid #f59e0b44;padding:2px 8px;border-radius:12px;font-size:11px">⏳ Pendente</span>',
+        'pendente_manual': '<span style="background:#2a0a0a;color:#f87171;border:1px solid #ef444444;padding:2px 8px;border-radius:12px;font-size:11px">⚠️ Manual</span>',
+        'erro':            '<span style="background:#2a0a0a;color:#f87171;border:1px solid #ef444444;padding:2px 8px;border-radius:12px;font-size:11px">❌ Erro</span>',
+      };
+      return map[st] || `<span style="color:#888;font-size:11px">${st}</span>`;
+    };
+    tbody.innerHTML = d.saques.map(s => `
+      <tr>
+        <td><span style="font-size:11px;color:#555">#${s.id}</span></td>
+        <td>
+          <div style="font-weight:600;font-size:13px">${s.parceiro_nome || s.parceiro_codigo}</div>
+          <div style="font-size:10px;color:#555;font-family:monospace">${s.parceiro_codigo}</div>
+        </td>
+        <td style="color:#4ade80;font-weight:700">R$ ${parseFloat(s.valor||0).toFixed(2)}</td>
+        <td>
+          <div style="font-family:monospace;font-size:12px;color:#60a5fa">${s.chave_pix}</div>
+          <div style="font-size:10px;color:#555">${s.tipo_chave}</div>
+        </td>
+        <td>${statusBadge(s.status)}</td>
+        <td style="font-size:11px;color:#555;max-width:150px;overflow:hidden;text-overflow:ellipsis">${s.obs || '—'}</td>
+        <td style="font-size:11px;color:#555">${s.criado_em || '—'}</td>
+        <td>
+          ${(s.status === 'pendente_manual' || s.status === 'pendente' || s.status === 'erro') ? `
+            <button onclick="mp2PagarComissaoManual(${s.id}, '${(s.parceiro_nome||s.parceiro_codigo).replace(/'/g,'').substring(0,20)}', ${parseFloat(s.valor||0).toFixed(2)})"
+              style="padding:4px 10px;background:#22c55e22;border:1px solid #22c55e;border-radius:6px;color:#4ade80;font-size:11px;cursor:pointer;white-space:nowrap">
+              ✅ Confirmar Pago
+            </button>
+          ` : s.mp_payment_id ? `<span style="font-size:10px;color:#555;font-family:monospace">${s.mp_payment_id.substring(0,12)}...</span>` : '—'}
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" style="color:#f44;text-align:center;padding:20px">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+async function mp2PagarComissaoManual(sauqueId, parceiro, valor) {
+  if (!confirm(`Confirmar pagamento manual de R$ ${valor.toFixed(2)} para ${parceiro}?\n\nVocê já fez o PIX manual pelo app do Mercado Pago?`)) return;
+  const obs = prompt('Observação (opcional):', `PIX manual feito pelo admin em ${new Date().toLocaleDateString('pt-BR')}`);
+  if (obs === null) return; // cancelou
+  try {
+    const r = await fetch(`${BASE}/api/mp2/comissoes/pagar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ saque_id: sauqueId, obs: obs || 'Pago manualmente' })
+    });
+    const d = await r.json();
+    if (d.success) {
+      alert(`✅ ${d.msg}`);
+      mp2CarregarComissoes();
+      mp2CarregarParceiros();
+    } else {
+      alert(`❌ Erro: ${d.error}`);
+    }
+  } catch(e) { alert(`❌ Erro: ${e.message}`); }
+}
+
 // Inicializa painel MP2 ao entrar na aba bot2
 const _origShowTab = typeof showTab === 'function' ? showTab : null;
 document.addEventListener('DOMContentLoaded', () => {
   mp2CarregarChaves();
   mp2CarregarStats();
   mp2CarregarParceiros();
+  mp2CarregarComissoes();
 });
 
 // ─── PARCEIROS AFILIADOS ───────────────────────────────────────────────────────

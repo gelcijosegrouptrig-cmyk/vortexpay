@@ -5889,6 +5889,91 @@ async def route_mp2_parceiros_deletar(request):
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
 
+
+async def route_mp2_comissoes_listar(request):
+    """GET /api/mp2/comissoes - Lista saques de comissão dos parceiros (SQL direto)."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import psycopg2, psycopg2.extras, decimal, json as _json
+        conn = psycopg2.connect(DATABASE_URL)
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT cs.id, cs.parceiro_codigo, cs.valor, cs.chave_pix, cs.tipo_chave,
+                   cs.status, cs.mp_payment_id, cs.obs,
+                   TO_CHAR(cs.criado_em,    'DD/MM HH24:MI') AS criado_em,
+                   TO_CHAR(cs.processado_em,'DD/MM HH24:MI') AS processado_em,
+                   p.nome AS parceiro_nome
+            FROM mp2_comissao_saques cs
+            LEFT JOIN mp2_parceiros p ON p.codigo = cs.parceiro_codigo
+            ORDER BY cs.criado_em DESC
+            LIMIT 100
+        """)
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        saques = []
+        for r in rows:
+            d = {}
+            for k, v in r.items():
+                if isinstance(v, decimal.Decimal): d[k] = float(v)
+                elif isinstance(v, bool):          d[k] = v
+                elif v is None:                    d[k] = None
+                elif isinstance(v, (int, float, str)): d[k] = v
+                else:                              d[k] = str(v)
+            saques.append(d)
+        resp = _json.dumps({'success': True, 'saques': saques, 'total': len(saques)})
+        return web.Response(text=resp, content_type='application/json')
+    except Exception as e:
+        import json as _j
+        return web.Response(text=_j.dumps({'success': False, 'error': str(e)}),
+                            content_type='application/json', status=500)
+
+
+async def route_mp2_comissoes_pagar_manual(request):
+    """POST /api/mp2/comissoes/pagar - Marca comissão como paga manualmente."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        body    = await request.json()
+        saque_id = int(body.get('saque_id', 0))
+        obs      = str(body.get('obs', 'Pago manualmente pelo admin')).strip()
+        if not saque_id:
+            return web.json_response({'success': False, 'error': 'saque_id obrigatório'})
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL)
+        cur  = conn.cursor()
+        # Buscar valor e parceiro antes de marcar como pago
+        cur.execute("SELECT valor, parceiro_codigo FROM mp2_comissao_saques WHERE id=%s", (saque_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return web.json_response({'success': False, 'error': 'Saque não encontrado'})
+        valor, parceiro_codigo = float(row[0]), row[1]
+        cur.execute("""
+            UPDATE mp2_comissao_saques
+            SET status='pago', processado_em=NOW(), obs=%s
+            WHERE id=%s AND status != 'pago'
+        """, (obs, saque_id))
+        rows_updated = cur.rowcount
+        if rows_updated > 0:
+            cur.execute("""
+                UPDATE mp2_parceiros
+                SET total_pago = total_pago + %s
+                WHERE codigo = %s
+            """, (valor, parceiro_codigo))
+        conn.commit(); cur.close(); conn.close()
+        if rows_updated > 0:
+            return web.json_response({'success': True, 'msg': f'R${valor:.2f} marcado como pago ao parceiro {parceiro_codigo}'})
+        else:
+            return web.json_response({'success': False, 'error': 'Já estava pago ou não encontrado'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
 # ══════════════════════════════════════════════════════════════════
 # ─── BOT PIX - Página pública /bot - @paypix_nexbot ──────────────
 # ══════════════════════════════════════════════════════════════════
@@ -6457,6 +6542,8 @@ async def main():
     app.router.add_get('/api/mp2/parceiros',                route_mp2_parceiros_listar)
     app.router.add_post('/api/mp2/parceiros',               route_mp2_parceiros_criar)
     app.router.add_delete('/api/mp2/parceiros/{codigo}',    route_mp2_parceiros_deletar)
+    app.router.add_get('/api/mp2/comissoes',                route_mp2_comissoes_listar)
+    app.router.add_post('/api/mp2/comissoes/pagar',         route_mp2_comissoes_pagar_manual)
     # ── Bot PIX - página pública @paypix_nexbot ──
     app.router.add_get('/bot',                              route_bot_pix_page)
     app.router.add_get('/pix',                              route_pix_page)

@@ -690,6 +690,8 @@ def mp2_deletar_parceiro(codigo: str) -> bool:
 def mp2_pagar_comissao_parceiro(parceiro_codigo: str, valor: float) -> dict:
     """
     Paga comissão ao parceiro via PIX Mercado Pago.
+    USA /v1/account/bank_transfers — endpoint CORRETO para enviar dinheiro via PIX.
+    /v1/payments RECEBE dinheiro (cobra). Bank_transfers ENVIA dinheiro (paga).
     Registra na tabela mp2_comissao_saques.
     """
     try:
@@ -702,7 +704,7 @@ def mp2_pagar_comissao_parceiro(parceiro_codigo: str, valor: float) -> dict:
         chave_pix  = parceiro['chave_pix']
         tipo_chave = parceiro['tipo_chave']
 
-        # Registrar saque de comissão
+        # Registrar saque de comissão como pendente
         conn = _get_conn()
         cur  = conn.cursor()
         cur.execute("""
@@ -715,7 +717,7 @@ def mp2_pagar_comissao_parceiro(parceiro_codigo: str, valor: float) -> dict:
         conn.commit()
         cur.close(); conn.close()
 
-        # Tentar pagar via Mercado Pago (saque automático)
+        # Buscar token MP2
         token = MP2_ACCESS_TOKEN
         if not token:
             try:
@@ -727,66 +729,94 @@ def mp2_pagar_comissao_parceiro(parceiro_codigo: str, valor: float) -> dict:
                 if r: token = r[0]
             except: pass
 
-        if token:
+        if not token:
+            # Sem token → fica pendente para pagamento manual pelo admin
+            return {'success': False, 'error': 'Token MP não configurado — saque pendente para pagamento manual', 'saque_id': saque_id, 'pendente': True}
+
+        try:
+            headers = {
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json',
+                'X-Idempotency-Key': str(uuid.uuid4())
+            }
+
+            # Mapa tipo_chave → tipo Mercado Pago para bank_transfers
+            tipo_mp_map = {
+                'cpf':       'CPF',
+                'cnpj':      'CNPJ',
+                'email':     'EMAIL',
+                'telefone':  'PHONE',
+                'aleatoria': 'RANDOM_KEY'
+            }
+            tipo_mp = tipo_mp_map.get(tipo_chave.lower(), 'CPF')
+
+            # ✅ ENDPOINT CORRETO: /v1/account/bank_transfers — ENVIA dinheiro via PIX
+            # NÃO usar /v1/payments (que RECEBE/cobra dinheiro)
+            payload = {
+                'amount':      round(valor, 2),
+                'origin_id':   int(uuid.uuid4().int % 1_000_000_000),
+                'description': f'Comissão parceiro {parceiro_codigo}',
+                'destination': {
+                    'type':      'bank_account',
+                    'pix_key':   chave_pix,
+                    'pix_key_type': tipo_mp
+                }
+            }
+            resp = requests.post(
+                f'{MP2_BASE_URL}/v1/account/bank_transfers',
+                json=payload, headers=headers, timeout=30
+            )
+            resp_data = resp.json()
+            mp_id = str(resp_data.get('id', resp_data.get('transfer_id', '')))
+
+            conn3 = _get_conn()
+            c3 = conn3.cursor()
+
+            if resp.status_code in (200, 201):
+                # ✅ Transferência enviada com sucesso
+                c3.execute("""
+                    UPDATE mp2_comissao_saques
+                    SET status='pago', mp_payment_id=%s, processado_em=NOW(),
+                        obs='Auto via API MP bank_transfer'
+                    WHERE id=%s
+                """, (mp_id, saque_id))
+                c3.execute("""
+                    UPDATE mp2_parceiros
+                    SET total_pago = total_pago + %s
+                    WHERE codigo = %s
+                """, (valor, parceiro_codigo))
+                conn3.commit(); conn3.close()
+                print(f'✅ [comissao] Transferido R${valor:.2f} → {chave_pix} ({tipo_chave}) | MP ID: {mp_id}', flush=True)
+                return {'success': True, 'mp_payment_id': mp_id, 'valor': valor, 'metodo': 'bank_transfer_pix'}
+
+            else:
+                # ❌ API retornou erro — marcar como pendente para pagamento manual
+                err_msg = resp_data.get('message', '') or resp_data.get('error', resp.text[:300])
+                err_cause = ''
+                if resp_data.get('cause'):
+                    err_cause = str(resp_data['cause'])
+                obs_full = f'{err_msg} | {err_cause}'.strip(' |')
+
+                c3.execute("""
+                    UPDATE mp2_comissao_saques
+                    SET status='pendente_manual', obs=%s WHERE id=%s
+                """, (obs_full[:500], saque_id))
+                conn3.commit(); conn3.close()
+                print(f'⚠️ [comissao] API MP recusou ({resp.status_code}): {obs_full[:200]}', flush=True)
+                print(f'   → Saque #{saque_id} marcado como pendente_manual para admin processar', flush=True)
+                return {'success': False, 'error': obs_full, 'saque_id': saque_id, 'pendente': True}
+
+        except Exception as ex:
+            # Erro de rede/timeout → manter como pendente
             try:
-                headers = {
-                    'Authorization': f'Bearer {token}',
-                    'Content-Type': 'application/json',
-                    'X-Idempotency-Key': str(uuid.uuid4())
-                }
-                # Mapa tipo_chave → tipo MP
-                tipo_mp_map = {
-                    'cpf': 'CPF', 'cnpj': 'CNPJ',
-                    'email': 'email', 'telefone': 'phone',
-                    'aleatoria': 'random_key'
-                }
-                tipo_mp = tipo_mp_map.get(tipo_chave.lower(), 'email')
-
-                payload = {
-                    'transaction_amount': round(valor, 2),
-                    'description': f'Comissão parceiro {parceiro_codigo}',
-                    'payment_method_id': 'pix',
-                    'pix': {'key_type': tipo_mp, 'key': chave_pix}
-                }
-                resp = requests.post(
-                    f'{MP2_BASE_URL}/v1/payments', json=payload,
-                    headers=headers, timeout=30
-                )
-                resp_data = resp.json()
-                mp_id = resp_data.get('id', '')
-
-                conn3 = _get_conn()
-                c3 = conn3.cursor()
-                if resp.status_code in (200, 201):
-                    c3.execute("""
-                        UPDATE mp2_comissao_saques
-                        SET status='pago', mp_payment_id=%s, processado_em=NOW()
-                        WHERE id=%s
-                    """, (str(mp_id), saque_id))
-                    c3.execute("""
-                        UPDATE mp2_parceiros
-                        SET total_pago = total_pago + %s
-                        WHERE codigo = %s
-                    """, (valor, parceiro_codigo))
-                    conn3.commit()
-                    conn3.close()
-                    print(f'✅ [comissao] Pago R${valor:.2f} → {chave_pix} ({tipo_chave})', flush=True)
-                    return {'success': True, 'mp_payment_id': str(mp_id), 'valor': valor}
-                else:
-                    err = resp_data.get('message', resp.text[:200])
-                    c3.execute("""
-                        UPDATE mp2_comissao_saques
-                        SET status='erro', obs=%s WHERE id=%s
-                    """, (err, saque_id))
-                    conn3.commit()
-                    conn3.close()
-                    print(f'⚠️ [comissao] MP erro: {err}', flush=True)
-                    return {'success': False, 'error': err, 'saque_id': saque_id}
-            except Exception as ex:
-                print(f'[comissao] Erro MP: {ex}', flush=True)
-                return {'success': False, 'error': str(ex), 'saque_id': saque_id}
-        else:
-            return {'success': False, 'error': 'Token MP não configurado', 'saque_id': saque_id}
+                conn_err = _get_conn()
+                c_err = conn_err.cursor()
+                c_err.execute("UPDATE mp2_comissao_saques SET status='pendente_manual', obs=%s WHERE id=%s",
+                              (f'Erro conexão: {str(ex)[:200]}', saque_id))
+                conn_err.commit(); conn_err.close()
+            except: pass
+            print(f'[comissao] Erro rede MP: {ex}', flush=True)
+            return {'success': False, 'error': str(ex), 'saque_id': saque_id, 'pendente': True}
 
     except Exception as e:
         print(f'[mp2_parceiro] Erro pagar_comissao: {e}', flush=True)
