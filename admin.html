@@ -1452,12 +1452,17 @@
                   🔑 Access Token <span style="color:#f44;font-weight:700">*</span>
                   <span style="color:#555;font-weight:400;text-transform:none;letter-spacing:0"> — principal (APP_USR-...)</span>
                 </label>
-                <div style="display:flex;gap:8px">
-                  <input type="password" id="mp2-access-token" placeholder="APP_USR-0000000000000000-000000-..."
-                    style="flex:1;background:#0a0a14;border:2px solid #009ee344;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
-                  <button onclick="toggleMp2Field('mp2-access-token')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <div style="flex:1;position:relative">
+                    <input type="password" id="mp2-access-token"
+                      placeholder="Cole o Access Token aqui (APP_USR-...)"
+                      autocomplete="new-password"
+                      style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #009ee344;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
+                    <span id="mp2-token-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
+                  </div>
+                  <button onclick="toggleMp2Field('mp2-access-token','mp2-token-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
                 </div>
-                <div style="font-size:11px;color:#555;margin-top:4px">Painel MP → Credenciais → Access Token de produção</div>
+                <div style="font-size:11px;color:#555;margin-top:4px">Painel MP → Credenciais → Access Token de produção — <strong style="color:#4caf50">✅ já configurado: deixe em branco para manter</strong></div>
               </div>
 
               <!-- Public Key -->
@@ -1466,12 +1471,17 @@
                   🔓 Public Key
                   <span style="color:#555;font-weight:400;text-transform:none;letter-spacing:0"> — (APP_USR-...)</span>
                 </label>
-                <div style="display:flex;gap:8px">
-                  <input type="password" id="mp2-public-key" placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    style="flex:1;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
-                  <button onclick="toggleMp2Field('mp2-public-key')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <div style="flex:1;position:relative">
+                    <input type="password" id="mp2-public-key"
+                      placeholder="Cole a Public Key aqui (APP_USR-...)"
+                      autocomplete="new-password"
+                      style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
+                    <span id="mp2-pubkey-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
+                  </div>
+                  <button onclick="toggleMp2Field('mp2-public-key','mp2-pubkey-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
                 </div>
-                <div style="font-size:11px;color:#555;margin-top:4px">Necessária para integrações front-end (opcional no backend)</div>
+                <div style="font-size:11px;color:#555;margin-top:4px">Necessária para integrações front-end (opcional no backend) — <strong style="color:#888">deixe em branco para manter a atual</strong></div>
               </div>
 
               <!-- Client ID + Secret -->
@@ -4045,23 +4055,24 @@ async function mp2CarregarChaves() {
     if (!r.ok) return;
     const d = await r.json();
 
-    // Preenche campos mascarados (só mostra se existir)
-    if (d.access_token) {
-      const el = document.getElementById('mp2-access-token');
-      if (el) el.value = d.access_token;
-    }
-    if (d.public_key) {
-      const el = document.getElementById('mp2-public-key');
-      if (el) el.value = d.public_key;
-    }
-    if (d.client_id) {
-      const el = document.getElementById('mp2-client-id');
-      if (el) el.value = d.client_id;
-    }
-    if (d.client_secret) {
-      const el = document.getElementById('mp2-client-secret');
-      if (el) el.value = d.client_secret;
-    }
+    // Preenche campos mascarados + salva em data-saved para fallback de keep
+    const fillField = (id, badgeId, val) => {
+      const el = document.getElementById(id);
+      const bg = document.getElementById(badgeId);
+      if (!el) return;
+      if (val) {
+        el.value = val;
+        el.dataset.saved = '1';            // marca que já existe valor salvo
+        if (bg) bg.style.display = 'inline-block'; // mostra badge ✅
+      } else {
+        el.dataset.saved = '';
+        if (bg) bg.style.display = 'none';
+      }
+    };
+    fillField('mp2-access-token', 'mp2-token-badge',  d.access_token);
+    fillField('mp2-public-key',   'mp2-pubkey-badge', d.public_key);
+    fillField('mp2-client-id',    null,               d.client_id);
+    fillField('mp2-client-secret',null,               d.client_secret);
 
     // Atualiza status
     const configurado = d.configurado || false;
@@ -4090,13 +4101,23 @@ async function mp2SalvarChaves() {
   const btn = document.getElementById('mp2-btn-salvar');
   const msg = document.getElementById('mp2-msg');
 
-  const accessToken  = document.getElementById('mp2-access-token')?.value.trim();
-  const publicKey    = document.getElementById('mp2-public-key')?.value.trim();
-  const clientId     = document.getElementById('mp2-client-id')?.value.trim();
-  const clientSecret = document.getElementById('mp2-client-secret')?.value.trim();
+  const elToken = document.getElementById('mp2-access-token');
+  const elPub   = document.getElementById('mp2-public-key');
+  const elCid   = document.getElementById('mp2-client-id');
+  const elCsec  = document.getElementById('mp2-client-secret');
 
+  // Se o campo estiver vazio mas já havia valor salvo, usamos '__keep__' para
+  // instruir o servidor a manter o token atual do banco — não requeremos que o
+  // usuário redigite um campo do tipo password que o browser mascarou.
+  const rawToken = elToken?.value.trim();
+  const accessToken  = rawToken  || (elToken?.dataset.saved  ? '__keep__' : '');
+  const publicKey    = elPub?.value.trim()    || (elPub?.dataset.saved    ? '__keep__' : '');
+  const clientId     = elCid?.value.trim()    || (elCid?.dataset.saved    ? '__keep__' : '');
+  const clientSecret = elCsec?.value.trim()   || (elCsec?.dataset.saved   ? '__keep__' : '');
+
+  // Só bloqueia se NUNCA houve token salvo E o campo continua vazio
   if (!accessToken) {
-    if (msg) msg.innerHTML = '<span style="color:#f44">❌ Access Token é obrigatório!</span>';
+    if (msg) msg.innerHTML = '<span style="color:#f44">❌ Access Token é obrigatório! Cole o token e clique em Salvar.</span>';
     return;
   }
 

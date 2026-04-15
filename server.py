@@ -5649,7 +5649,12 @@ async def route_mp2_config_get(request):
 
 
 async def route_mp2_config_save(request):
-    """POST /api/mp2/config - salva chaves MP2 no banco e recarrega no mp2_api."""
+    """POST /api/mp2/config - salva chaves MP2 no banco e recarrega no mp2_api.
+    
+    Sentinela '__keep__': se o front-end enviar '__keep__' (ou string vazia) para
+    qualquer campo, o valor já armazenado no banco é mantido — o token não é apagado
+    nem sobrescrito por uma string vazia quando o campo está mascarado.
+    """
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
@@ -5661,17 +5666,36 @@ async def route_mp2_config_save(request):
         client_id     = body.get('client_id', '').strip()
         client_secret = body.get('client_secret', '').strip()
 
-        if not access_token:
-            return web.json_response({'success': False, 'error': 'access_token é obrigatório'})
-
         import psycopg2
         conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
         cur  = conn.cursor()
+
+        # Resolve sentinela '__keep__': substitui pelo valor atual do banco
+        def _resolve(campo_db, valor_novo):
+            """Retorna o valor a gravar: novo se não for sentinela, senão o atual do banco."""
+            if valor_novo and valor_novo != '__keep__':
+                return valor_novo          # novo valor fornecido — usar
+            # vazio ou sentinel → buscar o que já está salvo
+            cur.execute("SELECT valor FROM mp2_config WHERE chave = %s", (campo_db,))
+            row = cur.fetchone()
+            return row[0] if row else None
+
+        token_final  = _resolve('mp2_access_token', access_token)
+        pubkey_final = _resolve('mp2_public_key',   public_key)
+        cid_final    = _resolve('mp2_client_id',    client_id)
+        csec_final   = _resolve('mp2_client_secret', client_secret)
+
+        # access_token é obrigatório (mas pode vir do banco via _resolve)
+        if not token_final:
+            cur.close(); conn.close()
+            return web.json_response({'success': False,
+                                      'error': 'Access Token é obrigatório! Cole o token no campo e clique em Salvar.'})
+
         pares = [
-            ('mp2_access_token', access_token),
-            ('mp2_public_key',   public_key),
-            ('mp2_client_id',    client_id),
-            ('mp2_client_secret', client_secret),
+            ('mp2_access_token',  token_final),
+            ('mp2_public_key',    pubkey_final),
+            ('mp2_client_id',     cid_final),
+            ('mp2_client_secret', csec_final),
         ]
         for chave, valor in pares:
             if valor:
@@ -5684,10 +5708,11 @@ async def route_mp2_config_save(request):
 
         # Recarrega as variáveis no módulo mp2_api em tempo real (sem reiniciar)
         import mp2_api
-        if access_token:  mp2_api.MP2_ACCESS_TOKEN = access_token
-        if public_key:    mp2_api.MP2_PUBLIC_KEY   = public_key
+        if token_final:  mp2_api.MP2_ACCESS_TOKEN = token_final
+        if pubkey_final: mp2_api.MP2_PUBLIC_KEY   = pubkey_final
 
-        print(f'✅ [mp2_config] Chaves MP2 atualizadas pelo admin. Token: ...{access_token[-6:]}', flush=True)
+        suffix = token_final[-6:] if token_final else '???'
+        print(f'✅ [mp2_config] Chaves MP2 atualizadas pelo admin. Token: ...{suffix}', flush=True)
         return web.json_response({'success': True, 'mensagem': 'Chaves salvas e ativas imediatamente!'})
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)})
