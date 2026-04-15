@@ -1629,6 +1629,93 @@
           </div>
         </div>
 
+        <!-- ══ CONFIG PÁGINA /bot E /pix ══ -->
+        <div class="table-card" style="margin-top:16px;border-color:#f59e0b44">
+          <div class="table-header" style="background:linear-gradient(135deg,#1a0e0033,#f59e0b11)">
+            <h3>⚙️ Configurar Página de Pagamento</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="font-size:11px;color:#888">paynexbet.com/bot &amp; /pix</span>
+              <button onclick="botConfigSalvar()" style="padding:6px 16px;background:#f59e0b;border:none;border-radius:8px;color:#000;font-size:13px;font-weight:700;cursor:pointer">💾 Salvar</button>
+            </div>
+          </div>
+          <div style="padding:20px;display:grid;gap:16px">
+
+            <!-- Modo: fixo ou livre -->
+            <div style="background:#0a0a14;border:1px solid #f59e0b33;border-radius:12px;padding:16px">
+              <div style="font-size:13px;font-weight:700;color:#f59e0b;margin-bottom:12px">🎯 Modo de Cobrança</div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#0a1500;border:2px solid #22c55e44;border-radius:10px;padding:10px 14px;flex:1;min-width:140px" id="lbl-modo-fixo">
+                  <input type="radio" name="bot-modo" id="radio-fixo" value="fixo" onchange="botModoChange()" style="accent-color:#22c55e">
+                  <div>
+                    <div style="font-weight:700;color:#4ade80;font-size:13px">💰 Valor Fixo</div>
+                    <div style="font-size:11px;color:#666">Você define o valor. QR gerado automaticamente.</div>
+                  </div>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#0a0a1a;border:2px solid #ffffff11;border-radius:10px;padding:10px 14px;flex:1;min-width:140px" id="lbl-modo-livre">
+                  <input type="radio" name="bot-modo" id="radio-livre" value="livre" onchange="botModoChange()">
+                  <div>
+                    <div style="font-weight:700;color:#aaa;font-size:13px">✏️ Valor Livre</div>
+                    <div style="font-size:11px;color:#666">Cliente digita o valor que desejar.</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Valor fixo -->
+            <div id="cfg-valor-fixo-wrap">
+              <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">💵 Valor Fixo (R$)</label>
+              <div style="display:flex;align-items:center;gap:8px;background:#0a0a14;border:2px solid #f59e0b55;border-radius:10px;padding:10px 14px">
+                <span style="font-size:20px;font-weight:800;color:#666">R$</span>
+                <input type="number" id="cfg-valor-fixo" min="1" max="10000" step="0.01" placeholder="10.00"
+                  style="flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:24px;font-weight:800">
+              </div>
+              <div style="font-size:11px;color:#555;margin-top:4px">Ex: 10.00 — cada cliente que abrir /bot ou /pix verá esse valor e terá um QR exclusivo gerado.</div>
+            </div>
+
+            <!-- Min/Max (modo livre) -->
+            <div id="cfg-minmax-wrap" style="display:none">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Mínimo (R$)</label>
+                  <input type="number" id="cfg-min-valor" min="1" max="9999" placeholder="5"
+                    style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:16px;font-weight:700">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Máximo (R$)</label>
+                  <input type="number" id="cfg-max-valor" min="1" max="100000" placeholder="10000"
+                    style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:16px;font-weight:700">
+                </div>
+              </div>
+            </div>
+
+            <!-- Título e Descrição -->
+            <div style="display:grid;gap:12px">
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📝 Título da Página</label>
+                <input type="text" id="cfg-titulo" placeholder="PayPixNex — Pague via PIX" maxlength="60"
+                  style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:14px">
+              </div>
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📄 Descrição / Subtítulo</label>
+                <input type="text" id="cfg-descricao" placeholder="Pagamento seguro via Mercado Pago" maxlength="100"
+                  style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:14px">
+              </div>
+            </div>
+
+            <!-- Preview do link -->
+            <div style="background:#0a1520;border:1px solid #009ee333;border-radius:10px;padding:12px 16px;font-size:12px">
+              <div style="color:#888;margin-bottom:6px">🔗 Links de acesso:</div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div><span style="color:#009ee3">paynexbet.com/bot</span> <span style="color:#555">— link público principal</span></div>
+                <div><span style="color:#009ee3">paynexbet.com/pix</span> <span style="color:#555">— alias do /bot</span></div>
+                <div><span style="color:#f59e0b">paynexbet.com/bot?ref=<i>codigo</i></span> <span style="color:#555">— link de afiliado (comissão automática)</span></div>
+              </div>
+            </div>
+
+            <div id="cfg-bot-msg" style="font-size:13px;text-align:center;min-height:20px"></div>
+          </div>
+        </div>
+
         <!-- ══ STATS BOT2 ══ -->
         <div class="table-card" style="margin-top:16px">
           <div class="table-header">
@@ -3975,7 +4062,104 @@ document.addEventListener('DOMContentLoaded', () => {
   mp2CarregarParceiros();
   mp2CarregarComissoes();
   bot2CarregarTotaisParcerios();
+  botConfigCarregar();  // carrega configurações da página /bot e /pix
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO DA PÁGINA /bot e /pix — VALOR FIXO OU LIVRE
+// ═══════════════════════════════════════════════════════════════════
+
+async function botConfigCarregar() {
+  try {
+    const r = await fetch(`${BASE}/api/bot/config`);
+    const d = await r.json();
+    if (!d.success) return;
+
+    // Modo
+    const modoFixo = d.modo_fixo;
+    document.getElementById('radio-fixo').checked  =  modoFixo;
+    document.getElementById('radio-livre').checked = !modoFixo;
+    _botAtualizarModoUI(modoFixo);
+
+    // Valores
+    if (d.valor_fixo > 0)
+      document.getElementById('cfg-valor-fixo').value = d.valor_fixo.toFixed(2);
+    if (d.min_valor)
+      document.getElementById('cfg-min-valor').value = d.min_valor;
+    if (d.max_valor)
+      document.getElementById('cfg-max-valor').value = d.max_valor;
+
+    // Título e descrição
+    if (d.titulo)
+      document.getElementById('cfg-titulo').value    = d.titulo;
+    if (d.descricao)
+      document.getElementById('cfg-descricao').value = d.descricao;
+
+  } catch(e) {
+    console.warn('[botConfig] Erro ao carregar:', e);
+  }
+}
+
+function botModoChange() {
+  const fixo = document.getElementById('radio-fixo').checked;
+  _botAtualizarModoUI(fixo);
+}
+
+function _botAtualizarModoUI(fixo) {
+  document.getElementById('cfg-valor-fixo-wrap').style.display = fixo ? 'block' : 'none';
+  document.getElementById('cfg-minmax-wrap').style.display     = fixo ? 'none'  : 'block';
+  // Destacar seleção ativa
+  const lF = document.getElementById('lbl-modo-fixo');
+  const lL = document.getElementById('lbl-modo-livre');
+  if (lF) lF.style.borderColor = fixo ? '#22c55e' : '#ffffff11';
+  if (lL) lL.style.borderColor = fixo ? '#ffffff11' : '#009ee3';
+}
+
+async function botConfigSalvar() {
+  const msg    = document.getElementById('cfg-bot-msg');
+  const modoFixo   = document.getElementById('radio-fixo').checked;
+  const valorFixo  = parseFloat(document.getElementById('cfg-valor-fixo').value || 0);
+  const minValor   = parseFloat(document.getElementById('cfg-min-valor').value  || 5);
+  const maxValor   = parseFloat(document.getElementById('cfg-max-valor').value  || 10000);
+  const titulo     = document.getElementById('cfg-titulo').value.trim()    || 'PayPixNex — Pague via PIX';
+  const descricao  = document.getElementById('cfg-descricao').value.trim() || 'Pagamento seguro via Mercado Pago';
+
+  if (modoFixo && (!valorFixo || valorFixo < 1)) {
+    if (msg) msg.innerHTML = '<span style="color:#f44">❌ Informe um valor fixo maior que R$ 1,00</span>';
+    return;
+  }
+
+  if (msg) msg.innerHTML = '<span style="color:#009ee3">💾 Salvando...</span>';
+
+  try {
+    const r = await fetch(`${BASE}/api/bot/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ modo_fixo: modoFixo, valor_fixo: valorFixo, min_valor: minValor, max_valor: maxValor, titulo, descricao, ativo: true })
+    });
+    const d = await r.json();
+    if (d.success) {
+      if (msg) msg.innerHTML = `<span style="color:#4caf50">✅ Salvo! Página /bot e /pix atualizadas. <a href="/bot" target="_blank" style="color:#009ee3">Ver página →</a></span>`;
+      // Atualiza bot_pix.html no banco via save interno
+      await _salvarBotPixHtmlNoBanco();
+    } else {
+      if (msg) msg.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
+    }
+  } catch(e) {
+    if (msg) msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+}
+
+// Salva bot_pix.html atualizado no banco (para que o servidor sirva a versão correta)
+async function _salvarBotPixHtmlNoBanco() {
+  try {
+    // Busca o HTML da página /bot atual e salva no banco via endpoint interno
+    const r = await fetch(`${BASE}/api/bot/config/save-html`, {
+      method: 'POST',
+      headers: { 'X-PaynexBet-Secret': SECRET() }
+    });
+  } catch(e) {}
+}
 
 // ─── PARCEIROS AFILIADOS ───────────────────────────────────────────────────────
 

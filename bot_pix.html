@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>PayPixNex — Gerar PIX via Telegram</title>
-<meta name="description" content="Gere um PIX instantâneo via @paypix_nexbot">
+<title>PayPixNex — Pague via PIX</title>
+<meta name="description" content="Pagamento seguro via Mercado Pago PIX">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -30,394 +30,353 @@ body{
   display:flex;
   flex-direction:column;
   align-items:center;
-  padding:20px 16px 60px;
+  justify-content:flex-start;
+  padding:20px 16px 40px;
+}
+.top-bar{
+  width:100%;max-width:420px;
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:20px;
+}
+.logo-img{font-size:28px}
+.top-title{font-size:17px;font-weight:800;color:#fff}
+.top-sub{font-size:11px;color:var(--text3)}
+.mp-badge{
+  margin-left:auto;
+  background:#009ee322;border:1px solid #009ee344;
+  color:#009ee3;font-size:10px;font-weight:700;
+  padding:4px 10px;border-radius:20px;white-space:nowrap;
 }
 
-/* ── HEADER ── */
-.header{
-  text-align:center;
-  margin-bottom:28px;
-  padding-top:16px;
-}
-.header-logo{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  background:linear-gradient(135deg,#003087,var(--blue));
-  padding:10px 22px;
-  border-radius:50px;
-  margin-bottom:12px;
-}
-.header-logo span{font-size:22px}
-.header-logo strong{font-size:1.1rem;color:#fff;letter-spacing:.5px}
-.header h1{font-size:1.6rem;font-weight:800;color:var(--text);margin-bottom:6px}
-.header p{color:var(--text2);font-size:.9rem;line-height:1.5}
-.tg-badge{
-  display:inline-flex;align-items:center;gap:6px;
-  background:#0a1a2a;border:1px solid #009ee344;
-  border-radius:20px;padding:5px 14px;font-size:.82rem;
-  color:var(--blue);margin-top:8px;
-}
-
-/* ── CARD ── */
+/* Card principal */
 .card{
+  width:100%;max-width:420px;
   background:var(--card);
   border:1px solid var(--border);
   border-radius:20px;
-  width:100%;max-width:440px;
   overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.6);
 }
 .card-header{
-  background:linear-gradient(135deg,#003087,#0055aa);
-  padding:18px 24px;
-  display:flex;align-items:center;gap:12px;
+  background:linear-gradient(135deg,#003087,#009ee3);
+  padding:20px 24px 18px;
+  text-align:center;
 }
-.card-header-icon{font-size:28px}
-.card-header-title{font-size:1.1rem;font-weight:700;color:#fff}
-.card-header-sub{font-size:.8rem;color:#9bbfe0;margin-top:2px}
+.card-header h1{font-size:1.4rem;font-weight:900;color:#fff;margin-bottom:4px}
+.card-header p{font-size:.82rem;color:#9bbfe0}
 
-/* ── STEPS ── */
-.steps{
-  display:flex;align-items:center;justify-content:center;
-  gap:0;padding:16px 24px 0;
+/* Badge parceiro */
+.parceiro-badge{
+  display:none;align-items:center;gap:8px;
+  background:#f59e0b11;border:1px solid #f59e0b33;
+  border-radius:10px;padding:10px 14px;
+  margin:16px 20px 0;font-size:.82rem;
 }
-.step-item{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  flex:1;
+.parceiro-badge .icon{font-size:18px}
+.parceiro-badge .txt{color:#f59e0b}
+.parceiro-badge .pct{
+  margin-left:auto;background:#f59e0b22;
+  color:#f59e0b;padding:2px 8px;border-radius:20px;
+  font-size:.75rem;font-weight:700;
 }
-.step-circle{
-  width:32px;height:32px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:.8rem;font-weight:700;
-  background:var(--card2);border:2px solid var(--border);
-  color:var(--text3);transition:.3s;
-}
-.step-circle.active{background:var(--blue);border-color:var(--blue);color:#fff}
-.step-circle.done{background:var(--green);border-color:var(--green);color:#fff}
-.step-label{font-size:.7rem;color:var(--text3);text-align:center;transition:.3s}
-.step-label.active{color:var(--blue)}
-.step-label.done{color:var(--green)}
-.step-line{height:2px;flex:1;background:var(--border);transition:.3s;margin-top:-12px}
-.step-line.done{background:var(--green)}
 
-/* ── CONTEÚDO ── */
-.card-body{padding:24px}
+.card-body{padding:20px 20px 24px}
 
-/* ── STEP 1: VALOR ── */
+/* VALOR FIXO — destaque grande */
+.valor-fixo-display{
+  text-align:center;
+  background:linear-gradient(135deg,#003087,#0057a8);
+  border:2px solid #009ee344;
+  border-radius:16px;
+  padding:24px 20px 20px;
+  margin-bottom:20px;
+}
+.valor-fixo-display .vf-label{
+  font-size:.75rem;color:#9bbfe0;
+  text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;
+}
+.valor-fixo-display .vf-valor{
+  font-size:3rem;font-weight:900;color:#fff;
+  line-height:1;letter-spacing:-1px;
+}
+.valor-fixo-display .vf-sub{
+  font-size:.78rem;color:#9bbfe0;margin-top:6px;
+}
+
+/* VALOR LIVRE — input */
 .valor-input-wrap{
+  display:flex;align-items:center;gap:10px;
   background:var(--card2);
-  border:2px solid var(--border);
-  border-radius:14px;
-  padding:16px 18px;
-  display:flex;align-items:center;gap:8px;
-  margin-bottom:16px;
-  transition:.3s;
+  border:2px solid var(--blue);
+  border-radius:14px;padding:12px 16px;
+  margin-bottom:10px;
 }
-.valor-input-wrap:focus-within{border-color:var(--blue)}
 .valor-prefix{font-size:1.5rem;font-weight:800;color:var(--text3)}
 .valor-input{
   flex:1;background:transparent;border:none;outline:none;
-  font-size:2rem;font-weight:900;color:var(--text);
-  font-family:'Segoe UI',monospace;
-  width:100%;
+  color:var(--text);font-size:1.8rem;font-weight:800;
+  font-variant-numeric:tabular-nums;
 }
 .valor-input::placeholder{color:var(--text3)}
-
 .limites-row{
   display:flex;justify-content:space-between;
-  font-size:.75rem;color:var(--text3);
-  margin-bottom:20px;padding:0 4px;
+  font-size:.72rem;color:var(--text3);margin-bottom:12px;
 }
-.limites-row span{display:flex;align-items:center;gap:4px}
-
-/* Presets de valor */
 .presets{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
-  margin-bottom:20px;
+  display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;
 }
 .preset-btn{
   background:var(--card2);border:1px solid var(--border);
-  border-radius:10px;padding:9px 0;
-  color:var(--text2);font-size:.82rem;font-weight:600;
-  cursor:pointer;transition:.2s;text-align:center;
+  border-radius:10px;padding:8px 14px;color:var(--text2);
+  font-size:.82rem;cursor:pointer;transition:all .15s;
 }
-.preset-btn:hover{background:#1e1e30;border-color:var(--blue);color:var(--blue)}
-.preset-btn.active{background:#003087;border-color:var(--blue);color:#fff}
+.preset-btn:hover,.preset-btn.active{
+  background:#009ee322;border-color:var(--blue);color:#fff;
+}
 
-/* ── IDENTIDADE (telefone/email) ── */
-.field{margin-bottom:16px}
-.field label{
-  display:block;font-size:.78rem;color:var(--text2);
-  margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px;
-}
+/* Campo nome */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:.72rem;color:var(--text3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px}
 .field input{
-  width:100%;background:var(--card2);
-  border:2px solid var(--border);border-radius:10px;
-  padding:12px 14px;color:var(--text);font-size:.95rem;
-  outline:none;transition:.3s;
+  width:100%;background:var(--card2);border:1.5px solid var(--border);
+  border-radius:10px;padding:11px 14px;color:var(--text);font-size:.95rem;outline:none;
 }
 .field input:focus{border-color:var(--blue)}
-.field input::placeholder{color:var(--text3)}
-.field-hint{font-size:.72rem;color:var(--text3);margin-top:4px}
+.field-hint{font-size:.7rem;color:var(--text3);margin-top:4px}
 
-/* ── BOTÃO PRINCIPAL ── */
+/* Botão gerar */
 .btn-gerar{
-  width:100%;padding:16px;border:none;border-radius:14px;
-  background:linear-gradient(135deg,var(--blue2),var(--blue));
+  width:100%;padding:16px;
+  background:linear-gradient(135deg,var(--blue),var(--blue2));
+  border:none;border-radius:14px;
   color:#fff;font-size:1.05rem;font-weight:800;
-  cursor:pointer;transition:.2s;letter-spacing:.3px;
-  display:flex;align-items:center;justify-content:center;gap:10px;
-  box-shadow:0 4px 20px rgba(0,158,227,.3);
+  cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
 }
 .btn-gerar:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,158,227,.4)}
 .btn-gerar:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
-/* ── STEP 2: PIX ── */
+/* PIX gerado */
 .pix-valor-card{
-  background:linear-gradient(135deg,#003087,#005bb5);
+  background:linear-gradient(135deg,#003087,#0057a8);
   border-radius:14px;padding:16px 20px;
-  text-align:center;margin-bottom:20px;
+  display:flex;align-items:center;gap:14px;
+  margin-bottom:16px;
 }
-.pix-valor-card .label{font-size:.8rem;color:#9bbfe0;margin-bottom:4px}
-.pix-valor-card .valor{font-size:2.2rem;font-weight:900;color:#fff}
+.pix-valor-card .icon-mp{font-size:2rem}
+.pix-valor-card .label{font-size:.72rem;color:#9bbfe0;margin-bottom:2px}
+.pix-valor-card .valor{font-size:2rem;font-weight:900;color:#fff}
 
-.qr-section{
-  display:flex;flex-direction:column;align-items:center;
-  gap:14px;margin-bottom:20px;
-}
+/* QR Code */
+.qr-section{text-align:center;margin-bottom:16px}
 .qr-box{
-  background:#fff;padding:14px;border-radius:16px;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:#fff;border-radius:16px;padding:16px;
   box-shadow:0 4px 20px rgba(0,158,227,.2);
 }
-.qr-box canvas,
-.qr-box img{display:block}
-
 .qr-expira{
-  font-size:.75rem;color:var(--text3);
-  display:flex;align-items:center;gap:6px;
+  margin-top:8px;font-size:.8rem;color:var(--text3);
+  display:flex;align-items:center;justify-content:center;gap:6px;
 }
-.qr-expira .timer{color:var(--gold);font-weight:700;font-family:monospace}
+.timer{font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
 
-/* Código copia-cola */
+/* Copia e cola */
 .pix-code-wrap{
   background:var(--card2);border:1px solid var(--border);
-  border-radius:12px;padding:14px 16px;margin-bottom:14px;
+  border-radius:12px;padding:12px 14px;margin-bottom:12px;
 }
-.pix-code-label{font-size:.72rem;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
+.pix-code-label{font-size:.68rem;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
 .pix-code-text{
-  font-size:.75rem;color:var(--text2);
-  word-break:break-all;line-height:1.6;
-  font-family:monospace;max-height:72px;overflow:hidden;
+  font-size:.72rem;color:var(--text2);
+  word-break:break-all;font-family:monospace;line-height:1.5;
+  max-height:60px;overflow:hidden;
+  -webkit-mask-image:linear-gradient(to bottom,black 60%,transparent 100%);
 }
-
 .btn-copiar{
-  width:100%;padding:14px;border-radius:12px;
-  background:linear-gradient(135deg,#003a00,var(--green2)22);
-  border:2px solid var(--green);
-  color:var(--green2);font-size:.95rem;font-weight:800;
-  cursor:pointer;transition:.2s;
-  display:flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;padding:13px;
+  background:var(--card2);
+  border:1.5px solid var(--green);
+  border-radius:12px;
+  color:var(--green);font-size:.95rem;font-weight:700;
+  cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-bottom:14px;
 }
-.btn-copiar:hover{background:var(--green)22;transform:translateY(-1px)}
-.btn-copiar.copiado{
-  background:linear-gradient(135deg,#003a00,#00c85322);
-  border-color:var(--green2);color:var(--green2);
-}
+.btn-copiar:hover{background:#00c85322;transform:translateY(-1px)}
+.btn-copiar.copiado{background:#00c85322;color:var(--green2);border-color:var(--green2)}
 
-.btn-novo-pix{
-  width:100%;padding:12px;border-radius:10px;
-  background:transparent;border:1px solid var(--border);
-  color:var(--text3);font-size:.85rem;cursor:pointer;
-  margin-top:10px;transition:.2s;
-}
-.btn-novo-pix:hover{border-color:var(--blue);color:var(--blue)}
-
-/* ── STATUS AGUARDANDO ── */
+/* Status aguardando */
 .status-aguardando{
-  background:#0a1000;border:1px solid #2d4400;
-  border-radius:12px;padding:14px 16px;
-  display:flex;align-items:center;gap:12px;margin-top:16px;
+  display:flex;align-items:center;gap:10px;
+  background:#0a1a0a;border:1px solid #00c85322;
+  border-radius:12px;padding:12px 16px;margin-bottom:14px;
 }
 .status-aguardando .dot{
   width:10px;height:10px;border-radius:50%;
-  background:var(--gold);
-  animation:pulse 1.2s ease-in-out infinite;
-  flex-shrink:0;
+  background:var(--green);flex-shrink:0;
+  animation:pulse 1.5s infinite;
 }
-.status-aguardando .txt{font-size:.82rem;color:var(--gold);line-height:1.4}
+.status-aguardando .txt{font-size:.82rem;color:var(--text2);line-height:1.4}
+.status-aguardando .txt strong{color:#fff}
 
-/* ── STEP 3: CONFIRMADO ── */
+/* Confirmado */
 .confirmado-wrap{text-align:center;padding:10px 0}
-.confirmado-icon{font-size:64px;margin-bottom:12px;animation:bounceIn .5s ease}
-.confirmado-title{font-size:1.4rem;font-weight:800;color:var(--green2);margin-bottom:6px}
-.confirmado-valor{font-size:2rem;font-weight:900;color:#fff;margin-bottom:4px}
-.confirmado-sub{font-size:.85rem;color:var(--text2);margin-bottom:20px}
-.tg-cta{
-  background:linear-gradient(135deg,#003087,var(--blue));
-  border-radius:14px;padding:16px;text-align:center;
-}
-.tg-cta p{font-size:.85rem;color:#9bbfe0;margin-bottom:10px}
-.tg-cta a{
-  display:inline-flex;align-items:center;gap:8px;
-  background:#fff;border-radius:10px;padding:10px 20px;
-  color:#003087;font-weight:800;text-decoration:none;font-size:.9rem;
-  transition:.2s;
-}
-.tg-cta a:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,158,227,.3)}
+.confirmado-icon{font-size:56px;margin-bottom:12px;animation:bounceIn .5s}
+.confirmado-title{font-size:1.4rem;font-weight:900;color:var(--green2);margin-bottom:6px}
+.confirmado-valor{font-size:2.2rem;font-weight:900;color:#fff;margin-bottom:4px}
+.confirmado-sub{font-size:.82rem;color:var(--text3);margin-bottom:20px}
 
-/* ── LOADING ── */
-.loading-pix{
-  display:flex;flex-direction:column;align-items:center;
-  gap:14px;padding:20px 0;text-align:center;
-}
+/* Loading */
+.loading-pix{text-align:center;padding:30px 0}
 .spinner{
-  width:48px;height:48px;border:3px solid var(--border);
-  border-top-color:var(--blue);border-radius:50%;
-  animation:spin .8s linear infinite;
+  width:44px;height:44px;border-radius:50%;
+  border:4px solid var(--card2);border-top-color:var(--blue);
+  animation:spin .9s linear infinite;margin:0 auto 16px;
 }
-.loading-pix p{color:var(--text2);font-size:.9rem}
+.loading-pix p{color:var(--text2);font-size:.9rem;line-height:1.6}
 
-/* ── ERRO ── */
+/* Erro */
 .erro-box{
-  background:#1a0a0a;border:1px solid var(--red)44;
-  border-radius:12px;padding:16px;text-align:center;
+  background:#1a0a0a;border:1px solid #f4433633;
+  border-radius:14px;padding:24px 20px;text-align:center;
 }
-.erro-box .icon{font-size:32px;margin-bottom:8px}
-.erro-box p{color:#f87171;font-size:.9rem;margin-bottom:14px;line-height:1.5}
+.erro-box .icon{font-size:40px;margin-bottom:10px}
+.erro-box p{color:var(--text2);font-size:.9rem;line-height:1.5;margin-bottom:14px}
 
-/* ── FOOTER ── */
+.btn-novo-pix{
+  width:100%;padding:12px;
+  background:transparent;border:1.5px solid var(--border);
+  border-radius:12px;color:var(--text2);
+  font-size:.9rem;cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.btn-novo-pix:hover{border-color:var(--blue);color:#fff}
+
+/* Footer */
 .footer{
-  margin-top:28px;text-align:center;
-  font-size:.75rem;color:var(--text3);line-height:1.8;
+  margin-top:24px;font-size:.72rem;color:var(--text3);
+  text-align:center;line-height:2;
 }
 .footer a{color:var(--blue);text-decoration:none}
 
-/* ── ANIMAÇÕES ── */
+/* Animações */
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
 @keyframes bounceIn{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.fade-in{animation:fadeIn .4s ease forwards}
+.fade-in{animation:fadeIn .3s ease}
 
-/* ── STEP DISPLAY ── */
+/* Steps (ocultos por default) */
 #step-valor   { display:block }
-#step-pix     { display:none  }
-#step-ok      { display:none  }
-#step-loading { display:none  }
-#step-erro    { display:none  }
+#step-loading { display:none }
+#step-pix     { display:none }
+#step-ok      { display:none }
+#step-erro    { display:none }
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div class="header">
-  <div class="header-logo">
-    <span>💳</span>
-    <strong>PayPixNex</strong>
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="logo-img">💳</div>
+  <div>
+    <div class="top-title" id="page-titulo">PayPixNex</div>
+    <div class="top-sub">Powered by Mercado Pago</div>
   </div>
-  <h1>Gerar Cobrança PIX</h1>
-  <p>Pagamento instantâneo via Mercado Pago</p>
-  <div class="tg-badge">
-    <span>🤖</span> Powered by @paypix_nexbot
-  </div>
-</div>
-
-<!-- STEPS INDICATOR -->
-<div style="width:100%;max-width:440px;margin-bottom:16px">
-  <div class="steps" id="steps-bar">
-    <div class="step-item">
-      <div class="step-circle active" id="dot-1">1</div>
-      <div class="step-label active" id="lbl-1">Valor</div>
-    </div>
-    <div class="step-line" id="line-1"></div>
-    <div class="step-item">
-      <div class="step-circle" id="dot-2">2</div>
-      <div class="step-label" id="lbl-2">PIX</div>
-    </div>
-    <div class="step-line" id="line-2"></div>
-    <div class="step-item">
-      <div class="step-circle" id="dot-3">3</div>
-      <div class="step-label" id="lbl-3">Pago</div>
-    </div>
-  </div>
-</div>
-
-<!-- Badge de parceiro (aparece quando ?ref= está na URL) -->
-<div id="parceiro-badge" style="display:none;justify-content:center;align-items:center;gap:8px;margin-bottom:12px;background:#1a0a3020;border:1px solid #a855f744;border-radius:10px;padding:10px 16px;font-size:13px;color:#a855f7;max-width:400px;margin-left:auto;margin-right:auto">
-  <span style="font-size:18px">🤝</span>
-  <span>Link de afiliado ativo — seu pagamento suporta um parceiro</span>
+  <div class="mp-badge">🔒 MP SEGURO</div>
 </div>
 
 <!-- CARD -->
 <div class="card">
   <div class="card-header">
-    <div class="card-header-icon">⚡</div>
+    <h1 id="header-titulo">Pague via PIX</h1>
+    <p id="header-desc">Pagamento instantâneo e seguro</p>
+  </div>
+
+  <!-- Badge parceiro -->
+  <div class="parceiro-badge" id="parceiro-badge">
+    <div class="icon">🤝</div>
     <div>
-      <div class="card-header-title">PIX Instantâneo</div>
-      <div class="card-header-sub">Mercado Pago · Brasil · Produção</div>
+      <div class="txt" id="parceiro-nome-txt">Parceiro afiliado</div>
+      <div style="font-size:.7rem;color:#888">link de afiliado ativo</div>
     </div>
+    <div class="pct" id="parceiro-pct-txt">10%</div>
   </div>
 
   <div class="card-body">
 
-    <!-- ══ STEP 1: VALOR ══ -->
+    <!-- ══ STEP VALOR ══ -->
     <div id="step-valor">
-      <div class="valor-input-wrap">
-        <span class="valor-prefix">R$</span>
-        <input type="number" id="inp-valor" class="valor-input"
-          placeholder="0,00" min="5" max="10000" step="0.01"
-          oninput="onValorInput()"
-          onkeypress="if(event.key==='Enter') gerarPix()">
-      </div>
-      <div class="limites-row">
-        <span>📌 Mín: <strong id="txt-min">R$ 5,00</strong></span>
-        <span>📋 Máx: <strong>R$ 10.000,00</strong></span>
-      </div>
 
-      <!-- Presets -->
-      <div class="presets">
-        <button class="preset-btn" onclick="setPreset(10)">R$10</button>
-        <button class="preset-btn" onclick="setPreset(20)">R$20</button>
-        <button class="preset-btn" onclick="setPreset(50)">R$50</button>
-        <button class="preset-btn" onclick="setPreset(100)">R$100</button>
-        <button class="preset-btn" onclick="setPreset(200)">R$200</button>
-        <button class="preset-btn" onclick="setPreset(500)">R$500</button>
-        <button class="preset-btn" onclick="setPreset(1000)">R$1k</button>
-        <button class="preset-btn" onclick="setPreset(2000)">R$2k</button>
+      <!-- MODO FIXO: mostra valor destaque + botão gerar -->
+      <div id="modo-fixo-ui">
+        <div class="valor-fixo-display" id="vf-display">
+          <div class="vf-label">Valor do Pagamento</div>
+          <div class="vf-valor" id="vf-valor-txt">R$ 10,00</div>
+          <div class="vf-sub" id="vf-desc-txt">Pagamento único · QR Code gerado exclusivamente para você</div>
+        </div>
+        <button class="btn-gerar" id="btn-gerar-fixo" onclick="gerarPixFixo()">
+          <span>⚡</span> Gerar meu QR Code PIX agora
+        </button>
+        <div id="erro-fixo" style="color:#f44;font-size:.82rem;text-align:center;margin-top:10px;min-height:18px"></div>
       </div>
 
-      <!-- Identificação (opcional) -->
-      <div class="field">
-        <label>👤 Identificação (opcional)</label>
-        <input type="text" id="inp-nome" placeholder="Nome ou descrição do pagamento"
-          maxlength="80">
-        <div class="field-hint">Aparece na descrição do PIX gerado</div>
+      <!-- MODO LIVRE: input de valor -->
+      <div id="modo-livre-ui" style="display:none">
+        <div class="valor-input-wrap">
+          <span class="valor-prefix">R$</span>
+          <input type="number" id="inp-valor" class="valor-input"
+            placeholder="0,00" min="5" max="10000" step="0.01"
+            oninput="onValorInput()"
+            onkeypress="if(event.key==='Enter') gerarPix()">
+        </div>
+        <div class="limites-row">
+          <span>📌 Mín: <strong id="txt-min">R$ 5,00</strong></span>
+          <span>📋 Máx: <strong id="txt-max">R$ 10.000,00</strong></span>
+        </div>
+        <div class="presets" id="presets-wrap">
+          <button class="preset-btn" onclick="setPreset(10)">R$10</button>
+          <button class="preset-btn" onclick="setPreset(20)">R$20</button>
+          <button class="preset-btn" onclick="setPreset(50)">R$50</button>
+          <button class="preset-btn" onclick="setPreset(100)">R$100</button>
+          <button class="preset-btn" onclick="setPreset(200)">R$200</button>
+          <button class="preset-btn" onclick="setPreset(500)">R$500</button>
+        </div>
+        <div class="field">
+          <label>👤 Identificação (opcional)</label>
+          <input type="text" id="inp-nome" placeholder="Nome ou descrição do pagamento" maxlength="80">
+          <div class="field-hint">Aparece na descrição do PIX gerado</div>
+        </div>
+        <button class="btn-gerar" id="btn-gerar" onclick="gerarPix()">
+          <span>⚡</span> Gerar PIX agora
+        </button>
+        <div id="erro-valor" style="color:#f44;font-size:.82rem;text-align:center;margin-top:10px;min-height:18px"></div>
       </div>
 
-      <!-- Botão gerar -->
-      <button class="btn-gerar" id="btn-gerar" onclick="gerarPix()">
-        <span>⚡</span> Gerar PIX agora
-      </button>
-
-      <div id="erro-valor" style="color:#f44;font-size:.82rem;text-align:center;margin-top:10px;min-height:18px"></div>
-    </div>
+    </div><!-- /step-valor -->
 
     <!-- ══ LOADING ══ -->
     <div id="step-loading" class="fade-in">
       <div class="loading-pix">
         <div class="spinner"></div>
-        <p>⚡ Gerando seu PIX via Mercado Pago...<br>
+        <p>⚡ Gerando seu QR Code PIX exclusivo...<br>
         <span style="font-size:.78rem;color:#555">Isso leva apenas alguns segundos</span></p>
       </div>
     </div>
 
-    <!-- ══ STEP 2: PIX GERADO ══ -->
+    <!-- ══ STEP PIX GERADO ══ -->
     <div id="step-pix" class="fade-in">
 
-      <!-- Valor destaque -->
       <div class="pix-valor-card">
-        <div class="label">💰 Valor a pagar</div>
-        <div class="valor" id="pix-valor-txt">R$ 0,00</div>
+        <div class="icon-mp">💳</div>
+        <div>
+          <div class="label">💰 Valor a pagar</div>
+          <div class="valor" id="pix-valor-txt">R$ 0,00</div>
+        </div>
+        <div style="margin-left:auto;text-align:right">
+          <div style="font-size:.7rem;color:#9bbfe0">QR único para você</div>
+          <div style="font-size:.75rem;color:#f59e0b;font-weight:700" id="pix-parceiro-info"></div>
+        </div>
       </div>
 
       <!-- QR Code -->
@@ -434,25 +393,23 @@ body{
         <div class="pix-code-text" id="pix-code-txt">—</div>
       </div>
 
-      <!-- Botão copiar -->
       <button class="btn-copiar" id="btn-copiar" onclick="copiarCodigo()">
         <span id="copiar-icon">📋</span>
         <span id="copiar-txt">Copiar Código PIX</span>
       </button>
 
-      <!-- Status aguardando -->
       <div class="status-aguardando" id="status-aguardando">
         <div class="dot"></div>
         <div class="txt">
           <strong>Aguardando pagamento...</strong><br>
-          Seu saldo será creditado automaticamente após confirmação.
+          Confirmação automática em até 30 segundos após o PIX.
         </div>
       </div>
 
-      <button class="btn-novo-pix" onclick="reiniciar()">↩ Gerar novo PIX</button>
+      <button class="btn-novo-pix" onclick="reiniciar()">↩ Gerar novo QR Code</button>
     </div>
 
-    <!-- ══ STEP 3: PAGO ══ -->
+    <!-- ══ PAGO ══ -->
     <div id="step-ok" class="fade-in">
       <div class="confirmado-wrap">
         <div class="confirmado-icon">✅</div>
@@ -460,15 +417,13 @@ body{
         <div class="confirmado-valor" id="ok-valor">R$ 0,00</div>
         <div class="confirmado-sub" id="ok-sub">Pago via PIX Mercado Pago</div>
 
-        <div class="tg-cta" style="margin-top:20px">
-          <p>Acompanhe suas transações no bot:</p>
-          <a href="https://t.me/paypix_nexbot" target="_blank">
-            🤖 Abrir @paypix_nexbot
-          </a>
+        <div style="background:#0a1a0a;border:1px solid #00c85333;border-radius:12px;padding:14px 16px;margin:16px 0;font-size:.82rem;color:#aaa;text-align:left">
+          ✅ <strong style="color:#4ade80">PIX recebido com sucesso!</strong><br>
+          <span id="ok-parceiro-msg"></span>
         </div>
 
-        <button class="btn-novo-pix" onclick="reiniciar()" style="margin-top:14px">
-          ⚡ Gerar outro PIX
+        <button class="btn-gerar" onclick="reiniciar()" style="margin-top:4px">
+          ⚡ Realizar novo pagamento
         </button>
       </div>
     </div>
@@ -487,119 +442,156 @@ body{
   </div><!-- /card-body -->
 </div><!-- /card -->
 
-<!-- FOOTER -->
 <div class="footer">
-  🔒 Pagamento seguro via <strong>Mercado Pago</strong><br>
-  Integração: <a href="https://t.me/paypix_nexbot" target="_blank">@paypix_nexbot</a> · PIX instantâneo 24/7
+  🔒 Pagamento seguro via <strong>Mercado Pago</strong> · PIX instantâneo 24/7<br>
+  Após o pagamento, o QR Code não pode ser reutilizado.
 </div>
 
 <!-- QR CODE LIB -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────
-const BASE = '';   // mesma origem
-let _txId    = null;
-let _pixCode = null;
-let _valor   = 0;
+const BASE = '';
+let _txId         = null;
+let _pixCode      = null;
+let _valor        = 0;
 let _pollInterval = null;
 let _timerInterval = null;
-let _timerSeg = 30 * 60; // 30 minutos em segundos
-let _qrInstance = null;
+let _timerSeg     = 30 * 60;
+let _qrInstance   = null;
+let _modoFixo     = false;
+let _valorFixo    = 0;
+let _cfgCarregada = false;
 
-// ── Parceiro afiliado (lê ?ref= da URL) ──────────────────────────
-const _urlParams    = new URLSearchParams(window.location.search);
-const _parceiroCod  = _urlParams.get('ref') || '';
-const _parceiroNome = null;  // preenchido via API ao carregar
+// ── Parceiro afiliado ──────────────────────────────────────────
+const _urlParams   = new URLSearchParams(window.location.search);
+const _parceiroCod = _urlParams.get('ref') || '';
 
-// Exibir badge do parceiro se presente
-(async function _initParceiro() {
-  if (!_parceiroCod) return;
+// ── INIT: carrega configurações + badge parceiro ───────────────
+(async function init() {
   try {
-    const r = await fetch(`${BASE}/api/mp2/parceiros?secret=public&ref=${encodeURIComponent(_parceiroCod)}`);
-    // Não precisamos buscar dados do parceiro aqui — só armazenar o código
-    // O backend valida e credita automaticamente no webhook
-    const badgeEl = document.getElementById('parceiro-badge');
-    if (badgeEl) badgeEl.style.display = 'flex';
-  } catch(e) {}
+    // 1. Carrega config do bot
+    const rc = await fetch(`${BASE}/api/bot/config`);
+    const cfg = await rc.json();
+    if (cfg.success) {
+      _modoFixo  = cfg.modo_fixo;
+      _valorFixo = cfg.valor_fixo || 0;
+
+      // Título e descrição
+      if (cfg.titulo)   document.getElementById('page-titulo').textContent  = cfg.titulo;
+      if (cfg.titulo)   document.getElementById('header-titulo').textContent = cfg.titulo;
+      if (cfg.descricao) document.getElementById('header-desc').textContent = cfg.descricao;
+
+      if (_modoFixo && _valorFixo > 0) {
+        // MODO FIXO: mostra valor destaque e gera automaticamente
+        document.getElementById('vf-valor-txt').textContent =
+          'R$ ' + _valorFixo.toFixed(2).replace('.', ',');
+        if (cfg.descricao)
+          document.getElementById('vf-desc-txt').textContent = cfg.descricao;
+        document.getElementById('modo-fixo-ui').style.display = 'block';
+        document.getElementById('modo-livre-ui').style.display = 'none';
+      } else {
+        // MODO LIVRE: mostra input
+        document.getElementById('modo-fixo-ui').style.display = 'none';
+        document.getElementById('modo-livre-ui').style.display = 'block';
+        // aplica min/max do admin
+        const inp = document.getElementById('inp-valor');
+        if (cfg.min_valor) inp.min = cfg.min_valor;
+        if (cfg.max_valor) inp.max = cfg.max_valor;
+        document.getElementById('txt-min').textContent =
+          'R$ ' + (cfg.min_valor || 5).toFixed(2).replace('.', ',');
+        document.getElementById('txt-max').textContent =
+          'R$ ' + (cfg.max_valor || 10000).toFixed(2).replace('.', ',');
+        // mostra presets relevantes baseado no valor fixo
+        if (cfg.valor_fixo > 0) gerarPresets(cfg.valor_fixo, cfg.min_valor || 5);
+      }
+      _cfgCarregada = true;
+    }
+  } catch(e) {
+    // fallback: modo livre padrão
+    document.getElementById('modo-fixo-ui').style.display = 'none';
+    document.getElementById('modo-livre-ui').style.display = 'block';
+    _cfgCarregada = true;
+  }
+
+  // 2. Badge parceiro
+  if (_parceiroCod) {
+    const badge = document.getElementById('parceiro-badge');
+    if (badge) badge.style.display = 'flex';
+    // não precisa buscar dados — backend valida no webhook
+  }
 })();
+
+// Gera presets dinâmicos baseados no valor configurado
+function gerarPresets(valorFixo, minValor) {
+  const wrap = document.getElementById('presets-wrap');
+  if (!wrap) return;
+  const base = valorFixo > 0 ? valorFixo : 10;
+  const vals = [base, base*2, base*5, base*10].filter(v => v >= minValor && v <= 10000);
+  const extras = [10,20,50,100,200,500].filter(v => !vals.includes(v) && v >= minValor);
+  const todos = [...new Set([...vals, ...extras])].sort((a,b)=>a-b).slice(0,6);
+  wrap.innerHTML = todos.map(v =>
+    `<button class="preset-btn" onclick="setPreset(${v})">R$${v >= 1000 ? v/1000+'k' : v}</button>`
+  ).join('');
+}
 
 // ── STEPS ────────────────────────────────────────────────────────
 function showStep(step) {
   ['step-valor','step-loading','step-pix','step-ok','step-erro']
-    .forEach(id => document.getElementById(id).style.display = 'none');
-  document.getElementById('step-' + step).style.display = 'block';
+    .forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+  const el = document.getElementById('step-'+step);
+  if (el) el.style.display = 'block';
+}
 
-  // atualiza dots
-  const steps = {
-    'valor':   [1,false,false],
-    'loading': [1,false,false],
-    'pix':     [1,2,false],
-    'ok':      [1,2,3],
-    'erro':    [1,false,false],
-  }[step] || [1,false,false];
-
-  [1,2,3].forEach(n => {
-    const dot = document.getElementById('dot-'+n);
-    const lbl = document.getElementById('lbl-'+n);
-    if (!dot) return;
-    dot.className = 'step-circle';
-    lbl.className = 'step-label';
-    if (steps[n-1] === n) {
-      if (n < Math.max(...steps.filter(Boolean))) {
-        dot.classList.add('done'); dot.textContent = '✓';
-        lbl.classList.add('done');
-      } else {
-        dot.classList.add('active'); lbl.classList.add('active');
-      }
-    }
-  });
-
-  // linhas
-  for (let i=1;i<=2;i++) {
-    const line = document.getElementById('line-'+i);
-    if (line) line.className = 'step-line' + (steps[i] ? ' done' : '');
+// ── MODO FIXO: gera PIX com valor pré-configurado ────────────────
+async function gerarPixFixo() {
+  const erroEl = document.getElementById('erro-fixo');
+  const btn    = document.getElementById('btn-gerar-fixo');
+  if (!_valorFixo || _valorFixo < 1) {
+    if (erroEl) erroEl.textContent = '❌ Valor não configurado. Contate o suporte.';
+    return;
   }
+  _valor = _valorFixo;
+  if (erroEl) erroEl.textContent = '';
+  if (btn) { btn.disabled=true; btn.innerHTML='<span class="spinner" style="width:20px;height:20px;border-width:3px;display:inline-block;margin-right:8px"></span>Gerando...'; }
+  showStep('loading');
+  await _chamarGerarPix(_valor, 'Pagamento via PayPixNex');
 }
 
-// ── PRESETS ──────────────────────────────────────────────────────
-function setPreset(v) {
-  document.getElementById('inp-valor').value = v;
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('erro-valor').textContent = '';
-}
-
-function onValorInput() {
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('erro-valor').textContent = '';
-}
-
-// ── GERAR PIX ────────────────────────────────────────────────────
+// ── MODO LIVRE: gera PIX com valor digitado ──────────────────────
 async function gerarPix() {
   const valorRaw = document.getElementById('inp-valor').value;
-  const nome     = document.getElementById('inp-nome').value.trim();
+  const nome     = (document.getElementById('inp-nome') || {}).value || '';
   const erroEl   = document.getElementById('erro-valor');
+  const minV     = parseFloat(document.getElementById('inp-valor').min || 5);
+  const maxV     = parseFloat(document.getElementById('inp-valor').max || 10000);
 
   const valor = parseFloat(String(valorRaw).replace(',','.'));
-  if (!valor || isNaN(valor) || valor < 5) {
-    erroEl.textContent = '❌ Digite um valor mínimo de R$ 5,00';
+  if (!valor || isNaN(valor) || valor < minV) {
+    if(erroEl) erroEl.textContent = `❌ Valor mínimo R$ ${minV.toFixed(2).replace('.',',')}`;
     document.getElementById('inp-valor').focus();
     return;
   }
-  if (valor > 10000) {
-    erroEl.textContent = '❌ Valor máximo: R$ 10.000,00';
+  if (valor > maxV) {
+    if(erroEl) erroEl.textContent = `❌ Valor máximo R$ ${maxV.toFixed(2).replace('.',',')}`;
     return;
   }
-
   _valor = valor;
-  erroEl.textContent = '';
+  if (erroEl) erroEl.textContent = '';
   showStep('loading');
+  await _chamarGerarPix(valor, nome.trim() || `PIX PayPixNex R$${valor}`);
+}
 
+// ── CHAMADA COMUM AO BACKEND ─────────────────────────────────────
+async function _chamarGerarPix(valor, descricao) {
   try {
-    const r = await fetch('/api/bot/gerar', {
+    const payload = { valor, descricao };
+    if (_parceiroCod) payload.ref = _parceiroCod;
+
+    const r = await fetch(`${BASE}/api/bot/gerar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ valor, descricao: nome || `PIX PayPixNex R$${valor}`, ref: _parceiroCod || undefined })
+      body: JSON.stringify(payload)
     });
     const d = await r.json();
 
@@ -610,11 +602,15 @@ async function gerarPix() {
 
     _txId = d.payment_id || d.external_ref;
 
+    // Atualiza info de parceiro no PIX se retornou
+    const parceiroInfo = document.getElementById('pix-parceiro-info');
+    if (parceiroInfo && d.parceiro) {
+      parceiroInfo.textContent = `✅ Parceiro: ${d.parceiro}`;
+    }
+
     if (d.pix_copia_cola) {
-      // PIX já disponível
       exibirPix(d.pix_copia_cola, valor, d.qr_base64 || '');
     } else {
-      // Polling
       iniciarPolling(_txId, valor);
     }
 
@@ -628,168 +624,166 @@ function exibirPix(pixCode, valor, qrBase64) {
   _pixCode = pixCode;
   showStep('pix');
 
-  // Valor
   document.getElementById('pix-valor-txt').textContent =
     'R$ ' + valor.toFixed(2).replace('.', ',');
-
-  // Código copia-cola
   document.getElementById('pix-code-txt').textContent = pixCode;
 
   // QR Code
   const box = document.getElementById('qrcode-box');
   box.innerHTML = '';
-
   if (qrBase64) {
-    // Usa base64 do MP se disponível
     const img = document.createElement('img');
     img.src = 'data:image/png;base64,' + qrBase64;
     img.width = 200; img.height = 200;
     img.style.borderRadius = '8px';
     box.appendChild(img);
-  } else {
-    // Gera QR via biblioteca JS
+  } else if (typeof QRCode !== 'undefined') {
     _qrInstance = new QRCode(box, {
-      text: pixCode,
-      width: 200,
-      height: 200,
-      colorDark: '#000000',
-      colorLight: '#ffffff',
+      text: pixCode, width: 200, height: 200,
+      colorDark:'#000', colorLight:'#fff',
       correctLevel: QRCode.CorrectLevel.M
     });
   }
 
-  // Timer 30 minutos
-  iniciarTimer();
+  // Timer 30min
+  _timerSeg = 30 * 60;
+  clearInterval(_timerInterval);
+  _timerInterval = setInterval(() => {
+    _timerSeg--;
+    if (_timerSeg <= 0) { clearInterval(_timerInterval); return; }
+    const m = Math.floor(_timerSeg/60);
+    const s = _timerSeg % 60;
+    const el = document.getElementById('timer-txt');
+    if (el) el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    if (_timerSeg <= 300) { if (el) el.style.color = '#f44336'; }
+  }, 1000);
 
-  // Polling de confirmação
-  iniciarPollingConfirmacao(_txId);
+  // Inicia polling de confirmação
+  iniciarPollingConfirmacao(_txId, valor);
 }
 
-// ── POLLING GERAÇÃO ──────────────────────────────────────────────
+// ── POLLING: verifica se ainda não temos o PIX e aguarda gerar ──
 function iniciarPolling(txId, valor) {
   let tentativas = 0;
-  const maxTentativas = 30; // 30 * 2s = 60s
-
   const poll = setInterval(async () => {
     tentativas++;
+    if (tentativas > 30) {
+      clearInterval(poll);
+      mostrarErro('Timeout ao gerar PIX. Tente novamente.');
+      return;
+    }
     try {
-      const r = await fetch(`/api/bot/status/${txId}`);
+      const r = await fetch(`${BASE}/api/bot/status/${txId}`);
       const d = await r.json();
-
       if (d.pix_copia_cola) {
         clearInterval(poll);
         exibirPix(d.pix_copia_cola, valor, d.qr_base64 || '');
-      } else if (d.status === 'erro') {
+      } else if (d.confirmado) {
         clearInterval(poll);
-        mostrarErro(d.error || 'Falha ao gerar PIX');
-      } else if (tentativas >= maxTentativas) {
-        clearInterval(poll);
-        mostrarErro('Tempo esgotado. Tente novamente.');
-      }
-    } catch(e) {
-      if (tentativas >= maxTentativas) {
-        clearInterval(poll);
-        mostrarErro('Erro de conexão');
-      }
-    }
-  }, 2000);
-}
-
-// ── POLLING CONFIRMAÇÃO ──────────────────────────────────────────
-function iniciarPollingConfirmacao(txId) {
-  if (_pollInterval) clearInterval(_pollInterval);
-  _pollInterval = setInterval(async () => {
-    try {
-      const r = await fetch(`/api/bot/status/${txId}`);
-      const d = await r.json();
-      if (d.status === 'approved' || d.status === 'paid' || d.confirmado) {
-        clearInterval(_pollInterval);
-        clearInterval(_timerInterval);
-        showStep('ok');
-        document.getElementById('ok-valor').textContent =
-          'R$ ' + _valor.toFixed(2).replace('.', ',');
+        mostrarPago(valor);
       }
     } catch(e) {}
-  }, 5000); // verifica a cada 5s
+  }, 2000);
+  _pollInterval = poll;
 }
 
-// ── TIMER ────────────────────────────────────────────────────────
-function iniciarTimer() {
-  _timerSeg = 30 * 60;
-  if (_timerInterval) clearInterval(_timerInterval);
-  atualizarTimer();
-  _timerInterval = setInterval(() => {
-    _timerSeg--;
-    atualizarTimer();
-    if (_timerSeg <= 0) {
-      clearInterval(_timerInterval);
-      document.getElementById('timer-txt').textContent = 'Expirado';
-      document.getElementById('timer-txt').style.color = '#f44';
-    }
-  }, 1000);
+// ── POLLING: confirmação de pagamento ────────────────────────────
+function iniciarPollingConfirmacao(txId, valor) {
+  clearInterval(_pollInterval);
+  let tentativas = 0;
+  _pollInterval = setInterval(async () => {
+    tentativas++;
+    if (tentativas > 180) { clearInterval(_pollInterval); return; } // 6min
+    try {
+      const r = await fetch(`${BASE}/api/bot/status/${txId}`);
+      const d = await r.json();
+      if (d.confirmado || d.approved || d.status === 'approved' || d.status === 'confirmado') {
+        clearInterval(_pollInterval);
+        clearInterval(_timerInterval);
+        mostrarPago(valor, d.parceiro);
+      }
+    } catch(e) {}
+  }, 3000);
 }
 
-function atualizarTimer() {
-  const m = Math.floor(_timerSeg / 60);
-  const s = _timerSeg % 60;
-  const el = document.getElementById('timer-txt');
-  if (el) {
-    el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    el.style.color = _timerSeg < 300 ? '#f44' : '#FFD700';
-  }
+// ── MOSTRAR PAGO ──────────────────────────────────────────────────
+function mostrarPago(valor, parceiroNome) {
+  showStep('ok');
+  document.getElementById('ok-valor').textContent =
+    'R$ ' + valor.toFixed(2).replace('.', ',');
+  const sub = document.getElementById('ok-sub');
+  if (sub) sub.textContent = `Pago via PIX Mercado Pago · ${new Date().toLocaleString('pt-BR')}`;
+  const pm = document.getElementById('ok-parceiro-msg');
+  if (pm) pm.innerHTML = parceiroNome
+    ? `Comissão de <strong style="color:#f59e0b">${parceiroNome}</strong> foi contabilizada automaticamente.`
+    : 'Obrigado pelo seu pagamento!';
 }
 
-// ── COPIAR ───────────────────────────────────────────────────────
+// ── COPIAR ────────────────────────────────────────────────────────
 async function copiarCodigo() {
   if (!_pixCode) return;
   try {
     await navigator.clipboard.writeText(_pixCode);
-    const btn  = document.getElementById('btn-copiar');
-    const icon = document.getElementById('copiar-icon');
-    const txt  = document.getElementById('copiar-txt');
+    const btn = document.getElementById('btn-copiar');
+    const txt = document.getElementById('copiar-txt');
+    const ico = document.getElementById('copiar-icon');
     btn.classList.add('copiado');
-    icon.textContent = '✅';
-    txt.textContent  = 'Código Copiado!';
+    if (txt) txt.textContent = 'Código Copiado!';
+    if (ico) ico.textContent = '✅';
     setTimeout(() => {
       btn.classList.remove('copiado');
-      icon.textContent = '📋';
-      txt.textContent  = 'Copiar Código PIX';
+      if (txt) txt.textContent = 'Copiar Código PIX';
+      if (ico) ico.textContent = '📋';
     }, 3000);
   } catch(e) {
-    // Fallback para navegadores antigos
+    // fallback
     const ta = document.createElement('textarea');
     ta.value = _pixCode;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
     document.body.appendChild(ta);
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    document.getElementById('copiar-txt').textContent = '✅ Copiado!';
-    setTimeout(() => document.getElementById('copiar-txt').textContent = 'Copiar Código PIX', 2000);
   }
 }
 
-// ── ERRO ─────────────────────────────────────────────────────────
-function mostrarErro(msg) {
-  document.getElementById('erro-msg').textContent = msg;
-  showStep('erro');
-}
-
-// ── REINICIAR ────────────────────────────────────────────────────
-function reiniciar() {
-  if (_pollInterval)  clearInterval(_pollInterval);
-  if (_timerInterval) clearInterval(_timerInterval);
-  _txId = null; _pixCode = null; _valor = 0;
-  document.getElementById('inp-valor').value = '';
-  document.getElementById('inp-nome').value = '';
-  document.getElementById('qrcode-box').innerHTML = '';
+// ── HELPERS ───────────────────────────────────────────────────────
+function setPreset(v) {
+  const inp = document.getElementById('inp-valor');
+  if (inp) inp.value = v;
   document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-  showStep('valor');
+  if (event && event.target) event.target.classList.add('active');
+  const el = document.getElementById('erro-valor');
+  if (el) el.textContent = '';
 }
 
-// ── INIT ─────────────────────────────────────────────────────────
-showStep('valor');
+function onValorInput() {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('erro-valor');
+  if (el) el.textContent = '';
+}
+
+function mostrarErro(msg) {
+  showStep('erro');
+  const el = document.getElementById('erro-msg');
+  if (el) el.textContent = msg;
+  // Reativa botão modo fixo se necessário
+  const btn = document.getElementById('btn-gerar-fixo');
+  if (btn) { btn.disabled=false; btn.innerHTML='<span>⚡</span> Gerar meu QR Code PIX agora'; }
+}
+
+function reiniciar() {
+  clearInterval(_pollInterval);
+  clearInterval(_timerInterval);
+  _txId    = null;
+  _pixCode = null;
+  _valor   = 0;
+  // Reativa botão modo fixo
+  const btn = document.getElementById('btn-gerar-fixo');
+  if (btn) { btn.disabled=false; btn.innerHTML='<span>⚡</span> Gerar meu QR Code PIX agora'; }
+  showStep('valor');
+  const inp = document.getElementById('inp-valor');
+  if (inp) inp.value = '';
+}
 </script>
 </body>
 </html>

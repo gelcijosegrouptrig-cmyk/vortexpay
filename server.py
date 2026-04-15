@@ -6223,6 +6223,93 @@ async def route_bot_status(request):
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e), 'status': 'erro'})
 
+
+async def route_bot_config_get(request):
+    """GET /api/bot/config - retorna configurações públicas da página /bot e /pix."""
+    try:
+        import psycopg2 as _pg
+        conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        campos = ['bot_titulo', 'bot_descricao', 'bot_valor_fixo', 'bot_modo_fixo',
+                  'bot_min_valor', 'bot_max_valor', 'bot_ativo']
+        cfg = {}
+        for c in campos:
+            cur.execute("SELECT valor FROM mp2_config WHERE chave = %s", (c,))
+            row = cur.fetchone()
+            cfg[c.replace('bot_', '')] = row[0] if row else None
+        cur.close(); conn.close()
+        # Defaults
+        return web.json_response({
+            'success':      True,
+            'titulo':       cfg.get('titulo')      or 'PayPixNex — Pague via PIX',
+            'descricao':    cfg.get('descricao')   or 'Pagamento seguro via Mercado Pago',
+            'valor_fixo':   float(cfg.get('valor_fixo') or 0),
+            'modo_fixo':    (cfg.get('modo_fixo') or 'false').lower() == 'true',
+            'min_valor':    float(cfg.get('min_valor') or 5),
+            'max_valor':    float(cfg.get('max_valor') or 10000),
+            'ativo':        (cfg.get('ativo') or 'true').lower() == 'true',
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_bot_config_save(request):
+    """POST /api/bot/config - salva configurações do bot de pagamento."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        body = await request.json()
+        import psycopg2 as _pg
+        conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        pares = [
+            ('bot_titulo',      str(body.get('titulo', 'PayPixNex — Pague via PIX'))),
+            ('bot_descricao',   str(body.get('descricao', 'Pagamento seguro via Mercado Pago'))),
+            ('bot_valor_fixo',  str(float(body.get('valor_fixo', 0)))),
+            ('bot_modo_fixo',   'true' if body.get('modo_fixo') else 'false'),
+            ('bot_min_valor',   str(float(body.get('min_valor', 5)))),
+            ('bot_max_valor',   str(float(body.get('max_valor', 10000)))),
+            ('bot_ativo',       'true' if body.get('ativo', True) else 'false'),
+        ]
+        for chave, valor in pares:
+            cur.execute("""
+                INSERT INTO mp2_config (chave, valor) VALUES (%s, %s)
+                ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor
+            """, (chave, valor))
+        conn.commit()
+        cur.close(); conn.close()
+        print(f'✅ [bot_config] Configurações salvas: modo_fixo={body.get("modo_fixo")}, valor_fixo={body.get("valor_fixo")}', flush=True)
+        return web.json_response({'success': True, 'mensagem': 'Configurações salvas!'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_bot_config_save_html(request):
+    """POST /api/bot/config/save-html - persiste bot_pix.html no banco (para servir sem arquivo local)."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        if not os.path.exists('bot_pix.html'):
+            return web.json_response({'success': False, 'error': 'bot_pix.html não encontrado'})
+        html = open('bot_pix.html', encoding='utf-8').read()
+        import psycopg2 as _pg
+        conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("""
+            INSERT INTO configuracoes (chave, valor) VALUES ('bot_pix_html_patch', %s)
+            ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor
+        """, (html,))
+        conn.commit()
+        cur.close(); conn.close()
+        return web.json_response({'success': True, 'chars': len(html)})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
 async def _criar_canal_telegram(titulo: str, descricao: str) -> dict:
     """
     Cria um canal Telegram usando o client (userbot) já conectado.
@@ -6601,6 +6688,9 @@ async def main():
     app.router.add_get('/pix',                              route_pix_page)
     app.router.add_post('/api/bot/gerar',                   route_bot_gerar)
     app.router.add_get('/api/bot/status/{payment_id}',      route_bot_status)
+    app.router.add_get('/api/bot/config',                   route_bot_config_get)
+    app.router.add_post('/api/bot/config',                  route_bot_config_save)
+    app.router.add_post('/api/bot/config/save-html',        route_bot_config_save_html)
     # ── Canais Telegram ──────────────────────────────────────────────
     app.router.add_post('/api/admin/criar-canais',          route_admin_criar_canais)
     app.router.add_get('/api/admin/canais',                 route_admin_status_canais)
