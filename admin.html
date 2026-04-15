@@ -1792,6 +1792,92 @@
 
         <!-- ═══ Comissões de Parceiros ═══ -->
         <div class="table-card" style="margin-bottom:16px">
+
+        <!-- ═══ ASSINATURAS RECORRENTES ═══ -->
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header">
+            <h3>🔄 Assinaturas Mensais Recorrentes</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button onclick="recCarregarLista()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+              <button onclick="recDispararJob()" class="action-btn" style="font-size:12px;padding:6px 12px;background:#9c27b0;color:#fff;border-color:#9c27b0">⚡ Cobrar Vencidos</button>
+            </div>
+          </div>
+
+          <!-- Stats recorrentes -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)">
+            <div class="metric-card" style="background:#9c27b015;border-color:#9c27b040">
+              <div class="metric-label">Assinantes Ativos</div>
+              <div class="metric-value" id="rec-ativos" style="color:#ce93d8">—</div>
+            </div>
+            <div class="metric-card" style="background:#009ee315;border-color:#009ee340">
+              <div class="metric-label">MRR (Receita/mês)</div>
+              <div class="metric-value" id="rec-mrr" style="color:#009ee3">—</div>
+            </div>
+            <div class="metric-card" style="background:#00c85315;border-color:#00c85340">
+              <div class="metric-label">Total Arrecadado</div>
+              <div class="metric-value" id="rec-total" style="color:#00c853">—</div>
+            </div>
+            <div class="metric-card" style="background:#f4433615;border-color:#f4433640">
+              <div class="metric-label">Pausados/Cancelados</div>
+              <div class="metric-value" id="rec-pausados" style="color:#f44336">—</div>
+            </div>
+          </div>
+
+          <!-- Formulário: adicionar novo assinante -->
+          <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:#0a0a1a">
+            <div style="font-size:12px;font-weight:700;color:#9c27b0;margin-bottom:10px">➕ Cadastrar Novo Assinante</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div>
+                <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">Nome *</div>
+                <input id="rec-nome" type="text" placeholder="Ex: João da Silva" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
+              </div>
+              <div>
+                <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">Valor R$ *</div>
+                <input id="rec-valor" type="number" placeholder="10.00" min="1" step="0.01" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
+              </div>
+              <div>
+                <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">Dia Vencimento (1-28)</div>
+                <input id="rec-dia" type="number" placeholder="1" min="1" max="28" value="1" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
+              </div>
+              <div>
+                <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">Descrição</div>
+                <input id="rec-desc" type="text" placeholder="Mensalidade" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
+              </div>
+              <div>
+                <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">WhatsApp (opcional)</div>
+                <input id="rec-tel" type="tel" placeholder="(11)99999-9999" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
+              </div>
+              <div>
+                <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">Parceiro (ref, opcional)</div>
+                <input id="rec-ref" type="text" placeholder="Código parceiro" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
+              </div>
+            </div>
+            <button onclick="recCadastrar()" class="action-btn" style="background:#9c27b0;color:#fff;border-color:#9c27b0;padding:9px 20px;font-size:13px">✅ Cadastrar e Gerar Primeiro PIX</button>
+            <div id="rec-cadastro-msg" style="font-size:12px;margin-top:8px;display:none"></div>
+          </div>
+
+          <!-- Tabela assinantes -->
+          <div style="overflow-x:auto;padding:0 16px 16px">
+            <table class="data-table">
+              <thead><tr>
+                <th>ID</th><th>Nome</th><th>Valor</th><th>Dia</th><th>Próx. Venc.</th>
+                <th>Cobranças</th><th>Total Pago</th><th>Status</th><th>Ações</th>
+              </tr></thead>
+              <tbody id="rec-tbody">
+                <tr><td colspan="9" style="text-align:center;color:#666;padding:20px">Clique em 🔄 Atualizar para carregar</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="padding:12px 16px;background:#0a0a1a;border-top:1px solid var(--border);font-size:11px;color:#555;border-radius:0 0 12px 12px">
+            🔄 <b style="color:#9c27b0">Como funciona:</b> No dia do vencimento, o job automático (a cada 6h) gera um QR PIX para cada assinante ativo.
+            O cliente recebe o link <code style="color:#ce93d8">/pagar/{id}</code> e paga. O webhook do Mercado Pago confirma automaticamente.
+            Você pode também clicar em ⚡ Cobrar Vencidos para disparar imediatamente.
+          </div>
+        </div><!-- /assinaturas recorrentes -->
+
+        <!-- ═══ Comissões de Parceiros ═══ -->
+        <div class="table-card" style="margin-bottom:16px">
           <div class="table-header">
             <h3>💰 Comissões de Parceiros — Histórico de Repasses</h3>
             <button onclick="mp2CarregarComissoes()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
@@ -4063,7 +4149,172 @@ document.addEventListener('DOMContentLoaded', () => {
   mp2CarregarComissoes();
   bot2CarregarTotaisParcerios();
   botConfigCarregar();  // carrega configurações da página /bot e /pix
+  recCarregarStats();   // carrega stats de recorrências
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// RECORRÊNCIAS — Assinaturas Mensais
+// ═══════════════════════════════════════════════════════════════════
+
+async function recCarregarStats() {
+  try {
+    const r = await fetch(`${BASE}/api/recorrente/stats?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) return;
+    const fmt = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',');
+    const el  = id => document.getElementById(id);
+    if(el('rec-ativos'))  el('rec-ativos').textContent  = d.ativos || 0;
+    if(el('rec-mrr'))     el('rec-mrr').textContent     = fmt(d.mrr);
+    if(el('rec-total'))   el('rec-total').textContent   = fmt(d.total_arrecadado);
+    if(el('rec-pausados'))el('rec-pausados').textContent= (d.pausados||0) + ' / ' + (d.cancelados||0);
+  } catch(e) { console.warn('recCarregarStats:', e); }
+}
+
+async function recCarregarLista() {
+  const tbody = document.getElementById('rec-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;padding:20px">Carregando...</td></tr>';
+  await recCarregarStats();
+  try {
+    const r = await fetch(`${BASE}/api/recorrente/listar?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if(!d.success || !d.recorrentes.length){
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;padding:20px">Nenhum assinante cadastrado</td></tr>';
+      return;
+    }
+    const fmt    = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',');
+    const status_cor = {ativo:'#00c853',pausado:'#f59e0b',cancelado:'#f44336'};
+    tbody.innerHTML = d.recorrentes.map(r => `
+      <tr>
+        <td>#${r.id}</td>
+        <td style="font-weight:700">${r.nome||'—'}</td>
+        <td style="color:#009ee3;font-weight:700">${fmt(r.valor)}</td>
+        <td>Todo dia ${r.dia_vencimento||1}</td>
+        <td style="color:#f59e0b">${r.proximo_vencimento||'—'}</td>
+        <td>${r.total_cobrado||0}×</td>
+        <td style="color:#00c853">${fmt(r.total_pago)}</td>
+        <td><span style="color:${status_cor[r.status]||'#888'};font-weight:700">${r.status}</span></td>
+        <td style="white-space:nowrap">
+          <button onclick="recCobrarAgora(${r.id})" class="action-btn" style="font-size:11px;padding:4px 9px;background:#009ee3;color:#fff;border-color:#009ee3" title="Gerar PIX agora">💳</button>
+          ${r.status==='ativo' ? `<button onclick="recPausar(${r.id},true)" class="action-btn" style="font-size:11px;padding:4px 9px;background:#f59e0b;color:#000;border-color:#f59e0b" title="Pausar">⏸</button>` : ''}
+          ${r.status==='pausado' ? `<button onclick="recPausar(${r.id},false)" class="action-btn" style="font-size:11px;padding:4px 9px;background:#00c853;color:#000;border-color:#00c853" title="Reativar">▶️</button>` : ''}
+          ${r.status!=='cancelado' ? `<button onclick="recCancelar(${r.id})" class="action-btn" style="font-size:11px;padding:4px 9px;background:#f44336;color:#fff;border-color:#f44336" title="Cancelar">🗑</button>` : ''}
+          <button onclick="copiar('${location.origin}/pagar/${r.id}')" class="action-btn" style="font-size:11px;padding:4px 9px" title="Copiar link">🔗</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) { tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:red;padding:20px">Erro: ${e.message}</td></tr>`; }
+}
+
+async function recCadastrar() {
+  const nome  = document.getElementById('rec-nome').value.trim();
+  const valor = parseFloat(document.getElementById('rec-valor').value||0);
+  const dia   = parseInt(document.getElementById('rec-dia').value||1);
+  const desc  = document.getElementById('rec-desc').value.trim() || 'Mensalidade';
+  const tel   = document.getElementById('rec-tel').value.trim();
+  const ref   = document.getElementById('rec-ref').value.trim();
+  const msg   = document.getElementById('rec-cadastro-msg');
+  if(!nome){ alert('Informe o nome do assinante'); return; }
+  if(valor < 1){ alert('Valor mínimo: R$ 1,00'); return; }
+  msg.style.display = 'block';
+  msg.style.color   = '#aaa';
+  msg.textContent   = 'Cadastrando...';
+  try {
+    const r = await fetch(`${BASE}/api/recorrente/criar`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({nome, valor, dia_vencimento:dia, descricao:desc, telefone:tel, ref})
+    });
+    const d = await r.json();
+    if(d.success){
+      msg.style.color = '#00c853';
+      msg.textContent = `✅ ${nome} cadastrado! Próx. venc: ${d.recorrente?.proximo_vencimento||'—'}`;
+      // Limpa campos
+      ['rec-nome','rec-valor','rec-tel','rec-ref'].forEach(id=>{ const e=document.getElementById(id); if(e)e.value=''; });
+      document.getElementById('rec-dia').value = 1;
+      document.getElementById('rec-desc').value = '';
+      // Gera primeiro PIX automaticamente
+      const r2 = await fetch(`${BASE}/api/recorrente/cobrar`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-PaynexBet-Secret':SECRET()},
+        body: JSON.stringify({id: d.recorrente.id})
+      });
+      const d2 = await r2.json();
+      if(d2.success){
+        msg.textContent += ` | ✅ Primeiro PIX gerado: ${d2.payment_id}`;
+      } else {
+        msg.textContent += ` | ⚠️ Primeiro PIX: ${d2.error||'erro'}`;
+      }
+      recCarregarLista();
+    } else {
+      msg.style.color = '#f44336';
+      msg.textContent = '❌ ' + (d.error || 'Erro ao cadastrar');
+    }
+  } catch(e) {
+    msg.style.color = '#f44336';
+    msg.textContent = '❌ Erro: ' + e.message;
+  }
+}
+
+async function recCobrarAgora(id) {
+  if(!confirm(`Gerar PIX agora para o assinante #${id}?`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/recorrente/cobrar`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-PaynexBet-Secret':SECRET()},
+      body: JSON.stringify({id})
+    });
+    const d = await r.json();
+    if(d.success){
+      alert(`✅ PIX gerado!\nPayment ID: ${d.payment_id}\nPróx. venc: ${d.proximo_vencimento}`);
+      recCarregarLista();
+    } else {
+      alert('❌ ' + (d.error||'Erro'));
+    }
+  } catch(e) { alert('Erro: '+e.message); }
+}
+
+async function recPausar(id, pausar) {
+  const acao = pausar ? 'pausar' : 'reativar';
+  if(!confirm(`Deseja ${acao} o assinante #${id}?`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/recorrente/pausar`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-PaynexBet-Secret':SECRET()},
+      body: JSON.stringify({id, pausar})
+    });
+    const d = await r.json();
+    if(d.success){ recCarregarLista(); }
+    else { alert('❌ ' + (d.error||'Erro')); }
+  } catch(e) { alert('Erro: '+e.message); }
+}
+
+async function recCancelar(id) {
+  if(!confirm(`⚠️ Cancelar definitivamente o assinante #${id}? Esta ação não pode ser desfeita.`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/recorrente/cancelar`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-PaynexBet-Secret':SECRET()},
+      body: JSON.stringify({id})
+    });
+    const d = await r.json();
+    if(d.success){ recCarregarLista(); alert('✅ Assinatura cancelada'); }
+    else { alert('❌ ' + (d.error||'Erro')); }
+  } catch(e) { alert('Erro: '+e.message); }
+}
+
+async function recDispararJob() {
+  if(!confirm('Disparar o job de cobranças agora?\nIsso gerará PIX para todos os assinantes com vencimento hoje ou em atraso.')) return;
+  try {
+    const r = await fetch(`${BASE}/api/recorrente/job`, {
+      method:'POST',
+      headers:{'X-PaynexBet-Secret':SECRET()}
+    });
+    const d = await r.json();
+    alert(`✅ Job executado!\n${d.pix_gerados||0} PIX gerados`);
+    recCarregarLista();
+  } catch(e) { alert('Erro: '+e.message); }
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // CONFIGURAÇÃO DA PÁGINA /bot e /pix — VALOR FIXO OU LIVRE

@@ -6310,6 +6310,212 @@ async def route_bot_config_save_html(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 
+# ═══════════════════════════════════════════════════════════════
+#  ROTAS — RECORRÊNCIA / ASSINATURAS MENSAIS
+# ═══════════════════════════════════════════════════════════════
+
+async def route_recorrente_criar(request):
+    """POST /api/recorrente/criar — Cadastra novo assinante recorrente."""
+    try:
+        data = await request.json()
+        nome    = str(data.get('nome', '')).strip()
+        valor   = float(data.get('valor', 0))
+        dia     = int(data.get('dia_vencimento', 1))
+        desc    = str(data.get('descricao', 'Mensalidade')).strip()
+        email   = str(data.get('email', '')).strip()
+        tel     = str(data.get('telefone', '')).strip()
+        ref     = str(data.get('ref', '')).strip()
+        if not nome:
+            return web.json_response({'success': False, 'error': 'Informe o nome do assinante'})
+        if valor < 1:
+            return web.json_response({'success': False, 'error': 'Valor mínimo R$ 1,00'})
+        from mp2_api import mp2_criar_recorrente
+        result = mp2_criar_recorrente(nome=nome, valor=valor, dia_vencimento=dia,
+                                      descricao=desc, email=email, telefone=tel,
+                                      parceiro_ref=ref)
+        return web.json_response(result)
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_recorrente_listar(request):
+    """GET /api/recorrente/listar — Lista assinantes recorrentes."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    status_filtro = request.rel_url.query.get('status', '')
+    from mp2_api import mp2_listar_recorrentes, mp2_stats_recorrentes
+    lista = mp2_listar_recorrentes(status_filtro)
+    stats = mp2_stats_recorrentes()
+    return web.json_response({'success': True, 'recorrentes': lista, 'stats': stats})
+
+
+async def route_recorrente_cancelar(request):
+    """POST /api/recorrente/cancelar — Cancela uma assinatura."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        data = await request.json()
+        rid = int(data.get('id', 0))
+        from mp2_api import mp2_cancelar_recorrente
+        return web.json_response(mp2_cancelar_recorrente(rid))
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_recorrente_pausar(request):
+    """POST /api/recorrente/pausar — Pausa ou reactiva uma assinatura."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        data = await request.json()
+        rid   = int(data.get('id', 0))
+        pausar = bool(data.get('pausar', True))
+        from mp2_api import mp2_pausar_recorrente
+        return web.json_response(mp2_pausar_recorrente(rid, pausar))
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_recorrente_cobrar(request):
+    """POST /api/recorrente/cobrar — Gera PIX agora para um assinante específico."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        data = await request.json()
+        rid = int(data.get('id', 0))
+        # Garante token MP carregado
+        import mp2_api
+        if not mp2_api.MP2_ACCESS_TOKEN:
+            try:
+                import psycopg2 as _pg
+                _c  = _pg.connect(DATABASE_URL, connect_timeout=8)
+                _cu = _c.cursor()
+                _cu.execute("SELECT valor FROM mp2_config WHERE chave='mp2_access_token'")
+                _r  = _cu.fetchone()
+                _c.close()
+                if _r and _r[0]:
+                    mp2_api.MP2_ACCESS_TOKEN = _r[0]
+            except Exception: pass
+        result = mp2_api.mp2_cobrar_recorrente(rid)
+        return web.json_response(result)
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_recorrente_pagar_link(request):
+    """GET /pagar/{id} — Página pública de pagamento da mensalidade recorrente."""
+    try:
+        rid = int(request.match_info.get('id', 0))
+        import mp2_api, psycopg2 as _pg
+        conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor(cursor_factory=_pg.extras.RealDictCursor)
+        cur.execute("SELECT * FROM mp2_recorrentes WHERE id=%s", (rid,))
+        rec = cur.fetchone()
+        cur.close(); conn.close()
+        if not rec:
+            return web.Response(text='<h1>Assinatura não encontrada</h1>', content_type='text/html')
+        rec = dict(rec)
+        nome  = rec.get('nome', 'Assinante')
+        valor = float(rec.get('valor', 0))
+        desc  = rec.get('descricao', 'Mensalidade')
+        prox  = str(rec.get('proximo_vencimento', ''))
+        # Serve a bot_pix.html com parâmetros no URL — o JS vai preencher automaticamente
+        html = load_bot_pix_html()
+        if html:
+            return web.Response(
+                text=html, content_type='text/html',
+                headers={'X-Recorrente-Id': str(rid)}
+            )
+        return web.Response(
+            text=f'<h1>Pague sua mensalidade</h1><p>{nome} — R${valor:.2f} — {desc}</p>',
+            content_type='text/html'
+        )
+    except Exception as e:
+        return web.Response(text=f'<h1>Erro: {e}</h1>', content_type='text/html')
+
+
+async def route_recorrente_stats(request):
+    """GET /api/recorrente/stats — Estatísticas públicas + admin."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    from mp2_api import mp2_stats_recorrentes
+    return web.json_response({'success': True, **mp2_stats_recorrentes()})
+
+
+async def _job_cobrar_vencimentos():
+    """
+    Job automático: roda diariamente e gera PIX para todos os assinantes
+    com vencimento hoje ou em atraso. Chamado pelo background task.
+    """
+    import mp2_api
+    print('🔄 [job_recorrente] Verificando vencimentos...', flush=True)
+    # Garante token MP
+    if not mp2_api.MP2_ACCESS_TOKEN:
+        try:
+            import psycopg2 as _pg
+            _c  = _pg.connect(DATABASE_URL, connect_timeout=8)
+            _cu = _c.cursor()
+            _cu.execute("SELECT valor FROM mp2_config WHERE chave='mp2_access_token'")
+            _r  = _cu.fetchone()
+            _c.close()
+            if _r and _r[0]:
+                mp2_api.MP2_ACCESS_TOKEN = _r[0]
+        except Exception as _e:
+            print(f'[job_recorrente] Erro token: {_e}', flush=True)
+            return 0
+
+    vencidos = mp2_api.mp2_vencimentos_hoje()
+    total = 0
+    for rec in vencidos:
+        rid   = rec['id']
+        nome  = rec.get('nome', '?')
+        valor = float(rec.get('valor', 0))
+        try:
+            resultado = mp2_api.mp2_cobrar_recorrente(rid)
+            if resultado.get('success'):
+                total += 1
+                print(f'  ✅ PIX gerado: {nome} R${valor:.2f} | {resultado.get("payment_id","")}', flush=True)
+            else:
+                print(f'  ⚠️ Falha PIX {nome}: {resultado.get("error","")}', flush=True)
+        except Exception as ex:
+            print(f'  ❌ Erro ao cobrar {nome}: {ex}', flush=True)
+
+    print(f'✅ [job_recorrente] Finalizado: {total}/{len(vencidos)} PIX gerados', flush=True)
+    return total
+
+
+async def _background_job_recorrente(app):
+    """Background task aiohttp: verifica vencimentos a cada 6 horas."""
+    import asyncio
+    await asyncio.sleep(30)  # Aguarda 30s após o startup
+    while True:
+        try:
+            await _job_cobrar_vencimentos()
+        except Exception as e:
+            print(f'[bg_recorrente] Erro: {e}', flush=True)
+        await asyncio.sleep(6 * 3600)  # A cada 6 horas
+
+
+async def route_recorrente_job_manual(request):
+    """POST /api/recorrente/job — Dispara o job manualmente (admin)."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    total = await _job_cobrar_vencimentos()
+    return web.json_response({'success': True, 'pix_gerados': total})
+
+
 async def _criar_canal_telegram(titulo: str, descricao: str) -> dict:
     """
     Cria um canal Telegram usando o client (userbot) já conectado.
@@ -6691,6 +6897,15 @@ async def main():
     app.router.add_get('/api/bot/config',                   route_bot_config_get)
     app.router.add_post('/api/bot/config',                  route_bot_config_save)
     app.router.add_post('/api/bot/config/save-html',        route_bot_config_save_html)
+    # ── Recorrência / Assinaturas mensais ────────────────────────────
+    app.router.add_post('/api/recorrente/criar',            route_recorrente_criar)
+    app.router.add_get('/api/recorrente/listar',            route_recorrente_listar)
+    app.router.add_post('/api/recorrente/cancelar',         route_recorrente_cancelar)
+    app.router.add_post('/api/recorrente/pausar',           route_recorrente_pausar)
+    app.router.add_post('/api/recorrente/cobrar',           route_recorrente_cobrar)
+    app.router.add_get('/api/recorrente/stats',             route_recorrente_stats)
+    app.router.add_post('/api/recorrente/job',              route_recorrente_job_manual)
+    app.router.add_get('/pagar/{id}',                       route_recorrente_pagar_link)
     # ── Canais Telegram ──────────────────────────────────────────────
     app.router.add_post('/api/admin/criar-canais',          route_admin_criar_canais)
     app.router.add_get('/api/admin/canais',                 route_admin_status_canais)
@@ -6829,6 +7044,15 @@ async def main():
             print('⚠️ [Bot2 Real] BOT2_TOKEN não configurado - bot desativado', flush=True)
     except Exception as e_bot2:
         print(f'⚠️ [Bot2 Real] Erro ao iniciar: {e_bot2}', flush=True)
+
+    # ── Job automático de cobranças recorrentes (a cada 6h) ──
+    try:
+        from mp2_api import init_recorrentes_db
+        init_recorrentes_db()
+        asyncio.create_task(_background_job_recorrente(None))
+        print('✅ [recorrente] Job automático de cobranças agendado (6h)', flush=True)
+    except Exception as e_rec:
+        print(f'⚠️ [recorrente] Erro ao iniciar job: {e_rec}', flush=True)
 
     await asyncio.Event().wait()
 

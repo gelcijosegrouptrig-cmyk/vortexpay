@@ -839,3 +839,335 @@ def mp2_pagar_comissao_parceiro(parceiro_codigo: str, valor: float) -> dict:
     except Exception as e:
         print(f'[mp2_parceiro] Erro pagar_comissao: {e}', flush=True)
         return {'success': False, 'error': str(e)}
+
+
+# ─── RECORRÊNCIA / ASSINATURAS ────────────────────────────────────────────────
+
+def init_recorrentes_db():
+    """Cria tabela mp2_recorrentes para cobranças mensais automáticas."""
+    ddl = """
+    CREATE TABLE IF NOT EXISTS mp2_recorrentes (
+        id SERIAL PRIMARY KEY,
+        nome TEXT NOT NULL,                      -- Nome do assinante
+        email TEXT,                              -- E-mail (opcional)
+        telefone TEXT,                           -- Telefone/WhatsApp para notificação
+        valor NUMERIC(12,2) NOT NULL,            -- Valor da mensalidade
+        descricao TEXT DEFAULT 'Mensalidade',    -- Descrição da cobrança
+        parceiro_ref TEXT,                       -- Código do parceiro afiliado (opcional)
+        status TEXT DEFAULT 'ativo',             -- 'ativo' | 'pausado' | 'cancelado'
+        dia_vencimento INTEGER DEFAULT 1,        -- Dia do mês para cobrar (1-28)
+        proximo_vencimento DATE,                 -- Data da próxima cobrança
+        total_cobrado INTEGER DEFAULT 0,         -- Quantas vezes já cobrou
+        total_pago NUMERIC(12,2) DEFAULT 0,      -- Total pago até agora
+        ultimo_payment_id TEXT,                  -- ID do último pagamento MP
+        criado_em TIMESTAMP DEFAULT NOW(),
+        atualizado_em TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS mp2_recorrentes_log (
+        id SERIAL PRIMARY KEY,
+        recorrente_id INTEGER REFERENCES mp2_recorrentes(id),
+        payment_id TEXT,
+        external_ref TEXT,
+        valor NUMERIC(12,2),
+        status TEXT DEFAULT 'pendente',           -- 'pendente' | 'pago' | 'expirado' | 'erro'
+        pix_copia_cola TEXT,
+        pix_qr_base64 TEXT,
+        vencimento DATE,
+        pago_em TIMESTAMP,
+        criado_em TIMESTAMP DEFAULT NOW()
+    );
+    """
+    try:
+        conn = _get_conn()
+        cur = conn.cursor()
+        cur.execute(ddl)
+        conn.commit()
+        cur.close(); conn.close()
+        print('✅ [recorrentes] Tabelas mp2_recorrentes criadas/verificadas!', flush=True)
+    except Exception as e:
+        print(f'❌ [recorrentes] Erro criar tabelas: {e}', flush=True)
+
+
+def mp2_criar_recorrente(nome: str, valor: float, dia_vencimento: int = 1,
+                          descricao: str = 'Mensalidade', email: str = '',
+                          telefone: str = '', parceiro_ref: str = '') -> dict:
+    """Cadastra um novo assinante para cobrança mensal recorrente."""
+    from datetime import date, timedelta
+    import calendar
+    try:
+        dia = max(1, min(28, int(dia_vencimento)))  # Limita entre 1 e 28
+        hoje = date.today()
+        # Calcula próximo vencimento
+        try:
+            prox = date(hoje.year, hoje.month, dia)
+        except ValueError:
+            prox = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        if prox <= hoje:
+            # Avança pro mês seguinte
+            if hoje.month == 12:
+                prox = date(hoje.year + 1, 1, dia)
+            else:
+                try:
+                    prox = date(hoje.year, hoje.month + 1, dia)
+                except ValueError:
+                    prox = date(hoje.year, hoje.month + 1, 28)
+
+        conn = _get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            INSERT INTO mp2_recorrentes
+                (nome, email, telefone, valor, descricao, parceiro_ref,
+                 dia_vencimento, proximo_vencimento)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING *
+        """, (nome, email or None, telefone or None, valor, descricao,
+              parceiro_ref or None, dia, prox))
+        rec = dict(cur.fetchone())
+        conn.commit()
+        cur.close(); conn.close()
+        print(f'✅ [recorrentes] Novo assinante: {nome} R${valor:.2f}/mês dia {dia}', flush=True)
+        return {'success': True, 'recorrente': _serialize_recorrente(rec)}
+    except Exception as e:
+        print(f'[recorrentes] Erro criar: {e}', flush=True)
+        return {'success': False, 'error': str(e)}
+
+
+def mp2_listar_recorrentes(status_filtro: str = '') -> list:
+    """Lista assinantes recorrentes (todos ou filtrado por status)."""
+    try:
+        conn = _get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        if status_filtro:
+            cur.execute("""
+                SELECT * FROM mp2_recorrentes WHERE status = %s ORDER BY criado_em DESC
+            """, (status_filtro,))
+        else:
+            cur.execute("SELECT * FROM mp2_recorrentes ORDER BY criado_em DESC")
+        rows = [_serialize_recorrente(dict(r)) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return rows
+    except Exception as e:
+        print(f'[recorrentes] Erro listar: {e}', flush=True)
+        return []
+
+
+def mp2_cancelar_recorrente(recorrente_id: int) -> dict:
+    """Cancela uma assinatura recorrente."""
+    try:
+        conn = _get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE mp2_recorrentes SET status='cancelado', atualizado_em=NOW()
+            WHERE id=%s
+        """, (recorrente_id,))
+        conn.commit()
+        cur.close(); conn.close()
+        return {'success': True, 'mensagem': 'Assinatura cancelada'}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+def mp2_pausar_recorrente(recorrente_id: int, pausar: bool = True) -> dict:
+    """Pausa ou reactiva uma assinatura recorrente."""
+    novo_status = 'pausado' if pausar else 'ativo'
+    try:
+        conn = _get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE mp2_recorrentes SET status=%s, atualizado_em=NOW()
+            WHERE id=%s
+        """, (novo_status, recorrente_id))
+        conn.commit()
+        cur.close(); conn.close()
+        return {'success': True, 'status': novo_status}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+def mp2_cobrar_recorrente(recorrente_id: int) -> dict:
+    """
+    Gera um novo PIX para uma assinatura recorrente.
+    Cria registro no log e retorna os dados do PIX para o cliente pagar.
+    """
+    from datetime import date, timedelta
+    import calendar
+    try:
+        conn = _get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT * FROM mp2_recorrentes WHERE id=%s", (recorrente_id,))
+        rec = cur.fetchone()
+        cur.close(); conn.close()
+        if not rec:
+            return {'success': False, 'error': 'Assinante não encontrado'}
+        rec = dict(rec)
+        if rec['status'] == 'cancelado':
+            return {'success': False, 'error': 'Assinatura cancelada'}
+
+        valor = float(rec['valor'])
+        desc = rec.get('descricao') or 'Mensalidade'
+        nome = rec.get('nome') or 'Assinante'
+
+        # Gerar PIX
+        resultado = mp2_gerar_pix(
+            telegram_id=0,
+            valor=valor,
+            descricao=f'{desc} — {nome}'
+        )
+        if not resultado.get('success'):
+            return {'success': False, 'error': resultado.get('error', 'Erro ao gerar PIX')}
+
+        # Calcular próximo vencimento (mês seguinte)
+        hoje = date.today()
+        dia = int(rec.get('dia_vencimento') or 1)
+        mes_atual = hoje.month
+        ano_atual = hoje.year
+        if mes_atual == 12:
+            prox_mes, prox_ano = 1, ano_atual + 1
+        else:
+            prox_mes, prox_ano = mes_atual + 1, ano_atual
+        try:
+            prox_venc = date(prox_ano, prox_mes, dia)
+        except ValueError:
+            prox_venc = date(prox_ano, prox_mes, 28)
+
+        # Salvar no log
+        conn2 = _get_conn()
+        cur2 = conn2.cursor()
+        cur2.execute("""
+            INSERT INTO mp2_recorrentes_log
+                (recorrente_id, payment_id, external_ref, valor, status,
+                 pix_copia_cola, pix_qr_base64, vencimento)
+            VALUES (%s, %s, %s, %s, 'pendente', %s, %s, %s)
+        """, (
+            recorrente_id,
+            str(resultado.get('payment_id', '')),
+            resultado.get('external_ref', ''),
+            valor,
+            resultado.get('pix_copia_cola', ''),
+            resultado.get('qr_base64', ''),
+            hoje
+        ))
+        # Atualizar próximo vencimento e último payment_id
+        cur2.execute("""
+            UPDATE mp2_recorrentes
+            SET proximo_vencimento = %s,
+                ultimo_payment_id = %s,
+                total_cobrado = total_cobrado + 1,
+                atualizado_em = NOW()
+            WHERE id = %s
+        """, (prox_venc, str(resultado.get('payment_id', '')), recorrente_id))
+        conn2.commit()
+        cur2.close(); conn2.close()
+
+        print(f'✅ [recorrentes] PIX gerado para {nome} R${valor:.2f} | venc={prox_venc}', flush=True)
+        return {
+            'success': True,
+            'payment_id':     resultado.get('payment_id', ''),
+            'external_ref':   resultado.get('external_ref', ''),
+            'pix_copia_cola': resultado.get('pix_copia_cola', ''),
+            'qr_base64':      resultado.get('qr_base64', ''),
+            'valor':          valor,
+            'proximo_vencimento': str(prox_venc),
+        }
+    except Exception as e:
+        print(f'[recorrentes] Erro cobrar: {e}', flush=True)
+        return {'success': False, 'error': str(e)}
+
+
+def mp2_processar_webhook_recorrente(payment_id: str, status_mp: str) -> bool:
+    """
+    Chamado pelo webhook quando um pagamento recorrente é confirmado.
+    Atualiza o log e o total_pago da assinatura.
+    """
+    try:
+        conn = _get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT * FROM mp2_recorrentes_log WHERE payment_id=%s", (str(payment_id),))
+        log = cur.fetchone()
+        if not log:
+            cur.close(); conn.close()
+            return False
+        log = dict(log)
+        if status_mp == 'approved':
+            cur.execute("""
+                UPDATE mp2_recorrentes_log
+                SET status='pago', pago_em=NOW() WHERE payment_id=%s
+            """, (str(payment_id),))
+            cur.execute("""
+                UPDATE mp2_recorrentes
+                SET total_pago = total_pago + %s, atualizado_em=NOW()
+                WHERE id=%s
+            """, (float(log['valor']), log['recorrente_id']))
+            conn.commit()
+            cur.close(); conn.close()
+            print(f'✅ [recorrentes] Pagamento confirmado: {payment_id} R${log["valor"]:.2f}', flush=True)
+            return True
+        cur.close(); conn.close()
+        return False
+    except Exception as e:
+        print(f'[recorrentes] Erro webhook: {e}', flush=True)
+        return False
+
+
+def mp2_vencimentos_hoje() -> list:
+    """Retorna assinantes com vencimento hoje (para disparo automático)."""
+    from datetime import date
+    try:
+        conn = _get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT * FROM mp2_recorrentes
+            WHERE status = 'ativo'
+              AND proximo_vencimento <= %s
+            ORDER BY id
+        """, (date.today(),))
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return rows
+    except Exception as e:
+        print(f'[recorrentes] Erro vencimentos_hoje: {e}', flush=True)
+        return []
+
+
+def mp2_stats_recorrentes() -> dict:
+    """Retorna estatísticas resumidas das recorrências."""
+    try:
+        conn = _get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                COUNT(*) FILTER (WHERE status='ativo') as ativos,
+                COUNT(*) FILTER (WHERE status='pausado') as pausados,
+                COUNT(*) FILTER (WHERE status='cancelado') as cancelados,
+                COALESCE(SUM(valor) FILTER (WHERE status='ativo'), 0) as mrr,
+                COALESCE(SUM(total_pago), 0) as total_arrecadado
+            FROM mp2_recorrentes
+        """)
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        return {
+            'ativos':           int(row[0] or 0),
+            'pausados':         int(row[1] or 0),
+            'cancelados':       int(row[2] or 0),
+            'mrr':              float(row[3] or 0),  # Monthly Recurring Revenue
+            'total_arrecadado': float(row[4] or 0),
+        }
+    except Exception as e:
+        print(f'[recorrentes] Erro stats: {e}', flush=True)
+        return {'ativos': 0, 'pausados': 0, 'cancelados': 0, 'mrr': 0, 'total_arrecadado': 0}
+
+
+def _serialize_recorrente(r: dict) -> dict:
+    """Converte campos especiais do recorrente para JSON serializável."""
+    from datetime import date
+    out = {}
+    for k, v in r.items():
+        if isinstance(v, date):
+            out[k] = v.isoformat()
+        else:
+            try:
+                out[k] = float(v) if isinstance(v, __import__('decimal').Decimal) else v
+            except Exception:
+                out[k] = str(v) if v is not None else None
+    return out

@@ -21,768 +21,618 @@
   --text2:#aaa;
   --text3:#666;
   --red:#f44336;
+  --purple:#9c27b0;
 }
 body{
   background:var(--bg);
   color:var(--text);
   font-family:'Segoe UI',system-ui,sans-serif;
   min-height:100vh;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:flex-start;
-  padding:20px 16px 40px;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  padding:20px 16px 60px;
 }
-.top-bar{
-  width:100%;max-width:420px;
-  display:flex;align-items:center;gap:10px;
-  margin-bottom:20px;
-}
+.top-bar{width:100%;max-width:420px;display:flex;align-items:center;gap:10px;margin-bottom:20px}
 .logo-img{font-size:28px}
 .top-title{font-size:17px;font-weight:800;color:#fff}
 .top-sub{font-size:11px;color:var(--text3)}
-.mp-badge{
-  margin-left:auto;
-  background:#009ee322;border:1px solid #009ee344;
-  color:#009ee3;font-size:10px;font-weight:700;
-  padding:4px 10px;border-radius:20px;white-space:nowrap;
-}
+.mp-badge{margin-left:auto;background:#009ee322;border:1px solid #009ee344;color:#009ee3;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap}
+
+/* Tabs modo */
+.modo-tabs{width:100%;max-width:420px;display:flex;gap:0;margin-bottom:16px;background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.modo-tab{flex:1;padding:11px 6px;text-align:center;font-size:12px;font-weight:700;cursor:pointer;color:var(--text3);transition:.2s;border:none;background:transparent;user-select:none}
+.modo-tab.active{background:var(--blue);color:#fff;border-radius:12px}
+.modo-tab:hover:not(.active){color:var(--text);background:#ffffff08}
 
 /* Card principal */
-.card{
-  width:100%;max-width:420px;
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:20px;
-  overflow:hidden;
-  box-shadow:0 8px 40px rgba(0,0,0,.6);
-}
-.card-header{
-  background:linear-gradient(135deg,#003087,#009ee3);
-  padding:20px 24px 18px;
-  text-align:center;
-}
-.card-header h1{font-size:1.4rem;font-weight:900;color:#fff;margin-bottom:4px}
-.card-header p{font-size:.82rem;color:#9bbfe0}
+.card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.6)}
+.card-header{padding:22px 22px 16px;background:linear-gradient(135deg,var(--card2) 0%,var(--card) 100%);border-bottom:1px solid var(--border)}
+.card-header h2{font-size:17px;font-weight:800;margin-bottom:4px}
+.card-header p{font-size:12px;color:var(--text2)}
+.card-body{padding:20px 22px}
 
-/* Badge parceiro */
-.parceiro-badge{
-  display:none;align-items:center;gap:8px;
-  background:#f59e0b11;border:1px solid #f59e0b33;
-  border-radius:10px;padding:10px 14px;
-  margin:16px 20px 0;font-size:.82rem;
-}
-.parceiro-badge .icon{font-size:18px}
-.parceiro-badge .txt{color:#f59e0b}
-.parceiro-badge .pct{
-  margin-left:auto;background:#f59e0b22;
-  color:#f59e0b;padding:2px 8px;border-radius:20px;
-  font-size:.75rem;font-weight:700;
-}
+/* Valor fixo */
+.valor-fixo-box{background:linear-gradient(135deg,#009ee322,#009ee308);border:2px solid var(--blue);border-radius:16px;padding:20px;text-align:center;margin-bottom:20px}
+.valor-fixo-label{font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600}
+.valor-fixo-num{font-size:44px;font-weight:900;color:var(--blue);line-height:1}
+.valor-fixo-desc{font-size:11px;color:var(--text3);margin-top:6px}
 
-.card-body{padding:20px 20px 24px}
-
-/* VALOR FIXO — destaque grande */
-.valor-fixo-display{
-  text-align:center;
-  background:linear-gradient(135deg,#003087,#0057a8);
-  border:2px solid #009ee344;
-  border-radius:16px;
-  padding:24px 20px 20px;
-  margin-bottom:20px;
-}
-.valor-fixo-display .vf-label{
-  font-size:.75rem;color:#9bbfe0;
-  text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;
-}
-.valor-fixo-display .vf-valor{
-  font-size:3rem;font-weight:900;color:#fff;
-  line-height:1;letter-spacing:-1px;
-}
-.valor-fixo-display .vf-sub{
-  font-size:.78rem;color:#9bbfe0;margin-top:6px;
-}
-
-/* VALOR LIVRE — input */
-.valor-input-wrap{
-  display:flex;align-items:center;gap:10px;
-  background:var(--card2);
-  border:2px solid var(--blue);
-  border-radius:14px;padding:12px 16px;
-  margin-bottom:10px;
-}
-.valor-prefix{font-size:1.5rem;font-weight:800;color:var(--text3)}
-.valor-input{
-  flex:1;background:transparent;border:none;outline:none;
-  color:var(--text);font-size:1.8rem;font-weight:800;
-  font-variant-numeric:tabular-nums;
-}
+/* Campo valor livre */
+.valor-input-wrap{position:relative;margin-bottom:16px}
+.valor-input-wrap .prefix{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:18px;font-weight:800;color:var(--blue);pointer-events:none}
+.valor-input{width:100%;padding:14px 16px 14px 44px;background:#ffffff0d;border:1.5px solid var(--border);border-radius:12px;color:#fff;font-size:22px;font-weight:800;outline:none;transition:.2s}
+.valor-input:focus{border-color:var(--blue);background:#009ee310}
 .valor-input::placeholder{color:var(--text3)}
-.limites-row{
-  display:flex;justify-content:space-between;
-  font-size:.72rem;color:var(--text3);margin-bottom:12px;
-}
-.presets{
-  display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;
-}
-.preset-btn{
-  background:var(--card2);border:1px solid var(--border);
-  border-radius:10px;padding:8px 14px;color:var(--text2);
-  font-size:.82rem;cursor:pointer;transition:all .15s;
-}
-.preset-btn:hover,.preset-btn.active{
-  background:#009ee322;border-color:var(--blue);color:#fff;
-}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.preset-btn{flex:1;min-width:60px;padding:8px 4px;background:#ffffff08;border:1px solid var(--border);border-radius:10px;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;transition:.15s;text-align:center}
+.preset-btn:hover{background:var(--blue);color:#fff;border-color:var(--blue)}
 
-/* Campo nome */
-.field{margin-bottom:14px}
-.field label{display:block;font-size:.72rem;color:var(--text3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px}
-.field input{
-  width:100%;background:var(--card2);border:1.5px solid var(--border);
-  border-radius:10px;padding:11px 14px;color:var(--text);font-size:.95rem;outline:none;
-}
-.field input:focus{border-color:var(--blue)}
-.field-hint{font-size:.7rem;color:var(--text3);margin-top:4px}
+/* Campo nome/identificação */
+.field-wrap{margin-bottom:14px}
+.field-label{font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.field-input{width:100%;padding:12px 14px;background:#ffffff0d;border:1.5px solid var(--border);border-radius:12px;color:#fff;font-size:14px;outline:none;transition:.2s}
+.field-input:focus{border-color:var(--blue);background:#009ee310}
+.field-input::placeholder{color:var(--text3)}
+
+/* Toggle recorrente */
+.recorrente-toggle{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#9c27b015;border:1.5px solid #9c27b040;border-radius:14px;margin-bottom:16px;cursor:pointer;user-select:none;transition:.2s}
+.recorrente-toggle:hover{background:#9c27b025;border-color:#9c27b060}
+.toggle-switch{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle-switch input{display:none}
+.toggle-track{position:absolute;inset:0;background:#333;border-radius:12px;transition:.3s;cursor:pointer}
+.toggle-thumb{position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.3s}
+input:checked+.toggle-track{background:var(--purple)}
+input:checked~.toggle-thumb{transform:translateX(20px)}
+.recorrente-toggle-text strong{display:block;font-size:13px;color:var(--text);font-weight:700}
+.recorrente-toggle-text span{display:block;font-size:11px;color:var(--text3);margin-top:2px}
+
+/* Config recorrente extra */
+.recorrente-extra{background:#1a0d22;border:1px solid #9c27b030;border-radius:12px;padding:14px;margin-bottom:16px;display:none}
+.recorrente-extra.show{display:block}
+.recorrente-extra .field-label{color:#ce93d8}
 
 /* Botão gerar */
-.btn-gerar{
-  width:100%;padding:16px;
-  background:linear-gradient(135deg,var(--blue),var(--blue2));
-  border:none;border-radius:14px;
-  color:#fff;font-size:1.05rem;font-weight:800;
-  cursor:pointer;transition:all .2s;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-}
-.btn-gerar:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,158,227,.4)}
-.btn-gerar:disabled{opacity:.5;cursor:not-allowed;transform:none}
-
-/* PIX gerado */
-.pix-valor-card{
-  background:linear-gradient(135deg,#003087,#0057a8);
-  border-radius:14px;padding:16px 20px;
-  display:flex;align-items:center;gap:14px;
-  margin-bottom:16px;
-}
-.pix-valor-card .icon-mp{font-size:2rem}
-.pix-valor-card .label{font-size:.72rem;color:#9bbfe0;margin-bottom:2px}
-.pix-valor-card .valor{font-size:2rem;font-weight:900;color:#fff}
-
-/* QR Code */
-.qr-section{text-align:center;margin-bottom:16px}
-.qr-box{
-  display:inline-flex;align-items:center;justify-content:center;
-  background:#fff;border-radius:16px;padding:16px;
-  box-shadow:0 4px 20px rgba(0,158,227,.2);
-}
-.qr-expira{
-  margin-top:8px;font-size:.8rem;color:var(--text3);
-  display:flex;align-items:center;justify-content:center;gap:6px;
-}
-.timer{font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
-
-/* Copia e cola */
-.pix-code-wrap{
-  background:var(--card2);border:1px solid var(--border);
-  border-radius:12px;padding:12px 14px;margin-bottom:12px;
-}
-.pix-code-label{font-size:.68rem;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
-.pix-code-text{
-  font-size:.72rem;color:var(--text2);
-  word-break:break-all;font-family:monospace;line-height:1.5;
-  max-height:60px;overflow:hidden;
-  -webkit-mask-image:linear-gradient(to bottom,black 60%,transparent 100%);
-}
-.btn-copiar{
-  width:100%;padding:13px;
-  background:var(--card2);
-  border:1.5px solid var(--green);
-  border-radius:12px;
-  color:var(--green);font-size:.95rem;font-weight:700;
-  cursor:pointer;transition:all .15s;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  margin-bottom:14px;
-}
-.btn-copiar:hover{background:#00c85322;transform:translateY(-1px)}
-.btn-copiar.copiado{background:#00c85322;color:var(--green2);border-color:var(--green2)}
-
-/* Status aguardando */
-.status-aguardando{
-  display:flex;align-items:center;gap:10px;
-  background:#0a1a0a;border:1px solid #00c85322;
-  border-radius:12px;padding:12px 16px;margin-bottom:14px;
-}
-.status-aguardando .dot{
-  width:10px;height:10px;border-radius:50%;
-  background:var(--green);flex-shrink:0;
-  animation:pulse 1.5s infinite;
-}
-.status-aguardando .txt{font-size:.82rem;color:var(--text2);line-height:1.4}
-.status-aguardando .txt strong{color:#fff}
-
-/* Confirmado */
-.confirmado-wrap{text-align:center;padding:10px 0}
-.confirmado-icon{font-size:56px;margin-bottom:12px;animation:bounceIn .5s}
-.confirmado-title{font-size:1.4rem;font-weight:900;color:var(--green2);margin-bottom:6px}
-.confirmado-valor{font-size:2.2rem;font-weight:900;color:#fff;margin-bottom:4px}
-.confirmado-sub{font-size:.82rem;color:var(--text3);margin-bottom:20px}
+.btn-gerar{width:100%;padding:16px;background:linear-gradient(135deg,var(--blue),var(--blue2));border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:800;cursor:pointer;transition:.2s;letter-spacing:.3px;box-shadow:0 4px 20px #009ee340}
+.btn-gerar:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 28px #009ee355}
+.btn-gerar:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn-gerar.recorrente{background:linear-gradient(135deg,var(--purple),#6a0080)}
+.btn-gerar.recorrente:hover:not(:disabled){box-shadow:0 6px 28px #9c27b055}
 
 /* Loading */
-.loading-pix{text-align:center;padding:30px 0}
-.spinner{
-  width:44px;height:44px;border-radius:50%;
-  border:4px solid var(--card2);border-top-color:var(--blue);
-  animation:spin .9s linear infinite;margin:0 auto 16px;
-}
-.loading-pix p{color:var(--text2);font-size:.9rem;line-height:1.6}
+.loading-box{text-align:center;padding:30px 20px;display:none}
+.spinner{width:44px;height:44px;border:4px solid #ffffff15;border-top:4px solid var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--text2)}
+
+/* Resultado PIX */
+.pix-box{display:none;padding:0}
+.pix-header{background:linear-gradient(135deg,#009ee322,#009ee308);padding:16px 22px;border-bottom:1px solid var(--border)}
+.pix-header h3{font-size:15px;font-weight:800;color:var(--green)}
+.pix-header p{font-size:12px;color:var(--text2);margin-top:2px}
+.pix-body{padding:20px 22px}
+.qr-wrap{text-align:center;margin-bottom:18px}
+.qr-wrap img{width:200px;height:200px;border-radius:12px;border:3px solid var(--blue);background:#fff;padding:6px}
+.qr-placeholder{width:200px;height:200px;border-radius:12px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;margin:0 auto}
+.pix-code-box{background:#ffffff08;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:14px}
+.pix-code-label{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:6px}
+.pix-code{font-size:10px;color:var(--text2);word-break:break-all;line-height:1.5;max-height:60px;overflow:hidden;font-family:monospace}
+.btn-copy{width:100%;padding:13px;background:var(--green);border:none;border-radius:12px;color:#000;font-size:14px;font-weight:800;cursor:pointer;transition:.2s;margin-bottom:10px}
+.btn-copy:hover{background:var(--green2)}
+.btn-copy.copied{background:#ccc;color:#333}
+.timer-box{text-align:center;margin-top:14px}
+.timer-label{font-size:11px;color:var(--text3);margin-bottom:4px}
+.timer-bar-wrap{background:#ffffff10;border-radius:6px;height:6px;overflow:hidden;margin-bottom:6px}
+.timer-bar{height:100%;background:var(--blue);border-radius:6px;transition:width .5s linear}
+.timer-text{font-size:20px;font-weight:900;color:var(--text);font-variant-numeric:tabular-nums}
+.polling-status{font-size:11px;color:var(--text3);margin-top:6px}
+.pulsar{animation:pulsar 1.5s ease-in-out infinite}
+@keyframes pulsar{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Confirmado */
+.confirmado-box{display:none;padding:30px 22px;text-align:center}
+.check-icon{font-size:64px;margin-bottom:12px}
+.confirmado-box h3{font-size:22px;font-weight:900;color:var(--green);margin-bottom:8px}
+.confirmado-box p{font-size:14px;color:var(--text2)}
+.confirmado-recorrente{background:#9c27b015;border:1px solid #9c27b040;border-radius:12px;padding:14px;margin-top:16px;font-size:12px;color:#ce93d8}
+
+/* Recorrente cadastrado */
+.recorrente-ok{display:none;padding:22px;text-align:center}
+.recorrente-ok .check-icon{font-size:50px;margin-bottom:10px}
+.recorrente-ok h3{font-size:18px;font-weight:900;color:var(--purple);margin-bottom:6px}
+.recorrente-ok p{font-size:12px;color:var(--text2);line-height:1.6}
+.recorrente-ok .info-box{background:#9c27b015;border:1px solid #9c27b040;border-radius:12px;padding:12px;margin-top:12px;text-align:left}
+.recorrente-ok .info-row{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #9c27b020}
+.recorrente-ok .info-row:last-child{border-bottom:none}
+.recorrente-ok .info-key{color:var(--text3)}
+.recorrente-ok .info-val{color:var(--text);font-weight:700}
 
 /* Erro */
-.erro-box{
-  background:#1a0a0a;border:1px solid #f4433633;
-  border-radius:14px;padding:24px 20px;text-align:center;
-}
-.erro-box .icon{font-size:40px;margin-bottom:10px}
-.erro-box p{color:var(--text2);font-size:.9rem;line-height:1.5;margin-bottom:14px}
-
-.btn-novo-pix{
-  width:100%;padding:12px;
-  background:transparent;border:1.5px solid var(--border);
-  border-radius:12px;color:var(--text2);
-  font-size:.9rem;cursor:pointer;transition:all .15s;
-  display:flex;align-items:center;justify-content:center;gap:6px;
-}
-.btn-novo-pix:hover{border-color:var(--blue);color:#fff}
+.erro-box{display:none;padding:24px 22px;text-align:center}
+.erro-box .err-icon{font-size:48px;margin-bottom:10px}
+.erro-box h3{font-size:16px;font-weight:800;color:var(--red);margin-bottom:6px}
+.erro-box p{font-size:12px;color:var(--text2)}
+.btn-tentar{margin-top:14px;padding:11px 24px;background:var(--blue);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:13px;cursor:pointer}
 
 /* Footer */
-.footer{
-  margin-top:24px;font-size:.72rem;color:var(--text3);
-  text-align:center;line-height:2;
-}
-.footer a{color:var(--blue);text-decoration:none}
+.footer-txt{font-size:11px;color:var(--text3);text-align:center;margin-top:20px;max-width:420px}
+.footer-txt a{color:var(--blue);text-decoration:none}
 
-/* Animações */
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
-@keyframes bounceIn{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.fade-in{animation:fadeIn .3s ease}
+/* Parceiro badge */
+.parceiro-badge{background:#FFD70015;border:1px solid #FFD70030;border-radius:10px;padding:8px 12px;display:none;font-size:12px;color:#FFD700;margin-bottom:14px;text-align:center}
 
-/* Steps (ocultos por default) */
-#step-valor   { display:block }
-#step-loading { display:none }
-#step-pix     { display:none }
-#step-ok      { display:none }
-#step-erro    { display:none }
+/* Indicador vencimento */
+.venc-badge{background:#9c27b020;border:1px solid #9c27b040;border-radius:8px;padding:6px 12px;font-size:11px;color:#ce93d8;text-align:center;margin-bottom:12px;display:none}
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
 <div class="top-bar">
-  <div class="logo-img">💳</div>
+  <span class="logo-img">💎</span>
   <div>
-    <div class="top-title" id="page-titulo">PayPixNex</div>
-    <div class="top-sub">Powered by Mercado Pago</div>
+    <div class="top-title" id="pg-titulo">PayPixNex</div>
+    <div class="top-sub">Pagamento seguro via Mercado Pago</div>
   </div>
-  <div class="mp-badge">🔒 MP SEGURO</div>
+  <span class="mp-badge">🔒 Seguro</span>
 </div>
 
-<!-- CARD -->
-<div class="card">
-  <div class="card-header">
-    <h1 id="header-titulo">Pague via PIX</h1>
-    <p id="header-desc">Pagamento instantâneo e seguro</p>
-  </div>
+<!-- Tabs modo (fixo / livre) -->
+<div class="modo-tabs" id="modo-tabs">
+  <button class="modo-tab active" id="tab-fixo" onclick="setModo('fixo')">💰 Valor Fixo</button>
+  <button class="modo-tab" id="tab-livre" onclick="setModo('livre')">✏️ Valor Livre</button>
+</div>
 
-  <!-- Badge parceiro -->
-  <div class="parceiro-badge" id="parceiro-badge">
-    <div class="icon">🤝</div>
-    <div>
-      <div class="txt" id="parceiro-nome-txt">Parceiro afiliado</div>
-      <div style="font-size:.7rem;color:#888">link de afiliado ativo</div>
+<!-- Badge parceiro -->
+<div class="parceiro-badge" id="parceiro-badge">🤝 Link de <strong id="parceiro-nome"></strong> — comissão automática</div>
+
+<!-- Badge vencimento (para links de assinatura) -->
+<div class="venc-badge" id="venc-badge"></div>
+
+<!-- CARD PRINCIPAL -->
+<div class="card" id="card-main">
+
+  <!-- STEP 1 — Formulário -->
+  <div id="step-form">
+    <div class="card-header">
+      <h2 id="pg-subtitulo">Pague com PIX</h2>
+      <p id="pg-descricao">QR Code exclusivo gerado para você</p>
     </div>
-    <div class="pct" id="parceiro-pct-txt">10%</div>
-  </div>
+    <div class="card-body">
 
-  <div class="card-body">
-
-    <!-- ══ STEP VALOR ══ -->
-    <div id="step-valor">
-
-      <!-- MODO FIXO: mostra valor destaque + botão gerar -->
-      <div id="modo-fixo-ui">
-        <div class="valor-fixo-display" id="vf-display">
-          <div class="vf-label">Valor do Pagamento</div>
-          <div class="vf-valor" id="vf-valor-txt">R$ 10,00</div>
-          <div class="vf-sub" id="vf-desc-txt">Pagamento único · QR Code gerado exclusivamente para você</div>
+      <!-- Valor Fixo -->
+      <div id="bloco-fixo">
+        <div class="valor-fixo-box">
+          <div class="valor-fixo-label">VALOR DA COBRANÇA</div>
+          <div class="valor-fixo-num" id="vf-num">R$ 10,00</div>
+          <div class="valor-fixo-desc" id="vf-desc">Pagamento único · QR Code gerado para você</div>
         </div>
-        <button class="btn-gerar" id="btn-gerar-fixo" onclick="gerarPixFixo()">
-          <span>⚡</span> Gerar meu QR Code PIX agora
-        </button>
-        <div id="erro-fixo" style="color:#f44;font-size:.82rem;text-align:center;margin-top:10px;min-height:18px"></div>
       </div>
 
-      <!-- MODO LIVRE: input de valor -->
-      <div id="modo-livre-ui" style="display:none">
+      <!-- Valor Livre -->
+      <div id="bloco-livre" style="display:none">
         <div class="valor-input-wrap">
-          <span class="valor-prefix">R$</span>
-          <input type="number" id="inp-valor" class="valor-input"
-            placeholder="0,00" min="5" max="10000" step="0.01"
-            oninput="onValorInput()"
-            onkeypress="if(event.key==='Enter') gerarPix()">
+          <span class="prefix">R$</span>
+          <input class="valor-input" id="valor-input" type="number" placeholder="0,00" min="5" step="0.01" inputmode="decimal"/>
         </div>
-        <div class="limites-row">
-          <span>📌 Mín: <strong id="txt-min">R$ 5,00</strong></span>
-          <span>📋 Máx: <strong id="txt-max">R$ 10.000,00</strong></span>
-        </div>
-        <div class="presets" id="presets-wrap">
-          <button class="preset-btn" onclick="setPreset(10)">R$10</button>
-          <button class="preset-btn" onclick="setPreset(20)">R$20</button>
-          <button class="preset-btn" onclick="setPreset(50)">R$50</button>
-          <button class="preset-btn" onclick="setPreset(100)">R$100</button>
-          <button class="preset-btn" onclick="setPreset(200)">R$200</button>
-          <button class="preset-btn" onclick="setPreset(500)">R$500</button>
-        </div>
-        <div class="field">
-          <label>👤 Identificação (opcional)</label>
-          <input type="text" id="inp-nome" placeholder="Nome ou descrição do pagamento" maxlength="80">
-          <div class="field-hint">Aparece na descrição do PIX gerado</div>
-        </div>
-        <button class="btn-gerar" id="btn-gerar" onclick="gerarPix()">
-          <span>⚡</span> Gerar PIX agora
-        </button>
-        <div id="erro-valor" style="color:#f44;font-size:.82rem;text-align:center;margin-top:10px;min-height:18px"></div>
-      </div>
-
-    </div><!-- /step-valor -->
-
-    <!-- ══ LOADING ══ -->
-    <div id="step-loading" class="fade-in">
-      <div class="loading-pix">
-        <div class="spinner"></div>
-        <p>⚡ Gerando seu QR Code PIX exclusivo...<br>
-        <span style="font-size:.78rem;color:#555">Isso leva apenas alguns segundos</span></p>
-      </div>
-    </div>
-
-    <!-- ══ STEP PIX GERADO ══ -->
-    <div id="step-pix" class="fade-in">
-
-      <div class="pix-valor-card">
-        <div class="icon-mp">💳</div>
-        <div>
-          <div class="label">💰 Valor a pagar</div>
-          <div class="valor" id="pix-valor-txt">R$ 0,00</div>
-        </div>
-        <div style="margin-left:auto;text-align:right">
-          <div style="font-size:.7rem;color:#9bbfe0">QR único para você</div>
-          <div style="font-size:.75rem;color:#f59e0b;font-weight:700" id="pix-parceiro-info"></div>
+        <div class="presets" id="presets">
+          <button class="preset-btn" onclick="setValor(10)">R$10</button>
+          <button class="preset-btn" onclick="setValor(20)">R$20</button>
+          <button class="preset-btn" onclick="setValor(50)">R$50</button>
+          <button class="preset-btn" onclick="setValor(100)">R$100</button>
+          <button class="preset-btn" onclick="setValor(200)">R$200</button>
+          <button class="preset-btn" onclick="setValor(500)">R$500</button>
         </div>
       </div>
 
-      <!-- QR Code -->
-      <div class="qr-section">
-        <div class="qr-box" id="qrcode-box"></div>
-        <div class="qr-expira">
-          ⏰ Expira em <span class="timer" id="timer-txt">30:00</span>
+      <!-- Nome / Identificação -->
+      <div class="field-wrap">
+        <div class="field-label">Seu nome (opcional)</div>
+        <input class="field-input" id="nome-input" type="text" placeholder="Como você se chama?" maxlength="80"/>
+      </div>
+
+      <!-- Toggle PIX Recorrente -->
+      <label class="recorrente-toggle" for="toggle-recorrente" onclick="toggleRecorrente()">
+        <div class="toggle-switch">
+          <input type="checkbox" id="toggle-recorrente">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </div>
+        <div class="recorrente-toggle-text">
+          <strong>🔄 Assinatura mensal automática</strong>
+          <span>Ative para renovação automática todo mês</span>
+        </div>
+      </label>
+
+      <!-- Detalhes extras recorrente -->
+      <div class="recorrente-extra" id="recorrente-extra">
+        <div class="field-wrap" style="margin-bottom:10px">
+          <div class="field-label" style="color:#ce93d8">📅 Dia do vencimento (1–28)</div>
+          <input class="field-input" id="dia-venc" type="number" placeholder="Ex: 5 (todo dia 5 do mês)" min="1" max="28" value="1" style="border-color:#9c27b040"/>
+        </div>
+        <div class="field-wrap" style="margin-bottom:0">
+          <div class="field-label" style="color:#ce93d8">📱 WhatsApp para renovação (opcional)</div>
+          <input class="field-input" id="tel-input" type="tel" placeholder="(11) 99999-9999" style="border-color:#9c27b040"/>
+        </div>
+        <div style="margin-top:10px;padding:10px;background:#9c27b010;border-radius:8px;font-size:11px;color:#ce93d8;line-height:1.5">
+          🔔 No dia do vencimento, um novo QR PIX será gerado automaticamente.<br>
+          Você receberá o link para pagar sem precisar se cadastrar novamente.
         </div>
       </div>
 
-      <!-- Código copia e cola -->
-      <div class="pix-code-wrap">
-        <div class="pix-code-label">📋 Pix Copia e Cola</div>
-        <div class="pix-code-text" id="pix-code-txt">—</div>
-      </div>
-
-      <button class="btn-copiar" id="btn-copiar" onclick="copiarCodigo()">
-        <span id="copiar-icon">📋</span>
-        <span id="copiar-txt">Copiar Código PIX</span>
+      <!-- Botão gerar -->
+      <button class="btn-gerar" id="btn-gerar" onclick="gerarPix()">
+        ⚡ Gerar QR PIX agora
       </button>
+    </div>
+  </div>
 
-      <div class="status-aguardando" id="status-aguardando">
-        <div class="dot"></div>
-        <div class="txt">
-          <strong>Aguardando pagamento...</strong><br>
-          Confirmação automática em até 30 segundos após o PIX.
+  <!-- STEP 2 — Loading -->
+  <div class="loading-box" id="step-loading">
+    <div class="spinner"></div>
+    <div class="loading-text">Gerando seu QR Code...</div>
+  </div>
+
+  <!-- STEP 3 — PIX gerado -->
+  <div class="pix-box" id="step-pix">
+    <div class="pix-header">
+      <h3>✅ QR Code gerado!</h3>
+      <p>Escaneie ou copie o código PIX abaixo</p>
+    </div>
+    <div class="pix-body">
+      <div class="qr-wrap">
+        <img id="qr-img" src="" alt="QR Code PIX" style="display:none"/>
+        <div class="qr-placeholder" id="qr-placeholder">📲 QR Code</div>
+      </div>
+      <div class="pix-code-box">
+        <div class="pix-code-label">Código PIX Copia e Cola</div>
+        <div class="pix-code" id="pix-code-txt">—</div>
+      </div>
+      <button class="btn-copy" id="btn-copy" onclick="copiarPix()">📋 Copiar código PIX</button>
+      <div class="timer-box">
+        <div class="timer-label">Aguardando pagamento</div>
+        <div class="timer-bar-wrap">
+          <div class="timer-bar" id="timer-bar" style="width:100%"></div>
         </div>
+        <div class="timer-text" id="timer-txt">30:00</div>
+        <div class="polling-status pulsar" id="polling-status">🔍 Verificando pagamento...</div>
       </div>
-
-      <button class="btn-novo-pix" onclick="reiniciar()">↩ Gerar novo QR Code</button>
+      <button class="btn-gerar" style="margin-top:16px;font-size:13px;padding:12px;background:transparent;border:1.5px solid var(--border);color:var(--text2)" onclick="voltarForm()">↩ Gerar novo PIX</button>
     </div>
+  </div>
 
-    <!-- ══ PAGO ══ -->
-    <div id="step-ok" class="fade-in">
-      <div class="confirmado-wrap">
-        <div class="confirmado-icon">✅</div>
-        <div class="confirmado-title">Pagamento Confirmado!</div>
-        <div class="confirmado-valor" id="ok-valor">R$ 0,00</div>
-        <div class="confirmado-sub" id="ok-sub">Pago via PIX Mercado Pago</div>
+  <!-- STEP 4 — Confirmado (pagamento único) -->
+  <div class="confirmado-box" id="step-ok">
+    <div class="check-icon">✅</div>
+    <h3>Pagamento confirmado!</h3>
+    <p>Seu PIX foi processado com sucesso.<br>Obrigado pelo pagamento!</p>
+  </div>
 
-        <div style="background:#0a1a0a;border:1px solid #00c85333;border-radius:12px;padding:14px 16px;margin:16px 0;font-size:.82rem;color:#aaa;text-align:left">
-          ✅ <strong style="color:#4ade80">PIX recebido com sucesso!</strong><br>
-          <span id="ok-parceiro-msg"></span>
-        </div>
+  <!-- STEP 4b — Recorrente cadastrado + primeiro PIX -->
+  <div class="recorrente-ok" id="step-recorrente-ok">
+    <div class="check-icon">🔄</div>
+    <h3>Assinatura criada!</h3>
+    <p>Pague o QR Code acima para ativar sua mensalidade. As próximas cobranças são automáticas!</p>
+    <div class="info-box" id="rec-info-box"></div>
+  </div>
 
-        <button class="btn-gerar" onclick="reiniciar()" style="margin-top:4px">
-          ⚡ Realizar novo pagamento
-        </button>
-      </div>
-    </div>
+  <!-- STEP 5 — Erro -->
+  <div class="erro-box" id="step-erro">
+    <div class="err-icon">⚠️</div>
+    <h3>Falha ao gerar PIX</h3>
+    <p id="erro-msg">Tente novamente em instantes.</p>
+    <button class="btn-tentar" onclick="voltarForm()">Tentar novamente</button>
+  </div>
 
-    <!-- ══ ERRO ══ -->
-    <div id="step-erro" class="fade-in">
-      <div class="erro-box">
-        <div class="icon">❌</div>
-        <p id="erro-msg">Erro ao gerar PIX. Tente novamente.</p>
-        <button class="btn-gerar" onclick="reiniciar()" style="margin-top:4px">
-          ↩ Tentar novamente
-        </button>
-      </div>
-    </div>
-
-  </div><!-- /card-body -->
 </div><!-- /card -->
 
-<div class="footer">
-  🔒 Pagamento seguro via <strong>Mercado Pago</strong> · PIX instantâneo 24/7<br>
-  Após o pagamento, o QR Code não pode ser reutilizado.
+<div class="footer-txt">
+  Pagamentos processados por <a href="https://www.mercadopago.com.br" target="_blank">Mercado Pago</a><br>
+  <span id="footer-parceiro"></span>
 </div>
 
-<!-- QR CODE LIB -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-// ── CONFIG ──────────────────────────────────────────────────────
-const BASE = '';
-let _txId         = null;
-let _pixCode      = null;
-let _valor        = 0;
-let _pollInterval = null;
-let _timerInterval = null;
-let _timerSeg     = 30 * 60;
-let _qrInstance   = null;
-let _modoFixo     = false;
-let _valorFixo    = 0;
-let _cfgCarregada = false;
+const BASE = '';  // Mesmo domínio
 
-// ── Parceiro afiliado ──────────────────────────────────────────
-const _urlParams   = new URLSearchParams(window.location.search);
-const _parceiroCod = _urlParams.get('ref') || '';
+// ─── Estado global ─────────────────────────────────────────────
+let cfg = {};
+let pixPaymentId = '';
+let pollingInterval = null;
+let timerInterval  = null;
+let modoAtual = 'fixo'; // 'fixo' | 'livre'
+let isRecorrente = false;
+let recId = null; // ID do recorrente criado
 
-// ── INIT: carrega configurações + badge parceiro ───────────────
-(async function init() {
+// ─── Inicialização ─────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  const params = new URLSearchParams(location.search);
+  const ref    = params.get('ref')   || '';
+  const recRid = params.get('rid')   || ''; // link de renovação de assinatura
+  const venc   = params.get('venc')  || '';
+
+  // Carrega config do servidor
   try {
-    // 1. Carrega config do bot
-    const rc = await fetch(`${BASE}/api/bot/config`);
-    const cfg = await rc.json();
-    if (cfg.success) {
-      _modoFixo  = cfg.modo_fixo;
-      _valorFixo = cfg.valor_fixo || 0;
+    const r = await fetch(`${BASE}/api/bot/config`);
+    cfg = await r.json();
+  } catch(e) { cfg = {modo_fixo:false, valor_fixo:0, min_valor:5, max_valor:10000}; }
 
-      // Título e descrição
-      if (cfg.titulo)   document.getElementById('page-titulo').textContent  = cfg.titulo;
-      if (cfg.titulo)   document.getElementById('header-titulo').textContent = cfg.titulo;
-      if (cfg.descricao) document.getElementById('header-desc').textContent = cfg.descricao;
+  // Atualiza títulos
+  if(cfg.titulo)    document.getElementById('pg-titulo').textContent    = cfg.titulo;
+  if(cfg.descricao) document.getElementById('pg-descricao').textContent = cfg.descricao;
 
-      if (_modoFixo && _valorFixo > 0) {
-        // MODO FIXO: mostra valor destaque e gera automaticamente
-        document.getElementById('vf-valor-txt').textContent =
-          'R$ ' + _valorFixo.toFixed(2).replace('.', ',');
-        if (cfg.descricao)
-          document.getElementById('vf-desc-txt').textContent = cfg.descricao;
-        document.getElementById('modo-fixo-ui').style.display = 'block';
-        document.getElementById('modo-livre-ui').style.display = 'none';
-      } else {
-        // MODO LIVRE: mostra input
-        document.getElementById('modo-fixo-ui').style.display = 'none';
-        document.getElementById('modo-livre-ui').style.display = 'block';
-        // aplica min/max do admin
-        const inp = document.getElementById('inp-valor');
-        if (cfg.min_valor) inp.min = cfg.min_valor;
-        if (cfg.max_valor) inp.max = cfg.max_valor;
-        document.getElementById('txt-min').textContent =
-          'R$ ' + (cfg.min_valor || 5).toFixed(2).replace('.', ',');
-        document.getElementById('txt-max').textContent =
-          'R$ ' + (cfg.max_valor || 10000).toFixed(2).replace('.', ',');
-        // mostra presets relevantes baseado no valor fixo
-        if (cfg.valor_fixo > 0) gerarPresets(cfg.valor_fixo, cfg.min_valor || 5);
+  // Modo fixo vs livre
+  if(cfg.modo_fixo && cfg.valor_fixo > 0){
+    setModo('fixo');
+    document.getElementById('vf-num').textContent  = 'R$ ' + cfg.valor_fixo.toFixed(2).replace('.',',');
+    document.getElementById('vf-desc').textContent = cfg.descricao || 'Pagamento único';
+    document.getElementById('modo-tabs').style.display = 'none';
+  } else {
+    // Modo padrão: mostrar tabs, começar em Valor Livre
+    setModo('livre');
+  }
+
+  // Parceiro
+  if(ref){
+    try{
+      const pr = await fetch(`${BASE}/api/mp2/parceiros`);
+      const pd = await pr.json();
+      const parceiro = (pd.parceiros||[]).find(p=>p.codigo===ref);
+      if(parceiro){
+        document.getElementById('parceiro-badge').style.display='block';
+        document.getElementById('parceiro-nome').textContent = parceiro.nome;
+        document.getElementById('footer-parceiro').textContent = `Parceiro: ${parceiro.nome}`;
       }
-      _cfgCarregada = true;
-    }
-  } catch(e) {
-    // fallback: modo livre padrão
-    document.getElementById('modo-fixo-ui').style.display = 'none';
-    document.getElementById('modo-livre-ui').style.display = 'block';
-    _cfgCarregada = true;
+    }catch(e){}
   }
 
-  // 2. Badge parceiro
-  if (_parceiroCod) {
-    const badge = document.getElementById('parceiro-badge');
-    if (badge) badge.style.display = 'flex';
-    // não precisa buscar dados — backend valida no webhook
+  // Link de renovação de assinatura existente
+  if(recRid){
+    document.getElementById('venc-badge').style.display='block';
+    document.getElementById('venc-badge').textContent =
+      `🔄 Renovação da sua assinatura${venc ? ' — vencimento: '+venc : ''}`;
+    document.getElementById('toggle-recorrente').parentElement.style.display='none';
+    // Modo livre para mostrar o valor
+    setModo('livre');
+    document.getElementById('modo-tabs').style.display='none';
   }
-})();
+});
 
-// Gera presets dinâmicos baseados no valor configurado
-function gerarPresets(valorFixo, minValor) {
-  const wrap = document.getElementById('presets-wrap');
-  if (!wrap) return;
-  const base = valorFixo > 0 ? valorFixo : 10;
-  const vals = [base, base*2, base*5, base*10].filter(v => v >= minValor && v <= 10000);
-  const extras = [10,20,50,100,200,500].filter(v => !vals.includes(v) && v >= minValor);
-  const todos = [...new Set([...vals, ...extras])].sort((a,b)=>a-b).slice(0,6);
-  wrap.innerHTML = todos.map(v =>
-    `<button class="preset-btn" onclick="setPreset(${v})">R$${v >= 1000 ? v/1000+'k' : v}</button>`
-  ).join('');
+// ─── Modo fixo / livre ─────────────────────────────────────────
+function setModo(modo){
+  modoAtual = modo;
+  document.getElementById('bloco-fixo').style.display  = modo==='fixo'  ? 'block' : 'none';
+  document.getElementById('bloco-livre').style.display = modo==='livre' ? 'block' : 'none';
+  document.getElementById('tab-fixo').classList.toggle('active', modo==='fixo');
+  document.getElementById('tab-livre').classList.toggle('active', modo==='livre');
+
+  const btn = document.getElementById('btn-gerar');
+  if(isRecorrente){
+    btn.classList.add('recorrente');
+    btn.textContent = '🔄 Criar assinatura mensal';
+  } else {
+    btn.classList.remove('recorrente');
+    btn.textContent = '⚡ Gerar QR PIX agora';
+  }
 }
 
-// ── STEPS ────────────────────────────────────────────────────────
-function showStep(step) {
-  ['step-valor','step-loading','step-pix','step-ok','step-erro']
-    .forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
-  const el = document.getElementById('step-'+step);
-  if (el) el.style.display = 'block';
+// ─── Toggle recorrente ─────────────────────────────────────────
+function toggleRecorrente(){
+  const ck = document.getElementById('toggle-recorrente');
+  isRecorrente = ck.checked;
+  document.getElementById('recorrente-extra').classList.toggle('show', isRecorrente);
+  const btn = document.getElementById('btn-gerar');
+  if(isRecorrente){
+    btn.classList.add('recorrente');
+    btn.textContent = '🔄 Criar assinatura mensal';
+  } else {
+    btn.classList.remove('recorrente');
+    btn.textContent = '⚡ Gerar QR PIX agora';
+  }
 }
 
-// ── MODO FIXO: gera PIX com valor pré-configurado ────────────────
-async function gerarPixFixo() {
-  const erroEl = document.getElementById('erro-fixo');
-  const btn    = document.getElementById('btn-gerar-fixo');
-  if (!_valorFixo || _valorFixo < 1) {
-    if (erroEl) erroEl.textContent = '❌ Valor não configurado. Contate o suporte.';
-    return;
+// ─── Presets de valor ──────────────────────────────────────────
+function setValor(v){
+  document.getElementById('valor-input').value = v;
+}
+
+// ─── Obter valor ───────────────────────────────────────────────
+function getValor(){
+  if(modoAtual === 'fixo') return cfg.valor_fixo || 10;
+  const v = parseFloat(document.getElementById('valor-input').value||'0');
+  return v;
+}
+
+// ─── Gerar PIX ─────────────────────────────────────────────────
+async function gerarPix(){
+  const params = new URLSearchParams(location.search);
+  const ref    = params.get('ref') || '';
+  const valor  = getValor();
+  const nome   = document.getElementById('nome-input').value.trim();
+
+  const min = parseFloat(cfg.min_valor) || 5;
+  const max = parseFloat(cfg.max_valor) || 10000;
+
+  if(valor < min){
+    mostrarErro(`Valor mínimo: R$ ${min.toFixed(2).replace('.',',')}`); return;
   }
-  _valor = _valorFixo;
-  if (erroEl) erroEl.textContent = '';
-  if (btn) { btn.disabled=true; btn.innerHTML='<span class="spinner" style="width:20px;height:20px;border-width:3px;display:inline-block;margin-right:8px"></span>Gerando...'; }
+  if(valor > max){
+    mostrarErro(`Valor máximo: R$ ${max.toFixed(2).replace('.',',')}`); return;
+  }
+
   showStep('loading');
-  await _chamarGerarPix(_valor, 'Pagamento via PayPixNex');
-}
+  document.getElementById('btn-gerar').disabled = true;
 
-// ── MODO LIVRE: gera PIX com valor digitado ──────────────────────
-async function gerarPix() {
-  const valorRaw = document.getElementById('inp-valor').value;
-  const nome     = (document.getElementById('inp-nome') || {}).value || '';
-  const erroEl   = document.getElementById('erro-valor');
-  const minV     = parseFloat(document.getElementById('inp-valor').min || 5);
-  const maxV     = parseFloat(document.getElementById('inp-valor').max || 10000);
-
-  const valor = parseFloat(String(valorRaw).replace(',','.'));
-  if (!valor || isNaN(valor) || valor < minV) {
-    if(erroEl) erroEl.textContent = `❌ Valor mínimo R$ ${minV.toFixed(2).replace('.',',')}`;
-    document.getElementById('inp-valor').focus();
-    return;
-  }
-  if (valor > maxV) {
-    if(erroEl) erroEl.textContent = `❌ Valor máximo R$ ${maxV.toFixed(2).replace('.',',')}`;
-    return;
-  }
-  _valor = valor;
-  if (erroEl) erroEl.textContent = '';
-  showStep('loading');
-  await _chamarGerarPix(valor, nome.trim() || `PIX PayPixNex R$${valor}`);
-}
-
-// ── CHAMADA COMUM AO BACKEND ─────────────────────────────────────
-async function _chamarGerarPix(valor, descricao) {
   try {
-    const payload = { valor, descricao };
-    if (_parceiroCod) payload.ref = _parceiroCod;
+    const body = {
+      valor,
+      descricao: cfg.descricao || 'PIX PayPixNex',
+      ref,
+      nome: nome || 'Cliente',
+    };
 
     const r = await fetch(`${BASE}/api/bot/gerar`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
     });
     const d = await r.json();
 
-    if (!d.success) {
-      mostrarErro(d.error || 'Erro ao gerar PIX. Tente novamente.');
-      return;
+    if(!d.success){
+      mostrarErro(d.error || 'Erro ao gerar PIX'); return;
     }
 
-    _txId = d.payment_id || d.external_ref;
+    pixPaymentId = d.payment_id;
 
-    // Atualiza info de parceiro no PIX se retornou
-    const parceiroInfo = document.getElementById('pix-parceiro-info');
-    if (parceiroInfo && d.parceiro) {
-      parceiroInfo.textContent = `✅ Parceiro: ${d.parceiro}`;
+    // Preenche QR e código
+    if(d.qr_base64){
+      const img = document.getElementById('qr-img');
+      img.src    = 'data:image/png;base64,' + d.qr_base64;
+      img.style.display = 'block';
+      document.getElementById('qr-placeholder').style.display = 'none';
+    }
+    document.getElementById('pix-code-txt').textContent = d.pix_copia_cola || '—';
+    showStep('pix');
+
+    // Se recorrente, cadastra no sistema antes de mostrar PIX
+    if(isRecorrente){
+      await cadastrarRecorrente(valor, nome, d);
     }
 
-    if (d.pix_copia_cola) {
-      exibirPix(d.pix_copia_cola, valor, d.qr_base64 || '');
-    } else {
-      iniciarPolling(_txId, valor);
-    }
+    iniciarPolling();
+    iniciarTimer(30 * 60); // 30 minutos
 
-  } catch(e) {
-    mostrarErro('Erro de conexão: ' + e.message);
+  } catch(e){
+    mostrarErro('Erro de rede: ' + e.message);
   }
 }
 
-// ── EXIBIR PIX ───────────────────────────────────────────────────
-function exibirPix(pixCode, valor, qrBase64) {
-  _pixCode = pixCode;
-  showStep('pix');
-
-  document.getElementById('pix-valor-txt').textContent =
-    'R$ ' + valor.toFixed(2).replace('.', ',');
-  document.getElementById('pix-code-txt').textContent = pixCode;
-
-  // QR Code
-  const box = document.getElementById('qrcode-box');
-  box.innerHTML = '';
-  if (qrBase64) {
-    const img = document.createElement('img');
-    img.src = 'data:image/png;base64,' + qrBase64;
-    img.width = 200; img.height = 200;
-    img.style.borderRadius = '8px';
-    box.appendChild(img);
-  } else if (typeof QRCode !== 'undefined') {
-    _qrInstance = new QRCode(box, {
-      text: pixCode, width: 200, height: 200,
-      colorDark:'#000', colorLight:'#fff',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-  }
-
-  // Timer 30min
-  _timerSeg = 30 * 60;
-  clearInterval(_timerInterval);
-  _timerInterval = setInterval(() => {
-    _timerSeg--;
-    if (_timerSeg <= 0) { clearInterval(_timerInterval); return; }
-    const m = Math.floor(_timerSeg/60);
-    const s = _timerSeg % 60;
-    const el = document.getElementById('timer-txt');
-    if (el) el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    if (_timerSeg <= 300) { if (el) el.style.color = '#f44336'; }
-  }, 1000);
-
-  // Inicia polling de confirmação
-  iniciarPollingConfirmacao(_txId, valor);
-}
-
-// ── POLLING: verifica se ainda não temos o PIX e aguarda gerar ──
-function iniciarPolling(txId, valor) {
-  let tentativas = 0;
-  const poll = setInterval(async () => {
-    tentativas++;
-    if (tentativas > 30) {
-      clearInterval(poll);
-      mostrarErro('Timeout ao gerar PIX. Tente novamente.');
-      return;
-    }
-    try {
-      const r = await fetch(`${BASE}/api/bot/status/${txId}`);
-      const d = await r.json();
-      if (d.pix_copia_cola) {
-        clearInterval(poll);
-        exibirPix(d.pix_copia_cola, valor, d.qr_base64 || '');
-      } else if (d.confirmado) {
-        clearInterval(poll);
-        mostrarPago(valor);
-      }
-    } catch(e) {}
-  }, 2000);
-  _pollInterval = poll;
-}
-
-// ── POLLING: confirmação de pagamento ────────────────────────────
-function iniciarPollingConfirmacao(txId, valor) {
-  clearInterval(_pollInterval);
-  let tentativas = 0;
-  _pollInterval = setInterval(async () => {
-    tentativas++;
-    if (tentativas > 180) { clearInterval(_pollInterval); return; } // 6min
-    try {
-      const r = await fetch(`${BASE}/api/bot/status/${txId}`);
-      const d = await r.json();
-      if (d.confirmado || d.approved || d.status === 'approved' || d.status === 'confirmado') {
-        clearInterval(_pollInterval);
-        clearInterval(_timerInterval);
-        mostrarPago(valor, d.parceiro);
-      }
-    } catch(e) {}
-  }, 3000);
-}
-
-// ── MOSTRAR PAGO ──────────────────────────────────────────────────
-function mostrarPago(valor, parceiroNome) {
-  showStep('ok');
-  document.getElementById('ok-valor').textContent =
-    'R$ ' + valor.toFixed(2).replace('.', ',');
-  const sub = document.getElementById('ok-sub');
-  if (sub) sub.textContent = `Pago via PIX Mercado Pago · ${new Date().toLocaleString('pt-BR')}`;
-  const pm = document.getElementById('ok-parceiro-msg');
-  if (pm) pm.innerHTML = parceiroNome
-    ? `Comissão de <strong style="color:#f59e0b">${parceiroNome}</strong> foi contabilizada automaticamente.`
-    : 'Obrigado pelo seu pagamento!';
-}
-
-// ── COPIAR ────────────────────────────────────────────────────────
-async function copiarCodigo() {
-  if (!_pixCode) return;
+// ─── Cadastrar assinatura recorrente ───────────────────────────
+async function cadastrarRecorrente(valor, nome, pixData){
   try {
-    await navigator.clipboard.writeText(_pixCode);
-    const btn = document.getElementById('btn-copiar');
-    const txt = document.getElementById('copiar-txt');
-    const ico = document.getElementById('copiar-icon');
-    btn.classList.add('copiado');
-    if (txt) txt.textContent = 'Código Copiado!';
-    if (ico) ico.textContent = '✅';
-    setTimeout(() => {
-      btn.classList.remove('copiado');
-      if (txt) txt.textContent = 'Copiar Código PIX';
-      if (ico) ico.textContent = '📋';
-    }, 3000);
-  } catch(e) {
-    // fallback
-    const ta = document.createElement('textarea');
-    ta.value = _pixCode;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
+    const params = new URLSearchParams(location.search);
+    const dia  = parseInt(document.getElementById('dia-venc').value||'1');
+    const tel  = document.getElementById('tel-input').value.trim();
+    const ref  = params.get('ref') || '';
+
+    const body = {
+      nome:           nome || 'Assinante',
+      valor,
+      dia_vencimento: dia,
+      descricao:      cfg.descricao || 'Mensalidade',
+      telefone:       tel,
+      ref,
+    };
+
+    const r = await fetch(`${BASE}/api/recorrente/criar`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if(d.success && d.recorrente){
+      recId = d.recorrente.id;
+      // Preenche info box
+      const prox = d.recorrente.proximo_vencimento || '—';
+      const infoBox = document.getElementById('rec-info-box');
+      infoBox.innerHTML = `
+        <div class="info-row"><span class="info-key">Plano</span><span class="info-val">R$ ${valor.toFixed(2).replace('.',',')} / mês</span></div>
+        <div class="info-row"><span class="info-key">Dia de vencimento</span><span class="info-val">Todo dia ${dia}</span></div>
+        <div class="info-row"><span class="info-key">Próxima cobrança</span><span class="info-val">${prox}</span></div>
+        ${tel ? `<div class="info-row"><span class="info-key">Notificação</span><span class="info-val">${tel}</span></div>` : ''}
+      `;
+    }
+  } catch(e){
+    console.warn('[recorrente] Erro cadastrar:', e);
   }
 }
 
-// ── HELPERS ───────────────────────────────────────────────────────
-function setPreset(v) {
-  const inp = document.getElementById('inp-valor');
-  if (inp) inp.value = v;
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-  if (event && event.target) event.target.classList.add('active');
-  const el = document.getElementById('erro-valor');
-  if (el) el.textContent = '';
+// ─── Polling de confirmação ─────────────────────────────────────
+function iniciarPolling(){
+  if(pollingInterval) clearInterval(pollingInterval);
+  pollingInterval = setInterval(verificarPagamento, 3000);
 }
 
-function onValorInput() {
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-  const el = document.getElementById('erro-valor');
-  if (el) el.textContent = '';
+async function verificarPagamento(){
+  if(!pixPaymentId) return;
+  try{
+    const r = await fetch(`${BASE}/api/bot/status/${pixPaymentId}`);
+    const d = await r.json();
+    if(d.confirmado || d.approved || d.status === 'approved'){
+      pararPolling();
+      pararTimer();
+      if(isRecorrente && recId){
+        showStep('recorrente-ok');
+      } else {
+        showStep('ok');
+      }
+    }
+  }catch(e){}
 }
 
-function mostrarErro(msg) {
+function pararPolling(){
+  if(pollingInterval){ clearInterval(pollingInterval); pollingInterval=null; }
+}
+
+// ─── Timer ─────────────────────────────────────────────────────
+function iniciarTimer(seg){
+  const total = seg;
+  let restante = seg;
+  const bar  = document.getElementById('timer-bar');
+  const txt  = document.getElementById('timer-txt');
+  if(timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    restante--;
+    const m = Math.floor(restante/60).toString().padStart(2,'0');
+    const s = (restante%60).toString().padStart(2,'0');
+    txt.textContent = `${m}:${s}`;
+    bar.style.width = (restante/total*100)+'%';
+    if(bar.style.width < '20%') bar.style.background='var(--red)';
+    else if(bar.style.width < '50%') bar.style.background='var(--gold)';
+    if(restante <= 0){
+      pararTimer();
+      pararPolling();
+      document.getElementById('polling-status').textContent = '⏰ QR Code expirado. Gere um novo.';
+      document.getElementById('polling-status').classList.remove('pulsar');
+    }
+  }, 1000);
+}
+function pararTimer(){
+  if(timerInterval){ clearInterval(timerInterval); timerInterval=null; }
+}
+
+// ─── Copiar PIX ────────────────────────────────────────────────
+async function copiarPix(){
+  const txt = document.getElementById('pix-code-txt').textContent;
+  try{
+    await navigator.clipboard.writeText(txt);
+    const btn = document.getElementById('btn-copy');
+    btn.textContent='✅ Copiado!';
+    btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='📋 Copiar código PIX';btn.classList.remove('copied');},2500);
+  }catch(e){
+    prompt('Copie o código PIX:', txt);
+  }
+}
+
+// ─── Utilitários ──────────────────────────────────────────────
+function showStep(step){
+  document.getElementById('step-form').style.display      = step==='form'          ? 'block':'none';
+  document.getElementById('step-loading').style.display   = step==='loading'       ? 'block':'none';
+  document.getElementById('step-pix').style.display       = step==='pix'           ? 'block':'none';
+  document.getElementById('step-ok').style.display        = step==='ok'            ? 'block':'none';
+  document.getElementById('step-recorrente-ok').style.display = step==='recorrente-ok'?'block':'none';
+  document.getElementById('step-erro').style.display      = step==='erro'          ? 'block':'none';
+  if(step!=='loading') document.getElementById('btn-gerar').disabled = false;
+}
+
+function mostrarErro(msg){
+  document.getElementById('erro-msg').textContent = msg || 'Tente novamente.';
   showStep('erro');
-  const el = document.getElementById('erro-msg');
-  if (el) el.textContent = msg;
-  // Reativa botão modo fixo se necessário
-  const btn = document.getElementById('btn-gerar-fixo');
-  if (btn) { btn.disabled=false; btn.innerHTML='<span>⚡</span> Gerar meu QR Code PIX agora'; }
 }
 
-function reiniciar() {
-  clearInterval(_pollInterval);
-  clearInterval(_timerInterval);
-  _txId    = null;
-  _pixCode = null;
-  _valor   = 0;
-  // Reativa botão modo fixo
-  const btn = document.getElementById('btn-gerar-fixo');
-  if (btn) { btn.disabled=false; btn.innerHTML='<span>⚡</span> Gerar meu QR Code PIX agora'; }
-  showStep('valor');
-  const inp = document.getElementById('inp-valor');
-  if (inp) inp.value = '';
+function voltarForm(){
+  pararPolling();
+  pararTimer();
+  pixPaymentId = '';
+  showStep('form');
+  document.getElementById('btn-gerar').disabled = false;
 }
 </script>
 </body>
