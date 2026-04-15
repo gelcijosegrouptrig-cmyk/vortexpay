@@ -5889,6 +5889,57 @@ async def route_mp2_parceiros_deletar(request):
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
 
+async def route_mp2_parceiros_editar(request):
+    """PATCH /api/mp2/parceiros/{codigo} - Edita parceiro: nome, chave_pix, tipo_chave, comissao_pct, ativo."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        codigo = request.match_info.get('codigo', '')
+        if not codigo:
+            return web.json_response({'success': False, 'error': 'Código obrigatório'})
+        body = await request.json()
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        # Campos aceitos para atualização
+        campos = []
+        valores = []
+        if 'ativo' in body:
+            campos.append('ativo = %s')
+            valores.append(bool(body['ativo']))
+        if 'nome' in body and str(body['nome']).strip():
+            campos.append('nome = %s')
+            valores.append(str(body['nome']).strip())
+        if 'chave_pix' in body and str(body['chave_pix']).strip():
+            campos.append('chave_pix = %s')
+            valores.append(str(body['chave_pix']).strip())
+        if 'tipo_chave' in body and str(body['tipo_chave']).strip():
+            campos.append('tipo_chave = %s')
+            valores.append(str(body['tipo_chave']).strip())
+        if 'comissao_pct' in body:
+            pct = float(body['comissao_pct'])
+            pct = max(1.0, min(90.0, pct))
+            campos.append('comissao_pct = %s')
+            valores.append(pct)
+        if not campos:
+            cur.close(); conn.close()
+            return web.json_response({'success': False, 'error': 'Nenhum campo para atualizar'})
+        valores.append(codigo)
+        cur.execute(f"UPDATE mp2_parceiros SET {', '.join(campos)} WHERE codigo = %s RETURNING id, nome, chave_pix, tipo_chave, comissao_pct, ativo", valores)
+        row = cur.fetchone()
+        conn.commit(); cur.close(); conn.close()
+        if not row:
+            return web.json_response({'success': False, 'error': 'Parceiro não encontrado'})
+        return web.json_response({'success': True, 'parceiro': {
+            'id': row[0], 'nome': row[1], 'chave_pix': row[2],
+            'tipo_chave': row[3], 'comissao_pct': float(row[4]), 'ativo': row[5]
+        }})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
 
 async def route_mp2_comissoes_listar(request):
     """GET /api/mp2/comissoes - Lista saques de comissão dos parceiros (SQL direto)."""
@@ -6542,6 +6593,7 @@ async def main():
     app.router.add_get('/api/mp2/parceiros',                route_mp2_parceiros_listar)
     app.router.add_post('/api/mp2/parceiros',               route_mp2_parceiros_criar)
     app.router.add_delete('/api/mp2/parceiros/{codigo}',    route_mp2_parceiros_deletar)
+    app.router.add_patch('/api/mp2/parceiros/{codigo}',     route_mp2_parceiros_editar)
     app.router.add_get('/api/mp2/comissoes',                route_mp2_comissoes_listar)
     app.router.add_post('/api/mp2/comissoes/pagar',         route_mp2_comissoes_pagar_manual)
     # ── Bot PIX - página pública @paypix_nexbot ──

@@ -4032,21 +4032,22 @@ async function mp2CarregarParceiros() {
     }
     tbody.innerHTML = d.parceiros.map(p => {
       const link = p.link || `https://web-production-9f54e.up.railway.app/bot?ref=${p.codigo}`;
-      const statusBadge = p.ativo
-        ? '<span style="color:#4ade80;font-size:11px">● ativo</span>'
-        : '<span style="color:#f44;font-size:11px">● inativo</span>';
-      return `<tr>
+      const isAtivo = p.ativo;
+      const statusBadge = isAtivo
+        ? '<span style="color:#4ade80;font-size:11px;font-weight:700">● ativo</span>'
+        : '<span style="color:#f87171;font-size:11px;font-weight:700">● inativo</span>';
+      return `<tr id="row-${p.codigo}" style="opacity:${isAtivo?1:0.6}">
         <td>
-          <div style="font-weight:600">${p.nome}</div>
-          <div style="font-size:11px;color:#666;font-family:monospace">${p.codigo}</div>
-          ${statusBadge}
+          <div style="font-weight:700;font-size:14px">${p.nome}</div>
+          <div style="font-size:10px;color:#555;font-family:monospace">${p.codigo}</div>
+          <div style="margin-top:3px">${statusBadge}</div>
         </td>
         <td>
-          <div style="font-size:13px;font-family:monospace">${p.chave_pix}</div>
-          <div style="font-size:11px;color:#888">${p.tipo_chave}</div>
+          <div style="font-family:monospace;font-size:13px;color:#60a5fa">${p.chave_pix}</div>
+          <div style="font-size:11px;color:#666">${p.tipo_chave}</div>
         </td>
         <td style="text-align:center">
-          <span style="color:#a855f7;font-weight:700;font-size:16px">${p.comissao_pct}%</span>
+          <span style="color:#a855f7;font-weight:800;font-size:18px">${p.comissao_pct}%</span>
         </td>
         <td style="text-align:center">
           <div style="color:#4ade80;font-weight:600">R$ ${(p.total_gerado||0).toFixed(2).replace('.',',')}</div>
@@ -4056,19 +4057,81 @@ async function mp2CarregarParceiros() {
           <div style="color:#fbbf24;font-weight:600">R$ ${(p.total_comissao||0).toFixed(2).replace('.',',')}</div>
           <div style="font-size:11px;color:#666">pago: R$ ${(p.total_pago||0).toFixed(2).replace('.',',')}</div>
         </td>
-        <td style="text-align:center;color:#888">${p.qtd_pagamentos||0}</td>
         <td>
-          <div style="display:flex;align-items:center;gap:6px">
-            <code style="font-size:11px;color:#a855f7;word-break:break-all;max-width:180px">${link}</code>
-            <button onclick="mp2CopiarLink('${link}')"
-              style="padding:4px 8px;background:#7c3aed;border:none;border-radius:6px;color:#fff;font-size:11px;cursor:pointer;white-space:nowrap">📋</button>
+          <div style="display:flex;align-items:center;gap:4px;max-width:200px">
+            <code style="font-size:10px;color:#a855f7;word-break:break-all;flex:1">${link}</code>
+            <button onclick="mp2CopiarLink('${link}')" title="Copiar link"
+              style="padding:3px 7px;background:#7c3aed22;border:1px solid #7c3aed44;border-radius:5px;color:#a855f7;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0">📋</button>
           </div>
         </td>
         <td>
-          <button onclick="mp2DesativarParceiro('${p.codigo}','${p.nome}')"
-            style="padding:6px 12px;background:#1a0a0a;border:1px solid #f4433644;border-radius:8px;color:#f44;font-size:12px;cursor:pointer">
-            🗑 Desativar
-          </button>
+          <div style="display:flex;flex-direction:column;gap:5px;min-width:120px">
+            <!-- Ativar/Desativar -->
+            ${isAtivo
+              ? `<button onclick="mp2ToggleParceiro('${p.codigo}','${p.nome.replace(/'/g,'')}',false)"
+                  style="padding:5px 10px;background:#2a0a0a;border:1px solid #ef444466;border-radius:7px;color:#f87171;font-size:11px;cursor:pointer;font-weight:600">
+                  ⏸ Desativar
+                </button>`
+              : `<button onclick="mp2ToggleParceiro('${p.codigo}','${p.nome.replace(/'/g,'')}',true)"
+                  style="padding:5px 10px;background:#0a2a0a;border:1px solid #22c55e66;border-radius:7px;color:#4ade80;font-size:11px;cursor:pointer;font-weight:600">
+                  ▶ Ativar
+                </button>`
+            }
+            <!-- Editar -->
+            <button onclick="mp2AbrirEdicao('${p.codigo}','${p.nome.replace(/'/g,'')}','${p.chave_pix}','${p.tipo_chave}',${p.comissao_pct})"
+              style="padding:5px 10px;background:#0a1a2a;border:1px solid #3b82f666;border-radius:7px;color:#60a5fa;font-size:11px;cursor:pointer;font-weight:600">
+              ✏️ Editar
+            </button>
+          </div>
+        </td>
+      </tr>
+      <!-- Linha de edição inline (oculta por padrão) -->
+      <tr id="edit-${p.codigo}" style="display:none;background:#0a0a18">
+        <td colspan="8" style="padding:16px">
+          <div style="background:#0d0d20;border:1px solid #3b82f644;border-radius:12px;padding:16px">
+            <div style="font-size:12px;color:#60a5fa;font-weight:700;margin-bottom:12px">✏️ Editar parceiro: ${p.nome}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:12px;align-items:end">
+              <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">Nome</label>
+                <input id="edit-nome-${p.codigo}" value="${p.nome.replace(/"/g,'')}"
+                  style="width:100%;background:#0a0a14;border:1px solid #3b82f644;border-radius:7px;padding:8px 10px;color:#fff;font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">Chave PIX</label>
+                <div style="display:flex;gap:6px">
+                  <select id="edit-tipo-${p.codigo}"
+                    style="background:#0a0a14;border:1px solid #3b82f644;border-radius:7px;padding:8px;color:#fff;font-size:12px;width:120px">
+                    <option value="cpf" ${p.tipo_chave==='cpf'?'selected':''}>CPF</option>
+                    <option value="email" ${p.tipo_chave==='email'?'selected':''}>E-mail</option>
+                    <option value="telefone" ${p.tipo_chave==='telefone'?'selected':''}>Telefone</option>
+                    <option value="cnpj" ${p.tipo_chave==='cnpj'?'selected':''}>CNPJ</option>
+                    <option value="aleatoria" ${p.tipo_chave==='aleatoria'?'selected':''}>Aleatória</option>
+                  </select>
+                  <input id="edit-chave-${p.codigo}" value="${p.chave_pix.replace(/"/g,'')}"
+                    style="flex:1;background:#0a0a14;border:1px solid #3b82f644;border-radius:7px;padding:8px 10px;color:#60a5fa;font-size:13px;font-family:monospace">
+                </div>
+              </div>
+              <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">% Comissão</label>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input id="edit-pct-${p.codigo}" type="number" min="1" max="90" value="${p.comissao_pct}"
+                    style="width:70px;background:#0a0a14;border:1px solid #a855f7;border-radius:7px;padding:8px;color:#a855f7;font-size:16px;font-weight:800;text-align:center">
+                  <span style="color:#a855f7;font-weight:700;font-size:16px">%</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button onclick="mp2SalvarEdicao('${p.codigo}')"
+                style="padding:8px 20px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">
+                💾 Salvar
+              </button>
+              <button onclick="document.getElementById('edit-${p.codigo}').style.display='none'"
+                style="padding:8px 16px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#888;font-size:13px;cursor:pointer">
+                Cancelar
+              </button>
+              <span id="edit-msg-${p.codigo}" style="font-size:12px;align-self:center"></span>
+            </div>
+          </div>
         </td>
       </tr>`;
     }).join('');
@@ -4086,23 +4149,67 @@ function mp2CopiarLink(url) {
   });
 }
 
-async function mp2DesativarParceiro(codigo, nome) {
-  if (!confirm(`Desativar parceiro "${nome}" (${codigo})?\nO link deixará de funcionar.`)) return;
+function mp2AbrirEdicao(codigo, nome, chave, tipo, pct) {
+  // Fechar todas outras edições abertas
+  document.querySelectorAll('[id^="edit-"]').forEach(el => {
+    if (el.id.startsWith('edit-') && !el.id.startsWith('edit-nome-') && !el.id.startsWith('edit-tipo-') && !el.id.startsWith('edit-chave-') && !el.id.startsWith('edit-pct-') && !el.id.startsWith('edit-msg-')) {
+      el.style.display = 'none';
+    }
+  });
+  const editRow = document.getElementById(`edit-${codigo}`);
+  if (editRow) editRow.style.display = editRow.style.display === 'none' ? '' : 'none';
+}
+
+async function mp2SalvarEdicao(codigo) {
+  const nome    = document.getElementById(`edit-nome-${codigo}`).value.trim();
+  const chave   = document.getElementById(`edit-chave-${codigo}`).value.trim();
+  const tipo    = document.getElementById(`edit-tipo-${codigo}`).value;
+  const pct     = parseFloat(document.getElementById(`edit-pct-${codigo}`).value) || 10;
+  const msgEl   = document.getElementById(`edit-msg-${codigo}`);
+
+  if (!nome || !chave) { msgEl.innerHTML = '<span style="color:#f44">Nome e chave PIX obrigatórios</span>'; return; }
+  msgEl.innerHTML = '<span style="color:#888">⏳ Salvando...</span>';
   try {
     const r = await fetch(`${BASE}/api/mp2/parceiros/${encodeURIComponent(codigo)}`, {
-      method: 'DELETE',
-      headers: { 'X-PaynexBet-Secret': SECRET() }
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct })
     });
     const d = await r.json();
     if (d.success) {
-      alert('✅ Parceiro desativado!');
+      msgEl.innerHTML = '<span style="color:#4ade80">✅ Salvo!</span>';
+      setTimeout(async () => {
+        document.getElementById(`edit-${codigo}`).style.display = 'none';
+        await mp2CarregarParceiros();
+      }, 800);
+    } else {
+      msgEl.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
+    }
+  } catch(e) { msgEl.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`; }
+}
+
+async function mp2ToggleParceiro(codigo, nome, ativar) {
+  const acao = ativar ? 'ativar' : 'desativar';
+  if (!confirm(`${ativar ? '▶ Ativar' : '⏸ Desativar'} parceiro "${nome}" (${codigo})?${!ativar ? '\nO link deixará de funcionar.' : '\nO link voltará a funcionar.'}`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/mp2/parceiros/${encodeURIComponent(codigo)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ ativo: ativar })
+    });
+    const d = await r.json();
+    if (d.success) {
       await mp2CarregarParceiros();
     } else {
-      alert('❌ Erro: ' + (d.error || 'desconhecido'));
+      alert(`❌ Erro: ${d.error || 'desconhecido'}`);
     }
   } catch(e) {
     alert('❌ Erro: ' + e.message);
   }
+}
+
+async function mp2DesativarParceiro(codigo, nome) {
+  await mp2ToggleParceiro(codigo, nome, false);
 }
 
 </script>
