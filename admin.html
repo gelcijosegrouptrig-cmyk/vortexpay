@@ -219,6 +219,37 @@
     display: flex; align-items: center; justify-content: space-between;
   }
   .table-header h3 { font-size: 15px; font-weight: 600; }
+
+  /* ── Acordeão collapsible ── */
+  .table-header.collapsible {
+    cursor: pointer;
+    user-select: none;
+    transition: background .18s;
+  }
+  .table-header.collapsible:hover { background: rgba(255,255,255,.03); }
+  .collapse-arrow {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:24px; height:24px; border-radius:50%;
+    background:rgba(255,255,255,.07); color:#aaa;
+    font-size:12px; flex-shrink:0; margin-left:6px;
+    transition: transform .25s ease, background .18s;
+  }
+  .table-header.collapsible:hover .collapse-arrow { background:rgba(255,255,255,.13); }
+  .collapse-body {
+    overflow: hidden;
+    transition: max-height .3s ease, opacity .25s ease;
+    max-height: 4000px;
+    opacity: 1;
+  }
+  .collapse-body.collapsed {
+    max-height: 0 !important;
+    opacity: 0;
+  }
+  .collapse-arrow.rotated { transform: rotate(-90deg); }
+  /* Remove border-bottom do header quando fechado */
+  .table-header.collapsible.is-collapsed {
+    border-bottom-color: transparent;
+  }
   .table-header .count {
     background: rgba(255,255,255,0.06);
     border: 1px solid var(--border);
@@ -1344,14 +1375,15 @@
 
         <!-- Card principal — Status Mercado Pago -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header">
-            <h3>💳 @paypix_nexbot — Status</h3>
-            <div style="display:flex;gap:8px;align-items:center">
+          <div class="table-header collapsible" id="col-hdr-bot2-status" onclick="colToggle('bot2-status')">
+            <h3>💳 @paypix_nexbot — Status <span id="col-arrow-bot2-status" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <span id="b2-badge" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#1a2a1a;color:#4caf50">Verificando...</span>
               <button onclick="bot2AtualizarSaldo()" style="padding:6px 14px;background:#1a3a5c;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔄 Saldo</button>
               <button onclick="bot2CheckStatus()" style="padding:6px 14px;background:#222;border:none;border-radius:8px;color:#aaa;font-size:13px;cursor:pointer">↻ Status</button>
             </div>
           </div>
+          <div class="collapse-body" id="col-body-bot2-status">
           <div style="padding:20px">
 
             <!-- Info resumida — só Mercado Pago (sem Telegram) -->
@@ -1374,7 +1406,7 @@
             <div id="b2-alert" style="display:none"></div>
 
           </div>
-        </div>
+        </div></div><!-- /col-body-bot2-status -->
 
         <!-- Seção Telegram OCULTA — não usamos Telegram no bot MP -->
         <div style="display:none" id="b2-telegram-section">
@@ -1392,13 +1424,14 @@
 
         <!-- ══ MERCADO PAGO — Configuração de Chaves ══ -->
         <div class="table-card" style="margin-top:16px;border-color:#009ee3aa">
-          <div class="table-header" style="background:linear-gradient(135deg,#003087,#009ee3)20">
-            <h3>💳 Mercado Pago — @paypix_nexbot</h3>
-            <div style="display:flex;gap:8px;align-items:center">
+          <div class="table-header collapsible" id="col-hdr-mp-config" style="background:linear-gradient(135deg,#003087,#009ee3)20" onclick="colToggle('mp-config')">
+            <h3>💳 Mercado Pago — @paypix_nexbot <span id="col-arrow-mp-config" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <span id="mp2-badge-status" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#0a1a2a;color:#aaa">Verificando...</span>
               <button onclick="mp2TestarConexao()" style="padding:6px 14px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔗 Testar</button>
             </div>
           </div>
+          <div class="collapse-body" id="col-body-mp-config">
           <div style="padding:20px">
 
             <!-- Status da integração -->
@@ -1492,17 +1525,19 @@
             </div>
 
           </div>
+          </div><!-- /col-body-mp-config -->
         </div>
 
         <!-- ══ PARCEIROS AFILIADOS ══ -->
         <div class="table-card" style="margin-top:16px;border-color:#a855f7aa">
-          <div class="table-header" style="background:linear-gradient(135deg,#4c1d9520,#7c3aed20)">
-            <h3>🤝 Parceiros Afiliados</h3>
-            <div style="display:flex;gap:8px">
+          <div class="table-header collapsible" id="col-hdr-parceiros" style="background:linear-gradient(135deg,#4c1d9520,#7c3aed20)" onclick="colToggle('parceiros')">
+            <h3>🤝 Parceiros Afiliados <span id="col-arrow-parceiros" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px" onclick="event.stopPropagation()">
               <button onclick="mp2CarregarParceiros()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
               <button onclick="mp2MostrarFormParceiro()" style="padding:6px 14px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer;font-weight:600">+ Novo Parceiro</button>
             </div>
           </div>
+          <div class="collapse-body" id="col-body-parceiros">
           <div style="padding:16px 20px">
 
             <!-- Explicação -->
@@ -1627,17 +1662,19 @@
               </table>
             </div>
           </div>
+          </div><!-- /col-body-parceiros -->
         </div>
 
         <!-- ══ CONFIG PÁGINA /bot E /pix ══ -->
         <div class="table-card" style="margin-top:16px;border-color:#f59e0b44">
-          <div class="table-header" style="background:linear-gradient(135deg,#1a0e0033,#f59e0b11)">
-            <h3>⚙️ Configurar Página de Pagamento</h3>
-            <div style="display:flex;gap:8px;align-items:center">
+          <div class="table-header collapsible" id="col-hdr-cfg-pagamento" style="background:linear-gradient(135deg,#1a0e0033,#f59e0b11)" onclick="colToggle('cfg-pagamento')">
+            <h3>⚙️ Configurar Página de Pagamento <span id="col-arrow-cfg-pagamento" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <span style="font-size:11px;color:#888">paynexbet.com/bot &amp; /pix</span>
               <button onclick="botConfigSalvar()" style="padding:6px 16px;background:#f59e0b;border:none;border-radius:8px;color:#000;font-size:13px;font-weight:700;cursor:pointer">💾 Salvar</button>
             </div>
           </div>
+          <div class="collapse-body" id="col-body-cfg-pagamento">
           <div style="padding:20px;display:grid;gap:16px">
 
             <!-- Modo: fixo ou livre -->
@@ -1714,14 +1751,16 @@
 
             <div id="cfg-bot-msg" style="font-size:13px;text-align:center;min-height:20px"></div>
           </div>
+          </div><!-- /col-body-cfg-pagamento -->
         </div>
 
         <!-- ══ STATS BOT2 ══ -->
         <div class="table-card" style="margin-top:16px">
-          <div class="table-header">
-            <h3>📊 Estatísticas @paypix_nexbot</h3>
-            <button onclick="mp2CarregarStats()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          <div class="table-header collapsible" id="col-hdr-stats" onclick="colToggle('stats')">
+            <h3>📊 Estatísticas @paypix_nexbot <span id="col-arrow-stats" class="collapse-arrow">▼</span></h3>
+            <button onclick="event.stopPropagation();mp2CarregarStats()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
+          <div class="collapse-body" id="col-body-stats">
           <div style="padding:16px 20px">
             <div class="metrics-grid" style="margin:0">
               <div class="metric-card blue">
@@ -1770,14 +1809,16 @@
               </div>
             </div>
           </div>
+          </div><!-- /col-body-stats -->
         </div>
 
         <!-- ══ SAQUES PENDENTES BOT2 ══ -->
         <div class="table-card" style="margin-top:16px">
-          <div class="table-header">
-            <h3>📤 Saques Pendentes — @paypix_nexbot</h3>
-            <button onclick="mp2CarregarSaques()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          <div class="table-header collapsible" id="col-hdr-saques" onclick="colToggle('saques')">
+            <h3>📤 Saques Pendentes — @paypix_nexbot <span id="col-arrow-saques" class="collapse-arrow">▼</span></h3>
+            <button onclick="event.stopPropagation();mp2CarregarSaques()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
+          <div class="collapse-body" id="col-body-saques">
           <div style="overflow-x:auto">
             <table class="data-table">
               <thead><tr>
@@ -1788,6 +1829,7 @@
               </tbody>
             </table>
           </div>
+          </div><!-- /col-body-saques -->
         </div>
 
         <!-- ═══ Comissões de Parceiros ═══ -->
@@ -1795,10 +1837,11 @@
 
         <!-- ═══ QR CODE DE AUTOCADASTRO ═══ -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header">
-            <h3>📲 QR Code de Autocadastro</h3>
-            <button onclick="qrAtualizarPreview()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          <div class="table-header collapsible" id="col-hdr-qr-auto" onclick="colToggle('qr-auto')">
+            <h3>📲 QR Code de Autocadastro <span id="col-arrow-qr-auto" class="collapse-arrow">▼</span></h3>
+            <button onclick="event.stopPropagation();qrAtualizarPreview()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
+          <div class="collapse-body" id="col-body-qr-auto">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
 
             <!-- Coluna esquerda: config do plano -->
@@ -1899,17 +1942,19 @@
               <div style="font-size:12px;color:#555;padding:20px;text-align:center;grid-column:1/-1">Carregando afiliados...</div>
             </div>
           </div>
+          </div><!-- /col-body-qr-auto -->
 
         </div><!-- /qr autocadastro -->
 
         <!-- ═══ ASSINATURAS RECORRENTES ═══ -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header">
-            <h3>💙 Débito Automático — Assinaturas Mensais</h3>
-            <div style="display:flex;gap:8px;align-items:center">
+          <div class="table-header collapsible" id="col-hdr-debito-auto" onclick="colToggle('debito-auto')">
+            <h3>💙 Débito Automático — Assinaturas Mensais <span id="col-arrow-debito-auto" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <button onclick="recCarregarLista()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
             </div>
           </div>
+          <div class="collapse-body" id="col-body-debito-auto">
 
           <!-- Stats recorrentes -->
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)">
@@ -2004,6 +2049,7 @@
               🚫 <strong>Não há envio de QR Code mensal.</strong> O Mercado Pago debita automaticamente da conta do cliente todo mês. O cliente cancela pelo próprio app do Mercado Pago quando quiser.
             </div>
           </div>
+          </div><!-- /col-body-debito-auto -->
         </div><!-- /assinaturas recorrentes -->
 
         <!-- ═══ Comissões de Parceiros ═══ -->
@@ -5115,6 +5161,53 @@ async function mp2ToggleParceiro(codigo, nome, ativar) {
 async function mp2DesativarParceiro(codigo, nome) {
   await mp2ToggleParceiro(codigo, nome, false);
 }
+
+// ═══════════════════════════════════════════════════════════
+// ACORDEÃO — collapse/expand dos cards do bot2
+// ═══════════════════════════════════════════════════════════
+function colToggle(id) {
+  const body   = document.getElementById('col-body-' + id);
+  const header = document.getElementById('col-hdr-' + id);
+  const arrow  = document.getElementById('col-arrow-' + id);
+  if (!body) return;
+  const isOpen = !body.classList.contains('collapsed');
+  if (isOpen) {
+    body.classList.add('collapsed');
+    if (arrow)  arrow.classList.add('rotated');
+    if (header) header.classList.add('is-collapsed');
+  } else {
+    body.classList.remove('collapsed');
+    if (arrow)  arrow.classList.remove('rotated');
+    if (header) header.classList.remove('is-collapsed');
+  }
+}
+
+// Estado inicial: salva no sessionStorage qual está aberto
+function colInitState() {
+  // Por padrão: MP (mp) aberto, demais fechados
+  const defaults = {
+    'bot2-status':    false,
+    'mp-config':      true,   // Mercado Pago aberto por padrão
+    'parceiros':      false,
+    'cfg-pagamento':  false,
+    'stats':          false,
+    'saques':         false,
+    'qr-auto':        false,
+    'debito-auto':    false,
+  };
+  Object.entries(defaults).forEach(([id, open]) => {
+    const body   = document.getElementById('col-body-' + id);
+    const arrow  = document.getElementById('col-arrow-' + id);
+    const header = document.getElementById('col-hdr-' + id);
+    if (!body) return;
+    if (!open) {
+      body.classList.add('collapsed');
+      if (arrow)  arrow.classList.add('rotated');
+      if (header) header.classList.add('is-collapsed');
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', () => { setTimeout(colInitState, 50); });
 
 </script>
 </body>
