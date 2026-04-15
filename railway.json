@@ -5,8 +5,8 @@
     "rebuildTimestamp": "20260415155711",
     "forceBust": "fix-saques-def-20260415155711",
     "args": {
-      "REBUILD_TS": "20260415162309",
-      "FORCE_BUST": "fix-menu-paypix-bot-20260415162309"
+      "REBUILD_TS": "20260415163242",
+      "FORCE_BUST": "fix-comissoes-banktransfer-20260415163242"
     }
   },
   "deploy": {
