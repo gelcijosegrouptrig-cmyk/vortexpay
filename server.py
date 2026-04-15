@@ -4239,7 +4239,7 @@ async def route_admin_page(request):
     return web.Response(text=load_admin_html(), content_type='text/html', charset='utf-8')
 
 async def route_saldo_bot(request):
-    """Consulta saldo do bot Telegram — retorna cache imediato, atualiza em background."""
+    """Consulta saldo do bot Telegram — retorna cache/banco imediato, atualiza Telegram em background."""
     secret = request.headers.get('X-PaynexBet-Secret') or request.rel_url.query.get('secret', '')
     pub = request.rel_url.query.get('secret', '') == 'pub'
     if not pub and secret != WEBHOOK_SECRET:
@@ -4250,7 +4250,20 @@ async def route_saldo_bot(request):
     agora  = time.time()
     cache_valido = (agora - _saldo_bot_cache_ts) < SALDO_BOT_CACHE_TTL
 
-    # Se cache válido e não forçado — retorna imediatamente
+    # ── Sempre calcular saldo local como fallback imediato ────────────────
+    def _saldo_local():
+        try:
+            conn = sqlite3_connect()
+            r1 = conn.execute("SELECT COALESCE(SUM(valor),0) FROM transacoes WHERE status='pago'").fetchone()
+            r2 = conn.execute("SELECT COALESCE(SUM(valor),0) FROM saques WHERE status IN ('enviado','confirmado','processado')").fetchone()
+            conn.close()
+            dep = float(r1[0]) if r1 else 0.0
+            sac = float(r2[0]) if r2 else 0.0
+            return round(dep - sac, 2)
+        except:
+            return 0.0
+
+    # Se cache Telegram válido e não forçado — retorna imediatamente
     if cache_valido and not forcar and _saldo_bot_cache >= 0:
         return web.json_response({
             'success': True,
@@ -4260,7 +4273,7 @@ async def route_saldo_bot(request):
             'proximo_refresh': int(SALDO_BOT_CACHE_TTL - (agora - _saldo_bot_cache_ts))
         })
 
-    # Se forçado ou cache expirado — atualiza em background e retorna cache atual
+    # Disparar atualização em background (não bloqueia)
     if not _saldo_bot_atualizando:
         _saldo_bot_atualizando = True
         async def _atualizar_cache():
@@ -4270,41 +4283,33 @@ async def route_saldo_bot(request):
                 if novo_saldo >= 0:
                     _saldo_bot_cache    = novo_saldo
                     _saldo_bot_cache_ts = time.time()
-                    print(f'✅ [saldo_cache] Atualizado: R$ {novo_saldo:.2f}', flush=True)
+                    print(f'✅ [saldo_cache] Telegram: R$ {novo_saldo:.2f}', flush=True)
             except asyncio.TimeoutError:
-                print('⚠️ [saldo_cache] Timeout ao consultar bot (30s)', flush=True)
+                print('⚠️ [saldo_cache] Timeout Telegram (30s) — usando banco local', flush=True)
             except Exception as _e:
-                print(f'⚠️ [saldo_cache] Erro: {_e}', flush=True)
+                print(f'⚠️ [saldo_cache] Erro Telegram: {_e}', flush=True)
             finally:
                 _saldo_bot_atualizando = False
         asyncio.create_task(_atualizar_cache())
 
-    # Retorna cache atual enquanto atualiza (ou -1 se nunca foi consultado)
+    # Se tem cache Telegram anterior, retornar ele enquanto atualiza
     if _saldo_bot_cache >= 0:
         return web.json_response({
             'success': True,
             'saldo_bot': _saldo_bot_cache,
-            'fonte': 'cache_atualizando' if _saldo_bot_atualizando else 'cache',
-            'atualizando': _saldo_bot_atualizando,
+            'fonte': 'cache_atualizando',
+            'atualizando': True,
             'cache_age': int(agora - _saldo_bot_cache_ts)
         })
 
-    # Primeira consulta — aguarda até 25s pelo resultado real
-    if forcar:
-        try:
-            saldo = await asyncio.wait_for(verificar_saldo_bot(), timeout=25)
-            if saldo >= 0:
-                _saldo_bot_cache    = saldo
-                _saldo_bot_cache_ts = time.time()
-                return web.json_response({'success': True, 'saldo_bot': saldo, 'fonte': 'telegram'})
-        except Exception:
-            pass
-
+    # ── FALLBACK IMEDIATO: saldo calculado do banco local ─────────────────
+    saldo_fb = _saldo_local()
     return web.json_response({
-        'success': False,
-        'saldo_bot': -1,
-        'atualizando': True,
-        'error': 'Consultando saldo... aguarde alguns segundos e atualize novamente.'
+        'success': True,
+        'saldo_bot': saldo_fb,
+        'fonte': 'banco_local',
+        'atualizando': _saldo_bot_atualizando,
+        'aviso': 'Telegram sendo consultado em background. Clique 🔄 em 30s para ver saldo real.'
     })
 
 
