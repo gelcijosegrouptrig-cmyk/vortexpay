@@ -3086,29 +3086,48 @@ async function bot2CheckStatus() {
   try {
     const r = await fetch(`${BASE}/api/bot2/status`);
     const d = await r.json();
-    const online = d.online;
+    // online = bot real (BOT2_TOKEN) OU userbot conectado
+    const online    = d.online;
+    const botReal   = d.bot_real;
+    const mp2Ok     = d.mp2_configurado;
     const temSessao = d.tem_sessao;
 
     // Badge no menu
     const badge = document.getElementById('badge-bot2');
     if (badge) {
-      badge.textContent = online ? 'ON' : 'OFF';
-      badge.style.background = online ? '#2e7d32' : '#c62828';
+      if (botReal) {
+        badge.textContent = 'ON';
+        badge.style.background = '#2e7d32';
+      } else if (online) {
+        badge.textContent = 'ON';
+        badge.style.background = '#1565c0';
+      } else {
+        badge.textContent = 'OFF';
+        badge.style.background = '#c62828';
+      }
     }
+
     // Card métricas
     const st = document.getElementById('b2-status-text');
-    if (st) st.textContent = online ? '🟢 Online' : '🔴 Offline';
+    if (st) {
+      if (botReal) st.textContent = '🟢 Bot Real Ativo';
+      else if (online) st.textContent = '🔵 Userbot Online';
+      else st.textContent = '🔴 Offline';
+    }
     const sub = document.getElementById('b2-sub');
-    if (sub) sub.textContent = online ? 'Conectado e operando' : 'Desconectado';
+    if (sub) {
+      if (botReal) sub.textContent = mp2Ok ? 'Bot + MercadoPago ✅' : 'Bot ativo — configure MP2_ACCESS_TOKEN';
+      else sub.textContent = online ? 'Userbot conectado' : 'Desconectado — configure BOT2_TOKEN';
+    }
     // Badge no card
     const bd = document.getElementById('b2-badge');
     if (bd) {
-      bd.textContent = online ? '🟢 Online' : '🔴 Offline';
+      bd.textContent = online ? (botReal ? '🟢 Bot Real' : '🔵 Userbot') : '🔴 Offline';
       bd.style.color  = online ? '#4caf50' : '#f44336';
     }
     // Info sessão
     const si = document.getElementById('b2-sessao-info');
-    if (si) si.textContent = temSessao ? '✅ Salva' : '❌ Sem sessão';
+    if (si) si.textContent = botReal ? '✅ BOT2_TOKEN OK' : (temSessao ? '✅ Sessão salva' : '❌ Sem sessão');
     const ci = document.getElementById('b2-conn-info');
     if (ci) ci.textContent = online ? '✅ Conectado' : '❌ Desconectado';
     // Alerta

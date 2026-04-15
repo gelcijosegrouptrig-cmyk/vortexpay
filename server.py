@@ -5162,15 +5162,48 @@ async def route_paypix_fila(request):
 # ══════════════════════════════════════════════════════════════════
 
 async def route_bot2_status(request):
-    """Status e health do Bot 2 (@paypix_nexbot)"""
+    """Status do @paypix_nexbot — inclui userbot Telethon E bot real (python-telegram-bot)."""
+    # Status do bot REAL (BOT2_TOKEN configurado = pronto para usar)
+    bot2_token    = os.environ.get('BOT2_TOKEN', '')
+    mp2_token     = os.environ.get('MP2_ACCESS_TOKEN', '')
+    bot_real_ok   = bool(bot2_token)
+
+    # Verificar se bot real está respondendo (rápido, sem bloquear)
+    bot_real_info = {}
+    if bot2_token:
+        try:
+            import aiohttp as _aiohttp
+            async with _aiohttp.ClientSession() as _sess:
+                async with _sess.get(
+                    f'https://api.telegram.org/bot{bot2_token}/getMe',
+                    timeout=_aiohttp.ClientTimeout(total=5)
+                ) as _r:
+                    _data = await _r.json()
+                    if _data.get('ok'):
+                        _u = _data['result']
+                        bot_real_info = {
+                            'username': _u.get('username', 'paypix_nexbot'),
+                            'nome': _u.get('first_name', ''),
+                            'id': _u.get('id')
+                        }
+                        bot_real_ok = True
+        except Exception:
+            bot_real_ok = bool(bot2_token)  # token existe mas não verificado
+
     return web.json_response({
         'success':   True,
         'bot':       'bot2',
-        'username':  BOT2_USERNAME,
-        'online':    _telegram2_ready,
-        'sessao_ok': not _telegram2_session_inv,
+        'username':  bot_real_info.get('username', BOT2_USERNAME),
+        # online = bot real configurado OU userbot conectado
+        'online':    bot_real_ok or _telegram2_ready,
+        'bot_real':  bot_real_ok,
+        'bot_real_info': bot_real_info,
+        'mp2_configurado': bool(mp2_token),
+        # userbot legado (Telethon)
+        'userbot_online': _telegram2_ready,
+        'sessao_ok':   not _telegram2_session_inv,
         'ultimo_ping': _telegram2_ultimo_ping,
-        'tem_sessao': bool(SESSION_STR2),
+        'tem_sessao':  bool(SESSION_STR2),
     })
 
 async def route_bot2_saldo(request):
