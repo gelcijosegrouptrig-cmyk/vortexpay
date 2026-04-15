@@ -6778,8 +6778,10 @@ async def route_preapproval_criar_plano(request):
 async def route_preapproval_assinar(request):
     """
     POST /api/assinar/preapproval
-    Cria um preapproval para um cliente → retorna init_point (link de autorização).
+    Registra o interesse do cliente e retorna o init_point do plano ativo no MP.
+    O cliente acessa o init_point e autoriza o débito automático via PIX no app MP.
     Body: { nome, email, telefone, ref }
+    Retorna: { success, preapproval_id, init_point, recorrente_id }
     """
     try:
         data  = await request.json()
@@ -6796,37 +6798,140 @@ async def route_preapproval_assinar(request):
                                       'error': 'Pagamentos não configurados. Contate o suporte.'})
 
         import mp2_api
-        # Pega plano ativo (ou cria se não existir)
-        plano = mp2_api.mp2_get_plano_ativo()
+        # Pega configurações do plano
+        plano   = mp2_api.mp2_get_plano_ativo()
         plan_id = plano.get('plan_id', '')
         valor   = plano.get('valor', 10.0)
         desc    = plano.get('descricao', 'Mensalidade')
+        titulo  = plano.get('titulo', 'Mensalidade')
 
-        # Se não tem plano, cria agora
+        # Se não tem plano criado ainda, cria agora
         if not plan_id:
-            titulo   = plano.get('titulo', 'Mensalidade')
             pr = mp2_api.mp2_criar_plano_preapproval(titulo=titulo, valor=valor)
             if not pr.get('success'):
                 return web.json_response({'success': False,
                                           'error': f"Erro ao criar plano: {pr.get('error')}"})
-            plan_id = pr['plan_id']
+            plan_id    = pr['plan_id']
+            init_point = pr['init_point']
+        else:
+            # Recupera o init_point do plano existente
+            init_point = plano.get('init_point', '')
+            if not init_point:
+                # Busca o init_point do plano no MP
+                try:
+                    import requests as _req
+                    _r = _req.get(
+                        f'https://api.mercadopago.com/preapproval_plan/{plan_id}',
+                        headers={'Authorization': f'Bearer {mp2_api.MP2_ACCESS_TOKEN}'},
+                        timeout=8
+                    )
+                    _d = _r.json()
+                    init_point = _d.get('init_point', '')
+                except Exception:
+                    pass
 
-        result = mp2_api.mp2_criar_preapproval(
-            nome=nome, email=email, plano_id=plan_id,
-            valor=valor, descricao=desc,
-            parceiro_ref=ref, telefone=tel
+        # Pré-registra o assinante no banco com status 'pendente_auth'
+        # (status muda para 'ativo' quando o webhook confirmar)
+        rec = mp2_api.mp2_criar_recorrente(
+            nome=nome, valor=valor, dia_vencimento=1,
+            descricao=desc, email=email, telefone=tel, parceiro_ref=ref
         )
-        return web.json_response(result)
+        rec_id = rec.get('recorrente', {}).get('id')
+
+        # Marca como tipo preapproval com status pendente
+        if rec_id:
+            try:
+                import psycopg2 as _pg
+                conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+                cur  = conn.cursor()
+                cur.execute("""
+                    UPDATE mp2_recorrentes
+                    SET tipo                  = 'preapproval',
+                        preapproval_plan_id   = %s,
+                        preapproval_init_point= %s,
+                        preapproval_status    = 'pending',
+                        status                = 'pendente_auth',
+                        atualizado_em         = NOW()
+                    WHERE id = %s
+                """, (plan_id, init_point, rec_id))
+                conn.commit(); cur.close(); conn.close()
+            except Exception as _e:
+                print(f'[preapproval_assinar] Erro update: {_e}', flush=True)
+
+        # Gera um preapproval_id temporário baseado no rec_id para polling
+        # O ID real virá do webhook quando o cliente autorizar
+        tmp_pre_id = f'pending_rec_{rec_id}'
+
+        print(f'✅ [preapproval] Pré-registro: {nome} → plano {plan_id} | link enviado', flush=True)
+        return web.json_response({
+            'success':        True,
+            'preapproval_id': tmp_pre_id,
+            'init_point':     init_point,
+            'recorrente_id':  rec_id,
+            'plan_id':        plan_id,
+        })
 
     except Exception as e:
+        print(f'[preapproval_assinar] Erro: {e}', flush=True)
         return web.json_response({'success': False, 'error': str(e)})
 
 
 async def route_preapproval_status(request):
-    """GET /api/assinar/status/{preapproval_id} — verifica status do preapproval no MP."""
+    """
+    GET /api/assinar/status/{preapproval_id}
+    Verifica status do preapproval no MP.
+    Aceita:
+      - IDs reais do MP (ex: dca1eca6...)
+      - IDs temporários no formato 'pending_rec_{rec_id}'
+    """
     pre_id = request.match_info.get('preapproval_id', '')
     if not pre_id:
         return web.json_response({'success': False, 'error': 'ID não informado'})
+
+    # Caso seja ID temporário (pending_rec_X) — verifica o status pelo rec_id no banco
+    if pre_id.startswith('pending_rec_'):
+        try:
+            rec_id = int(pre_id.replace('pending_rec_', ''))
+            import psycopg2 as _pg
+            conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+            cur  = conn.cursor()
+            cur.execute("""
+                SELECT preapproval_id, preapproval_status, status
+                FROM mp2_recorrentes WHERE id = %s
+            """, (rec_id,))
+            row = cur.fetchone(); cur.close(); conn.close()
+
+            if not row:
+                return web.json_response({'success': True, 'status': 'pending', 'autorizado': False})
+
+            real_pre_id, pre_status, rec_status = row
+            # Se o webhook já registrou um preapproval_id real, verifica no MP
+            if real_pre_id and not real_pre_id.startswith('pending_'):
+                if await _garantir_token_mp():
+                    import mp2_api, requests as _req
+                    r = _req.get(
+                        f'https://api.mercadopago.com/preapproval/{real_pre_id}',
+                        headers={'Authorization': f'Bearer {mp2_api.MP2_ACCESS_TOKEN}'},
+                        timeout=8
+                    )
+                    d = r.json()
+                    status = d.get('status', 'pending')
+                    autorizado = status == 'authorized'
+                    if autorizado:
+                        mp2_api.mp2_webhook_preapproval(real_pre_id)
+                    return web.json_response({'success': True, 'status': status, 'autorizado': autorizado})
+
+            # Caso contrário, verifica o status local
+            autorizado = pre_status == 'authorized' or rec_status == 'ativo'
+            return web.json_response({
+                'success':   True,
+                'status':    pre_status or 'pending',
+                'autorizado': autorizado,
+            })
+        except Exception as e:
+            return web.json_response({'success': False, 'error': str(e)})
+
+    # ID real do MP — consulta direto na API
     if not await _garantir_token_mp():
         return web.json_response({'success': False, 'error': 'Token MP não configurado'})
     try:
@@ -6839,7 +6944,6 @@ async def route_preapproval_status(request):
         d = r.json()
         status = d.get('status', 'pending')
         autorizado = status == 'authorized'
-        # Atualiza banco local
         if autorizado:
             mp2_api.mp2_webhook_preapproval(pre_id)
         return web.json_response({
@@ -6856,17 +6960,84 @@ async def route_preapproval_webhook(request):
     """
     POST /webhook/preapproval
     Recebe notificações do MP quando um preapproval muda de status.
+    Também atualiza o banco local com o preapproval_id real quando o cliente autoriza.
     """
     try:
         data = await request.json()
-        topic = data.get('type') or data.get('topic', '')
+        topic  = data.get('type') or data.get('topic', '')
         res_id = (data.get('data', {}) or {}).get('id') or data.get('id', '')
+
+        print(f'[webhook preapproval] topic={topic} id={res_id}', flush=True)
 
         if topic in ('subscription_preapproval', 'preapproval') and res_id:
             if await _garantir_token_mp():
-                import mp2_api
-                mp2_api.mp2_webhook_preapproval(str(res_id))
-                print(f'✅ [webhook preapproval] Processado: {res_id}', flush=True)
+                import mp2_api, requests as _req
+                # Busca detalhes do preapproval no MP
+                r = _req.get(
+                    f'https://api.mercadopago.com/preapproval/{res_id}',
+                    headers={'Authorization': f'Bearer {mp2_api.MP2_ACCESS_TOKEN}'},
+                    timeout=8
+                )
+                d = r.json()
+                status     = d.get('status', 'pending')
+                payer_email = d.get('payer_email', '') or d.get('payer', {}).get('email', '')
+                plan_id    = d.get('preapproval_plan_id', '')
+
+                print(f'✅ [webhook preapproval] {res_id} → {status} | email={payer_email}', flush=True)
+
+                # Tenta vincular ao assinante pré-registrado (por e-mail ou pelo plano pendente)
+                try:
+                    import psycopg2 as _pg
+                    conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+                    cur  = conn.cursor()
+
+                    # Primeiro: tenta por preapproval_id já registrado
+                    cur.execute("""
+                        UPDATE mp2_recorrentes
+                        SET preapproval_id     = %s,
+                            preapproval_status = %s,
+                            status = CASE WHEN %s = 'authorized' THEN 'ativo'
+                                          WHEN %s IN ('cancelled','paused') THEN %s
+                                          ELSE status END,
+                            atualizado_em = NOW()
+                        WHERE preapproval_id = %s
+                    """, (res_id, status, status, status, status, res_id))
+
+                    # Segundo: tenta por e-mail do pagador (pré-registro com status pendente_auth)
+                    if payer_email and cur.rowcount == 0:
+                        cur.execute("""
+                            UPDATE mp2_recorrentes
+                            SET preapproval_id     = %s,
+                                preapproval_status = %s,
+                                status = CASE WHEN %s = 'authorized' THEN 'ativo'
+                                              WHEN %s IN ('cancelled','paused') THEN %s
+                                              ELSE status END,
+                                atualizado_em = NOW()
+                            WHERE email = %s AND tipo = 'preapproval'
+                              AND (preapproval_id IS NULL OR preapproval_id LIKE 'pending_%%')
+                            ORDER BY criado_em DESC LIMIT 1
+                        """, (res_id, status, status, status, status, payer_email))
+
+                    # Terceiro: o mais recente pendente_auth do mesmo plano
+                    if cur.rowcount == 0 and plan_id:
+                        cur.execute("""
+                            UPDATE mp2_recorrentes
+                            SET preapproval_id     = %s,
+                                preapproval_status = %s,
+                                status = CASE WHEN %s = 'authorized' THEN 'ativo'
+                                              WHEN %s IN ('cancelled','paused') THEN %s
+                                              ELSE status END,
+                                atualizado_em = NOW()
+                            WHERE tipo = 'preapproval'
+                              AND preapproval_plan_id = %s
+                              AND status = 'pendente_auth'
+                            ORDER BY criado_em DESC LIMIT 1
+                        """, (res_id, status, status, status, status, plan_id))
+
+                    conn.commit(); cur.close(); conn.close()
+                    print(f'✅ [webhook] Banco atualizado para preapproval {res_id}', flush=True)
+                except Exception as _e:
+                    print(f'[webhook preapproval] Erro DB: {_e}', flush=True)
 
         return web.json_response({'status': 'ok'})
     except Exception as e:
