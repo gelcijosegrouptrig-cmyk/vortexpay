@@ -907,7 +907,8 @@ def init_recorrentes_db():
 
 def mp2_criar_plano_preapproval(titulo: str, valor: float, descricao: str = '') -> dict:
     """
-    Cria ou reutiliza um preapproval_plan no Mercado Pago com pagamento exclusivo via PIX.
+    Cria um preapproval_plan no Mercado Pago.
+    Aceita TODOS os métodos: cartão crédito/débito (qualquer banco), PIX, saldo MP.
     Retorna: { success, plan_id, init_point }
     """
     try:
@@ -915,6 +916,8 @@ def mp2_criar_plano_preapproval(titulo: str, valor: float, descricao: str = '') 
             'Authorization': f'Bearer {MP2_ACCESS_TOKEN}',
             'Content-Type': 'application/json',
         }
+        # SEM payment_methods_allowed = aceita TODOS os métodos de pagamento
+        # (cartão crédito, cartão débito de qualquer banco, PIX, saldo MP)
         payload = {
             'reason': titulo,
             'auto_recurring': {
@@ -922,10 +925,6 @@ def mp2_criar_plano_preapproval(titulo: str, valor: float, descricao: str = '') 
                 'frequency_type':     'months',
                 'transaction_amount': round(float(valor), 2),
                 'currency_id':        'BRL',
-            },
-            'payment_methods_allowed': {
-                'payment_types':    [{'id': 'bank_transfer'}],
-                'payment_methods':  [{'id': 'pix'}],
             },
             'back_url': 'https://paynexbet.com/assinar/obrigado',
             'status':   'active',
@@ -984,6 +983,7 @@ def mp2_criar_preapproval(nome: str, email: str, plano_id: str,
             if email:
                 payload['payer_email'] = email
         else:
+            # SEM payment_methods_allowed = aceita TODOS (cartão, PIX, saldo MP)
             payload = {
                 'reason': descricao,
                 'auto_recurring': {
@@ -991,10 +991,6 @@ def mp2_criar_preapproval(nome: str, email: str, plano_id: str,
                     'frequency_type':     'months',
                     'transaction_amount': round(float(valor), 2),
                     'currency_id':        'BRL',
-                },
-                'payment_methods_allowed': {
-                    'payment_types':   [{'id': 'bank_transfer'}],
-                    'payment_methods': [{'id': 'pix'}],
                 },
                 'back_url': 'https://paynexbet.com/assinar/obrigado',
                 'status':   'pending',

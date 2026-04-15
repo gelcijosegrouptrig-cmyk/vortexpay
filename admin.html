@@ -1978,12 +1978,21 @@
 
           <!-- Painel Preapproval / Débito Automático -->
           <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:#060612">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
               <div style="font-size:12px;font-weight:700;color:#009ee3">💙 Plano Débito Automático (Mercado Pago)</div>
               <button onclick="recCriarPlanoMP()" class="action-btn" style="font-size:12px;padding:7px 14px;background:#009ee3;color:#fff;border-color:#009ee3">⚡ Criar/Atualizar Plano MP</button>
             </div>
+
+            <!-- Badges de formas de pagamento aceitas -->
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+              <span style="background:#00c85320;border:1px solid #00c85350;border-radius:20px;padding:3px 10px;font-size:11px;color:#00c853">💳 Cartão crédito — qualquer banco</span>
+              <span style="background:#00c85320;border:1px solid #00c85350;border-radius:20px;padding:3px 10px;font-size:11px;color:#00c853">💳 Cartão débito — qualquer banco</span>
+              <span style="background:#009ee320;border:1px solid #009ee350;border-radius:20px;padding:3px 10px;font-size:11px;color:#29b6f6">🔵 PIX — qualquer banco</span>
+              <span style="background:#9c27b020;border:1px solid #9c27b050;border-radius:20px;padding:3px 10px;font-size:11px;color:#ce93d8">💙 Saldo Mercado Pago</span>
+            </div>
+
             <div style="font-size:11px;color:#555;background:#ffffff05;border-radius:8px;padding:10px;margin-bottom:10px;line-height:1.5">
-              🔄 <strong style="color:#29b6f6">Como funciona o Débito Automático:</strong> O cliente acessa <code style="color:#ce93d8">/assinar</code>, preenche nome/email e clica em <em>"Autorizar no Mercado Pago"</em>. Após autorizar UMA vez, o MP debita automaticamente todo mês — sem o cliente precisar fazer nada.
+              🔄 <strong style="color:#29b6f6">Como funciona:</strong> O cliente acessa <code style="color:#ce93d8">/assinar</code>, preenche nome/e-mail e autoriza <strong style="color:#fff">1 única vez</strong> com o método que preferir (cartão, PIX ou saldo MP). Após isso, o Mercado Pago cobra automaticamente todo mês — sem enviar nada para o cliente!
             </div>
             <div id="rec-plano-status" style="font-size:12px;color:#aaa;background:#009ee310;border:1px solid #009ee330;border-radius:8px;padding:10px;display:none">
               Carregando status do plano...
@@ -2036,17 +2045,17 @@
               </div>
               <div style="background:#9c27b015;border:1px solid #9c27b040;border-radius:8px;padding:10px;text-align:center">
                 <div style="font-size:20px;margin-bottom:6px">2️⃣</div>
-                <strong style="color:#ce93d8">Autoriza 1 vez no MP</strong><br>
-                <span style="color:#666">Clica no botão azul e autoriza</span>
+                <strong style="color:#ce93d8">Autoriza 1× no MP</strong><br>
+                <span style="color:#666">Cartão, PIX ou saldo MP</span>
               </div>
               <div style="background:#00c85315;border:1px solid #00c85340;border-radius:8px;padding:10px;text-align:center">
                 <div style="font-size:20px;margin-bottom:6px">3️⃣</div>
                 <strong style="color:#00c853">Automático para sempre</strong><br>
-                <span style="color:#666">MP debita todo mês sozinho</span>
+                <span style="color:#666">MP cobra todo mês sozinho</span>
               </div>
             </div>
             <div style="margin-top:10px;background:#f4433610;border:1px solid #f4433330;border-radius:8px;padding:10px;font-size:11px;color:#ef9a9a">
-              🚫 <strong>Não há envio de QR Code mensal.</strong> O Mercado Pago debita automaticamente da conta do cliente todo mês. O cliente cancela pelo próprio app do Mercado Pago quando quiser.
+              🚫 <strong>Não há envio de QR Code mensal.</strong> O Mercado Pago cobra automaticamente todo mês no mesmo método que o cliente escolheu ao autorizar (cartão, PIX ou saldo MP). O cliente cancela pelo próprio app do Mercado Pago.
             </div>
           </div>
           </div><!-- /col-body-debito-auto -->
