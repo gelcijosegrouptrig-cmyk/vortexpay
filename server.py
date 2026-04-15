@@ -5539,6 +5539,7 @@ def _mp2_pagar_comissao_parceiro_webhook(external_ref: str, valor: float):
         print(f'[comissao_webhook] Erro: {e}', flush=True)
 
 
+async def route_mp2_saques_pendentes(request):
     """Lista saques pendentes para o admin processar."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
