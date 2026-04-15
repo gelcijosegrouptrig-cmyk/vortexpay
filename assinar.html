@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
-<title>Assinar — Débito Automático · Cartão ou PIX</title>
+<title>Assinar — Débito Automático</title>
 <meta name="description" content="Autorize uma vez. As próximas mensalidades são debitadas automaticamente do seu Mercado Pago.">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -245,7 +245,7 @@ body{
 <div class="hero">
   <div class="hero-badge">🔄 Pagamento Recorrente Automático</div>
   <h1 class="hero-title" id="hero-titulo">Autorize uma vez, <span>pague sempre</span></h1>
-  <p class="hero-sub" id="hero-sub">Cartão de qualquer banco, PIX ou saldo Mercado Pago. Funciona tudo!</p>
+  <p class="hero-sub" id="hero-sub">Use o que você já tem — qualquer forma de pagamento, de qualquer banco!</p>
   <div class="hero-valor">
     <div class="hero-valor-label">Mensalidade</div>
     <div class="hero-valor-num" id="hero-valor">R$ 10,00</div>
@@ -253,9 +253,10 @@ body{
   </div>
   <!-- Badge de formas de pagamento -->
   <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px">
-    <div style="background:#ffffff15;border:1px solid #ffffff20;border-radius:20px;padding:5px 12px;font-size:11px;color:#ddd">💳 Cartão qualquer banco</div>
-    <div style="background:#ffffff15;border:1px solid #ffffff20;border-radius:20px;padding:5px 12px;font-size:11px;color:#ddd">🔵 PIX qualquer banco</div>
-    <div style="background:#009ee320;border:1px solid #009ee340;border-radius:20px;padding:5px 12px;font-size:11px;color:#80d8ff">💙 Saldo Mercado Pago</div>
+    <div style="background:#ffffff15;border:1px solid #ffffff20;border-radius:20px;padding:5px 12px;font-size:11px;color:#ddd">💳 Cartão de crédito</div>
+    <div style="background:#ffffff15;border:1px solid #ffffff20;border-radius:20px;padding:5px 12px;font-size:11px;color:#ddd">💳 Cartão de débito</div>
+    <div style="background:#ffffff15;border:1px solid #ffffff20;border-radius:20px;padding:5px 12px;font-size:11px;color:#ddd">🔵 PIX</div>
+    <div style="background:#009ee320;border:1px solid #009ee340;border-radius:20px;padding:5px 12px;font-size:11px;color:#80d8ff">💙 Saldo MP</div>
   </div>
 </div>
 
@@ -274,14 +275,14 @@ body{
       <div class="step-num">2</div>
       <div class="step-txt">
         <strong>Autorize no Mercado Pago</strong>
-        <span>Pague com cartão (qualquer banco), PIX ou saldo MP. Sem obrigatoriedade de conta MP!</span>
+        <span>Cartão de crédito, débito, PIX ou saldo — qualquer forma de pagamento que você já use!</span>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div class="step-txt">
         <strong>Pronto! Automático para sempre</strong>
-        <span>Todo mês o Mercado Pago debita automaticamente — sem ação necessária</span>
+        <span>Todo mês é cobrado automaticamente pela forma escolhida — sem precisar fazer nada!</span>
       </div>
     </div>
   </div>
@@ -345,24 +346,24 @@ body{
 
       <!-- Aviso MP -->
       <div class="mp-info">
-        <div class="mp-info-icon">💙</div>
+        <div class="mp-info-icon">💳</div>
         <div class="mp-info-txt">
-          <strong>Funciona com qualquer banco!</strong>
-          O débito automático funciona via <strong style="color:#fff">PIX de qualquer banco</strong> ou saldo Mercado Pago. O cliente autoriza <strong style="color:#fff">uma única vez</strong> — a partir daí o Mercado Pago cobra todo mês automaticamente, sem precisar fazer nada.
+          <strong>Pague do jeito que você quiser!</strong>
+          Use <strong style="color:#fff">cartão de crédito, débito, PIX ou qualquer forma de pagamento</strong> que você já tenha — de qualquer banco. O cliente autoriza <strong style="color:#fff">uma única vez</strong> e o sistema cobra automaticamente todo mês.
         </div>
       </div>
       <div class="mp-info" style="background:#9c27b010;border-color:#9c27b040;margin-top:8px">
         <div class="mp-info-icon">ℹ️</div>
         <div class="mp-info-txt" style="color:#ce93d8">
-          <strong style="color:#e1bee7">Autorize uma única vez</strong>
-          Após autorizar, todas as cobranças mensais são automáticas — sem precisar fazer nada nos próximos meses!
+          <strong style="color:#e1bee7">Sem conta no Mercado Pago necessária!</strong>
+          Você usa o que já tem. Após autorizar uma vez, todas as cobranças seguintes são completamente automáticas!
         </div>
       </div>
 
       <button class="btn-assinar" id="btn-assinar" onclick="iniciarAssinatura()">
         <div>
-          <div>🔄 Assinar — Cartão ou PIX automático</div>
-          <div class="btn-sub">Você será redirecionado ao Mercado Pago</div>
+          <div>🔄 Assinar agora — Débito Automático</div>
+          <div class="btn-sub">Cartão, débito, PIX — escolha o que preferir</div>
         </div>
       </button>
 
@@ -382,7 +383,7 @@ body{
   <!-- STEP 3 — Autorização MP -->
   <div class="step-auth" id="step-auth">
     <div class="auth-header">
-      <h3>🔵 Autorize o Débito Automático via PIX</h3>
+      <h3>🔵 Autorize o Débito Automático</h3>
       <p>Escaneie o QR Code <strong>no app do seu banco</strong> ou clique no botão para abrir o Mercado Pago</p>
     </div>
     <div class="auth-body">
@@ -398,7 +399,7 @@ body{
         <div class="mp-btn-icon">💙</div>
         <div class="mp-btn-txt">
           <span class="mp-btn-main">Abrir no Mercado Pago</span>
-          <span class="mp-btn-sub">Autorize via app, site ou PIX de qualquer banco</span>
+          <span class="mp-btn-sub">Cartão, débito, PIX ou qualquer forma de pagamento</span>
         </div>
       </a>
 
@@ -419,7 +420,7 @@ body{
         </div>
         <div class="inst-item">
           <div class="inst-num">2</div>
-          <div class="inst-txt">Você será direcionado ao Mercado Pago para <strong>autorizar o débito automático</strong></div>
+          <div class="inst-txt">Escolha como quer pagar: <strong>cartão de crédito, débito, PIX ou saldo</strong> — o que você já tem!</div>
         </div>
         <div class="inst-item">
           <div class="inst-num">3</div>
@@ -427,7 +428,7 @@ body{
         </div>
         <div class="inst-item">
           <div class="inst-num">4</div>
-          <div class="inst-txt">✅ Pronto! O Mercado Pago cobra <strong>automaticamente todo mês</strong> via PIX</div>
+          <div class="inst-txt">✅ Pronto! A cobrança é <strong>automática todo mês</strong> pela forma escolhida</div>
         </div>
       </div>
 
@@ -451,7 +452,7 @@ body{
     </div>
     <div class="ok-sub">
       🔄 <strong>Como funciona agora:</strong><br>
-      Todo mês o Mercado Pago cobra automaticamente via PIX — sem precisar fazer nada! Você receberá uma notificação a cada cobrança realizada.<br><br>
+      Todo mês a cobrança é feita automaticamente pela forma de pagamento escolhida — sem precisar fazer nada! Você receberá uma notificação a cada cobrança.<br><br>
       🚫 <strong>Para cancelar:</strong> Acesse o app Mercado Pago → Assinaturas → Cancelar.
     </div>
   </div>
