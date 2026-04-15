@@ -5536,6 +5536,125 @@ async def route_mp2_stats(request):
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
+
+async def route_mp2_config_get(request):
+    """GET /api/mp2/config — retorna chaves MP2 mascaradas (só últimos 6 chars)."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        chaves = ['mp2_access_token', 'mp2_public_key', 'mp2_client_id', 'mp2_client_secret']
+        resultado = {}
+        for c in chaves:
+            cur.execute("SELECT valor FROM mp2_config WHERE chave = %s", (c,))
+            row = cur.fetchone()
+            if row and row[0]:
+                resultado[c.replace('mp2_', '')] = row[0]  # retorna valor completo para preencher o campo
+        cur.close(); conn.close()
+        resultado['configurado'] = bool(resultado.get('access_token'))
+        return web.json_response({'success': True, **resultado})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_mp2_config_save(request):
+    """POST /api/mp2/config — salva chaves MP2 no banco e recarrega no mp2_api."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        body = await request.json()
+        access_token  = body.get('access_token', '').strip()
+        public_key    = body.get('public_key', '').strip()
+        client_id     = body.get('client_id', '').strip()
+        client_secret = body.get('client_secret', '').strip()
+
+        if not access_token:
+            return web.json_response({'success': False, 'error': 'access_token é obrigatório'})
+
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        pares = [
+            ('mp2_access_token', access_token),
+            ('mp2_public_key',   public_key),
+            ('mp2_client_id',    client_id),
+            ('mp2_client_secret', client_secret),
+        ]
+        for chave, valor in pares:
+            if valor:
+                cur.execute("""
+                    INSERT INTO mp2_config (chave, valor) VALUES (%s, %s)
+                    ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = NOW()
+                """, (chave, valor))
+        conn.commit()
+        cur.close(); conn.close()
+
+        # Recarrega as variáveis no módulo mp2_api em tempo real (sem reiniciar)
+        import mp2_api
+        if access_token:  mp2_api.MP2_ACCESS_TOKEN = access_token
+        if public_key:    mp2_api.MP2_PUBLIC_KEY   = public_key
+
+        print(f'✅ [mp2_config] Chaves MP2 atualizadas pelo admin. Token: ...{access_token[-6:]}', flush=True)
+        return web.json_response({'success': True, 'mensagem': 'Chaves salvas e ativas imediatamente!'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_mp2_testar(request):
+    """GET /api/mp2/testar — verifica conexão com a API do Mercado Pago."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import mp2_api, requests as _req
+        token = mp2_api.MP2_ACCESS_TOKEN
+        if not token:
+            # Tenta carregar do banco
+            import psycopg2
+            conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+            cur  = conn.cursor()
+            cur.execute("SELECT valor FROM mp2_config WHERE chave = 'mp2_access_token'")
+            row = cur.fetchone()
+            cur.close(); conn.close()
+            token = row[0] if row else ''
+            if token:
+                mp2_api.MP2_ACCESS_TOKEN = token
+
+        if not token:
+            return web.json_response({'success': False, 'error': 'Access Token não configurado'})
+
+        resp = _req.get(
+            'https://api.mercadopago.com/users/me',
+            headers={'Authorization': f'Bearer {token}'},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            email   = data.get('email', '')
+            site_id = data.get('site_id', '')
+            ambiente = 'produção' if not token.startswith('TEST-') else 'sandbox'
+            return web.json_response({
+                'success': True,
+                'email': email,
+                'site_id': site_id,
+                'ambiente': ambiente,
+                'mensagem': f'Conta MP ativa: {email}'
+            })
+        else:
+            return web.json_response({
+                'success': False,
+                'error': f'MP retornou {resp.status_code}: {resp.text[:200]}'
+            })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
 # ══════════════════════════════════════════════════════════════════
 # ─── CANAIS TELEGRAM — Criação e Notificações ────────────────────
 # ══════════════════════════════════════════════════════════════════
@@ -5904,6 +6023,9 @@ async def main():
     app.router.add_post('/webhook/mp2',                     route_mp2_webhook)
     app.router.add_get('/api/mp2/saques',                   route_mp2_saques_pendentes)
     app.router.add_post('/api/mp2/saques/processar',        route_mp2_processar_saque)
+    app.router.add_get('/api/mp2/config',                   route_mp2_config_get)
+    app.router.add_post('/api/mp2/config',                  route_mp2_config_save)
+    app.router.add_get('/api/mp2/testar',                   route_mp2_testar)
     # ── Canais Telegram ──────────────────────────────────────────────
     app.router.add_post('/api/admin/criar-canais',          route_admin_criar_canais)
     app.router.add_get('/api/admin/canais',                 route_admin_status_canais)
@@ -6004,6 +6126,23 @@ async def main():
         from mp2_api import init_mp2_db
         from bot2_handler import build_bot2_app, _bot2_post_startup
         init_mp2_db()
+
+        # Carrega chaves MP2 salvas no banco (substitui vars de ambiente se existirem)
+        try:
+            import mp2_api, psycopg2 as _pg2
+            _conn = _pg2.connect(DATABASE_URL, connect_timeout=8)
+            _cur  = _conn.cursor()
+            _cur.execute("SELECT chave, valor FROM mp2_config WHERE chave IN ('mp2_access_token','mp2_public_key')")
+            for _chave, _valor in _cur.fetchall():
+                if _valor:
+                    if _chave == 'mp2_access_token':
+                        mp2_api.MP2_ACCESS_TOKEN = _valor
+                        print(f'✅ [mp2] Access Token carregado do banco: ...{_valor[-6:]}', flush=True)
+                    elif _chave == 'mp2_public_key':
+                        mp2_api.MP2_PUBLIC_KEY = _valor
+            _cur.close(); _conn.close()
+        except Exception as _e:
+            print(f'⚠️ [mp2] Erro ao carregar chaves do banco: {_e}', flush=True)
         bot2_app = build_bot2_app()
         if bot2_app:
             async def _rodar_bot2():

@@ -1332,8 +1332,8 @@
                 <div id="b2-conn-info" style="color:#fff;font-weight:700">—</div>
               </div>
               <div style="background:#0a0a14;border-radius:10px;padding:14px">
-                <div style="color:#666;font-size:11px;margin-bottom:4px">API</div>
-                <div style="color:#aaa;font-size:12px">Configurar depois</div>
+                <div style="color:#666;font-size:11px;margin-bottom:4px">MERCADO PAGO</div>
+                <div id="b2-mp-status" style="color:#aaa;font-size:12px">Verificando...</div>
               </div>
             </div>
 
@@ -1411,6 +1411,160 @@
               A sessão é salva no banco — persiste entre redeploys.
               <br>🤖 Bot: <b style="color:#4caf50">@paypix_nexbot</b> — depósito e saque independentes.
             </div>
+          </div>
+        </div>
+
+        <!-- ══ MERCADO PAGO — Configuração de Chaves ══ -->
+        <div class="table-card" style="margin-top:16px;border-color:#009ee3aa">
+          <div class="table-header" style="background:linear-gradient(135deg,#003087,#009ee3)20">
+            <h3>💳 Mercado Pago — @paypix_nexbot</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span id="mp2-badge-status" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#0a1a2a;color:#aaa">Verificando...</span>
+              <button onclick="mp2TestarConexao()" style="padding:6px 14px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔗 Testar</button>
+            </div>
+          </div>
+          <div style="padding:20px">
+
+            <!-- Status da integração -->
+            <div id="mp2-status-bar" style="background:#0a1020;border:1px solid #009ee344;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
+              <div style="font-size:28px">💳</div>
+              <div>
+                <div id="mp2-status-txt" style="font-weight:700;color:#009ee3">Carregando status...</div>
+                <div id="mp2-status-sub" style="font-size:12px;color:#666;margin-top:2px">Integração com Mercado Pago PIX</div>
+              </div>
+            </div>
+
+            <!-- Campos de chaves -->
+            <div style="display:grid;gap:16px;margin-bottom:20px">
+
+              <!-- Access Token -->
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">
+                  🔑 Access Token <span style="color:#f44;font-weight:700">*</span>
+                  <span style="color:#555;font-weight:400;text-transform:none;letter-spacing:0"> — principal (APP_USR-...)</span>
+                </label>
+                <div style="display:flex;gap:8px">
+                  <input type="password" id="mp2-access-token" placeholder="APP_USR-0000000000000000-000000-..."
+                    style="flex:1;background:#0a0a14;border:2px solid #009ee344;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
+                  <button onclick="toggleMp2Field('mp2-access-token')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                </div>
+                <div style="font-size:11px;color:#555;margin-top:4px">Painel MP → Credenciais → Access Token de produção</div>
+              </div>
+
+              <!-- Public Key -->
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">
+                  🔓 Public Key
+                  <span style="color:#555;font-weight:400;text-transform:none;letter-spacing:0"> — (APP_USR-...)</span>
+                </label>
+                <div style="display:flex;gap:8px">
+                  <input type="password" id="mp2-public-key" placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    style="flex:1;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
+                  <button onclick="toggleMp2Field('mp2-public-key')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                </div>
+                <div style="font-size:11px;color:#555;margin-top:4px">Necessária para integrações front-end (opcional no backend)</div>
+              </div>
+
+              <!-- Client ID + Secret -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Client ID</label>
+                  <input type="text" id="mp2-client-id" placeholder="0000000000000000"
+                    style="width:100%;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:11px 14px;color:#fff;font-size:13px;font-family:monospace">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Client Secret</label>
+                  <div style="display:flex;gap:6px">
+                    <input type="password" id="mp2-client-secret" placeholder="xxxxxxxxxxxxxxxxxxx"
+                      style="flex:1;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:11px 14px;color:#fff;font-size:13px;font-family:monospace">
+                    <button onclick="toggleMp2Field('mp2-client-secret')" style="padding:10px 12px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer;font-size:12px">👁</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Webhook URL -->
+              <div style="background:#0a1020;border:1px solid #009ee322;border-radius:10px;padding:14px">
+                <div style="font-size:12px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📡 Webhook URL — configurar no painel MP</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <code id="mp2-webhook-url" style="flex:1;font-size:12px;color:#009ee3;word-break:break-all">Carregando...</code>
+                  <button onclick="copiarMp2Webhook()" style="padding:8px 12px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap">📋 Copiar</button>
+                </div>
+                <div style="font-size:11px;color:#555;margin-top:6px">
+                  No painel Mercado Pago → <b style="color:#888">Suas integrações → Webhooks → Adicionar</b><br>
+                  Eventos: <code style="color:#009ee3">payment</code>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botões -->
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <button onclick="mp2SalvarChaves()" id="mp2-btn-salvar"
+                style="flex:1;min-width:180px;padding:14px;background:linear-gradient(135deg,#003087,#009ee3);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">
+                💾 Salvar Chaves Mercado Pago
+              </button>
+              <button onclick="mp2TestarConexao()"
+                style="padding:14px 20px;background:#0a1020;border:1px solid #009ee344;border-radius:10px;color:#009ee3;font-size:13px;font-weight:600;cursor:pointer">
+                🔗 Testar Conexão
+              </button>
+            </div>
+            <div id="mp2-msg" style="margin-top:12px;font-size:13px;text-align:center;min-height:20px"></div>
+
+            <!-- Info -->
+            <div style="margin-top:16px;padding:12px;background:#0a0a14;border-radius:8px;font-size:12px;color:#666;line-height:1.6">
+              💡 <b style="color:#888">As chaves são salvas com segurança no banco PostgreSQL</b> e carregadas automaticamente na inicialização do servidor — sem precisar reiniciar o Railway para ativar.<br>
+              ⚡ Troque as chaves aqui e clique em <b style="color:#009ee3">Salvar</b> — integração ativa imediatamente.
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ══ STATS BOT2 ══ -->
+        <div class="table-card" style="margin-top:16px">
+          <div class="table-header">
+            <h3>📊 Estatísticas @paypix_nexbot</h3>
+            <button onclick="mp2CarregarStats()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+          <div style="padding:16px 20px">
+            <div class="metrics-grid" style="margin:0">
+              <div class="metric-card blue">
+                <div class="metric-icon">👥</div>
+                <div class="metric-label">Usuários</div>
+                <div class="metric-value" id="mp2-total-users">—</div>
+              </div>
+              <div class="metric-card green">
+                <div class="metric-icon">📥</div>
+                <div class="metric-label">Dep. Confirmados</div>
+                <div class="metric-value" id="mp2-dep-confirmados">—</div>
+              </div>
+              <div class="metric-card orange">
+                <div class="metric-icon">💰</div>
+                <div class="metric-label">Total Depositado</div>
+                <div class="metric-value" id="mp2-total-dep">—</div>
+              </div>
+              <div class="metric-card" style="border-color:#f4433644">
+                <div class="metric-icon">📤</div>
+                <div class="metric-label">Saques Pendentes</div>
+                <div class="metric-value" id="mp2-saques-pend">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ SAQUES PENDENTES BOT2 ══ -->
+        <div class="table-card" style="margin-top:16px">
+          <div class="table-header">
+            <h3>📤 Saques Pendentes — @paypix_nexbot</h3>
+            <button onclick="mp2CarregarSaques()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead><tr>
+                <th>ID</th><th>Usuário</th><th>Valor</th><th>Chave PIX</th><th>Tipo</th><th>Data</th><th>Ação</th>
+              </tr></thead>
+              <tbody id="mp2-saques-tbody">
+                <tr><td colspan="7" style="text-align:center;color:#666;padding:20px">Clique em Atualizar para carregar</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -3299,6 +3453,237 @@ async function bot2Confirmar2FA() {
 // Checar status do Bot2 ao carregar e a cada 60s
 bot2CheckStatus();
 setInterval(bot2CheckStatus, 60000);
+
+// ═══════════════════════════════════════════════════════
+//  MERCADO PAGO — @paypix_nexbot
+// ═══════════════════════════════════════════════════════
+
+// Alterna visibilidade do campo
+function toggleMp2Field(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+// Copia webhook URL
+function copiarMp2Webhook() {
+  const url = document.getElementById('mp2-webhook-url')?.textContent || '';
+  navigator.clipboard.writeText(url).then(() => {
+    const msg = document.getElementById('mp2-msg');
+    if (msg) { msg.innerHTML = '<span style="color:#009ee3">✅ URL copiada!</span>'; setTimeout(()=>msg.innerHTML='',2000); }
+  });
+}
+
+// Carrega chaves salvas e preenche os campos
+async function mp2CarregarChaves() {
+  try {
+    const webhookUrl = `${BASE}/webhook/mp2`;
+    const el = document.getElementById('mp2-webhook-url');
+    if (el) el.textContent = webhookUrl;
+
+    const r = await fetch(`${BASE}/api/mp2/config?secret=${encodeURIComponent(SECRET())}`);
+    if (!r.ok) return;
+    const d = await r.json();
+
+    // Preenche campos mascarados (só mostra se existir)
+    if (d.access_token) {
+      const el = document.getElementById('mp2-access-token');
+      if (el) el.value = d.access_token;
+    }
+    if (d.public_key) {
+      const el = document.getElementById('mp2-public-key');
+      if (el) el.value = d.public_key;
+    }
+    if (d.client_id) {
+      const el = document.getElementById('mp2-client-id');
+      if (el) el.value = d.client_id;
+    }
+    if (d.client_secret) {
+      const el = document.getElementById('mp2-client-secret');
+      if (el) el.value = d.client_secret;
+    }
+
+    // Atualiza status
+    const configurado = d.configurado || false;
+    const badge  = document.getElementById('mp2-badge-status');
+    const stxt   = document.getElementById('mp2-status-txt');
+    const ssub   = document.getElementById('mp2-status-sub');
+    const mpStat = document.getElementById('b2-mp-status');
+
+    if (configurado) {
+      if (badge)  { badge.textContent = '✅ Configurado'; badge.style.color = '#4caf50'; badge.style.background = '#0a2a0a'; }
+      if (stxt)   stxt.textContent = '✅ Mercado Pago configurado e ativo';
+      if (ssub)   ssub.textContent = 'PIX sendo gerado via API MP — Access Token ativo';
+      if (mpStat) { mpStat.textContent = '✅ Ativo'; mpStat.style.color = '#4caf50'; }
+    } else {
+      if (badge)  { badge.textContent = '⚠️ Sem chaves'; badge.style.color = '#ff9800'; badge.style.background = '#1a1200'; }
+      if (stxt)   { stxt.textContent = '⚠️ Access Token não configurado'; stxt.style.color = '#ff9800'; }
+      if (ssub)   ssub.textContent = 'Configure as chaves abaixo para ativar PIX';
+      if (mpStat) { mpStat.textContent = '⚠️ Sem token'; mpStat.style.color = '#ff9800'; }
+    }
+
+  } catch(e) { console.error('mp2CarregarChaves:', e); }
+}
+
+// Salva as chaves no banco via API
+async function mp2SalvarChaves() {
+  const btn = document.getElementById('mp2-btn-salvar');
+  const msg = document.getElementById('mp2-msg');
+
+  const accessToken  = document.getElementById('mp2-access-token')?.value.trim();
+  const publicKey    = document.getElementById('mp2-public-key')?.value.trim();
+  const clientId     = document.getElementById('mp2-client-id')?.value.trim();
+  const clientSecret = document.getElementById('mp2-client-secret')?.value.trim();
+
+  if (!accessToken) {
+    if (msg) msg.innerHTML = '<span style="color:#f44">❌ Access Token é obrigatório!</span>';
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+  if (msg) msg.innerHTML = '<span style="color:#aaa">💾 Salvando no banco...</span>';
+
+  try {
+    const r = await fetch(`${BASE}/api/mp2/config`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-PaynexBet-Secret': SECRET()
+      },
+      body: JSON.stringify({
+        access_token:  accessToken,
+        public_key:    publicKey,
+        client_id:     clientId,
+        client_secret: clientSecret
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      if (msg) msg.innerHTML = '<span style="color:#4caf50">✅ Chaves salvas! Integração ativa imediatamente.</span>';
+      await mp2CarregarChaves();
+      await mp2TestarConexao();
+    } else {
+      if (msg) msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao salvar'}</span>`;
+    }
+  } catch(e) {
+    if (msg) msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Chaves Mercado Pago'; }
+  }
+}
+
+// Testa conexão com MP
+async function mp2TestarConexao() {
+  const msg  = document.getElementById('mp2-msg');
+  const stxt = document.getElementById('mp2-status-txt');
+  const ssub = document.getElementById('mp2-status-sub');
+
+  if (msg)  msg.innerHTML = '<span style="color:#009ee3">🔗 Testando conexão com Mercado Pago...</span>';
+  if (stxt) stxt.textContent = '🔗 Testando...';
+
+  try {
+    const r = await fetch(`${BASE}/api/mp2/testar?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (d.success) {
+      if (msg)  msg.innerHTML = `<span style="color:#4caf50">✅ Conexão OK — ${d.email || 'conta MP ativa'}</span>`;
+      if (stxt) { stxt.textContent = '✅ Mercado Pago conectado'; stxt.style.color = '#4caf50'; }
+      if (ssub) ssub.textContent = `Conta: ${d.email || '—'} · Ambiente: ${d.ambiente || 'produção'}`;
+      const badge = document.getElementById('mp2-badge-status');
+      if (badge) { badge.textContent = '✅ Online'; badge.style.color = '#4caf50'; badge.style.background = '#0a2a0a'; }
+    } else {
+      if (msg)  msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Falha na conexão'}</span>`;
+      if (stxt) { stxt.textContent = '❌ Falha na conexão'; stxt.style.color = '#f44'; }
+    }
+  } catch(e) {
+    if (msg) msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+}
+
+// Carrega stats do bot2
+async function mp2CarregarStats() {
+  try {
+    const r = await fetch(`${BASE}/api/mp2/stats?secret=${encodeURIComponent(SECRET())}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
+    const s = d.stats || d;
+    const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    el('mp2-total-users',      s.total_usuarios || 0);
+    el('mp2-dep-confirmados',  s.depositos_confirmados || 0);
+    el('mp2-total-dep',        fmt(s.total_depositado || 0));
+    el('mp2-saques-pend',      s.saques_pendentes || 0);
+  } catch(e) {}
+}
+
+// Carrega saques pendentes do bot2
+async function mp2CarregarSaques() {
+  const tbody = document.getElementById('mp2-saques-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;padding:16px">⏳ Carregando...</td></tr>';
+  try {
+    const r = await fetch(`${BASE}/api/mp2/saques?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    const saques = d.saques || [];
+    if (!saques.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;padding:20px">✅ Nenhum saque pendente</td></tr>';
+      return;
+    }
+    const fmt = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ',');
+    tbody.innerHTML = saques.map(s => `
+      <tr>
+        <td><code>#${s.id}</code></td>
+        <td style="font-size:12px">${s.nome || '—'}<br><span style="color:#666">ID ${s.telegram_id}</span></td>
+        <td style="color:#4caf50;font-weight:700">${fmt(s.valor)}</td>
+        <td style="font-family:monospace;font-size:12px;max-width:160px;word-break:break-all">${s.chave_pix}</td>
+        <td><span style="background:#009ee322;color:#009ee3;border-radius:6px;padding:2px 8px;font-size:11px">${s.tipo_chave}</span></td>
+        <td style="font-size:12px;color:#888">${s.criado_em ? new Date(s.criado_em).toLocaleString('pt-BR') : '—'}</td>
+        <td style="white-space:nowrap">
+          <button onclick="mp2AprovarSaque(${s.id})" style="background:#22c55e22;border:1px solid #22c55e44;border-radius:6px;padding:5px 10px;color:#22c55e;font-size:12px;cursor:pointer;margin-right:4px">✅ Aprovar</button>
+          <button onclick="mp2RejeitarSaque(${s.id})" style="background:#f4433622;border:1px solid #f4433644;border-radius:6px;padding:5px 10px;color:#f44;font-size:12px;cursor:pointer">❌ Rejeitar</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#f44;padding:16px">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+async function mp2AprovarSaque(id) {
+  if (!confirm(`Aprovar saque #${id}? O pagamento deve ser feito MANUALMENTE via PIX.`)) return;
+  const obs = prompt('Observação (opcional):', 'Pago manualmente') || '';
+  try {
+    const r = await fetch(`${BASE}/api/mp2/saques/processar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ saque_id: id, aprovado: true, obs })
+    });
+    const d = await r.json();
+    if (d.success) { alert(`✅ Saque #${id} aprovado!`); mp2CarregarSaques(); mp2CarregarStats(); }
+    else           { alert(`❌ Erro: ${d.error}`); }
+  } catch(e) { alert(`❌ Erro: ${e.message}`); }
+}
+
+async function mp2RejeitarSaque(id) {
+  const motivo = prompt(`Motivo da rejeição do saque #${id}:`, 'Saldo insuficiente');
+  if (motivo === null) return;
+  try {
+    const r = await fetch(`${BASE}/api/mp2/saques/processar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ saque_id: id, aprovado: false, obs: motivo })
+    });
+    const d = await r.json();
+    if (d.success) { alert(`❌ Saque #${id} rejeitado.`); mp2CarregarSaques(); }
+    else           { alert(`❌ Erro: ${d.error}`); }
+  } catch(e) { alert(`❌ Erro: ${e.message}`); }
+}
+
+// Inicializa painel MP2 ao entrar na aba bot2
+const _origShowTab = typeof showTab === 'function' ? showTab : null;
+document.addEventListener('DOMContentLoaded', () => {
+  mp2CarregarChaves();
+  mp2CarregarStats();
+});
 
 </script>
 </body>
