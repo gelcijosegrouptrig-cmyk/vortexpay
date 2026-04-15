@@ -479,6 +479,7 @@
     display: inline-block;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes slideIn { from { transform: translateX(120%); opacity:0; } to { transform: translateX(0); opacity:1; } }
   .loading-row td { text-align: center; padding: 32px; color: var(--text3); }
   
   /* ── SEPARADOR ───────────────────────────────────── */
@@ -1802,8 +1803,9 @@ async function fazerLogin() {
       sessionStorage.setItem('vp_secret', secret);
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('admin-screen').style.display = 'block';
-      loadAll(); // carga inicial: só health + stats (SEM consultar bot Telegram)
-      setInterval(loadAll, 30000); // auto-refresh 30s: só health + stats (SEM Telegram)
+      loadAll(); // carga inicial: health + stats + saldo local
+      setInterval(loadAll, 30000); // auto-refresh 30s automático
+      iniciarPollingPix(); // detecta PIX confirmado e atualiza saldo automaticamente
     } else {
       document.getElementById('login-error').textContent = '❌ Senha incorreta. Tente novamente.';
     }
@@ -1871,9 +1873,9 @@ function toast(msg, type = 'success') {
 //  LOAD ALL
 // ═══════════════════════════════════════════════
 async function loadAll() {
-  // ⚡ NUNCA consulta bot Telegram automaticamente — só health + stats
+  // ⚡ Carrega health + stats + saldo local em paralelo (SEM consultar bot Telegram)
   document.getElementById('last-update').textContent = '🔄 Atualizando...';
-  await Promise.all([loadHealth(), loadStats()]);
+  await Promise.all([loadHealth(), loadStats(), loadSaldo()]);
   document.getElementById('last-update').textContent = '⏱ ' + new Date().toLocaleTimeString('pt-BR');
 }
 
@@ -1978,6 +1980,47 @@ async function tgSolicitarCodigo() {
 
 
 // ═══════════════════════════════════════════════
+//  POLLING PIX — detecta depósitos confirmados
+// ═══════════════════════════════════════════════
+let _pixLastTotal = null;  // total depositado na última checagem
+
+function iniciarPollingPix() {
+  // Checa a cada 15s se houve novo PIX confirmado
+  setInterval(async () => {
+    try {
+      const r = await fetch(`${BASE}/api/saldo`);
+      if (!r.ok) return;
+      const d = await r.json();
+      const totalAtual = d.total_depositado || 0;
+      if (_pixLastTotal !== null && totalAtual > _pixLastTotal) {
+        // 🎉 Novo PIX confirmado! Atualizar tudo
+        const diff = (totalAtual - _pixLastTotal).toFixed(2).replace('.', ',');
+        console.log(`💰 Novo PIX confirmado: +R$ ${diff} — atualizando painel...`);
+        mostrarAlertaPix(diff);
+        await Promise.all([loadSaldo(), loadStats()]);
+      }
+      _pixLastTotal = totalAtual;
+    } catch(e) {}
+  }, 15000);
+}
+
+function mostrarAlertaPix(valor) {
+  // Toast flutuante quando PIX é confirmado
+  const toast = document.createElement('div');
+  toast.innerHTML = `💰 PIX confirmado! <strong>+R$ ${valor}</strong>`;
+  toast.style.cssText = `
+    position:fixed; bottom:24px; right:24px; z-index:9999;
+    background:linear-gradient(135deg,#00c853,#1b5e20);
+    color:#fff; padding:14px 22px; border-radius:12px;
+    font-size:15px; font-weight:600; box-shadow:0 4px 20px rgba(0,200,83,.5);
+    animation:slideIn .3s ease; cursor:pointer;
+  `;
+  toast.onclick = () => toast.remove();
+  document.body.appendChild(toast);
+  setTimeout(() => { if(toast.parentNode) toast.remove(); }, 5000);
+}
+
+// ═══════════════════════════════════════════════
 //  SALDO
 // ═══════════════════════════════════════════════
 
@@ -2023,74 +2066,77 @@ async function atualizarSaldoForce() {
 
 async function loadSaldo() {
   try {
-    // Saldo local e cache do bot em paralelo — RÁPIDO (não trava)
-    const [rSaldo, rStats, rBot] = await Promise.all([
+    // Busca apenas /api/saldo (rápido, banco local) — NÃO consulta Telegram
+    const [rSaldo, rBot] = await Promise.all([
       fetch(`${BASE}/api/saldo`),
-      fetch(`${BASE}/api/stats?secret=${encodeURIComponent(SECRET())}`),
       fetch(`${BASE}/api/saldo/bot?secret=${encodeURIComponent(SECRET())}`).catch(() => null)
     ]);
     const d    = await rSaldo.json();
-    const dSt  = rStats.ok ? await rStats.json() : {};
     const dBot = (rBot && rBot.ok) ? await rBot.json() : {};
-    const dep  = dSt.depositos || {};
-    const saq  = dSt.saques    || {};
 
     const saldoLocal      = d.saldo      || 0;
     const disponivelLocal = d.disponivel || 0;
-    const saldoBotReal    = (dBot.success && dBot.saldo_bot >= 0) ? dBot.saldo_bot : null;
+    // Usa cache do bot se disponível e >= 0, senão usa banco local
+    const saldoBotReal    = (dBot.success && dBot.saldo_bot >= 0 && dBot.fonte !== 'erro') ? dBot.saldo_bot : null;
 
     saldoBot      = saldoBotReal !== null ? saldoBotReal : saldoLocal;
     disponivelBot = saldoBotReal !== null ? saldoBotReal : disponivelLocal;
 
-    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
+    // Atualiza _pixLastTotal para o polling de PIX
+    if (_pixLastTotal === null) _pixLastTotal = d.total_depositado || 0;
 
-    // ── Dashboard card ──
-    document.getElementById('m-saldo').textContent      = fmt(saldoBot);
-    document.getElementById('m-disponivel').textContent = `Disponível: ${fmt(disponivelBot)}`;
+    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
+    const agora = new Date().toLocaleTimeString('pt-BR');
+
+    // ── Dashboard card principal (m-saldo) ──
+    const saldoEl = document.getElementById('m-saldo');
+    if (saldoEl) saldoEl.textContent = fmt(saldoBot);
+
+    const dispEl = document.getElementById('m-disponivel');
+    if (dispEl) dispEl.textContent = `Disponível: ${fmt(disponivelBot)}`;
+
     const horaEl = document.getElementById('m-saldo-hora');
-    if (horaEl) horaEl.textContent = `atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
+    if (horaEl) {
+      if (saldoBotReal !== null) {
+        const age = dBot.cache_age || 0;
+        horaEl.textContent = `📦 cache ${age < 60 ? age+'s' : Math.floor(age/60)+'min'} · ${agora} · clique 🔄 para atualizar bot`;
+      } else {
+        horaEl.textContent = `💾 banco local · ${agora} · clique 🔄 para saldo real bot`;
+      }
+    }
 
     // ── Carteira ──
-    document.getElementById('w-saldo').textContent      = fmt(saldoBot);
-    document.getElementById('w-disponivel').textContent = fmt(disponivelBot);
-    document.getElementById('w-conta').textContent      = '5956000812 (bin cash)';
+    const wSaldo = document.getElementById('w-saldo');
+    if (wSaldo) wSaldo.textContent = fmt(saldoBot);
 
+    const wDisp = document.getElementById('w-disponivel');
+    if (wDisp) wDisp.textContent = fmt(disponivelBot);
+
+    const wDep = document.getElementById('w-depositado');
+    if (wDep) wDep.textContent = fmt(d.total_depositado || 0);
+
+    const wSaq = document.getElementById('w-sacado');
+    if (wSaq) wSaq.textContent = fmt(d.total_sacado || 0);
+
+    const wConta = document.getElementById('w-conta');
+    if (wConta) wConta.textContent = '5956000812 (bin cash)';
+
+    // ── Status fonte saldo ──
     const statusEl = document.getElementById('saldo-bot-status');
     const fonteEl  = document.getElementById('saldo-bot-fonte');
-    const agora    = new Date().toLocaleTimeString('pt-BR');
     if (statusEl) {
       statusEl.textContent = saldoBotReal !== null
-        ? `✅ ${fmt(saldoBotReal)} · cache ${dBot.cache_age || 0}s`
-        : `⚠️ banco local · clique 🔄 para atualizar`;
+        ? `✅ ${fmt(saldoBotReal)} · ${agora}`
+        : `💾 R$ ${saldoLocal.toFixed(2).replace('.',',')} · banco local · clique 🔄`;
     }
     if (fonteEl) {
       if (saldoBotReal !== null) {
         const age = dBot.cache_age || 0;
         fonteEl.textContent = `📦 cache (${age < 60 ? age+'s' : Math.floor(age/60)+'min'}) · ${agora}`;
       } else {
-        fonteEl.textContent = `⚠️ banco local · ${agora}`;
+        fonteEl.textContent = `💾 banco local · ${agora}`;
       }
     }
-
-    document.getElementById('w-depositado').textContent = fmt(dep.valor_recebido || d.total_depositado || 0);
-    document.getElementById('w-sacado').textContent     = fmt(saq.valor_sacado   || d.total_sacado    || 0);
-
-    // ── Resumo financeiro completo ──
-    const depFull = {
-      valor_recebido:  dep.valor_recebido || d.total_depositado   || 0,
-      valor_pendente:  dep.valor_pendente || d.depositos_pendentes || 0,
-      total:           dep.confirmados    || dep.total || 0,
-      qtd_total:       dep.total          || 0,
-      qtd_confirmados: dep.confirmados    || 0,
-    };
-    const saqFull = {
-      valor_sacado:   saq.valor_sacado   || d.total_sacado    || 0,
-      valor_pendente: saq.valor_pendente || d.saques_pendentes || 0,
-      total:          saq.realizados     || saq.total || 0,
-      qtd_total:      saq.total          || 0,
-      qtd_realizados: saq.realizados     || 0,
-    };
-    renderResumoFinanceiro(depFull, saqFull, saldoBotReal, saldoLocal);
 
   } catch(e) { console.error('loadSaldo:', e); }
 }
@@ -2133,8 +2179,9 @@ async function loadStats() {
     // Gráfico
     renderGrafico(dep.por_dia || [], saq.por_dia || []);
 
-    // Resumo financeiro carteira
-    renderResumoFinanceiro(dep, saq, null, null);
+    // Resumo financeiro carteira (usa saldo local calculado)
+    const saldoLocalCalc = (dep.valor_recebido||0) - (saq.valor_sacado||0);
+    renderResumoFinanceiro(dep, saq, null, saldoLocalCalc);
 
     // Tabelas recentes dashboard
     renderDepositosRecentes();
