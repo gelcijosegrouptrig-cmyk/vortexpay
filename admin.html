@@ -2167,352 +2167,1595 @@
       </div><!-- /tab-bot2 -->
 
       <!-- API & WEBHOOKS -->
-      <div id="tab-api" class="tab-content">
+      <!-- ╔══════════════════════════════════════════════════════════════╗
+     ║              API & WEBHOOKS — Tab Completa v3               ║
+     ╚══════════════════════════════════════════════════════════════╝ -->
+<div id="tab-api" class="tab-content" style="display:none">
+  <div style="max-width:960px;margin:0 auto;padding:12px 8px 40px">
 
-        <!-- Chave de API -->
-        <div class="table-card" style="margin-bottom:20px">
-          <div class="table-header">
-            <h3>🔑 Sua Chave de API</h3>
-            <span class="count">Secret Key</span>
-          </div>
-          <div style="padding:20px">
-            <div style="background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-              <div>
-                <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">API Secret Key</div>
-                <code id="api-key-display" style="font-family:monospace;font-size:14px;color:var(--orange);word-break:break-all">••••••••••••••••••••</code>
-              </div>
-              <div style="display:flex;gap:8px">
-                <button class="refresh-btn" onclick="toggleApiKey()">👁️ Mostrar</button>
-                <button class="refresh-btn" onclick="copiar(SECRET())" style="color:var(--orange)">📋 Copiar</button>
-              </div>
-            </div>
-            <p style="font-size:12px;color:var(--text3);margin-top:10px">⚠️ Nunca compartilhe sua chave de API publicamente. Use-a no header <code style="color:var(--orange)">X-PaynexBet-Secret</code> em todas as requisições autenticadas.</p>
-          </div>
+    <!-- Cabeçalho -->
+    <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:14px;padding:28px 28px 22px;margin-bottom:24px;color:#fff">
+      <h2 style="margin:0 0 6px;font-size:1.55rem">🔌 API &amp; Webhooks</h2>
+      <p style="margin:0 0 14px;opacity:.8;font-size:.92rem">Documentação completa de todas as rotas — PaynexBet v3</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px 14px;font-size:.82rem">
+          🌐 <strong>Base URL:</strong> <span id="apiBaseUrl" style="font-family:monospace;color:#7dd3fc">https://paynexbet.com</span>
         </div>
-
-        <!-- Base URL -->
-        <div class="table-card" style="margin-bottom:20px">
-          <div class="table-header"><h3>🌐 Base URL</h3></div>
-          <div style="padding:16px 20px">
-            <div class="api-url-box" id="api-base-url"></div>
-          </div>
+        <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px 14px;font-size:.82rem">
+          🔑 <strong>Auth Header:</strong> <span style="font-family:monospace;color:#86efac">X-PaynexBet-Secret: &lt;sua-chave&gt;</span>
         </div>
+        <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px 14px;font-size:.82rem">
+          🔄 <strong>Alternativa:</strong> <span style="font-family:monospace;color:#fde68a">?secret=&lt;sua-chave&gt;</span>
+        </div>
+      </div>
+    </div>
 
-        <!-- Endpoints -->
-        <div style="display:flex;flex-direction:column;gap:16px">
+    <!-- Índice de Navegação -->
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px 20px;margin-bottom:24px">
+      <p style="margin:0 0 10px;font-weight:700;color:#0369a1;font-size:.9rem">📋 CATEGORIAS</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <a href="#api-pix" style="background:#3b82f6;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">💸 PIX Depósito</a>
+        <a href="#api-saldo" style="background:#10b981;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">💰 Saldo &amp; Saques</a>
+        <a href="#api-transacoes" style="background:#8b5cf6;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">📊 Transações</a>
+        <a href="#api-webhooks" style="background:#ef4444;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">🪝 Webhooks</a>
+        <a href="#api-mp2" style="background:#f59e0b;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">🏦 Mercado Pago</a>
+        <a href="#api-assinatura" style="background:#06b6d4;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">🔁 Débito Automático</a>
+        <a href="#api-recorrente" style="background:#6366f1;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">📅 Recorrências</a>
+        <a href="#api-paypix" style="background:#ec4899;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">🤝 PayPix Parceiros</a>
+        <a href="#api-sorteio" style="background:#84cc16;color:#000;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">🎰 Sorteio</a>
+        <a href="#api-admin" style="background:#64748b;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">⚙️ Admin</a>
+      </div>
+    </div>
 
-          <!-- Gerar Pix -->
-          <div class="api-card">
-            <div class="api-card-header">
-              <span class="method-badge post">POST</span>
-              <code class="endpoint">/api/pix</code>
-              <span class="api-desc">Gerar cobrança Pix</span>
-              <button class="test-btn" onclick="testEndpoint('pix')">▶ Testar</button>
-            </div>
-            <div class="api-card-body">
-              <div class="api-cols">
-                <div>
-                  <div class="api-section-label">📥 Request Body</div>
-                  <pre class="code-block">{
+    <!-- ══════════════════════════════════════════════════
+         💸 PIX DEPÓSITO
+    ══════════════════════════════════════════════════ -->
+    <div id="api-pix" class="api-section">
+      <div class="api-section-header" style="background:linear-gradient(90deg,#1d4ed8,#3b82f6)">
+        💸 PIX Depósito
+      </div>
+
+      <!-- POST /api/pix -->
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/pix</code>
+          <span class="api-desc">Gerar cobrança PIX</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Nenhuma (público)</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{
   "valor": 50.00,
   "cliente_id": "user_123",
   "webhook_url": "https://seusite.com/webhook"
 }</pre>
-                  <div class="api-section-label" style="margin-top:12px">🔐 Auth</div>
-                  <div class="auth-note">Não requer autenticação</div>
-                </div>
-                <div>
-                  <div class="api-section-label">📤 Response</div>
-                  <pre class="code-block">{
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
   "success": true,
-  "pix_code": "00020101021226940014br...",
   "tx_id": "txn_abc123",
+  "pix_code": "00020126...",
   "valor": "R$ 50.00",
-  "status": "pendente"
+  "status": "pendente",
+  "qr_image": "data:image/png;base64,..."
 }</pre>
-                </div>
-              </div>
-              <div id="test-result-pix" class="test-result" style="display:none"></div>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Status Transação -->
-          <div class="api-card">
-            <div class="api-card-header">
-              <span class="method-badge get">GET</span>
-              <code class="endpoint">/api/status/{tx_id}</code>
-              <span class="api-desc">Verificar status do pagamento</span>
-              <button class="test-btn" onclick="testEndpoint('status')">▶ Testar</button>
+      <!-- GET /api/status/{tx_id} -->
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/status/{tx_id}</code>
+          <span class="api-desc">Status de uma transação</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Nenhuma (público)</p>
+              <p class="api-label">📌 Parâmetros URL</p>
+              <p class="api-value"><code>tx_id</code> — ID da transação</p>
             </div>
-            <div class="api-card-body">
-              <div class="api-cols">
-                <div>
-                  <div class="api-section-label">📌 Parâmetros URL</div>
-                  <table class="param-table">
-                    <tr><td class="param-name">tx_id</td><td class="param-type">string</td><td>ID da transação gerada</td></tr>
-                  </table>
-                  <div class="api-section-label" style="margin-top:12px">🔐 Auth</div>
-                  <div class="auth-note">Não requer autenticação</div>
-                </div>
-                <div>
-                  <div class="api-section-label">📤 Response</div>
-                  <pre class="code-block">{
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
   "tx_id": "txn_abc123",
   "valor": 50.0,
   "status": "pago",
   "created_at": "2024-04-11T13:00:00",
-  "paid_at": "2024-04-11T13:05:00",
-  "pago": true
+  "paid_at": "2024-04-11T13:05:00"
 }</pre>
-                </div>
-              </div>
-              <div class="test-input-row">
-                <input id="test-txid-input" class="filter-input" placeholder="Digite o tx_id para testar..." style="max-width:400px">
-              </div>
-              <div id="test-result-status" class="test-result" style="display:none"></div>
+              <p class="api-label">⚠️ Status possíveis</p>
+              <p class="api-value"><code>pendente</code> · <code>pago</code> · <code>cancelado</code></p>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Solicitar Saque -->
-          <div class="api-card">
-            <div class="api-card-header">
-              <span class="method-badge post">POST</span>
-              <code class="endpoint">/api/saque</code>
-              <span class="api-desc">Solicitar saque via Pix</span>
-              <button class="test-btn" onclick="testEndpoint('saque')">▶ Testar</button>
+      <!-- GET /api/pix/status/{tx_id} -->
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/pix/status/{tx_id}</code>
+          <span class="api-desc">Polling rápido (light) de geração do PIX</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Nenhuma (público)</p>
+              <p class="api-label">💡 Uso</p>
+              <p class="api-value">Use para checar se o QR Code foi gerado (campos <code>pix_code</code> e <code>status</code>)</p>
             </div>
-            <div class="api-card-body">
-              <div class="api-cols">
-                <div>
-                  <div class="api-section-label">📥 Request Body</div>
-                  <pre class="code-block">{
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "tx_id": "txn_abc123",
+  "valor": 50.0,
+  "pix_code": "00020126...",
+  "status": "pendente"
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exemplo JS -->
+      <div class="api-card api-example">
+        <div class="api-card-title">
+          <span class="badge-js">JS</span>
+          <span class="api-desc">Exemplo completo: gerar + polling</span>
+        </div>
+        <div class="api-card-body">
+          <pre class="api-pre">const BASE = 'https://paynexbet.com';
+
+// 1. Gerar cobrança
+const res = await fetch(`${BASE}/api/pix`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ valor: 50.00, cliente_id: 'user_123' })
+});
+const { tx_id, pix_code, qr_image } = await res.json();
+
+// 2. Polling até pagamento confirmar
+const poll = setInterval(async () => {
+  const s = await fetch(`${BASE}/api/status/${tx_id}`).then(r => r.json());
+  if (s.status === 'pago') {
+    clearInterval(poll);
+    console.log('✅ Pago!');
+  }
+}, 3000);</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         💰 SALDO & SAQUES
+    ══════════════════════════════════════════════════ -->
+    <div id="api-saldo" class="api-section">
+      <div class="api-section-header" style="background:linear-gradient(90deg,#065f46,#10b981)">
+        💰 Saldo &amp; Saques
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/saldo</code>
+          <span class="api-desc">Saldo calculado pelo banco local</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Nenhuma (público)</p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "saldo": 37.92,
+  "disponivel": 34.89,
+  "total_depositado": 500.00,
+  "total_sacado": 462.08
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/saldo/bot</code>
+          <span class="api-desc">Saldo real do bot Telegram (cache + atualização em background)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Header <code>X-PaynexBet-Secret</code> ou <code>?secret=</code></p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "saldo": 37.92,
+  "fonte": "telegram_cache",
+  "atualizado_em": "2024-04-11T13:00:00"
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/saque</code>
+          <span class="api-desc">Solicitar saque via bot Telegram</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Header <code>X-PaynexBet-Secret</code></p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{
   "valor": 30.00,
   "chave_pix": "email@exemplo.com",
   "tipo_chave": "email"
 }</pre>
-                  <div class="api-section-label" style="margin-top:12px">📌 tipo_chave aceitos</div>
-                  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
-                    <span class="tag">cpf</span><span class="tag">telefone</span><span class="tag">email</span><span class="tag">aleatoria</span><span class="tag">cnpj</span>
-                  </div>
-                  <div class="api-section-label" style="margin-top:12px">🔐 Auth</div>
-                  <div class="auth-note">Não requer autenticação</div>
-                </div>
-                <div>
-                  <div class="api-section-label">📤 Response</div>
-                  <pre class="code-block">{
+              <p class="api-label">🔑 tipo_chave</p>
+              <p class="api-value"><code>cpf</code> · <code>email</code> · <code>telefone</code> · <code>aleatorio</code></p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
   "success": true,
-  "saque_id": "saq_abc123",
-  "saque_id_bot": "saq-xyz789",
-  "valor": 30.0,
-  "chave_pix": "email@exemplo.com",
-  "tipo_chave": "email",
+  "saque_id": "saq_xyz",
   "status": "enviado",
-  "status_msg": "✅ Saque realizado!"
+  "valor": 30.00
 }</pre>
-                </div>
-              </div>
-              <div id="test-result-saque" class="test-result" style="display:none"></div>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Consultar Saldo -->
-          <div class="api-card">
-            <div class="api-card-header">
-              <span class="method-badge get">GET</span>
-              <code class="endpoint">/api/saldo</code>
-              <span class="api-desc">Consultar saldo da conta</span>
-              <button class="test-btn" onclick="testEndpoint('saldo')">▶ Testar</button>
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/saques</code>
+          <span class="api-desc">Listar todos os saques (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Obrigatória (<code>X-PaynexBet-Secret</code>)</p>
             </div>
-            <div class="api-card-body">
-              <div class="api-cols">
-                <div>
-                  <div class="api-section-label">🔐 Auth</div>
-                  <div class="auth-note">Não requer autenticação</div>
-                  <div class="api-section-label" style="margin-top:12px">📌 Nota</div>
-                  <p style="font-size:12px;color:var(--text2)">Consulta o saldo diretamente no bot VortexBank via Telegram. Pode levar 3–5 segundos.</p>
-                </div>
-                <div>
-                  <div class="api-section-label">📤 Response</div>
-                  <pre class="code-block">{
-  "saldo": 37.92,
-  "disponivel": 34.89
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "saques": [...],
+  "total": 5,
+  "processados": 4,
+  "valor_pago": 120.00
 }</pre>
-                </div>
-              </div>
-              <div id="test-result-saldo" class="test-result" style="display:none"></div>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Webhook Confirmar -->
-          <div class="api-card">
-            <div class="api-card-header">
-              <span class="method-badge post">POST</span>
-              <code class="endpoint">/webhook/confirmar</code>
-              <span class="api-desc">Confirmar pagamento externamente</span>
-              <button class="test-btn" onclick="testEndpoint('webhook')">▶ Testar</button>
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/saque/{saque_id}/cancelar</code>
+          <span class="api-desc">Cancelar saque pendente (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Obrigatória</p>
             </div>
-            <div class="api-card-body">
-              <div class="api-cols">
-                <div>
-                  <div class="api-section-label">🔐 Auth — Header obrigatório</div>
-                  <pre class="code-block">X-PaynexBet-Secret: {sua_secret_key}</pre>
-                  <div class="api-section-label" style="margin-top:12px">📥 Request Body</div>
-                  <pre class="code-block">{
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{ "success": true, "saque_id": "saq_xyz" }</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         📊 TRANSAÇÕES
+    ══════════════════════════════════════════════════ -->
+    <div id="api-transacoes" class="api-section">
+      <div class="api-section-header" style="background:linear-gradient(90deg,#4c1d95,#8b5cf6)">
+        📊 Transações &amp; Stats
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/transacoes</code>
+          <span class="api-desc">Listar transações (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Obrigatória</p>
+              <p class="api-label">📌 Query Params</p>
+              <p class="api-value"><code>?status=pago</code> · <code>?limite=50</code></p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "transacoes": [...],
+  "total": 10,
+  "pagos": 8,
+  "pendentes": 2,
+  "valor_pendente": 50.0,
+  "valor_recebido": 320.0
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/stats</code>
+          <span class="api-desc">Dashboard completo com métricas consolidadas (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Obrigatória</p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "depositos_hoje": 5,
+  "valor_hoje": 250.00,
+  "assinantes_ativos": 12,
+  "mrr": 360.00,
+  "saldo_total": 1500.00,
+  ...
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/exportar</code>
+          <span class="api-desc">Exportar dados em CSV (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Obrigatória</p>
+              <p class="api-label">📌 Query Params</p>
+              <p class="api-value"><code>?tipo=depositos</code> (padrão) · <code>?tipo=saques</code></p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta</p>
+              <p class="api-value">Arquivo <code>text/csv</code> com todos os registros</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         🪝 WEBHOOKS
+    ══════════════════════════════════════════════════ -->
+    <div id="api-webhooks" class="api-section">
+      <div class="api-section-header" style="background:linear-gradient(90deg,#991b1b,#ef4444)">
+        🪝 Webhooks Recebidos
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/webhook/confirmar</code>
+          <span class="api-desc">Confirmar pagamento manualmente (sistema interno)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Header obrigatório: <code>X-PaynexBet-Secret</code></p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{
   "tx_id": "txn_abc123",
   "status": "pago"
 }</pre>
-                </div>
-                <div>
-                  <div class="api-section-label">📤 Response</div>
-                  <pre class="code-block">{
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
   "success": true,
   "message": "Pagamento txn_abc123 confirmado"
 }</pre>
-                  <div class="api-section-label" style="margin-top:12px">💡 Uso</div>
-                  <p style="font-size:12px;color:var(--text2)">Use para confirmar pagamentos manualmente ou via integração com outros gateways de pagamento.</p>
-                </div>
-              </div>
-              <div class="test-input-row">
-                <input id="test-webhook-txid" class="filter-input" placeholder="tx_id para confirmar..." style="max-width:300px">
-              </div>
-              <div id="test-result-webhook" class="test-result" style="display:none"></div>
+              <p class="api-label">❌ Resposta 401</p>
+              <pre class="api-pre">{ "error": "Não autorizado" }</pre>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Listar Transações -->
-          <div class="api-card">
-            <div class="api-card-header">
-              <span class="method-badge get">GET</span>
-              <code class="endpoint">/api/transacoes</code>
-              <span class="api-desc">Listar todos os depósitos</span>
-              <button class="test-btn" onclick="testEndpoint('transacoes')">▶ Testar</button>
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/webhook/mp2</code>
+          <span class="api-desc">Webhook do Mercado Pago (PIX confirmados)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Automática via assinatura MP</p>
+              <p class="api-label">💡 Cadastrar no MP</p>
+              <p class="api-value"><code>https://paynexbet.com/webhook/mp2</code></p>
+              <p class="api-label">📌 Eventos suportados</p>
+              <p class="api-value"><code>payment</code></p>
             </div>
-            <div class="api-card-body">
-              <div class="api-cols">
-                <div>
-                  <div class="api-section-label">🔐 Auth — Query param</div>
-                  <pre class="code-block">GET /api/transacoes?secret={sua_secret_key}</pre>
-                  <div class="api-section-label" style="margin-top:12px">🔐 Auth — Header alternativo</div>
-                  <pre class="code-block">X-PaynexBet-Secret: {sua_secret_key}</pre>
-                </div>
-                <div>
-                  <div class="api-section-label">📤 Response</div>
-                  <pre class="code-block">{
-  "transacoes": [...],
-  "resumo": {
-    "total": 10,
-    "pendentes": 2,
-    "pagos": 8,
-    "valor_pendente": 50.0,
-    "valor_recebido": 320.0
-  }
+            <div>
+              <p class="api-label">📥 Payload recebido (MP)</p>
+              <pre class="api-pre">{
+  "type": "payment",
+  "data": { "id": "12345678" }
 }</pre>
-                </div>
-              </div>
-              <div id="test-result-transacoes" class="test-result" style="display:none"></div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{ "received": true }</pre>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Listar Saques -->
-          <div class="api-card">
-            <div class="api-card-header">
-              <span class="method-badge get">GET</span>
-              <code class="endpoint">/api/saques</code>
-              <span class="api-desc">Listar todos os saques</span>
-              <button class="test-btn" onclick="testEndpoint('saques')">▶ Testar</button>
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/webhook/preapproval</code>
+          <span class="api-desc">Webhook do MP — mudanças de status de débito automático</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Automática via MP</p>
+              <p class="api-label">💡 Cadastrar no MP</p>
+              <p class="api-value"><code>https://paynexbet.com/webhook/preapproval</code></p>
+              <p class="api-label">📌 Eventos suportados</p>
+              <p class="api-value"><code>preapproval</code> · <code>subscription_preapproval</code></p>
             </div>
-            <div class="api-card-body">
-              <div class="api-cols">
-                <div>
-                  <div class="api-section-label">🔐 Auth — Query param</div>
-                  <pre class="code-block">GET /api/saques?secret={sua_secret_key}</pre>
-                </div>
-                <div>
-                  <div class="api-section-label">📤 Response</div>
-                  <pre class="code-block">{
-  "saques": [...],
-  "resumo": {
-    "total": 5,
-    "pendentes": 1,
-    "processados": 4,
-    "valor_pendente": 10.0,
-    "valor_pago": 120.0
-  }
+            <div>
+              <p class="api-label">📥 Payload recebido</p>
+              <pre class="api-pre">{
+  "type": "preapproval",
+  "data": { "id": "dca1eca6..." }
 }</pre>
-                </div>
-              </div>
-              <div id="test-result-saques" class="test-result" style="display:none"></div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{ "received": true }</pre>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Health -->
-          <div class="api-card">
-            <div class="api-card-header">
-              <span class="method-badge get">GET</span>
-              <code class="endpoint">/health</code>
-              <span class="api-desc">Status do servidor</span>
-              <button class="test-btn" onclick="testEndpoint('health')">▶ Testar</button>
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/webhook/asaas</code>
+          <span class="api-desc">Webhook Asaas — confirmação de pagamentos do sorteio</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Automática via Asaas</p>
+              <p class="api-label">💡 Cadastrar no Asaas</p>
+              <p class="api-value"><code>https://paynexbet.com/webhook/asaas</code></p>
             </div>
-            <div class="api-card-body">
-              <div class="api-cols">
-                <div>
-                  <div class="api-section-label">🔐 Auth</div>
-                  <div class="auth-note">Não requer autenticação</div>
-                </div>
-                <div>
-                  <div class="api-section-label">📤 Response</div>
-                  <pre class="code-block">{
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{ "received": true }</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Box de configuração de webhooks no MP -->
+      <div class="api-card" style="border-left:4px solid #f59e0b;background:#fffbeb">
+        <div class="api-card-title" style="color:#92400e">
+          <span style="font-size:1.1rem">⚙️</span>
+          <strong>Como configurar Webhooks no Mercado Pago</strong>
+        </div>
+        <div class="api-card-body">
+          <ol style="margin:0 0 0 18px;padding:0;line-height:2;font-size:.88rem;color:#78350f">
+            <li>Acesse <strong>mercadopago.com.br/developers/panel</strong></li>
+            <li>Vá em <strong>Suas integrações → Webhooks</strong></li>
+            <li>URL para PIX: <code style="background:#fef3c7;padding:2px 6px;border-radius:4px">https://paynexbet.com/webhook/mp2</code></li>
+            <li>URL para Débito Automático: <code style="background:#fef3c7;padding:2px 6px;border-radius:4px">https://paynexbet.com/webhook/preapproval</code></li>
+            <li>Eventos: marque <strong>payment</strong> e <strong>preapproval</strong></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         🏦 MERCADO PAGO (MP2)
+    ══════════════════════════════════════════════════ -->
+    <div id="api-mp2" class="api-section">
+      <div class="api-section-header" style="background:linear-gradient(90deg,#78350f,#f59e0b)">
+        🏦 Mercado Pago — PayPixNex (MP2)
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/mp2/status</code>
+          <span class="api-desc">Status geral do sistema MP2</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Nenhuma (público)</p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "configurado": true,
+  "bot2_token": true,
+  "access_token_ok": true,
+  "public_key_ok": true
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/mp2/stats</code>
+          <span class="api-desc">Estatísticas de pagamentos MP2 (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Obrigatória</p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "total_pagamentos": 120,
+  "valor_total": 6000.00,
+  "pagos_hoje": 8,
+  "pendentes": 2
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/mp2/config</code>
+          <span class="api-desc">Ver chaves MP2 mascaradas (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Obrigatória</p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "access_token": "...abc123",
+  "public_key":   "...xyz789",
+  "client_id":    "...111",
+  "configurado":  true
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/mp2/config</code>
+          <span class="api-desc">Salvar chaves MP2 (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p>
+              <p class="api-value">Obrigatória</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{
+  "access_token": "APP_USR-...",
+  "public_key":   "APP_USR-...",
+  "client_id":    "12345",
+  "client_secret":"abc"
+}</pre>
+              <p class="api-label">💡 Dica</p>
+              <p class="api-value">Envie <code>"__keep__"</code> ou omita um campo para manter o valor já salvo</p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "success": true,
+  "message": "Chaves MP2 salvas e recarregadas"
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/mp2/testar</code>
+          <span class="api-desc">Testar conexão com API Mercado Pago (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "success": true,
+  "saldo": 150.00,
+  "email": "conta@mp.com"
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Parceiros -->
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/mp2/parceiros</code>
+          <span class="api-desc">Listar parceiros / afiliados ativos (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">[
+  {
+    "codigo": "PARCEIRO01",
+    "nome":   "João Silva",
+    "comissao_pct": 10,
+    "chave_pix": "joao@email.com",
+    "ativo": true
+  }
+]</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/mp2/parceiros</code>
+          <span class="api-desc">Criar parceiro / afiliado (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{
+  "codigo":       "PARCEIRO01",
+  "nome":         "João Silva",
+  "comissao_pct": 10,
+  "chave_pix":    "joao@email.com"
+}</pre>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{ "success": true, "codigo": "PARCEIRO01" }</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-patch">PATCH</span>
+          <code>/api/mp2/parceiros/{codigo}</code>
+          <span style="margin-left:8px;color:#6b7280;font-size:.83rem">Editar parceiro</span>
+          &nbsp;&nbsp;
+          <span class="badge-delete">DELETE</span>
+          <code>/api/mp2/parceiros/{codigo}</code>
+          <span style="margin-left:8px;color:#6b7280;font-size:.83rem">Remover parceiro</span>
+        </div>
+        <div class="api-card-body">
+          <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória para ambos</p>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/mp2/comissoes</code>
+          <span class="api-desc">Listar comissões dos parceiros (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">[
+  {
+    "id": 1,
+    "parceiro_codigo": "PARCEIRO01",
+    "valor": 5.00,
+    "status": "pendente",
+    "tx_id": "txn_abc"
+  }
+]</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/mp2/comissoes/pagar</code>
+          <span class="api-desc">Marcar comissão como paga manualmente (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{ "comissao_id": 1 }</pre>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{ "success": true }</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bot MP2 -->
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/bot/gerar</code>
+          <span class="api-desc">Gerar PIX via bot MP (@paypix_nexbot)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma (público)</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{
+  "valor": 50.00,
+  "descricao": "Depósito",
+  "ref": "PARCEIRO01"
+}</pre>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "success": true,
+  "pix_copia_cola": "00020126...",
+  "qr_base64": "data:image/png;...",
+  "payment_id": "12345678",
+  "external_ref": "pay_abc"
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/bot/status/{payment_id}</code>
+          <span class="api-desc">Status do pagamento MP</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "status": "approved",
+  "confirmado": true,
+  "valor": 50.00
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         🔁 DÉBITO AUTOMÁTICO (PREAPPROVAL / ASSINAR)
+    ══════════════════════════════════════════════════ -->
+    <div id="api-assinatura" class="api-section">
+      <div class="api-section-header" style="background:linear-gradient(90deg,#0e7490,#06b6d4)">
+        🔁 Débito Automático — Assinatura Mensal
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/assinar/criar-plano</code>
+          <span class="api-desc">Criar/recriar plano no Mercado Pago (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
+              <p class="api-label">💡 Quando usar</p>
+              <p class="api-value">Chame 1× após configurar o plano no painel. Cria o <code>preapproval_plan</code> no MP com PIX obrigatório.</p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "success": true,
+  "plan_id": "2c93808...",
+  "init_point": "https://www.mercadopago.com.br/..."
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/assinar/plano</code>
+          <span class="api-desc">Dados do plano ativo (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "plan_id": "2c93808...",
+  "titulo": "Mensalidade VIP",
+  "valor": 29.90,
+  "dia_cobranca": 5,
+  "init_point": "https://..."
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/assinar/config</code>
+          <span class="api-desc">Config pública do plano de assinatura</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma (público)</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "titulo": "Mensalidade VIP",
+  "descricao": "Acesso total ao grupo",
+  "valor": 29.90,
+  "dia": 5,
+  "beneficios": "📊 Sinais diários\n🎯 Suporte VIP",
+  "cor": "#2563eb",
+  "ativo": true
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/assinar/config</code>
+          <span class="api-desc">Salvar config do plano (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
+              <p class="api-label">📨 Body JSON (todos opcionais)</p>
+              <pre class="api-pre">{
+  "titulo":     "Mensalidade VIP",
+  "descricao":  "Acesso total",
+  "valor":      29.90,
+  "dia":        5,
+  "beneficios": "📊 Sinais\n🎯 Suporte",
+  "cor":        "#2563eb",
+  "ativo":      true
+}</pre>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{ "success": true }</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/assinar/preapproval</code>
+          <span class="api-desc">Registrar interesse do cliente (página /assinar)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma (público)</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{
+  "nome":     "João Silva",
+  "email":    "joao@email.com",
+  "telefone": "11999999999",
+  "ref":      "PARCEIRO01"
+}</pre>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "success": true,
+  "preapproval_id": "pending_rec_42",
+  "init_point": "https://www.mercadopago.com.br/...",
+  "recorrente_id": 42
+}</pre>
+              <p class="api-label">💡 Fluxo</p>
+              <p class="api-value">Redirecione o cliente para <code>init_point</code> — ele autoriza o débito no app MP</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/assinar/status/{preapproval_id}</code>
+          <span class="api-desc">Verificar status da autorização</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p>
+              <p class="api-label">💡 ID aceitos</p>
+              <p class="api-value">ID real do MP ou <code>pending_rec_{id}</code></p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "status": "authorized",
+  "preapproval_id": "dca1eca6...",
+  "nome": "João Silva"
+}</pre>
+              <p class="api-label">📌 Status possíveis</p>
+              <p class="api-value"><code>authorized</code> · <code>pending</code> · <code>paused</code> · <code>cancelled</code></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/assinar/qr</code>
+          <span class="api-desc">QR Code da página /assinar</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p></div>
+            <div>
+              <p class="api-label">✅ Resposta</p>
+              <p class="api-value">Imagem PNG com QR Code da URL <code>paynexbet.com/assinar</code></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         📅 RECORRÊNCIAS MANUAIS
+    ══════════════════════════════════════════════════ -->
+    <div id="api-recorrente" class="api-section">
+      <div class="api-section-header" style="background:linear-gradient(90deg,#312e81,#6366f1)">
+        📅 Recorrências Manuais
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/recorrente/criar</code>
+          <span class="api-desc">Cadastrar assinante recorrente manual</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma (público)</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{
+  "nome":          "Maria Costa",
+  "valor":         29.90,
+  "dia_vencimento": 5,
+  "chave_pix":     "maria@email.com",
+  "tipo_chave":    "email",
+  "ref":           "PARCEIRO01"
+}</pre>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "success": true,
+  "recorrente_id": 15,
+  "link_pagamento": "https://paynexbet.com/pagar/15"
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/recorrente/listar</code>
+          <span class="api-desc">Listar assinantes recorrentes (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
+              <p class="api-label">📌 Query Params</p>
+              <p class="api-value"><code>?status=ativo</code> · <code>?status=cancelado</code> · <code>?status=pausado</code></p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">[
+  {
+    "id": 15,
+    "nome": "Maria Costa",
+    "valor": 29.90,
+    "dia_vencimento": 5,
+    "status": "ativo",
+    "ultimo_pagamento": "2024-04-05"
+  }
+]</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/recorrente/cancelar</code>
+          <span class="api-desc">Cancelar assinatura (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{ "recorrente_id": 15 }</pre>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{ "success": true }</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/recorrente/stats</code>
+          <span class="api-desc">Estatísticas de recorrências (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "ativos": 45,
+  "pausados": 3,
+  "cancelados": 7,
+  "mrr": 1345.50,
+  "total_cobrado_mes": 1200.00
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/recorrente/job</code>
+          <span class="api-desc">Disparar job de cobranças manualmente (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "success": true,
+  "cobrados": 8,
+  "erros": 0
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/pagar/{id}</code>
+          <span class="api-desc">Página de pagamento individual (link enviado ao cliente)</span>
+        </div>
+        <div class="api-card-body">
+          <p class="api-label">💡 Uso</p>
+          <p class="api-value">Link enviado automaticamente ao assinante quando há cobrança pendente. Exibe QR Code + código Pix copia e cola.</p>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/recorrente/autocadastro</code>
+          <span class="api-desc">Auto-cadastro pela página /assinar (público)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{
+  "nome":  "Carlos Mendes",
+  "email": "carlos@email.com",
+  "ref":   "PARCEIRO01"
+}</pre>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "success": true,
+  "recorrente_id": 22
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         🤝 PAYPIX PARCEIROS
+    ══════════════════════════════════════════════════ -->
+    <div id="api-paypix" class="api-section">
+      <div class="api-section-header" style="background:linear-gradient(90deg,#831843,#ec4899)">
+        🤝 PayPix — Parceiros com Split
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/paypix/gerar</code>
+          <span class="api-desc">Gerar PIX para parceiro (com split automático)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{
+  "chave_pix":  "parceiro@email.com",
+  "tipo_chave": "email",
+  "valor":      100.00,
+  "descricao":  "Pagamento parceiro"
+}</pre>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "success": true,
+  "tx_id": "pp_xyz",
+  "pix_code": "00020126...",
+  "valor_total": 100.00,
+  "valor_split": 5.00
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/paypix/status/{tx_id}</code>
+          <span class="api-desc">Status da transação PayPix</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "tx_id": "pp_xyz",
+  "status": "pago",
+  "pix_code": "00020126...",
+  "valor": 100.00
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/paypix/config</code>
+          <span class="api-desc">Ver config PayPix (% split, descrição)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma (GET público)</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "split_pct": 5,
+  "descricao": "PayPix Parceiro"
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/paypix/config</code>
+          <span class="api-desc">Atualizar % split e descrição (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{ "split_pct": 5, "descricao": "PayPix" }</pre>
+            </div>
+            <div><p class="api-label">✅ Resposta 200</p><pre class="api-pre">{ "success": true }</pre></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         🎰 SORTEIO
+    ══════════════════════════════════════════════════ -->
+    <div id="api-sorteio" class="api-section">
+      <div class="api-section-header" style="background:linear-gradient(90deg,#365314,#84cc16);color:#000">
+        🎰 Sorteio
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/sorteio/info</code>
+          <span class="api-desc">Informações públicas do sorteio</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p>
+              <p class="api-label">📌 Query Params</p>
+              <p class="api-value"><code>?cpf=12345678901</code> (opcional)</p>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "ativo": true,
+  "premio": 500.00,
+  "valor_numero": 5.00,
+  "numeros_disponiveis": 80,
+  "participante": { ... }
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/sorteio/cadastrar</code>
+          <span class="api-desc">Cadastrar participante</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{
+  "nome":      "Ana Lima",
+  "cpf":       "12345678901",
+  "chave_pix": "ana@email.com"
+}</pre>
+            </div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "success": true,
+  "participante_id": 8,
+  "numeros": []
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/sorteio/config</code>
+          <span class="api-desc">Configurar parâmetros do sorteio (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{
+  "ativo": true,
+  "premio": 1000.00,
+  "valor_por_numero": 10.00,
+  "max_numeros": 100,
+  "titulo": "Mega Sorteio"
+}</pre>
+            </div>
+            <div><p class="api-label">✅ Resposta 200</p><pre class="api-pre">{ "success": true }</pre></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/sorteio/realizar</code>
+          <span class="api-desc">Realizar o sorteio + saque automático (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "success": true,
+  "ganhador": "Ana Lima",
+  "numero": 42,
+  "premio_enviado": true
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         ⚙️ ADMIN / SISTEMA
+    ══════════════════════════════════════════════════ -->
+    <div id="api-admin" class="api-section">
+      <div class="api-section-header" style="background:linear-gradient(90deg,#1e293b,#64748b)">
+        ⚙️ Admin &amp; Sistema
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/health</code>
+          &nbsp;/&nbsp;
+          <span class="badge-get">GET</span>
+          <code>/api/status</code>
+          <span class="api-desc">Status do servidor</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
   "status": "online",
-  "telegram": true,
-  "tentativas": 1,
-  "bot": "VortexBank_bot",
-  "webhook": "/webhook/confirmar"
+  "bot": "conectado",
+  "db": "postgresql",
+  "versao": "3.0"
 }</pre>
-                </div>
-              </div>
-              <div id="test-result-health" class="test-result" style="display:none"></div>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Exemplo de Integração -->
-          <div class="api-card">
-            <div class="api-card-header" style="cursor:default">
-              <span class="method-badge" style="background:rgba(167,139,250,0.2);color:var(--purple);border:1px solid rgba(167,139,250,0.3)">💡</span>
-              <code class="endpoint">Exemplo de Integração</code>
-              <span class="api-desc">Fluxo completo de pagamento</span>
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/deposito/confirmar</code>
+          <span class="api-desc">Confirmar depósito manualmente (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{ "tx_id": "txn_abc123" }</pre>
             </div>
-            <div class="api-card-body">
-              <div class="api-section-label">JavaScript — Fluxo completo</div>
-              <pre class="code-block" style="font-size:11px">const BASE = 'https://web-production-9f54e.up.railway.app';
+            <div><p class="api-label">✅ Resposta 200</p><pre class="api-pre">{ "success": true }</pre></div>
+          </div>
+        </div>
+      </div>
 
-// 1. Gerar cobrança Pix
-const pix = await fetch(`${BASE}/api/pix`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ valor: 50.00 })
-}).then(r => r.json());
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/asaas/configurar</code>
+          <span class="api-desc">Injetar ASAAS_API_KEY em runtime (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{ "api_key": "$aact_...", "env": "sandbox" }</pre>
+            </div>
+            <div><p class="api-label">✅ Resposta 200</p><pre class="api-pre">{ "success": true, "env": "sandbox" }</pre></div>
+          </div>
+        </div>
+      </div>
 
-console.log('Código Pix:', pix.pix_code);
-console.log('TX ID:', pix.tx_id);
-
-// 2. Verificar pagamento (polling)
-const verificar = async (tx_id) => {
-  const status = await fetch(`${BASE}/api/status/${tx_id}`).then(r => r.json());
-  if (status.pago) {
-    console.log('✅ Pago!');
-  } else {
-    setTimeout(() => verificar(tx_id), 15000); // retry em 15s
-  }
-};
-verificar(pix.tx_id);</pre>
-
-              <div class="api-section-label" style="margin-top:16px">cURL — Confirmar pagamento</div>
-              <pre class="code-block" id="curl-example" style="font-size:11px"></pre>
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/asaas/status</code>
+          <span class="api-desc">Verificar se Asaas está configurado e operacional</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p></div>
+            <div>
+              <p class="api-label">✅ Resposta 200</p>
+              <pre class="api-pre">{
+  "configurado": true,
+  "env": "production",
+  "saldo": 200.00
+}</pre>
             </div>
           </div>
+        </div>
+      </div>
 
-        </div><!-- /endpoints -->
-      </div><!-- /tab-api -->
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-get">GET</span>
+          <code>/api/mp2/saques</code>
+          <span class="api-desc">Listar saques MP pendentes (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
+            <div><p class="api-label">✅ Resposta 200</p><pre class="api-pre">{ "saques": [...], "total": 3 }</pre></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div class="api-card-title">
+          <span class="badge-post">POST</span>
+          <code>/api/mp2/saques/processar</code>
+          <span class="api-desc">Processar saque MP manualmente (admin)</span>
+        </div>
+        <div class="api-card-body">
+          <div class="api-cols">
+            <div>
+              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
+              <p class="api-label">📨 Body JSON</p>
+              <pre class="api-pre">{ "saque_id": 5 }</pre>
+            </div>
+            <div><p class="api-label">✅ Resposta 200</p><pre class="api-pre">{ "success": true }</pre></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rodapé -->
+    <div style="text-align:center;padding:24px;color:#94a3b8;font-size:.8rem;border-top:1px solid #e2e8f0;margin-top:24px">
+      PaynexBet API v3 &nbsp;·&nbsp; Todas as rotas com autenticação exigem o header <code>X-PaynexBet-Secret</code> ou <code>?secret=</code>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ ESTILOS INTERNOS DA TAB API ══════ -->
+<style>
+.api-section { margin-bottom: 28px; }
+.api-section-header {
+  color: #fff; font-weight: 700; font-size: .95rem;
+  padding: 10px 18px; border-radius: 10px 10px 0 0;
+  letter-spacing: .03em;
+}
+.api-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  padding: 14px 18px 10px;
+}
+.api-card:last-child { border-radius: 0 0 10px 10px; }
+.api-card + .api-card { border-top: 1px solid #f1f5f9; }
+.api-card-title {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 6px; margin-bottom: 8px; font-size: .88rem;
+}
+.api-card-title code {
+  background: #f1f5f9; padding: 2px 8px;
+  border-radius: 5px; font-size: .85rem; color: #0f172a;
+}
+.api-card-body { font-size: .85rem; color: #374151; }
+.api-cols {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media(max-width:600px){ .api-cols { grid-template-columns: 1fr; } }
+.api-label {
+  font-weight: 700; color: #475569;
+  font-size: .78rem; text-transform: uppercase;
+  letter-spacing: .04em; margin: 10px 0 3px;
+}
+.api-value { margin: 0 0 8px; color: #1e293b; }
+.api-pre {
+  background: #0f172a; color: #e2e8f0;
+  border-radius: 6px; padding: 10px 12px;
+  font-size: .78rem; line-height: 1.6;
+  overflow-x: auto; white-space: pre; margin: 4px 0 8px;
+}
+.api-desc { color: #6b7280; font-size: .83rem; margin-left: 4px; }
+.api-example { background: #f8fafc; }
+.badge-get    { background:#10b981;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
+.badge-post   { background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
+.badge-patch  { background:#f59e0b;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
+.badge-delete { background:#ef4444;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
+.badge-js     { background:#1e293b;color:#fbbf24;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
+</style>
+<!-- /tab-api -->
 
     </div><!-- /content -->
   </div><!-- /main -->
