@@ -5382,7 +5382,7 @@ async def route_mp2_webhook(request):
     try:
         body = await request.json()
         action = body.get('action', '')
-        data   = body.get('data', {})\
+        data   = body.get('data', {})
 
         # MP envia: {"action":"payment.updated","data":{"id":"12345"}}
         if action in ('payment.updated', 'payment.created'):
