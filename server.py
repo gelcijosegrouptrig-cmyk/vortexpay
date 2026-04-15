@@ -22,7 +22,7 @@ ASAAS_ENV      = os.environ.get('ASAAS_ENV', 'production')  # 'sandbox' ou 'prod
 ASAAS_BASE_URL = 'https://sandbox.asaas.com/v3' if ASAAS_ENV == 'sandbox' else 'https://api.asaas.com/v3'
 ASAAS_WEBHOOK_TOKEN = os.environ.get('ASAAS_WEBHOOK_TOKEN', 'vortex_asaas_2024')  # token secreto webhook Asaas
 
-_SESSION_FALLBACK = ''  # Sessão fallback removida por segurança — usar apenas DB/env var
+_SESSION_FALLBACK = ''  # Sessão fallback removida por segurança - usar apenas DB/env var
 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:EfJgSbrAkQbFlQJWdxIpIZftseKsDVKs@metro.proxy.rlwy.net:53914/railway')
 
@@ -34,7 +34,7 @@ if not SESSION_STR:
     except:
         pass
 if not SESSION_STR:
-    print('⚠️ Nenhuma sessão Telegram encontrada — reconexão necessária pelo admin', flush=True)
+    print('⚠️ Nenhuma sessão Telegram encontrada - reconexão necessária pelo admin', flush=True)
 
 client = TelegramClient(StringSession(SESSION_STR), API_ID, API_HASH)
 _lock = asyncio.Lock()
@@ -61,7 +61,7 @@ CANAL_NOTIF_LINK = os.environ.get('CANAL_NOTIF_LINK', '')       # Link de convit
 CANAL_HIST_LINK  = os.environ.get('CANAL_HIST_LINK',  '')       # Link de convite do canal hist
 
 # ══════════════════════════════════════════════════════════════════
-# ─── BOT 2 — @paypix_nexbot (paralelo, independente do Bot 1) ───────
+# ─── BOT 2 - @paypix_nexbot (paralelo, independente do Bot 1) ───────
 # ══════════════════════════════════════════════════════════════════
 BOT2_USERNAME   = os.environ.get('BOT2_USERNAME', 'paypix_nexbot')
 SESSION_STR2    = os.environ.get('SESSION_STR2', '')
@@ -81,7 +81,7 @@ _telegram2_reconectando  = False
 _login_state2            = {}        # estado do fluxo solicitar/confirmar código Bot2
 PHONE_NUMBER2            = os.environ.get('TELEGRAM_PHONE2', '')
 
-# ─── BANCO DE DADOS — PostgreSQL persistente + fallback SQLite ───────────────
+# ─── BANCO DE DADOS - PostgreSQL persistente + fallback SQLite ───────────────
 DB_PATH = '/tmp/transacoes.db'
 _USE_PG = False
 
@@ -114,7 +114,7 @@ class _FakeRow:
 def _pg_run(sql, params=()):
     """Executa SQL no PG abrindo e fechando conexão na mesma chamada.
     Retorna _FakeRow com todos os resultados já em memória.
-    Zero risco de 'transaction aborted' — cada chamada é totalmente isolada."""
+    Zero risco de 'transaction aborted' - cada chamada é totalmente isolada."""
     import psycopg2
     pg = psycopg2.connect(DATABASE_URL)
     try:
@@ -170,7 +170,7 @@ class DBConn:
         self.close()
 
 class _DBCursor:
-    """Cursor para DBConn.cursor() — delega para _pg_run"""
+    """Cursor para DBConn.cursor() - delega para _pg_run"""
     def __init__(self, use_pg=False, sq_cur=None):
         self._use_pg = use_pg
         self._sq_cur = sq_cur
@@ -308,7 +308,7 @@ def init_db():
         try:
             import psycopg2
             pg = psycopg2.connect(DATABASE_URL)
-            # Usar autocommit=True no init_db também — cada CREATE TABLE é independente
+            # Usar autocommit=True no init_db também - cada CREATE TABLE é independente
             pg.autocommit = True
             cur = pg.cursor()
             pg_tables = [
@@ -367,7 +367,7 @@ def init_db():
                     cur.execute(sql)
                 except Exception as e:
                     print(f'[DB init] Aviso ao criar tabela: {e}', flush=True)
-            # Migrações PostgreSQL — adicionar colunas novas se não existirem
+            # Migrações PostgreSQL - adicionar colunas novas se não existirem
             pg_migrations = [
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS premio_acumulado REAL DEFAULT 0",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS acumulativo INTEGER DEFAULT 1",
@@ -394,7 +394,7 @@ def init_db():
                 print(f'[DB init] Aviso config sorteio: {e}', flush=True)
             pg.close()
             _USE_PG = True
-            print('✅ PostgreSQL conectado — banco PERSISTENTE ativo!', flush=True)
+            print('✅ PostgreSQL conectado - banco PERSISTENTE ativo!', flush=True)
             # Tentar carregar sessão salva no banco
             _carregar_sessao_db()
             _carregar_sessao2_db()   # ← Bot2 (@paypix_nexbot)
@@ -466,7 +466,7 @@ def init_db():
         acumulativo INTEGER DEFAULT 1
     )''')
     conn.commit()
-    # Migrações de colunas — cada ALTER TABLE em transação separada
+    # Migrações de colunas - cada ALTER TABLE em transação separada
     for col in ["valor_por_numero REAL DEFAULT 5.0",
                 "usar_media INTEGER DEFAULT 0",
                 "dias_media INTEGER DEFAULT 30",
@@ -497,7 +497,7 @@ def init_db():
         sorteio_id TEXT DEFAULT 'atual'
     )''')
     conn.commit()
-    # Migrações sorteio_participantes — cada ALTER TABLE em transação separada
+    # Migrações sorteio_participantes - cada ALTER TABLE em transação separada
     for col in ['cpf TEXT', 'total_depositado REAL DEFAULT 0',
                 'total_numeros INTEGER DEFAULT 0', "numeros_sorte TEXT DEFAULT '[]'",
                 'updated_at TEXT']:
@@ -822,7 +822,7 @@ def load_paypix_html():
     return '<h1>PayPix</h1>'
 
 def load_bot_pix_html():
-    """Carrega a página pública /bot — gerar PIX via @paypix_nexbot (Mercado Pago)."""
+    """Carrega a página pública /bot - gerar PIX via @paypix_nexbot (Mercado Pago)."""
     try:
         if DATABASE_URL:
             import psycopg2 as _pg
@@ -859,7 +859,7 @@ def load_sorteio_html():
     return '<h1>PaynexBet - Sorteio</h1>'
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ─── ASAAS — INTEGRAÇÃO PIX CASH-IN / CASH-OUT ─────────────────────────────
+# ─── ASAAS - INTEGRAÇÃO PIX CASH-IN / CASH-OUT ─────────────────────────────
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def asaas_request(method: str, path: str, data: dict = None) -> dict:
@@ -973,7 +973,7 @@ async def asaas_gerar_pix_sorteio(cpf: str, nome: str, valor: float,
 async def asaas_enviar_pix(chave_pix: str, tipo_chave: str, valor: float,
                             descricao: str = 'Prêmio Sorteio PaynexBet') -> dict:
     """
-    Envia PIX via Asaas (cash-out) — substitui Telegram para saques do sorteio.
+    Envia PIX via Asaas (cash-out) - substitui Telegram para saques do sorteio.
     tipo_chave: cpf | cnpj | email | phone | evp
     """
     if not ASAAS_API_KEY:
@@ -1099,7 +1099,7 @@ async def asaas_polling_pagamento(payment_id: str, cpf: str, nome: str, valor: f
                     await _processar_deposito_sorteio_asaas(cpf, nome, valor)
                 return
 
-            # Pagamento expirado ou cancelado — encerrar polling
+            # Pagamento expirado ou cancelado - encerrar polling
             if status_asaas in ('OVERDUE', 'REFUNDED', 'REFUND_REQUESTED', 'CHARGEBACK_REQUESTED',
                                  'CHARGEBACK_DISPUTE', 'AWAITING_CHARGEBACK_REVERSAL',
                                  'DUNNING_REQUESTED', 'DUNNING_RECEIVED', 'AWAITING_RISK_ANALYSIS'):
@@ -1211,7 +1211,7 @@ def gerar_bilhetes_unicos(cliente_id, qtd, sorteio_id='atual'):
     tentativa = 0
     while len(numeros) < qtd:
         seed = hashlib.md5(f"{cliente_id}{sorteio_id}{tentativa}vortex".encode()).hexdigest()
-        num = int(seed[:8], 16) % 900000 + 100000  # 100000–999999
+        num = int(seed[:8], 16) % 900000 + 100000  # 100000-999999
         if num not in usados:
             usados.add(num)
             numeros.append(num)
@@ -1405,7 +1405,7 @@ async def _auto_login_telegram():
         print('🤖 [AutoLogin] Solicitando código...', flush=True)
         _phone_autologin = PHONE_NUMBER or os.environ.get('TELEGRAM_PHONE', '')
         if not _phone_autologin:
-            print('🤖 [AutoLogin] Número de telefone não configurado — impossível auto-login', flush=True)
+            print('🤖 [AutoLogin] Número de telefone não configurado - impossível auto-login', flush=True)
             _auto_login_em_progresso = False
             return False
         try:
@@ -1500,7 +1500,7 @@ async def _auto_login_telegram():
 
             await temp_client.sign_in(_phone_autologin, codigo, phone_code_hash=phone_code_hash)
         except SessionPasswordNeededError:
-            print('🤖 [AutoLogin] 2FA necessário — não suportado no auto-login', flush=True)
+            print('🤖 [AutoLogin] 2FA necessário - não suportado no auto-login', flush=True)
             await temp_client.disconnect()
             _auto_login_em_progresso = False
             return False
@@ -1587,11 +1587,11 @@ async def watchdog_telegram():
     2) Se falhar → tenta reconectar imediatamente
     3) Se reconectar falhar → tenta de novo em 30s, 60s, 120s (backoff)
     4) A cada 30min salva a sessão atual no DB (keepalive de sessão)
-    5) NUNCA desiste — só para se sessão for revogada (AuthKeyDuplicated)
+    5) NUNCA desiste - só para se sessão for revogada (AuthKeyDuplicated)
     """
     global _telegram_ready, _telegram_session_invalida, _sessao_salva_em
     await asyncio.sleep(30)  # aguarda sistema estabilizar no boot
-    print('🔍 [Watchdog] Iniciado — verificando Telegram a cada 2min', flush=True)
+    print('🔍 [Watchdog] Iniciado - verificando Telegram a cada 2min', flush=True)
 
     PING_INTERVAL   = 120   # 2 minutos entre pings normais
     SAVE_INTERVAL   = 1800  # 30 minutos entre saves de sessão
@@ -1651,7 +1651,7 @@ async def watchdog_telegram():
                     agora_fw = time.time()
                     if _floodwait_ate > agora_fw:
                         mins_rest = int((_floodwait_ate - agora_fw) / 60)
-                        print(f'⏳ [Watchdog] FloodWait ativo — aguardando mais {mins_rest}min para tentar auto-login', flush=True)
+                        print(f'⏳ [Watchdog] FloodWait ativo - aguardando mais {mins_rest}min para tentar auto-login', flush=True)
                         await asyncio.sleep(min(300, _floodwait_ate - agora_fw))
                         continue
 
@@ -1697,7 +1697,7 @@ async def watchdog_telegram():
                 # Backoff progressivo
                 falhas_seguidas += 1
                 delay = backoff_delays[min(falhas_seguidas - 1, len(backoff_delays) - 1)]
-                print(f'🔄 [Watchdog] Falha #{falhas_seguidas} — tentando novamente em {delay}s', flush=True)
+                print(f'🔄 [Watchdog] Falha #{falhas_seguidas} - tentando novamente em {delay}s', flush=True)
                 await asyncio.sleep(delay)
 
         except Exception as e_watch:
@@ -1706,7 +1706,7 @@ async def watchdog_telegram():
 
 # ─── TELEGRAM - Conectar com retry ──────────────────────────
 async def conectar_telegram():
-    """Conexão inicial do Telegram — após conectar, o watchdog assume o keepalive."""
+    """Conexão inicial do Telegram - após conectar, o watchdog assume o keepalive."""
     global _telegram_ready, _telegram_tentativas, _telegram_session_invalida
     _registrar_handler_telegram()  # registrar handler uma única vez
 
@@ -1758,7 +1758,7 @@ async def conectar_telegram():
             asyncio.create_task(_loop_verificar_pagamentos())
             asyncio.create_task(watchdog_telegram())
 
-            print('✅ Listener ativo — watchdog iniciado', flush=True)
+            print('✅ Listener ativo - watchdog iniciado', flush=True)
             await client.run_until_disconnected()
 
         except Exception as e:
@@ -1777,7 +1777,7 @@ async def conectar_telegram():
         await asyncio.sleep(espera)
 
 # ══════════════════════════════════════════════════════════════════
-# ─── BOT 2 — Conexão e Watchdog (@paypix_nexbot) ────────────────────
+# ─── BOT 2 - Conexão e Watchdog (@paypix_nexbot) ────────────────────
 # ══════════════════════════════════════════════════════════════════
 
 async def conectar_telegram2():
@@ -1788,7 +1788,7 @@ async def conectar_telegram2():
     tentativas2 = 0
     while True:
         if not SESSION_STR2:
-            print('⚠️ [Bot2] Sem sessão configurada — aguardando login pelo admin...', flush=True)
+            print('⚠️ [Bot2] Sem sessão configurada - aguardando login pelo admin...', flush=True)
             await asyncio.sleep(60)
             continue
         tentativas2 += 1
@@ -1798,7 +1798,7 @@ async def conectar_telegram2():
             await asyncio.sleep(1)
             await client2.connect()
             if not await client2.is_user_authorized():
-                print('❌ [Bot2] Sessão inválida — reconexão necessária via admin', flush=True)
+                print('❌ [Bot2] Sessão inválida - reconexão necessária via admin', flush=True)
                 _telegram2_session_inv = True
                 _telegram2_ready = False
                 await asyncio.sleep(60)
@@ -1823,7 +1823,7 @@ async def conectar_telegram2():
         await asyncio.sleep(espera2)
 
 async def watchdog_telegram2():
-    """Watchdog do Bot2 — ping a cada 2min, reconecta se cair."""
+    """Watchdog do Bot2 - ping a cada 2min, reconecta se cair."""
     global _telegram2_ready, _telegram2_ultimo_ping
     await asyncio.sleep(45)  # aguarda Bot2 inicializar
     print('🔍 [Watchdog Bot2] Iniciado', flush=True)
@@ -1945,7 +1945,7 @@ async def verificar_saldo_bot() -> float:
     return -1.0
 
 # ══════════════════════════════════════════════════════════════════
-# ─── BOT 2 — @paypix_nexbot — Funções espelhadas ────────────────────
+# ─── BOT 2 - @paypix_nexbot - Funções espelhadas ────────────────────
 # ══════════════════════════════════════════════════════════════════
 
 async def verificar_saldo_bot2() -> float:
@@ -2059,7 +2059,7 @@ async def gerar_pix_bot2(valor, cliente_id=None, webhook_url=None, participante_
                         return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
                                 'valor': f"R$ {valor_conf}", 'status': 'pendente', 'bot': 'bot2'}
 
-        print(f'[gerar_pix_bot2] Timeout — nenhum código Pix recebido', flush=True)
+        print(f'[gerar_pix_bot2] Timeout - nenhum código Pix recebido', flush=True)
         return {'success': False, 'error': '[Bot2] Bot demorou para responder. Tente novamente.'}
     except Exception as e:
         print(f'❌ [Bot2] Erro gerar_pix_bot2: {e}', flush=True)
@@ -2122,7 +2122,7 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados
         await client.send_message(bot, valor_str)
         print(f'[gerar_pix] Valor {valor_str} enviado, aguardando resposta...', flush=True)
 
-        # Polling ativo — checar a cada 2s por até 60s (30 tentativas)
+        # Polling ativo - checar a cada 2s por até 60s (30 tentativas)
         for tentativa in range(30):
             await asyncio.sleep(2)
             msgs = await client.get_messages(bot, limit=10)
@@ -2135,7 +2135,7 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados
                 txt = msg.text or ''
                 # Log para debug
                 print(f'[gerar_pix] [{tentativa}] {txt[:100]}', flush=True)
-                # Procurar código Pix — padrão primário
+                # Procurar código Pix - padrão primário
                 if '00020101' in txt:
                     pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', txt)
                     pix_code = pix_match.group(1) if pix_match else None
@@ -2164,7 +2164,7 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados
                         return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
                                 'valor': f"R$ {valor_conf}", 'status': 'pendente'}
 
-        print(f'[gerar_pix] Timeout após 60s — nenhum código Pix recebido', flush=True)
+        print(f'[gerar_pix] Timeout após 60s - nenhum código Pix recebido', flush=True)
         return {'success': False, 'error': 'Bot demorou para responder. Tente novamente.'}
     except Exception as e:
         print(f'❌ Erro gerar_pix: {e}', flush=True)
@@ -2466,7 +2466,7 @@ async def _executar_sorteio_completo():
 
     if acumulativo_cfg and total_part_atual < min_part_cfg:
         conn.close()
-        # Não arquivar — participantes e bilhetes continuam na rodada
+        # Não arquivar - participantes e bilhetes continuam na rodada
         acum_atual = float(config.get('premio_acumulado') or 0)
         total_dep_temp = sum(p['total_depositado'] or 0 for p in participantes)
         _percentual_cfg = float(config.get('percentual', 50)) / 100
@@ -2563,15 +2563,15 @@ async def _executar_sorteio_completo():
             else:
                 # Asaas falhou → pendente para retentativa automática a cada 1h (SEM Telegram)
                 novo_status = 'pendente_asaas'
-                obs = f'Asaas falhou — retentativa automática a cada 1h. Erro: {saque_result.get("error","")}'[:500]
-                print(f'⚠️ [Asaas] Falha no saque — pendente p/ retentativa 1h: {saque_id_gerado}', flush=True)
+                obs = f'Asaas falhou - retentativa automática a cada 1h. Erro: {saque_result.get("error","")}'[:500]
+                print(f'⚠️ [Asaas] Falha no saque - pendente p/ retentativa 1h: {saque_id_gerado}', flush=True)
 
         else:
-            # ── PENDENTE: Asaas não configurado — retentativa a cada 1h ──
+            # ── PENDENTE: Asaas não configurado - retentativa a cada 1h ──
             novo_status = 'pendente_asaas'
-            obs = 'Asaas não configurado — saque pendente para retentativa automática a cada 1h'
+            obs = 'Asaas não configurado - saque pendente para retentativa automática a cada 1h'
             saque_result = {'success': False, 'error': obs}
-            print(f'⚠️ Asaas não configurado — saque pendente: {saque_id_gerado}', flush=True)
+            print(f'⚠️ Asaas não configurado - saque pendente: {saque_id_gerado}', flush=True)
 
         # Atualizar DB
         conn2 = sqlite3_connect()
@@ -2667,7 +2667,7 @@ async def reprocessar_saques_pendentes_sorteio():
         await asyncio.sleep(3600)  # 1 hora
         try:
             if not ASAAS_API_KEY:
-                print('⚠️ [Monitor Saques] Asaas não configurado — aguardando...', flush=True)
+                print('⚠️ [Monitor Saques] Asaas não configurado - aguardando...', flush=True)
                 continue
 
             # Buscar saques de sorteio pendentes (falha Asaas ou Asaas não configurado)
@@ -2684,12 +2684,12 @@ async def reprocessar_saques_pendentes_sorteio():
                 print('✅ [Monitor Saques] Nenhum saque pendente.', flush=True)
                 continue
 
-            print(f'💸 [Monitor Saques] {len(pendentes)} saque(s) pendente(s) — tentando via Asaas...', flush=True)
+            print(f'💸 [Monitor Saques] {len(pendentes)} saque(s) pendente(s) - tentando via Asaas...', flush=True)
 
             for row in pendentes:
                 sorteio_id, nome, chave_pix, tipo_chave, premio, saque_id = row
                 if not chave_pix:
-                    print(f'⚠️ [Monitor Saques] {sorteio_id} sem chave PIX — pulando', flush=True)
+                    print(f'⚠️ [Monitor Saques] {sorteio_id} sem chave PIX - pulando', flush=True)
                     continue
 
                 print(f'💸 [Monitor Saques] Retentativa Asaas: {sorteio_id} | R${premio:.2f} → {tipo_chave}:{chave_pix}', flush=True)
@@ -2698,11 +2698,11 @@ async def reprocessar_saques_pendentes_sorteio():
 
                 if result.get('success'):
                     novo_status = 'enviado'
-                    obs = result.get('mensagem_bot', f'Retentativa OK — ID:{result.get("transfer_id","")}')[:500]
+                    obs = result.get('mensagem_bot', f'Retentativa OK - ID:{result.get("transfer_id","")}')[:500]
                     print(f'✅ [Monitor Saques] Saque enviado com sucesso: {sorteio_id}', flush=True)
                 else:
                     novo_status = 'pendente_asaas'
-                    obs = f'Retentativa Asaas falhou — próxima em 1h. Erro: {result.get("error","")}' [:500]
+                    obs = f'Retentativa Asaas falhou - próxima em 1h. Erro: {result.get("error","")}' [:500]
                     print(f'❌ [Monitor Saques] Falha na retentativa {sorteio_id}: {result.get("error","")}', flush=True)
 
                 conn2 = sqlite3_connect()
@@ -2945,7 +2945,7 @@ async def route_sorteio_participantes(request):
     })
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ─── ROTAS ASAAS — SORTEIO PIX ─────────────────────────────────────────────
+# ─── ROTAS ASAAS - SORTEIO PIX ─────────────────────────────────────────────
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def route_asaas_pix_sorteio(request):
@@ -3240,7 +3240,7 @@ async def route_webhook_asaas(request):
         if tipo == 'sorteio':
             await _processar_deposito_sorteio_asaas(cpf, nome, valor_db)
 
-        # ── Notificar canal Telegram — Depósito confirmado ────────────
+        # ── Notificar canal Telegram - Depósito confirmado ────────────
         cpf_mask = f'***{cpf[-3:]}' if len(cpf) >= 3 else cpf
         asyncio.create_task(_enviar_canal_notif(
             f'💰 **DEPÓSITO CONFIRMADO**\n'
@@ -3374,7 +3374,7 @@ async def route_asaas_saque_sorteio(request):
 
 
 async def route_db_migrate(request):
-    """POST /api/admin/db-migrate — Roda migrações pendentes no PostgreSQL"""
+    """POST /api/admin/db-migrate - Roda migrações pendentes no PostgreSQL"""
     auth = (request.headers.get('X-PaynexBet-Secret','') or request.rel_url.query.get('secret',''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -3491,7 +3491,7 @@ async def route_db_migrate(request):
         return web.json_response({'success': False, 'error': str(e), 'migrations': results})
 
 async def route_patch_sorteio_html(request):
-    """POST /api/admin/patch-sorteio-html — Salva sorteio.html no PostgreSQL (patch permanente)"""
+    """POST /api/admin/patch-sorteio-html - Salva sorteio.html no PostgreSQL (patch permanente)"""
     auth = (request.headers.get('X-PaynexBet-Secret','') or request.rel_url.query.get('secret',''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -3528,7 +3528,7 @@ async def route_patch_sorteio_html(request):
 
 
 async def route_patch_paypix_html(request):
-    """POST /api/admin/patch-paypix-html — Salva paypix.html no PostgreSQL (patch permanente)"""
+    """POST /api/admin/patch-paypix-html - Salva paypix.html no PostgreSQL (patch permanente)"""
     auth = (request.headers.get('X-PaynexBet-Secret','') or request.rel_url.query.get('secret',''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
@@ -3565,7 +3565,7 @@ async def route_patch_paypix_html(request):
 
 
 async def route_asaas_status(request):
-    """GET /api/asaas/status — Verifica se Asaas está configurado e operacional"""
+    """GET /api/asaas/status - Verifica se Asaas está configurado e operacional"""
     if not ASAAS_API_KEY:
         return web.json_response({
             'configurado': False,
@@ -3594,7 +3594,7 @@ async def route_asaas_status(request):
 
 
 async def route_asaas_configurar(request):
-    """POST /api/asaas/configurar — Injeta ASAAS_API_KEY em runtime (admin)"""
+    """POST /api/asaas/configurar - Injeta ASAAS_API_KEY em runtime (admin)"""
     global ASAAS_API_KEY, ASAAS_ENV, ASAAS_BASE_URL
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
@@ -3731,7 +3731,7 @@ async def route_railway_set_vars(request):
 _login_state = {}  # phone_code_hash, temp_client, temp_session
 
 async def route_solicitar_codigo(request):
-    """Passo 1: Solicitar código do Telegram — aceita phone via body para trocar número pelo admin"""
+    """Passo 1: Solicitar código do Telegram - aceita phone via body para trocar número pelo admin"""
     global _login_state, PHONE_NUMBER
     auth = (request.headers.get('X-PaynexBet-Secret','') or
             request.rel_url.query.get('secret',''))
@@ -3819,7 +3819,7 @@ async def route_confirmar_codigo(request):
         # Salvar sessão no arquivo local
         with open('session_string.txt','w') as f:
             f.write(nova_sessao)
-        # Salvar no PostgreSQL — persiste entre deploys!
+        # Salvar no PostgreSQL - persiste entre deploys!
         _salvar_sessao_db(nova_sessao)
 
         # ── SALVAR NO RAILWAY via API para persistir entre deploys ──
@@ -3857,7 +3857,7 @@ async def route_confirmar_codigo(request):
             except Exception as e_rail:
                 print(f'⚠️ Erro ao salvar no Railway: {e_rail}', flush=True)
         else:
-            print('⚠️ Vars Railway não configuradas — sessão salva só em arquivo local', flush=True)
+            print('⚠️ Vars Railway não configuradas - sessão salva só em arquivo local', flush=True)
 
         # Reinicializar cliente principal
         try:
@@ -3927,7 +3927,7 @@ async def route_reconectar_db(request):
             _telegram_session_invalida = True
             return web.json_response({
                 'success': False,
-                'error': 'Sessão expirada — solicite novo código via painel Admin → Sistema → Reconexão Telegram'
+                'error': 'Sessão expirada - solicite novo código via painel Admin → Sistema → Reconexão Telegram'
             })
 
     except Exception as e:
@@ -4011,14 +4011,14 @@ async def route_atualizar_sessao(request):
         return web.json_response({'error': str(e)}, status=500)
 
 async def route_home(request):
-    """Página principal — paynexbet.com"""
+    """Página principal - paynexbet.com"""
     return web.Response(text=load_home_html(), content_type='text/html', charset='utf-8')
 
 async def route_index(request):
     return web.Response(text=load_html(), content_type='text/html', charset='utf-8')
 
 async def route_pague(request):
-    """Página /pague — abre direto o formulário de gerar Pix"""
+    """Página /pague - abre direto o formulário de gerar Pix"""
     html = load_html()
     # Injeta script para abrir modal de depósito automaticamente
     html = html.replace('</body>', '<script>window.addEventListener("load",()=>{setTimeout(()=>{const b=document.getElementById("btn-depositar");if(b)b.click();},500);});</script></body>')
@@ -4103,7 +4103,7 @@ async def route_pix(request):
         # Salvar transação como "gerando" para polling do frontend
         now = datetime.now().isoformat()
         part_json = json.dumps(participante_dados) if participante_dados else None
-        # Cada execute() usa nova conexão PG — zero risco de transaction aborted
+        # Cada execute() usa nova conexão PG - zero risco de transaction aborted
         conn = sqlite3_connect()
         conn.execute('INSERT OR IGNORE INTO transacoes (tx_id,valor,cliente_id,status,created_at,extra) VALUES (?,?,?,?,?,?)',
                   (tx_id, valor, cliente_id, 'gerando', now, part_json))
@@ -4116,7 +4116,7 @@ async def route_pix(request):
             result = await gerar_pix(valor, cliente_id, data.get('webhook_url'), participante_dados, tx_id_override=tx_id)
             conn2 = sqlite3_connect()
             if result.get('success') and result.get('pix_code'):
-                # Atualizar registro original com pix_code — mantém o tx_id original intacto
+                # Atualizar registro original com pix_code - mantém o tx_id original intacto
                 conn2.execute('UPDATE transacoes SET pix_code=?, status=? WHERE tx_id=?',
                            (result['pix_code'], 'pendente', tx_id))
                 conn2.commit()
@@ -4257,7 +4257,7 @@ async def route_admin_page(request):
     return web.Response(text=load_admin_html(), content_type='text/html', charset='utf-8')
 
 async def route_saldo_bot(request):
-    """Consulta saldo do bot Telegram — retorna cache/banco imediato, atualiza Telegram em background."""
+    """Consulta saldo do bot Telegram - retorna cache/banco imediato, atualiza Telegram em background."""
     secret = request.headers.get('X-PaynexBet-Secret') or request.rel_url.query.get('secret', '')
     pub = request.rel_url.query.get('secret', '') == 'pub'
     if not pub and secret != WEBHOOK_SECRET:
@@ -4281,7 +4281,7 @@ async def route_saldo_bot(request):
         except:
             return 0.0
 
-    # Se cache Telegram válido e não forçado — retorna imediatamente
+    # Se cache Telegram válido e não forçado - retorna imediatamente
     if cache_valido and not forcar and _saldo_bot_cache >= 0:
         return web.json_response({
             'success': True,
@@ -4303,7 +4303,7 @@ async def route_saldo_bot(request):
                     _saldo_bot_cache_ts = time.time()
                     print(f'✅ [saldo_cache] Telegram: R$ {novo_saldo:.2f}', flush=True)
             except asyncio.TimeoutError:
-                print('⚠️ [saldo_cache] Timeout Telegram (30s) — usando banco local', flush=True)
+                print('⚠️ [saldo_cache] Timeout Telegram (30s) - usando banco local', flush=True)
             except Exception as _e:
                 print(f'⚠️ [saldo_cache] Erro Telegram: {_e}', flush=True)
             finally:
@@ -4341,7 +4341,7 @@ async def route_saldo(request):
         r1 = conn.execute("SELECT COALESCE(SUM(valor),0) FROM transacoes WHERE status='pago'").fetchone()
         total_depositado = float(r1[0]) if r1 else 0.0
 
-        # Total sacado (enviado/confirmado/processado) — exclui split PayPix automático
+        # Total sacado (enviado/confirmado/processado) - exclui split PayPix automático
         r2 = conn.execute(
             "SELECT COALESCE(SUM(valor),0) FROM saques WHERE status IN ('enviado','confirmado','processado')"
         ).fetchone()
@@ -4754,7 +4754,7 @@ async def route_confirmar_deposito_admin(request):
         return web.json_response({'error': str(e)}, status=500)
 
 async def route_paypix_page(request):
-    """Página pública /paypix — parceiro gera Pix e recebe 60%"""
+    """Página pública /paypix - parceiro gera Pix e recebe 60%"""
     html = load_paypix_html()
     return web.Response(text=html, content_type='text/html', charset='utf-8')
 
@@ -4776,7 +4776,7 @@ async def route_paypix_gerar(request):
         # PayPix aceita qualquer valor >= 5 (sem restrição de múltiplo)
         # Arredondar para 2 casas decimais
         valor = round(valor, 2)
-        # NÃO bloquear por Telegram — deixa tentar e retornar erro real se falhar
+        # NÃO bloquear por Telegram - deixa tentar e retornar erro real se falhar
 
         cliente_id = f"paypix_{hashlib.md5(f'{chave_pix}{time.time()}'.encode()).hexdigest()[:10]}"
         tx_id = f"ppx_{hashlib.md5(f'{chave_pix}{valor}{time.time()}'.encode()).hexdigest()[:16]}"
@@ -4814,7 +4814,7 @@ async def route_paypix_gerar(request):
             result = await gerar_pix(valor, cliente_id, None, None)
             conn2 = sqlite3_connect()
             if result.get('success') and result.get('pix_code'):
-                # MANTER o tx_id original (ppx_...) — apenas atualizar pix_code e status
+                # MANTER o tx_id original (ppx_...) - apenas atualizar pix_code e status
                 # Isso garante que o status polling funcione com o tx_id retornado ao frontend
                 conn2.execute(
                     'UPDATE transacoes SET pix_code=?, status=? WHERE tx_id=?',
@@ -4841,7 +4841,7 @@ async def route_paypix_gerar(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 async def route_paypix_status(request):
-    """Status da transação PayPix — retorna pix_code quando pronto e status de pagamento"""
+    """Status da transação PayPix - retorna pix_code quando pronto e status de pagamento"""
     tx_id = request.match_info.get('tx_id')
     conn = sqlite3_connect()
     # Usar conn.execute() diretamente (evita cursor compartilhado no PG)
@@ -4943,7 +4943,7 @@ async def route_paypix_config(request):
         except Exception as e:
             return web.json_response({'error': str(e)}, status=500)
     else:
-        # GET — público (paypix.html precisa saber o %)
+        # GET - público (paypix.html precisa saber o %)
         cfg = get_paypix_config()
         pct = cfg.get('paypix_pct', 0.6)
         return web.json_response({
@@ -4976,7 +4976,7 @@ def _paypix_fila_inserir(tx_id, val_par, chave, tipo, pct):
 
 async def _tentar_envio_split(item_id, val_par, chave, tipo, tx_id, tentativa_num):
     """Tenta enviar o saque do split. Retorna True se sucesso."""
-    print(f'[PayPix Fila] Tentativa #{tentativa_num} — R${val_par:.2f} → {chave} ({tipo}) [fila_id={item_id}]', flush=True)
+    print(f'[PayPix Fila] Tentativa #{tentativa_num} - R${val_par:.2f} → {chave} ({tipo}) [fila_id={item_id}]', flush=True)
     try:
         resultado = await executar_saque_bot(val_par, tipo, chave)
     except Exception as ex:
@@ -4988,7 +4988,7 @@ async def _tentar_envio_split(item_id, val_par, chave, tipo, tx_id, tentativa_nu
 
 async def _processar_split_paypix(tx_id, valor, extra_str):
     """
-    Fase 1 — Tenta enviar 3 vezes com 30s de intervalo.
+    Fase 1 - Tenta enviar 3 vezes com 30s de intervalo.
     Se falhar nas 3: enfileira na paypix_fila para o worker tentar a cada 5 min até conseguir.
     """
     TENTATIVAS_RAPIDAS = 3
@@ -5004,7 +5004,7 @@ async def _processar_split_paypix(tx_id, valor, extra_str):
         val_par = round(valor * pct, 2)
 
         if not chave or val_par < 10:
-            print(f'[PayPix] split bloqueado — valor parceiro R${val_par:.2f} abaixo do mínimo R$10,00 ou chave inválida. tx={tx_id}', flush=True)
+            print(f'[PayPix] split bloqueado - valor parceiro R${val_par:.2f} abaixo do mínimo R$10,00 ou chave inválida. tx={tx_id}', flush=True)
             return
 
         # ── FASE 1: 3 tentativas rápidas (30s entre cada) ──
@@ -5012,7 +5012,7 @@ async def _processar_split_paypix(tx_id, valor, extra_str):
         for n in range(1, TENTATIVAS_RAPIDAS + 1):
             resultado = await _tentar_envio_split(0, val_par, chave, tipo, tx_id, n)
             if resultado.get('success'):
-                # ✅ Sucesso — registrar saque e sair
+                # ✅ Sucesso - registrar saque e sair
                 _registrar_saque_split(tx_id, val_par, chave, tipo, pct, resultado, n)
                 return
             if n < TENTATIVAS_RAPIDAS:
@@ -5069,7 +5069,7 @@ async def _worker_paypix_fila():
     TENTATIVAS_CICLO = 2    # tentativas por ciclo do worker (com 15s entre elas)
     DELAY_CICLO      = 15   # segundos entre tentativas dentro do ciclo
 
-    print('[PayPix Worker] 🚀 Iniciado — verificando fila a cada 5 minutos', flush=True)
+    print('[PayPix Worker] 🚀 Iniciado - verificando fila a cada 5 minutos', flush=True)
 
     while True:
         await asyncio.sleep(INTERVALO_WORKER)
@@ -5116,7 +5116,7 @@ async def _worker_paypix_fila():
                         conn2.close()
                         # Registrar na tabela saques
                         _registrar_saque_split(tx_id, val_par, chave, tipo, pct, resultado, tentativa_num)
-                        print(f'[PayPix Worker] ✅ FINALIZADO item_id={item_id} — R${val_par:.2f} → {chave} (tentativa #{tentativa_num})', flush=True)
+                        print(f'[PayPix Worker] ✅ FINALIZADO item_id={item_id} - R${val_par:.2f} → {chave} (tentativa #{tentativa_num})', flush=True)
                         break
 
                     if n < TENTATIVAS_CICLO:
@@ -5133,17 +5133,17 @@ async def _worker_paypix_fila():
                                observacao=?
                            WHERE id=?""",
                         (novo_total, proxima,
-                         f'⏳ Aguardando retry — {novo_total} tentativa(s) realizadas', item_id)
+                         f'⏳ Aguardando retry - {novo_total} tentativa(s) realizadas', item_id)
                     )
                     conn3.commit()
                     conn3.close()
-                    print(f'[PayPix Worker] ⏳ item_id={item_id} — próxima tentativa em 5min (total={novo_total})', flush=True)
+                    print(f'[PayPix Worker] ⏳ item_id={item_id} - próxima tentativa em 5min (total={novo_total})', flush=True)
 
         except Exception as e:
             print(f'[PayPix Worker] Erro no ciclo: {e}', flush=True)
 
 async def route_paypix_fila(request):
-    """GET /api/paypix/fila — Lista a fila de splits pendentes (admin)"""
+    """GET /api/paypix/fila - Lista a fila de splits pendentes (admin)"""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
@@ -5176,11 +5176,11 @@ async def route_paypix_fila(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 # ══════════════════════════════════════════════════════════════════
-# ─── ROTAS BOT 2 — @paypix_nexbot ───────────────────────────────────
+# ─── ROTAS BOT 2 - @paypix_nexbot ───────────────────────────────────
 # ══════════════════════════════════════════════════════════════════
 
 async def route_bot2_status(request):
-    """Status do @paypix_nexbot — inclui userbot Telethon E bot real (python-telegram-bot)."""
+    """Status do @paypix_nexbot - inclui userbot Telethon E bot real (python-telegram-bot)."""
     # Status do bot REAL (BOT2_TOKEN configurado = pronto para usar)
     bot2_token    = os.environ.get('BOT2_TOKEN', '')
     mp2_token     = os.environ.get('MP2_ACCESS_TOKEN', '')
@@ -5231,7 +5231,7 @@ async def route_bot2_saldo(request):
     if not pub and secret != WEBHOOK_SECRET:
         return web.json_response({'success': False, 'error': 'Não autorizado'}, status=401)
     if not _telegram2_ready:
-        return web.json_response({'success': False, 'error': '[Bot2] Offline — conecte a conta primeiro', 'saldo_bot': -1})
+        return web.json_response({'success': False, 'error': '[Bot2] Offline - conecte a conta primeiro', 'saldo_bot': -1})
     try:
         saldo = await verificar_saldo_bot2()
         if saldo >= 0:
@@ -5350,7 +5350,7 @@ async def route_bot2_confirmar_codigo(request):
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
 # ══════════════════════════════════════════════════════════════════
-# ─── ROTAS MP2 — Mercado Pago + @paypix_nexbot (Bot real) ────────
+# ─── ROTAS MP2 - Mercado Pago + @paypix_nexbot (Bot real) ────────
 # ══════════════════════════════════════════════════════════════════
 
 async def route_mp2_status(request):
@@ -5625,7 +5625,7 @@ async def route_mp2_stats(request):
 
 
 async def route_mp2_config_get(request):
-    """GET /api/mp2/config — retorna chaves MP2 mascaradas (só últimos 6 chars)."""
+    """GET /api/mp2/config - retorna chaves MP2 mascaradas (só últimos 6 chars)."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
@@ -5649,7 +5649,7 @@ async def route_mp2_config_get(request):
 
 
 async def route_mp2_config_save(request):
-    """POST /api/mp2/config — salva chaves MP2 no banco e recarrega no mp2_api."""
+    """POST /api/mp2/config - salva chaves MP2 no banco e recarrega no mp2_api."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
@@ -5694,7 +5694,7 @@ async def route_mp2_config_save(request):
 
 
 async def route_mp2_testar(request):
-    """GET /api/mp2/testar — verifica conexão com a API do Mercado Pago."""
+    """GET /api/mp2/testar - verifica conexão com a API do Mercado Pago."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
@@ -5743,50 +5743,61 @@ async def route_mp2_testar(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 # ══════════════════════════════════════════════════════════════════
-# ─── PARCEIROS / AFILIADOS — /api/mp2/parceiros ──────────────────
+# ─── PARCEIROS / AFILIADOS - /api/mp2/parceiros ──────────────────
 # ══════════════════════════════════════════════════════════════════
 
 async def route_mp2_parceiros_listar(request):
-    """GET /api/mp2/parceiros — Lista todos os parceiros (SQL direto)."""
+    """GET /api/mp2/parceiros - Lista todos os parceiros (SQL direto)."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.Response(text='Não autorizado', status=401)
     try:
-        import psycopg2, psycopg2.extras
-        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
-        cur  = conn.cursor(psycopg2.extras.RealDictCursor)
+        import psycopg2, psycopg2.extras, decimal, json as _json
+        conn = psycopg2.connect(DATABASE_URL)
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
             SELECT p.id, p.codigo, p.nome, p.chave_pix, p.tipo_chave,
                    p.comissao_pct, p.ativo, p.link,
-                   COALESCE(p.total_gerado,0) AS total_gerado,
+                   COALESCE(p.total_gerado,0)   AS total_gerado,
                    COALESCE(p.total_comissao,0) AS total_comissao,
-                   COALESCE(p.total_pago,0) AS total_pago,
-                   TO_CHAR(p.criado_em, 'DD/MM/YYYY HH24:MI') AS criado_em,
-                   COUNT(t.id) FILTER (WHERE t.status = 'confirmado') AS qtd_pagamentos
+                   COALESCE(p.total_pago,0)     AS total_pago,
+                   TO_CHAR(p.criado_em, %s) AS criado_em,
+                   COUNT(t.id) FILTER (WHERE t.status = %s) AS qtd_pagamentos
             FROM mp2_parceiros p
             LEFT JOIN mp2_transacoes t ON t.parceiro_codigo = p.codigo
             GROUP BY p.id
             ORDER BY p.criado_em DESC
-        """)
+        """, ('DD/MM/YYYY HH24:MI', 'confirmado'))
         rows = cur.fetchall()
         cur.close(); conn.close()
         parceiros = []
         for r in rows:
-            d = dict(r)
-            d['comissao_pct']   = float(d['comissao_pct'] or 0)
-            d['total_gerado']   = float(d['total_gerado'] or 0)
-            d['total_comissao'] = float(d['total_comissao'] or 0)
-            d['total_pago']     = float(d['total_pago'] or 0)
-            d['qtd_pagamentos'] = int(d['qtd_pagamentos'] or 0)
+            d = {}
+            for k, v in r.items():
+                if isinstance(v, decimal.Decimal):
+                    d[k] = float(v)
+                elif isinstance(v, bool):
+                    d[k] = v
+                elif v is None:
+                    d[k] = None
+                elif isinstance(v, (int, float, str)):
+                    d[k] = v
+                else:
+                    d[k] = str(v)
             parceiros.append(d)
-        return web.json_response({'success': True, 'parceiros': parceiros, 'total': len(parceiros)})
+        resp_data = _json.dumps({'success': True, 'parceiros': parceiros, 'total': len(parceiros)})
+        return web.Response(text=resp_data, content_type='application/json')
     except Exception as e:
-        return web.json_response({'success': False, 'error': str(e)}, status=500)
+        print(f'[parceiros_listar] Erro: {e}', flush=True)
+        return web.Response(
+            text=_json.dumps({'success': False, 'error': str(e)}),
+            content_type='application/json', status=500
+        )
 
 
 async def route_mp2_parceiros_criar(request):
-    """POST /api/mp2/parceiros — Cria novo parceiro (SQL direto)."""
+    """POST /api/mp2/parceiros - Cria novo parceiro (SQL direto)."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
@@ -5859,7 +5870,7 @@ async def route_mp2_parceiros_criar(request):
 
 
 async def route_mp2_parceiros_deletar(request):
-    """DELETE /api/mp2/parceiros/{codigo} — Desativa parceiro (SQL direto)."""
+    """DELETE /api/mp2/parceiros/{codigo} - Desativa parceiro (SQL direto)."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
@@ -5879,18 +5890,24 @@ async def route_mp2_parceiros_deletar(request):
 
 
 # ══════════════════════════════════════════════════════════════════
-# ─── BOT PIX — Página pública /bot — @paypix_nexbot ──────────────
+# ─── BOT PIX - Página pública /bot - @paypix_nexbot ──────────────
 # ══════════════════════════════════════════════════════════════════
 
 async def route_bot_pix_page(request):
-    """GET /bot — Página pública para gerar PIX via @paypix_nexbot (Mercado Pago)."""
+    """GET /bot - Página pública para gerar PIX via @paypix_nexbot (Mercado Pago)."""
+    html = load_bot_pix_html()
+    return web.Response(text=html, content_type='text/html', charset='utf-8')
+
+
+async def route_pix_page(request):
+    """GET /pix - Sub-link público @paypix_nexbot (alias de /bot com ref opcional)."""
     html = load_bot_pix_html()
     return web.Response(text=html, content_type='text/html', charset='utf-8')
 
 
 async def route_bot_gerar(request):
     """
-    POST /api/bot/gerar — Gera PIX via Mercado Pago (@paypix_nexbot).
+    POST /api/bot/gerar - Gera PIX via Mercado Pago (@paypix_nexbot).
     Body: { valor: float, descricao: str, ref: str (opcional - código parceiro) }
     Retorna: { success, pix_copia_cola, qr_base64, payment_id, external_ref }
     """
@@ -5971,7 +5988,7 @@ async def route_bot_gerar(request):
                 print(f'[bot_gerar] Erro vincular parceiro: {ex}', flush=True)
 
         log_ref = f" [ref:{parceiro_ref}]" if parceiro else ""
-        print(f'✅ [bot/gerar] PIX R${valor:.2f} — {resultado.get("external_ref","")}{log_ref}', flush=True)
+        print(f'✅ [bot/gerar] PIX R${valor:.2f} - {resultado.get("external_ref","")}{log_ref}', flush=True)
         return web.json_response({
             'success':        True,
             'payment_id':     resultado.get('payment_id', ''),
@@ -5989,7 +6006,7 @@ async def route_bot_gerar(request):
 
 async def route_bot_status(request):
     """
-    GET /api/bot/status/{payment_id} — Verifica status do pagamento MP.
+    GET /api/bot/status/{payment_id} - Verifica status do pagamento MP.
     Retorna: { status, confirmado, pix_copia_cola, qr_base64, valor }
     """
     payment_id = request.match_info.get('payment_id', '')
@@ -6199,9 +6216,9 @@ async def route_admin_criar_canais(request):
     global _telegram_ready, CANAL_NOTIF_ID, CANAL_HIST_ID, CANAL_NOTIF_LINK, CANAL_HIST_LINK
 
     if not _telegram_ready:
-        return web.json_response({'success': False, 'error': 'Telegram offline — conecte primeiro'}, status=503)
+        return web.json_response({'success': False, 'error': 'Telegram offline - conecte primeiro'}, status=503)
 
-    # Criar Canal 1 — Notificações
+    # Criar Canal 1 - Notificações
     c1 = await _criar_canal_telegram(
         '📣 PayPixNex - Notificações',
         'Notificações automáticas de saques, depósitos e transações do @paypix_nexbot 🔔'
@@ -6212,10 +6229,10 @@ async def route_admin_criar_canais(request):
     # Aguardar flood wait
     await asyncio.sleep(3)
 
-    # Criar Canal 2 — Histórico
+    # Criar Canal 2 - Histórico
     c2 = await _criar_canal_telegram(
         '📊 PayPixNex',
-        'Histórico de transações @paypix_nexbot — depósitos, saques e movimentações.'
+        'Histórico de transações @paypix_nexbot - depósitos, saques e movimentações.'
     )
     if not c2['success']:
         return web.json_response({'success': False, 'error': f'Erro Canal 2: {c2["error"]}'}), 500
@@ -6255,7 +6272,7 @@ async def route_admin_criar_canais(request):
     })
 
 async def route_admin_status_canais(request):
-    """GET /api/admin/canais — Status dos canais configurados."""
+    """GET /api/admin/canais - Status dos canais configurados."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
@@ -6267,15 +6284,15 @@ async def route_admin_status_canais(request):
     })
 
 async def route_admin_testar_canais(request):
-    """POST /api/admin/testar-canais — Envia mensagem de teste nos canais."""
+    """POST /api/admin/testar-canais - Envia mensagem de teste nos canais."""
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.Response(text='Não autorizado', status=401)
     if not CANAL_NOTIF_ID and not CANAL_HIST_ID:
         return web.json_response({'success': False, 'error': 'Canais não configurados. Use /api/admin/criar-canais primeiro.'})
-    await _enviar_canal_notif('🔔 **Teste** — Canal de Notificações funcionando! ✅')
-    await _enviar_canal_hist('📊 **Teste** — Canal de Histórico funcionando! ✅')
+    await _enviar_canal_notif('🔔 **Teste** - Canal de Notificações funcionando! ✅')
+    await _enviar_canal_hist('📊 **Teste** - Canal de Histórico funcionando! ✅')
     return web.json_response({'success': True, 'message': 'Mensagens de teste enviadas!'})
 
 async def route_exportar_csv(request):
@@ -6334,7 +6351,7 @@ async def main():
     if ASAAS_API_KEY:
         print(f'✅ [Asaas] Configurado | env:{ASAAS_ENV} | URL:{ASAAS_BASE_URL}', flush=True)
     else:
-        print('⚠️ [Asaas] ASAAS_API_KEY não configurada — gateway PIX indisponível', flush=True)
+        print('⚠️ [Asaas] ASAAS_API_KEY não configurada - gateway PIX indisponível', flush=True)
 
     app = web.Application(middlewares=[cors_middleware])
 
@@ -6398,11 +6415,11 @@ async def main():
     app.router.add_get('/api/transacoes', route_transacoes)
     app.router.add_post('/webhook/confirmar', route_webhook)
     app.router.add_route('OPTIONS', '/webhook/confirmar', lambda r: web.Response(status=200))
-    # Rotas de Saque — /sacar e /saque
+    # Rotas de Saque - /sacar e /saque
     app.router.add_get('/sacar', route_saque_page)      # paynexbet.com/sacar
     app.router.add_get('/saque', route_saque_page)
     app.router.add_get('/saque.html', route_saque_page)
-    # Rota /pague — gerar Pix (abre modal automaticamente)
+    # Rota /pague - gerar Pix (abre modal automaticamente)
     app.router.add_get('/pague', route_pague)           # paynexbet.com/pague
     app.router.add_get('/api/saldo', route_saldo)
     app.router.add_get('/api/saldo/bot', route_saldo_bot)
@@ -6428,7 +6445,7 @@ async def main():
     app.router.add_post('/api/bot2/pix',                    route_bot2_pix)
     app.router.add_post('/api/bot2/solicitar-codigo',       route_bot2_solicitar_codigo)
     app.router.add_post('/api/bot2/confirmar-codigo',       route_bot2_confirmar_codigo)
-    # ── MP2 — PayPixNex (Bot real @paypix_nexbot + Mercado Pago) ────
+    # ── MP2 - PayPixNex (Bot real @paypix_nexbot + Mercado Pago) ────
     app.router.add_get('/api/mp2/status',                   route_mp2_status)
     app.router.add_get('/api/mp2/stats',                    route_mp2_stats)
     app.router.add_post('/webhook/mp2',                     route_mp2_webhook)
@@ -6440,15 +6457,16 @@ async def main():
     app.router.add_get('/api/mp2/parceiros',                route_mp2_parceiros_listar)
     app.router.add_post('/api/mp2/parceiros',               route_mp2_parceiros_criar)
     app.router.add_delete('/api/mp2/parceiros/{codigo}',    route_mp2_parceiros_deletar)
-    # ── Bot PIX — página pública @paypix_nexbot ──
+    # ── Bot PIX - página pública @paypix_nexbot ──
     app.router.add_get('/bot',                              route_bot_pix_page)
+    app.router.add_get('/pix',                              route_pix_page)
     app.router.add_post('/api/bot/gerar',                   route_bot_gerar)
     app.router.add_get('/api/bot/status/{payment_id}',      route_bot_status)
     # ── Canais Telegram ──────────────────────────────────────────────
     app.router.add_post('/api/admin/criar-canais',          route_admin_criar_canais)
     app.router.add_get('/api/admin/canais',                 route_admin_status_canais)
     app.router.add_post('/api/admin/testar-canais',         route_admin_testar_canais)
-    # PayPix — parceiro gera Pix e recebe 60%
+    # PayPix - parceiro gera Pix e recebe 60%
     app.router.add_get('/paypix', route_paypix_page)
     app.router.add_post('/api/paypix/gerar', route_paypix_gerar)
     app.router.add_get('/api/paypix/status/{tx_id}', route_paypix_status)
@@ -6531,15 +6549,15 @@ async def main():
     # Monitor de saques pendentes (reprocessa quando Telegram voltar)
     asyncio.create_task(reprocessar_saques_pendentes_sorteio())
 
-    # Worker de splits PayPix pendentes — tenta a cada 5 min até finalizar
+    # Worker de splits PayPix pendentes - tenta a cada 5 min até finalizar
     asyncio.create_task(_worker_paypix_fila())
 
-    # ── Bot 2 (@paypix_nexbot) — tasks paralelas (userbot Telethon legado) ──
+    # ── Bot 2 (@paypix_nexbot) - tasks paralelas (userbot Telethon legado) ──
     asyncio.create_task(conectar_telegram2())
     asyncio.create_task(watchdog_telegram2())
     asyncio.create_task(_loop_verificar_pagamentos_bot2())
 
-    # ── Bot 2 REAL — @paypix_nexbot (python-telegram-bot + Mercado Pago) ──
+    # ── Bot 2 REAL - @paypix_nexbot (python-telegram-bot + Mercado Pago) ──
     try:
         from mp2_api import init_mp2_db
         from bot2_handler import build_bot2_app, _bot2_post_startup
@@ -6579,7 +6597,7 @@ async def main():
                     print(f'❌ [Bot2] Erro no polling: {e}', flush=True)
             asyncio.create_task(_rodar_bot2())
         else:
-            print('⚠️ [Bot2 Real] BOT2_TOKEN não configurado — bot desativado', flush=True)
+            print('⚠️ [Bot2 Real] BOT2_TOKEN não configurado - bot desativado', flush=True)
     except Exception as e_bot2:
         print(f'⚠️ [Bot2 Real] Erro ao iniciar: {e_bot2}', flush=True)
 
