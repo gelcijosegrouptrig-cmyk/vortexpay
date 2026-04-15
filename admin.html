@@ -1986,14 +1986,52 @@
             </div>
           </div>
 
-          <!-- Painel Preapproval / Débito Automático -->
+          <!-- ▸ CONFIGURAR PLANO DE DÉBITO AUTOMÁTICO ─────────────────────── -->
           <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:#060612">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-              <div style="font-size:12px;font-weight:700;color:#009ee3">💙 Plano Débito Automático (Mercado Pago)</div>
-              <button onclick="recCriarPlanoMP()" class="action-btn" style="font-size:12px;padding:7px 14px;background:#009ee3;color:#fff;border-color:#009ee3">⚡ Criar/Atualizar Plano MP</button>
+
+            <!-- Header do sub-painel -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <div style="font-size:12px;font-weight:700;color:#009ee3">⚙️ Configurar Plano de Débito Automático</div>
+              <button onclick="recCriarPlanoMP()" id="rec-btn-criar-plano" class="action-btn"
+                style="font-size:12px;padding:7px 16px;background:#009ee3;color:#fff;border-color:#009ee3;font-weight:700">
+                ⚡ Criar / Atualizar Plano no MP
+              </button>
             </div>
 
-            <!-- Badges de formas de pagamento aceitas -->
+            <!-- Grid do formulário -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+
+              <!-- Nome do plano -->
+              <div style="grid-column:1/-1">
+                <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">📝 Nome do plano (aparece no MP)</label>
+                <input id="rec-plano-titulo" type="text" placeholder="Ex: Mensalidade, Plano Ouro…"
+                  style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
+              </div>
+
+              <!-- Valor -->
+              <div>
+                <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">💰 Valor mensal (R$)</label>
+                <input id="rec-plano-valor" type="number" min="1" step="0.01" placeholder="10.00"
+                  style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
+              </div>
+
+              <!-- Dia de cobrança -->
+              <div>
+                <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">📅 Dia de cobrança (1-28)</label>
+                <input id="rec-plano-dia" type="number" min="1" max="28" placeholder="1"
+                  style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
+              </div>
+
+              <!-- Benefícios -->
+              <div style="grid-column:1/-1">
+                <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">🎁 Benefícios (mostrados na página /assinar)</label>
+                <input id="rec-plano-beneficios" type="text" placeholder="Ex: Acesso premium, Suporte prioritário…"
+                  style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
+              </div>
+
+            </div><!-- /grid -->
+
+            <!-- Badges de métodos aceitos -->
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
               <span style="background:#00c85320;border:1px solid #00c85350;border-radius:20px;padding:3px 10px;font-size:11px;color:#00c853">💳 Cartão crédito — qualquer banco</span>
               <span style="background:#00c85320;border:1px solid #00c85350;border-radius:20px;padding:3px 10px;font-size:11px;color:#00c853">💳 Cartão débito — qualquer banco</span>
@@ -2001,36 +2039,54 @@
               <span style="background:#9c27b020;border:1px solid #9c27b050;border-radius:20px;padding:3px 10px;font-size:11px;color:#ce93d8">💙 Saldo Mercado Pago</span>
             </div>
 
-            <div style="font-size:11px;color:#555;background:#ffffff05;border-radius:8px;padding:10px;margin-bottom:10px;line-height:1.5">
-              🔄 <strong style="color:#29b6f6">Como funciona:</strong> O cliente acessa <code style="color:#ce93d8">/assinar</code>, preenche nome/e-mail e autoriza <strong style="color:#fff">1 única vez</strong> com o método que preferir (cartão, PIX ou saldo MP). Após isso, o Mercado Pago cobra automaticamente todo mês — sem enviar nada para o cliente!
-            </div>
-            <div id="rec-plano-status" style="font-size:12px;color:#aaa;background:#009ee310;border:1px solid #009ee330;border-radius:8px;padding:10px;display:none">
+            <!-- Status do plano ativo -->
+            <div id="rec-plano-status" style="font-size:12px;color:#aaa;background:#009ee310;border:1px solid #009ee330;border-radius:8px;padding:10px;margin-bottom:8px;display:none">
               Carregando status do plano...
             </div>
-            <div id="rec-criar-plano-msg" style="font-size:12px;margin-top:8px;display:none"></div>
-          </div>
+            <div id="rec-criar-plano-msg" style="font-size:12px;margin-top:6px;display:none"></div>
+          </div><!-- /configurar plano -->
 
-          <!-- Como compartilhar o link de assinatura -->
+          <!-- ▸ LINK DE ASSINATURA + SELETOR DE AFILIADO ───────────────────── -->
           <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:#0a0a1a">
-            <div style="font-size:12px;font-weight:700;color:#009ee3;margin-bottom:10px">📤 Como adicionar novos assinantes</div>
-            <div style="font-size:12px;color:#888;line-height:1.7;margin-bottom:10px">
-              Compartilhe o link abaixo com o cliente. Ele acessa, preenche os dados e autoriza o débito automático no Mercado Pago.<br>
-              <strong style="color:#fff">Após autorizar 1 vez, todas as cobranças são automáticas — sem precisar enviar nada!</strong>
+            <div style="font-size:12px;font-weight:700;color:#009ee3;margin-bottom:12px">📤 Link de Assinatura — por Afiliado</div>
+
+            <!-- Seletor de afiliado -->
+            <div style="margin-bottom:10px">
+              <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">🤝 Selecionar afiliado (opcional)</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <select id="rec-link-afiliado" onchange="recAtualizarLinkAfiliado()"
+                  style="flex:1;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
+                  <option value="">— Sem afiliado (link genérico) —</option>
+                </select>
+                <button onclick="recCarregarAfiliados()" class="action-btn" style="font-size:12px;padding:8px 12px;white-space:nowrap">🔄</button>
+              </div>
+              <div style="font-size:10px;color:#555;margin-top:4px">Ao selecionar um afiliado, o link gerado inclui <code style="color:#888">?ref=CODIGO</code> — as assinaturas ficam vinculadas a ele.</div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;background:#ffffff08;border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+
+            <!-- Link gerado -->
+            <div style="font-size:11px;color:#666;margin-bottom:4px">🔗 Link gerado:</div>
+            <div style="display:flex;align-items:center;gap:8px;background:#ffffff08;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px">
               <code id="rec-link-assinar" style="color:#ce93d8;font-size:12px;flex:1;word-break:break-all">https://paynexbet.com/assinar</code>
               <button onclick="copiar(document.getElementById('rec-link-assinar').textContent)" class="action-btn" style="font-size:11px;padding:5px 10px;white-space:nowrap">📋 Copiar</button>
             </div>
-            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-              <button onclick="window.open('https://paynexbet.com/assinar','_blank')" class="action-btn" style="font-size:12px;padding:7px 14px;background:#009ee310;border-color:#009ee350;color:#29b6f6">🔗 Abrir página</button>
-              <button onclick="recGerarQRAssinar()" class="action-btn" style="font-size:12px;padding:7px 14px">📷 Gerar QR Code</button>
+
+            <!-- Botões de ação -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <button onclick="window.open(document.getElementById('rec-link-assinar').textContent,'_blank')" class="action-btn"
+                style="font-size:12px;padding:7px 14px;background:#009ee310;border-color:#009ee350;color:#29b6f6">🔗 Abrir página</button>
+              <button onclick="recGerarQRAssinar()" class="action-btn" style="font-size:12px;padding:7px 14px">📷 QR Code</button>
             </div>
-            <div id="rec-qr-inline" style="margin-top:12px;display:none;text-align:center">
-              <img id="rec-qr-img" src="" style="width:160px;height:160px;border-radius:10px;border:2px solid #9c27b0"/>
-              <div style="font-size:11px;color:#555;margin-top:6px">Imprima ou envie este QR para o cliente escanear</div>
+
+            <!-- QR Code inline -->
+            <div id="rec-qr-inline" style="display:none;text-align:center;margin-top:8px">
+              <img id="rec-qr-img" src="" style="width:180px;height:180px;border-radius:10px;border:2px solid #9c27b0"/>
+              <div style="font-size:11px;color:#555;margin-top:6px">Escaneie ou compartilhe este QR</div>
+              <button onclick="copiar(document.getElementById('rec-link-assinar').textContent)" class="action-btn"
+                style="font-size:11px;margin-top:6px;padding:5px 12px">📋 Copiar link</button>
             </div>
+
             <div id="rec-cadastro-msg" style="font-size:12px;margin-top:8px;display:none"></div>
-          </div>
+          </div><!-- /link afiliado -->
 
           <!-- Tabela assinantes -->
           <div style="overflow-x:auto;padding:0 16px 16px">
@@ -4355,8 +4411,9 @@ document.addEventListener('DOMContentLoaded', () => {
   mp2CarregarComissoes();
   bot2CarregarTotaisParcerios();
   botConfigCarregar();  // carrega configurações da página /bot e /pix
-  recCarregarStats();      // carrega stats de recorrências
-  recCarregarPlanoStatus(); // carrega status do plano preapproval
+  recCarregarStats();        // carrega stats de recorrências
+  recCarregarPlanoStatus();  // carrega status do plano preapproval + preenche form
+  recCarregarAfiliados();    // popula select de afiliados no link de assinatura
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -4516,50 +4573,102 @@ async function recCancelar(id) {
 }
 
 async function recCriarPlanoMP() {
-  const msg = document.getElementById('rec-criar-plano-msg');
+  const msg  = document.getElementById('rec-criar-plano-msg');
+  const btn  = document.getElementById('rec-btn-criar-plano');
+  if (!msg) return;
   msg.style.display = 'block';
-  msg.style.color   = '#aaa';
-  msg.textContent   = '⏳ Criando plano no Mercado Pago...';
+
+  // Coleta valores do formulário
+  const titulo    = document.getElementById('rec-plano-titulo')?.value.trim()    || '';
+  const valor     = parseFloat(document.getElementById('rec-plano-valor')?.value) || 0;
+  const dia       = parseInt(document.getElementById('rec-plano-dia')?.value)     || 1;
+  const beneficios= document.getElementById('rec-plano-beneficios')?.value.trim() || '';
+
+  if (!titulo) {
+    msg.style.color = '#f44'; msg.textContent = '❌ Informe o nome do plano.'; return;
+  }
+  if (valor < 1) {
+    msg.style.color = '#f44'; msg.textContent = '❌ Valor mínimo: R$ 1,00.'; return;
+  }
+
+  msg.style.color = '#aaa';
+  msg.textContent = '💾 Salvando configurações do plano...';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Aguarde...'; }
+
   try {
-    const r = await fetch(`${BASE}/api/assinar/criar-plano`, {
+    // 1) Salva config do plano no banco
+    const rCfg = await fetch(`${BASE}/api/assinar/config`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      body: JSON.stringify({ titulo, descricao: titulo, valor, dia, beneficios, ativo: true })
+    });
+    const dCfg = await rCfg.json();
+    if (!dCfg.success) {
+      msg.style.color = '#f44'; msg.textContent = '❌ Erro ao salvar config: ' + (dCfg.error||'desconhecido'); return;
+    }
+
+    // 2) Cria / atualiza plano no Mercado Pago
+    msg.textContent = '⚡ Criando plano no Mercado Pago...';
+    const rMP = await fetch(`${BASE}/api/assinar/criar-plano`, {
       method:  'POST',
       headers: {'X-PaynexBet-Secret': SECRET()}
     });
-    const d = await r.json();
-    if (d.success) {
+    const dMP = await rMP.json();
+
+    if (dMP.success) {
       msg.style.color = '#00c853';
-      msg.innerHTML   = `✅ Plano criado! ID: <code style="color:#ce93d8">${d.plan_id}</code><br>
-        <a href="${d.init_point}" target="_blank" style="color:#009ee3">🔗 Ver plano no Mercado Pago</a>`;
-      // Mostra status do plano
+      msg.innerHTML   = `✅ Plano criado/atualizado! ID: <code style="color:#ce93d8">${dMP.plan_id}</code> &nbsp;
+        <a href="${dMP.init_point}" target="_blank" style="color:#009ee3">🔗 Ver no Mercado Pago</a>`;
+      // Atualiza painel de status
       const status = document.getElementById('rec-plano-status');
-      status.style.display = 'block';
-      status.innerHTML = `💙 <strong>Plano ativo:</strong> ID <code style="color:#ce93d8">${d.plan_id}</code> | <a href="${d.init_point}" target="_blank" style="color:#009ee3">Abrir no MP</a>`;
+      if (status) {
+        status.style.display = 'block';
+        status.style.background = '#009ee310'; status.style.borderColor = '#009ee330';
+        status.innerHTML = `💙 <strong style="color:#29b6f6">Plano ativo:</strong> <code style="color:#ce93d8">${dMP.plan_id}</code>
+          | Valor: <strong>R$ ${parseFloat(valor).toFixed(2).replace('.',',')}</strong>/mês
+          | <a href="${dMP.init_point}" target="_blank" style="color:#009ee3">🔗 Abrir no MP</a>`;
+      }
     } else {
       msg.style.color = '#f44336';
-      msg.textContent = '❌ ' + (d.error || 'Erro ao criar plano');
+      msg.textContent = '❌ ' + (dMP.error || 'Erro ao criar plano no MP');
     }
   } catch(e) {
     msg.style.color = '#f44336';
     msg.textContent = '❌ Erro: ' + e.message;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⚡ Criar / Atualizar Plano no MP'; }
   }
 }
 
 async function recCarregarPlanoStatus() {
   try {
+    // Carrega config do plano (titulo, valor, dia, beneficios)
+    const rCfg = await fetch(`${BASE}/api/assinar/config?secret=${encodeURIComponent(SECRET())}`);
+    if (rCfg.ok) {
+      const cfg = await rCfg.json();
+      if (cfg.titulo)     { const el = document.getElementById('rec-plano-titulo');    if (el) el.value = cfg.titulo; }
+      if (cfg.valor)      { const el = document.getElementById('rec-plano-valor');     if (el) el.value = parseFloat(cfg.valor).toFixed(2); }
+      if (cfg.dia)        { const el = document.getElementById('rec-plano-dia');       if (el) el.value = cfg.dia; }
+      if (cfg.beneficios) { const el = document.getElementById('rec-plano-beneficios');if (el) el.value = cfg.beneficios; }
+    }
+
+    // Carrega status do plano MP
     const r = await fetch(`${BASE}/api/assinar/plano?secret=${encodeURIComponent(SECRET())}`);
     const d = await r.json();
     const el = document.getElementById('rec-plano-status');
     if (!el) return;
     if (d.success && d.plan_id) {
       el.style.display = 'block';
-      el.innerHTML = `💙 <strong style="color:#29b6f6">Plano ativo no MP:</strong> ID <code style="color:#ce93d8">${d.plan_id}</code> | Valor: <strong>R$ ${parseFloat(d.valor||0).toFixed(2).replace('.',',')}</strong>/mês | <a href="${d.init_point||'#'}" target="_blank" style="color:#009ee3">🔗 Abrir no MP</a>`;
+      el.style.background = '#009ee310'; el.style.borderColor = '#009ee330';
+      el.innerHTML = `💙 <strong style="color:#29b6f6">Plano ativo no MP:</strong> ID <code style="color:#ce93d8">${d.plan_id}</code>
+        | Valor: <strong>R$ ${parseFloat(d.valor||0).toFixed(2).replace('.',',')}</strong>/mês
+        | <a href="${d.init_point||'#'}" target="_blank" style="color:#009ee3">🔗 Abrir no MP</a>`;
     } else {
       el.style.display = 'block';
-      el.style.background = '#f4433610';
-      el.style.borderColor = '#f4433330';
-      el.innerHTML = '⚠️ Nenhum plano configurado ainda. Clique em <strong>⚡ Criar/Atualizar Plano MP</strong> para criar.';
+      el.style.background = '#f4433610'; el.style.borderColor = '#f4433330';
+      el.innerHTML = '⚠️ Nenhum plano configurado ainda. Preencha o formulário acima e clique em <strong>⚡ Criar / Atualizar Plano no MP</strong>.';
     }
-  } catch(e) {}
+  } catch(e) { console.warn('recCarregarPlanoStatus:', e); }
 }
 
 async function recDispararJob() {
@@ -4577,13 +4686,49 @@ async function recDispararJob() {
 }
 
 async function recGerarQRAssinar() {
-  const link   = `${location.origin}/assinar`;
+  // Usa o link já gerado (pode incluir ?ref= do afiliado selecionado)
+  const linkEl = document.getElementById('rec-link-assinar');
+  const link   = linkEl ? linkEl.textContent.trim() : `${location.origin}/assinar`;
   const qrUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&color=006db3&bgcolor=ffffff&data=${encodeURIComponent(link)}&qzone=2`;
   const wrap   = document.getElementById('rec-qr-inline');
   const img    = document.getElementById('rec-qr-img');
   if (!wrap || !img) return;
   img.src = qrUrl;
   wrap.style.display = 'block';
+}
+
+// Carrega afiliados no <select> do painel Débito Automático
+async function recCarregarAfiliados() {
+  const sel = document.getElementById('rec-link-afiliado');
+  if (!sel) return;
+  try {
+    const r = await fetch(`${BASE}/api/mp2/parceiros?secret=${encodeURIComponent(SECRET())}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    const lista = d.parceiros || d.items || d || [];
+    // Mantém a opção "Sem afiliado"
+    sel.innerHTML = '<option value="">— Sem afiliado (link genérico) —</option>';
+    lista.filter(p => p.ativo !== false).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.codigo || p.code || '';
+      opt.textContent = `${p.nome || p.name || p.codigo} (${p.codigo || ''})`;
+      sel.appendChild(opt);
+    });
+    recAtualizarLinkAfiliado();
+  } catch(e) { console.warn('recCarregarAfiliados:', e); }
+}
+
+// Atualiza o link gerado quando o afiliado muda
+function recAtualizarLinkAfiliado() {
+  const sel    = document.getElementById('rec-link-afiliado');
+  const linkEl = document.getElementById('rec-link-assinar');
+  const qrWrap = document.getElementById('rec-qr-inline');
+  if (!linkEl) return;
+  const base = `${location.origin}/assinar`;
+  const ref  = sel ? sel.value.trim() : '';
+  linkEl.textContent = ref ? `${base}?ref=${encodeURIComponent(ref)}` : base;
+  // Fecha QR code ao trocar afiliado (evita QR obsoleto)
+  if (qrWrap) qrWrap.style.display = 'none';
 }
 
 // ═══════════════════════════════════════════════════════════════════
