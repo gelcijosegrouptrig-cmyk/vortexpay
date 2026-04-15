@@ -348,7 +348,7 @@ body{
         <div class="mp-info-icon">💙</div>
         <div class="mp-info-txt">
           <strong>Funciona com qualquer banco!</strong>
-          O Mercado Pago aceita <strong style="color:#fff">cartão de crédito/débito de qualquer banco</strong>, PIX de qualquer banco, ou saldo MP. Não é obrigatório ter conta no Mercado Pago — você pode pagar com cartão do Nubank, Itaú, Bradesco, etc.
+          O débito automático funciona via <strong style="color:#fff">PIX de qualquer banco</strong> ou saldo Mercado Pago. O cliente autoriza <strong style="color:#fff">uma única vez</strong> — a partir daí o Mercado Pago cobra todo mês automaticamente, sem precisar fazer nada.
         </div>
       </div>
       <div class="mp-info" style="background:#9c27b010;border-color:#9c27b040;margin-top:8px">
@@ -382,36 +382,52 @@ body{
   <!-- STEP 3 — Autorização MP -->
   <div class="step-auth" id="step-auth">
     <div class="auth-header">
-      <h3>🔗 Autorize no Mercado Pago</h3>
-      <p>Clique no botão abaixo e autorize o débito automático</p>
+      <h3>🔵 Autorize o Débito Automático via PIX</h3>
+      <p>Escaneie o QR Code <strong>no app do seu banco</strong> ou clique no botão para abrir o Mercado Pago</p>
     </div>
     <div class="auth-body">
 
+      <!-- QR Code de autorização -->
+      <div id="auth-qr-wrap" style="text-align:center;margin:0 0 16px">
+        <div id="auth-qr-loading" style="color:#aaa;font-size:13px;padding:20px">⏳ Gerando QR Code...</div>
+        <img id="auth-qr-img" src="" alt="QR Code autorização" style="display:none;width:200px;height:200px;border-radius:12px;border:3px solid #009ee3;margin:0 auto;display:none"/>
+      </div>
+
+      <!-- Botão principal: abre init_point -->
       <a id="mp-link" href="#" target="_blank" class="mp-btn" onclick="onClickMP()">
         <div class="mp-btn-icon">💙</div>
         <div class="mp-btn-txt">
-          <span class="mp-btn-main">Autorizar no Mercado Pago</span>
-          <span class="mp-btn-sub">Abre o app ou site do Mercado Pago</span>
+          <span class="mp-btn-main">Abrir no Mercado Pago</span>
+          <span class="mp-btn-sub">Autorize via app, site ou PIX de qualquer banco</span>
         </div>
       </a>
 
-      <div class="instrucoes">
-        <div class="instrucoes-title">Passo a passo</div>
+      <!-- Link copia e cola -->
+      <div id="auth-link-wrap" style="display:none;margin:10px 0 4px">
+        <div style="font-size:11px;color:#666;margin-bottom:4px">🔗 Ou copie e cole o link de autorização:</div>
+        <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid #333;border-radius:8px;padding:8px 12px">
+          <code id="auth-link-txt" style="color:#29b6f6;font-size:11px;flex:1;word-break:break-all;white-space:pre-wrap"></code>
+          <button onclick="copiarLink()" style="background:#009ee3;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap">📋 Copiar</button>
+        </div>
+      </div>
+
+      <div class="instrucoes" style="margin-top:14px">
+        <div class="instrucoes-title">Como funciona</div>
         <div class="inst-item">
           <div class="inst-num">1</div>
-          <div class="inst-txt">Clique no botão azul acima — o Mercado Pago abrirá</div>
+          <div class="inst-txt">Escaneie o QR Code acima <strong>no app do seu banco</strong> (como se fosse pagar um PIX)</div>
         </div>
         <div class="inst-item">
           <div class="inst-num">2</div>
-          <div class="inst-txt">Entre com sua conta MP <strong>ou use cartão/PIX de qualquer banco</strong></div>
+          <div class="inst-txt">Você será direcionado ao Mercado Pago para <strong>autorizar o débito automático</strong></div>
         </div>
         <div class="inst-item">
           <div class="inst-num">3</div>
-          <div class="inst-txt">Confirme a assinatura e clique em <strong>"Autorizar"</strong></div>
+          <div class="inst-txt">Confirme e clique em <strong>"Autorizar"</strong> — feito apenas 1 vez!</div>
         </div>
         <div class="inst-item">
           <div class="inst-num">4</div>
-          <div class="inst-txt">Pronto! As cobranças serão automáticas todo mês</div>
+          <div class="inst-txt">✅ Pronto! O Mercado Pago cobra <strong>automaticamente todo mês</strong> via PIX</div>
         </div>
       </div>
 
@@ -435,7 +451,7 @@ body{
     </div>
     <div class="ok-sub">
       🔄 <strong>Como funciona agora:</strong><br>
-      Todo mês o Mercado Pago cobra automaticamente no mesmo meio de pagamento que você autorizou (cartão de crédito, débito ou PIX). Você recebe notificação a cada cobrança.<br><br>
+      Todo mês o Mercado Pago cobra automaticamente via PIX — sem precisar fazer nada! Você receberá uma notificação a cada cobrança realizada.<br><br>
       🚫 <strong>Para cancelar:</strong> Acesse o app Mercado Pago → Assinaturas → Cancelar.
     </div>
   </div>
@@ -563,7 +579,25 @@ async function iniciarAssinatura() {
     const initPoint = d.init_point;
 
     // Atualiza botão de link MP
-    document.getElementById('mp-link').href = initPoint;
+    document.getElementById('mp-link').href = initPoint || '#';
+
+    // ── Gera QR Code do init_point usando qrserver API ──────────────────
+    if (initPoint) {
+      const qrImg  = document.getElementById('auth-qr-img');
+      const qrLoad = document.getElementById('auth-qr-loading');
+      const qrUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(initPoint)}`;
+      qrImg.src    = qrUrl;
+      qrImg.style.display = 'block';
+      if (qrLoad) qrLoad.style.display = 'none';
+
+      // Mostra link copia e cola
+      const linkWrap = document.getElementById('auth-link-wrap');
+      const linkTxt  = document.getElementById('auth-link-txt');
+      if (linkWrap && linkTxt) {
+        linkTxt.textContent = initPoint;
+        linkWrap.style.display = 'block';
+      }
+    }
 
     // Atualiza card de sucesso com nome
     const vFmt = 'R$ ' + parseFloat(cfg.valor||10).toFixed(2).replace('.',',');
@@ -580,6 +614,29 @@ async function iniciarAssinatura() {
 
   } catch(e) {
     showErro('Erro de rede: ' + e.message);
+  }
+}
+
+// ── Copiar link de autorização ──────────────────────────────────
+function copiarLink() {
+  const txt = document.getElementById('auth-link-txt');
+  if (!txt) return;
+  const link = txt.textContent.trim();
+  if (!link) return;
+  try {
+    navigator.clipboard.writeText(link).then(() => {
+      const btn = event.currentTarget;
+      const orig = btn.textContent;
+      btn.textContent = '✅ Copiado!';
+      btn.style.background = '#00c853';
+      setTimeout(() => { btn.textContent = orig; btn.style.background = '#009ee3'; }, 2000);
+    });
+  } catch(e) {
+    const el = document.createElement('textarea');
+    el.value = link;
+    document.body.appendChild(el); el.select(); document.execCommand('copy');
+    document.body.removeChild(el);
+    alert('Link copiado!');
   }
 }
 

@@ -174,25 +174,54 @@ def mp2_creditar_comissao_indicacao(referidor_id: int, novo_usuario_id: int):
     pass
 
 # ─── GERAR PIX (MERCADO PAGO) ─────────────────────────────────────────────────
-def mp2_gerar_pix(telegram_id: int, valor: float, nome_pagador: str = 'Cliente', descricao: str = '') -> dict:
+def mp2_gerar_pix(
+    telegram_id: int,
+    valor: float,
+    nome_pagador: str = 'Cliente',
+    descricao: str = '',
+    email_pagador: str = '',
+    cpf_pagador: str = '',
+    expiracao_minutos: int = 30,
+) -> dict:
     """
-    Gera cobrança Pix via Mercado Pago.
-    Retorna: {success, pix_copia_cola, qr_base64, payment_id, external_ref, valor}
+    Gera cobrança Pix via Mercado Pago (Checkout API).
+    Conforme docs: https://www.mercadopago.com.br/developers/pt/docs/checkout-api-payments/integration-configuration/integrate-pix
+    Retorna: {success, pix_copia_cola, qr_base64, ticket_url, payment_id, external_ref, valor}
     """
     if not MP2_ACCESS_TOKEN:
         return {'success': False, 'error': 'Token Mercado Pago não configurado. Contate o suporte.'}
 
     external_ref = f"mp2_{telegram_id}_{int(time.time())}_{uuid.uuid4().hex[:8]}"
 
+    # Calcular data de expiração (padrão 30 minutos, máximo 30 dias)
+    expiracao_minutos = max(30, min(expiracao_minutos, 43200))  # 30min a 30 dias
+    from datetime import datetime, timezone, timedelta
+    data_expiracao = (datetime.now(timezone.utc) + timedelta(minutes=expiracao_minutos)).strftime('%Y-%m-%dT%H:%M:%S.000-03:00')
+
+    # Email padrão se não fornecido
+    email = email_pagador if email_pagador else f"user_{telegram_id}@paypixnex.com"
+
+    # Payer base
+    payer: dict = {
+        "email": email,
+        "first_name": nome_pagador,
+    }
+
+    # Adicionar CPF ao payer se informado (melhora aprovação)
+    cpf_limpo = ''.join(filter(str.isdigit, cpf_pagador)) if cpf_pagador else ''
+    if len(cpf_limpo) == 11:
+        payer["identification"] = {
+            "type": "CPF",
+            "number": cpf_limpo
+        }
+
     payload = {
         "transaction_amount": float(round(valor, 2)),
-        "description": f"Depósito PayPixNex - ID {telegram_id}",
+        "description": descricao if descricao else f"Depósito PayPixNex - ID {telegram_id}",
         "payment_method_id": "pix",
         "external_reference": external_ref,
-        "payer": {
-            "email": f"user_{telegram_id}@paypixnex.com",
-            "first_name": nome_pagador
-        }
+        "date_of_expiration": data_expiracao,
+        "payer": payer,
     }
 
     headers = {
@@ -215,10 +244,12 @@ def mp2_gerar_pix(telegram_id: int, valor: float, nome_pagador: str = 'Cliente',
             print(f'[mp2_gerar_pix] Erro MP: {resp.status_code} — {erro}', flush=True)
             return {'success': False, 'error': f'Erro ao gerar Pix: {erro}'}
 
+        # Extrair dados PIX conforme doc MP
         pix_info = data.get('point_of_interaction', {}).get('transaction_data', {})
         pix_copia_cola = pix_info.get('qr_code', '')
-        qr_base64 = pix_info.get('qr_code_base64', '')
-        payment_id = str(data.get('id', ''))
+        qr_base64      = pix_info.get('qr_code_base64', '')
+        ticket_url     = pix_info.get('ticket_url', '')
+        payment_id     = str(data.get('id', ''))
 
         # Salvar transação no banco
         _mp2_salvar_transacao(
@@ -232,14 +263,16 @@ def mp2_gerar_pix(telegram_id: int, valor: float, nome_pagador: str = 'Cliente',
             pix_qr_base64=qr_base64
         )
 
-        print(f'✅ [mp2_gerar_pix] Pix gerado: {payment_id} R${valor} — {external_ref}', flush=True)
+        print(f'✅ [mp2_gerar_pix] Pix gerado: {payment_id} R${valor} exp:{expiracao_minutos}min — {external_ref}', flush=True)
         return {
-            'success': True,
-            'payment_id': payment_id,
-            'external_ref': external_ref,
+            'success':        True,
+            'payment_id':     payment_id,
+            'external_ref':   external_ref,
             'pix_copia_cola': pix_copia_cola,
-            'qr_base64': qr_base64,
-            'valor': valor
+            'qr_base64':      qr_base64,
+            'ticket_url':     ticket_url,
+            'valor':          valor,
+            'expira_em':      expiracao_minutos,
         }
 
     except requests.exceptions.Timeout:
@@ -264,7 +297,10 @@ def mp2_verificar_pagamento(payment_id: str) -> dict:
             'status_detail': data.get('status_detail', ''),
             'valor': data.get('transaction_amount', 0),
             'external_ref': data.get('external_reference', ''),
-            'data_aprovacao': data.get('date_approved', '')
+            'data_aprovacao': data.get('date_approved', ''),
+            'ticket_url': data.get('point_of_interaction', {}).get('transaction_data', {}).get('ticket_url', ''),
+            'qr_code':    data.get('point_of_interaction', {}).get('transaction_data', {}).get('qr_code', ''),
+            'qr_base64':  data.get('point_of_interaction', {}).get('transaction_data', {}).get('qr_code_base64', ''),
         }
     except Exception as e:
         print(f'[mp2_verificar_pagamento] Erro: {e}', flush=True)

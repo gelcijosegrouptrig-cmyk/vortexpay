@@ -286,6 +286,10 @@ input:checked~.toggle-thumb{transform:translateX(20px)}
         <div class="pix-code" id="pix-code-txt">—</div>
       </div>
       <button class="btn-copy" id="btn-copy" onclick="copiarPix()">📋 Copiar código PIX</button>
+      <!-- Botão ticket_url: abre página de pagamento do Mercado Pago -->
+      <a id="btn-ticket-url" href="#" target="_blank" rel="noopener" style="display:none;margin-top:10px;text-decoration:none;width:100%;justify-content:center;align-items:center;gap:8px;padding:12px 16px;background:#009ee3;color:#fff;border-radius:10px;font-size:14px;font-weight:600;">
+        🔗 Pagar pelo app Mercado Pago
+      </a>
       <div class="timer-box">
         <div class="timer-label">Aguardando pagamento</div>
         <div class="timer-bar-wrap">
@@ -445,6 +449,8 @@ async function gerarPix(){
   const ref    = params.get('ref') || '';
   const valor  = getValor();
   const nome   = document.getElementById('nome-input').value.trim();
+  const email  = (document.getElementById('email-input') || {value:''}).value.trim();
+  const cpf    = (document.getElementById('cpf-input')   || {value:''}).value.trim();
 
   const min = parseFloat(cfg.min_valor) || 5;
   const max = parseFloat(cfg.max_valor) || 10000;
@@ -465,6 +471,9 @@ async function gerarPix(){
       descricao: cfg.descricao || 'PIX PayPixNex',
       ref,
       nome: nome || 'Cliente',
+      email: email || '',
+      cpf:   cpf   || '',
+      expiracao_minutos: 30,
     };
 
     const r = await fetch(`${BASE}/api/bot/gerar`, {
@@ -480,14 +489,26 @@ async function gerarPix(){
 
     pixPaymentId = d.payment_id;
 
-    // Preenche QR e código
+    // Preenche QR Code (base64 direto do Mercado Pago)
     if(d.qr_base64){
       const img = document.getElementById('qr-img');
-      img.src    = 'data:image/png;base64,' + d.qr_base64;
+      img.src    = 'data:image/jpeg;base64,' + d.qr_base64;
       img.style.display = 'block';
       document.getElementById('qr-placeholder').style.display = 'none';
     }
     document.getElementById('pix-code-txt').textContent = d.pix_copia_cola || '—';
+
+    // Botão alternativo: abrir link de pagamento MP (ticket_url)
+    const btnTicket = document.getElementById('btn-ticket-url');
+    if(btnTicket){
+      if(d.ticket_url){
+        btnTicket.href = d.ticket_url;
+        btnTicket.style.display = 'inline-flex';
+      } else {
+        btnTicket.style.display = 'none';
+      }
+    }
+
     showStep('pix');
 
     // Se recorrente, cadastra no sistema antes de mostrar PIX

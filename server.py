@@ -6077,6 +6077,10 @@ async def route_bot_gerar(request):
         valor         = float(data.get('valor', 0))
         desc          = str(data.get('descricao', '')).strip() or 'PIX PayPixNex'
         parceiro_ref  = str(data.get('ref', '')).strip()  # código do parceiro afiliado
+        nome_pag      = str(data.get('nome', 'Cliente')).strip() or 'Cliente'
+        email_pag     = str(data.get('email', '')).strip()
+        cpf_pag       = str(data.get('cpf', '')).strip()
+        expira_min    = int(data.get('expiracao_minutos', 30))
 
         if valor < 5:
             return web.json_response({'success': False, 'error': 'Valor mínimo R$ 5,00'})
@@ -6118,7 +6122,11 @@ async def route_bot_gerar(request):
         resultado = mp2_gerar_pix(
             telegram_id=0,
             valor=valor,
-            descricao=desc
+            nome_pagador=nome_pag,
+            descricao=desc,
+            email_pagador=email_pag,
+            cpf_pagador=cpf_pag,
+            expiracao_minutos=expira_min,
         )
 
         if not resultado.get('success'):
@@ -6156,7 +6164,9 @@ async def route_bot_gerar(request):
             'external_ref':   resultado.get('external_ref', ''),
             'pix_copia_cola': resultado.get('pix_copia_cola', ''),
             'qr_base64':      resultado.get('qr_base64', ''),
+            'ticket_url':     resultado.get('ticket_url', ''),
             'valor':          valor,
+            'expira_em':      resultado.get('expira_em', 30),
             'parceiro':       parceiro['nome'] if parceiro else None,
         })
 
