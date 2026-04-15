@@ -723,14 +723,14 @@
           <div class="wallet-main">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <div class="label">Saldo Total</div>
-              <button onclick="loadSaldo()" title="Buscar saldo real do bot Telegram agora"
+              <button id="btn-atualizar-saldo" onclick="atualizarSaldoForce()" title="Buscar saldo real do bot Telegram agora"
                 style="background:var(--primary);border:none;border-radius:8px;padding:4px 10px;color:#fff;font-size:12px;cursor:pointer;font-weight:600">
                 🔄 Atualizar Saldo
               </button>
               <span id="saldo-bot-status" style="font-size:11px;color:var(--text3)"></span>
             </div>
             <div class="valor" id="w-saldo">R$ —</div>
-            <div class="sub">VortexBank Digital — <span style="font-size:11px;color:var(--text3)">auto-refresh desativado para proteger o bot</span></div>
+            <div class="sub">VortexBank Digital — <span id="saldo-bot-fonte" style="font-size:11px;color:var(--text3)">atualizando...</span></div>
             <div class="wallet-account">
               Conta: <span id="w-conta">Carregando...</span>
             </div>
@@ -1980,9 +1980,50 @@ async function tgSolicitarCodigo() {
 // ═══════════════════════════════════════════════
 //  SALDO
 // ═══════════════════════════════════════════════
+
+// Botão manual — força consulta real ao bot Telegram
+async function atualizarSaldoForce() {
+  const btn      = document.getElementById('btn-atualizar-saldo');
+  const statusEl = document.getElementById('saldo-bot-status');
+  const fonteEl  = document.getElementById('saldo-bot-fonte');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Buscando...'; }
+  if (statusEl) statusEl.textContent = '⏳ Consultando bot Telegram...';
+  if (fonteEl)  fonteEl.textContent  = 'consultando...';
+  try {
+    const r = await fetch(`${BASE}/api/saldo/bot?secret=${encodeURIComponent(SECRET())}&force=1`);
+    const d = await r.json();
+    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
+    if (d.success && d.saldo_bot >= 0) {
+      document.getElementById('w-saldo').textContent      = fmt(d.saldo_bot);
+      document.getElementById('w-disponivel').textContent = fmt(d.saldo_bot);
+      document.getElementById('m-saldo').textContent      = fmt(d.saldo_bot);
+      saldoBot = d.saldo_bot; disponivelBot = d.saldo_bot;
+      const agora = new Date().toLocaleTimeString('pt-BR');
+      const src   = d.fonte === 'telegram' ? '🟢 tempo real' : '📦 cache';
+      if (statusEl) statusEl.textContent = `✅ ${fmt(d.saldo_bot)} · ${agora}`;
+      if (fonteEl)  fonteEl.textContent  = `${src} · ${agora}`;
+    } else if (d.atualizando) {
+      if (statusEl) statusEl.textContent = '⏳ Bot respondendo... aguarde 5s';
+      if (fonteEl)  fonteEl.textContent  = 'aguardando bot...';
+      setTimeout(() => loadSaldo(), 5000);
+    } else {
+      if (statusEl) statusEl.textContent = `⚠️ ${d.error || 'Sem resposta do bot'}`;
+      if (fonteEl)  fonteEl.textContent  = '⚠️ usando banco local';
+      // Mostrar pelo menos o saldo local
+      loadSaldo();
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '❌ Erro de conexão';
+    if (fonteEl)  fonteEl.textContent  = '⚠️ usando banco local';
+    loadSaldo();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Atualizar Saldo'; }
+  }
+}
+
 async function loadSaldo() {
   try {
-    // Buscar saldo local, stats e saldo real do bot em paralelo
+    // Saldo local e cache do bot em paralelo — RÁPIDO (não trava)
     const [rSaldo, rStats, rBot] = await Promise.all([
       fetch(`${BASE}/api/saldo`),
       fetch(`${BASE}/api/stats?secret=${encodeURIComponent(SECRET())}`),
@@ -1994,41 +2035,49 @@ async function loadSaldo() {
     const dep  = dSt.depositos || {};
     const saq  = dSt.saques    || {};
 
-    // Saldo local (base de cálculo contábil)
-    const saldoLocal     = d.saldo      || 0;
+    const saldoLocal      = d.saldo      || 0;
     const disponivelLocal = d.disponivel || 0;
+    const saldoBotReal    = (dBot.success && dBot.saldo_bot >= 0) ? dBot.saldo_bot : null;
 
-    // Saldo real do bot (se disponível)
-    const saldoBotReal = (dBot.success && dBot.saldo_bot >= 0) ? dBot.saldo_bot : null;
-
-    // Usar saldo real do bot para exibição principal, fallback para local
     saldoBot      = saldoBotReal !== null ? saldoBotReal : saldoLocal;
     disponivelBot = saldoBotReal !== null ? saldoBotReal : disponivelLocal;
 
     const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
 
     // ── Dashboard card ──
-    document.getElementById('m-saldo').textContent       = fmt(saldoBot);
-    document.getElementById('m-disponivel').textContent  = `Disponível: ${fmt(disponivelBot)}`;
+    document.getElementById('m-saldo').textContent      = fmt(saldoBot);
+    document.getElementById('m-disponivel').textContent = `Disponível: ${fmt(disponivelBot)}`;
     const horaEl = document.getElementById('m-saldo-hora');
     if (horaEl) horaEl.textContent = `atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
 
-    // ── Carteira — cabeçalho ──
-    document.getElementById('w-saldo').textContent       = fmt(saldoBot);
-    document.getElementById('w-disponivel').textContent  = fmt(disponivelBot);
-    document.getElementById('w-conta').textContent       = '5956000812 (bin cash)';
-    // Mostrar horário da última consulta real ao bot
+    // ── Carteira ──
+    document.getElementById('w-saldo').textContent      = fmt(saldoBot);
+    document.getElementById('w-disponivel').textContent = fmt(disponivelBot);
+    document.getElementById('w-conta').textContent      = '5956000812 (bin cash)';
+
     const statusEl = document.getElementById('saldo-bot-status');
+    const fonteEl  = document.getElementById('saldo-bot-fonte');
+    const agora    = new Date().toLocaleTimeString('pt-BR');
     if (statusEl) {
-      const fonte = saldoBotReal !== null ? '✅ bot Telegram' : '⚠️ banco local';
-      statusEl.textContent = `${fonte} · ${new Date().toLocaleTimeString('pt-BR')}`;
+      statusEl.textContent = saldoBotReal !== null
+        ? `✅ ${fmt(saldoBotReal)} · cache ${dBot.cache_age || 0}s`
+        : `⚠️ banco local · clique 🔄 para atualizar`;
     }
-    document.getElementById('w-depositado').textContent  = fmt(dep.valor_recebido || d.total_depositado || 0);
-    document.getElementById('w-sacado').textContent      = fmt(saq.valor_sacado   || d.total_sacado    || 0);
+    if (fonteEl) {
+      if (saldoBotReal !== null) {
+        const age = dBot.cache_age || 0;
+        fonteEl.textContent = `📦 cache (${age < 60 ? age+'s' : Math.floor(age/60)+'min'}) · ${agora}`;
+      } else {
+        fonteEl.textContent = `⚠️ banco local · ${agora}`;
+      }
+    }
+
+    document.getElementById('w-depositado').textContent = fmt(dep.valor_recebido || d.total_depositado || 0);
+    document.getElementById('w-sacado').textContent     = fmt(saq.valor_sacado   || d.total_sacado    || 0);
 
     // ── Resumo financeiro completo ──
     const depFull = {
-      valor_recebido:  dep.valor_recebido || d.total_depositado  || 0,
+      valor_recebido:  dep.valor_recebido || d.total_depositado   || 0,
       valor_pendente:  dep.valor_pendente || d.depositos_pendentes || 0,
       total:           dep.confirmados    || dep.total || 0,
       qtd_total:       dep.total          || 0,

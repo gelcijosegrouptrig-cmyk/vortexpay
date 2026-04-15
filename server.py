@@ -47,6 +47,12 @@ _telegram_reconectando = False   # flag para evitar reconexões simultâneas
 _sessao_salva_em = 0             # timestamp do último save de sessão
 PHONE_NUMBER = os.environ.get('TELEGRAM_PHONE', '')  # número de telefone Telegram (env var preferida)
 
+# ─── CACHE DE SALDO BOT ───────────────────────────────────────────────────────
+_saldo_bot_cache        = -1.0   # último saldo conhecido
+_saldo_bot_cache_ts     = 0      # timestamp da última atualização
+_saldo_bot_atualizando  = False  # evita chamadas simultâneas
+SALDO_BOT_CACHE_TTL     = 300    # 5 minutos
+
 # ─── CANAIS TELEGRAM ─────────────────────────────────────────────────────────
 # IDs salvos após criação via /api/admin/criar-canais
 CANAL_NOTIF_ID   = int(os.environ.get('CANAL_NOTIF_ID', '0'))   # Canal de Notificações
@@ -4233,20 +4239,73 @@ async def route_admin_page(request):
     return web.Response(text=load_admin_html(), content_type='text/html', charset='utf-8')
 
 async def route_saldo_bot(request):
-    """Consulta saldo real do bot Telegram em tempo real."""
-    # Verificar autenticação — aceita secret via header/query OU acesso público com ?pub=1
+    """Consulta saldo do bot Telegram — retorna cache imediato, atualiza em background."""
     secret = request.headers.get('X-PaynexBet-Secret') or request.rel_url.query.get('secret', '')
     pub = request.rel_url.query.get('secret', '') == 'pub'
     if not pub and secret != WEBHOOK_SECRET:
         return web.json_response({'success': False, 'error': 'Não autorizado'}, status=401)
-    try:
-        saldo = await verificar_saldo_bot()
-        if saldo >= 0:
-            return web.json_response({'success': True, 'saldo_bot': saldo, 'fonte': 'telegram'})
-        else:
-            return web.json_response({'success': False, 'saldo_bot': -1, 'error': 'Não foi possível obter saldo do bot'})
-    except Exception as e:
-        return web.json_response({'success': False, 'saldo_bot': -1, 'error': str(e)})
+
+    global _saldo_bot_cache, _saldo_bot_cache_ts, _saldo_bot_atualizando
+    forcar = request.rel_url.query.get('force', '') == '1'
+    agora  = time.time()
+    cache_valido = (agora - _saldo_bot_cache_ts) < SALDO_BOT_CACHE_TTL
+
+    # Se cache válido e não forçado — retorna imediatamente
+    if cache_valido and not forcar and _saldo_bot_cache >= 0:
+        return web.json_response({
+            'success': True,
+            'saldo_bot': _saldo_bot_cache,
+            'fonte': 'cache',
+            'cache_age': int(agora - _saldo_bot_cache_ts),
+            'proximo_refresh': int(SALDO_BOT_CACHE_TTL - (agora - _saldo_bot_cache_ts))
+        })
+
+    # Se forçado ou cache expirado — atualiza em background e retorna cache atual
+    if not _saldo_bot_atualizando:
+        _saldo_bot_atualizando = True
+        async def _atualizar_cache():
+            global _saldo_bot_cache, _saldo_bot_cache_ts, _saldo_bot_atualizando
+            try:
+                novo_saldo = await asyncio.wait_for(verificar_saldo_bot(), timeout=30)
+                if novo_saldo >= 0:
+                    _saldo_bot_cache    = novo_saldo
+                    _saldo_bot_cache_ts = time.time()
+                    print(f'✅ [saldo_cache] Atualizado: R$ {novo_saldo:.2f}', flush=True)
+            except asyncio.TimeoutError:
+                print('⚠️ [saldo_cache] Timeout ao consultar bot (30s)', flush=True)
+            except Exception as _e:
+                print(f'⚠️ [saldo_cache] Erro: {_e}', flush=True)
+            finally:
+                _saldo_bot_atualizando = False
+        asyncio.create_task(_atualizar_cache())
+
+    # Retorna cache atual enquanto atualiza (ou -1 se nunca foi consultado)
+    if _saldo_bot_cache >= 0:
+        return web.json_response({
+            'success': True,
+            'saldo_bot': _saldo_bot_cache,
+            'fonte': 'cache_atualizando' if _saldo_bot_atualizando else 'cache',
+            'atualizando': _saldo_bot_atualizando,
+            'cache_age': int(agora - _saldo_bot_cache_ts)
+        })
+
+    # Primeira consulta — aguarda até 25s pelo resultado real
+    if forcar:
+        try:
+            saldo = await asyncio.wait_for(verificar_saldo_bot(), timeout=25)
+            if saldo >= 0:
+                _saldo_bot_cache    = saldo
+                _saldo_bot_cache_ts = time.time()
+                return web.json_response({'success': True, 'saldo_bot': saldo, 'fonte': 'telegram'})
+        except Exception:
+            pass
+
+    return web.json_response({
+        'success': False,
+        'saldo_bot': -1,
+        'atualizando': True,
+        'error': 'Consultando saldo... aguarde alguns segundos e atualize novamente.'
+    })
 
 
 async def route_saldo(request):
