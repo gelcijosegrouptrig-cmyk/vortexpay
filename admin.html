@@ -588,10 +588,11 @@
       </div>
       <div class="nav-item" onclick="showTab('paypix')">
         💸 <span>PayPix</span>
+        <span style="font-size:9px;background:#1a3a1a;color:#4ade80;padding:2px 5px;border-radius:4px;margin-left:2px">VORTEX</span>
       </div>
       <div class="nav-section">Bots</div>
       <div class="nav-item" onclick="showTab('bot2')">
-        🤖 <span>@paypix_nexbot</span>
+        🤖 <span>Bot Mercado Pago</span>
         <span class="badge" id="badge-bot2" style="background:#555">OFF</span>
       </div>
       <div class="nav-section">Desenvolvedores</div>
@@ -1101,6 +1102,18 @@
       <!-- ═══════ PAYPIX ═══════ -->
       <div id="tab-paypix" class="tab-content">
 
+        <!-- Banner de identificação -->
+        <div style="display:flex;align-items:center;gap:12px;background:#0a1a0a;border:1px solid #22c55e44;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+          <div style="font-size:28px">💸</div>
+          <div>
+            <div style="font-weight:800;font-size:16px;color:#4ade80">PayPix — Vortex Wallet</div>
+            <div style="font-size:12px;color:#666;margin-top:2px">Integração via Telegram · Chave PIX do parceiro gera e recebe direto · <span style="color:#4ade80">paynexbet.com/paypix</span></div>
+          </div>
+          <div style="margin-left:auto">
+            <span style="font-size:11px;background:#22c55e22;color:#4ade80;border:1px solid #22c55e44;padding:4px 10px;border-radius:20px;font-weight:700">🔗 VORTEX</span>
+          </div>
+        </div>
+
         <!-- Métricas PayPix -->
         <div class="metrics-grid" style="margin-bottom:20px">
           <div class="metric-card green">
@@ -1286,6 +1299,18 @@
 
       <!-- ═══ BOT 2 — @paypix_nexbot ═══ -->
       <div id="tab-bot2" class="tab-content">
+
+        <!-- Banner de identificação -->
+        <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid #f59e0b44;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+          <div style="font-size:28px">🤖</div>
+          <div>
+            <div style="font-weight:800;font-size:16px;color:#f59e0b">Bot Mercado Pago — @paypix_nexbot</div>
+            <div style="font-size:12px;color:#666;margin-top:2px">Bot separado do PayPix Vortex · Usa Mercado Pago para processar PIX · <span style="color:#f59e0b">paynexbet.com/pix</span></div>
+          </div>
+          <div style="margin-left:auto">
+            <span style="font-size:11px;background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44;padding:4px 10px;border-radius:20px;font-weight:700">💳 MERCADO PAGO</span>
+          </div>
+        </div>
 
         <!-- Status do Bot2 -->
         <div class="metrics-grid" style="margin-bottom:20px">
@@ -1551,9 +1576,13 @@
                     style="width:100%;background:#0a0a14;border:2px solid #7c3aed22;border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;font-family:monospace">
                 </div>
                 <div>
-                  <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Chave PIX *</label>
-                  <input type="text" id="p-chave-pix" placeholder="email@exemplo.com"
-                    style="width:100%;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
+                  <label style="font-size:11px;color:#22c55e;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">
+                    🏦 Chave PIX para Saque Automático *
+                  </label>
+                  <input type="text" id="p-chave-pix" placeholder="email@exemplo.com ou CPF (11 dígitos)"
+                    oninput="mp2PreviewComissao()"
+                    style="width:100%;background:#0a0a14;border:2px solid #22c55e55;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
+                  <div style="font-size:11px;color:#555;margin-top:4px">💡 Quando o pagamento for confirmado, a comissão é enviada automaticamente para esta chave</div>
                 </div>
                 <div>
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Tipo da Chave *</label>
@@ -1566,13 +1595,38 @@
                     <option value="aleatoria">Chave Aleatória</option>
                   </select>
                 </div>
-                <div>
-                  <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">% Comissão *</label>
-                  <div style="display:flex;align-items:center;gap:8px">
+                <div style="grid-column:1/-1">
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">% Comissão por Pagamento *</label>
+                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
                     <input type="number" id="p-comissao" min="1" max="50" value="10"
-                      style="width:80px;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;text-align:center">
-                    <span style="color:#a855f7;font-weight:700;font-size:16px">%</span>
-                    <span style="font-size:12px;color:#666">do valor pago</span>
+                      oninput="mp2PreviewComissao()"
+                      style="width:90px;background:#0a0a14;border:2px solid #a855f7;border-radius:8px;padding:10px 12px;color:#a855f7;font-size:22px;font-weight:900;text-align:center;font-family:monospace">
+                    <span style="color:#a855f7;font-weight:700;font-size:22px">%</span>
+                    <span style="font-size:12px;color:#666">do valor pago pelo cliente</span>
+                  </div>
+                  <!-- Preview visual da comissão -->
+                  <div id="p-comissao-preview" style="background:#0a0a1a;border:1px solid #a855f733;border-radius:10px;padding:12px 16px">
+                    <div style="font-size:11px;color:#666;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">📊 Simulação de comissão</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+                      <div>
+                        <div style="font-size:11px;color:#666">Cliente paga</div>
+                        <div style="font-size:15px;font-weight:700;color:#fff">R$ 50,00</div>
+                        <div id="p-sim-50" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 5,00</div>
+                      </div>
+                      <div>
+                        <div style="font-size:11px;color:#666">Cliente paga</div>
+                        <div style="font-size:15px;font-weight:700;color:#fff">R$ 100,00</div>
+                        <div id="p-sim-100" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 10,00</div>
+                      </div>
+                      <div>
+                        <div style="font-size:11px;color:#666">Cliente paga</div>
+                        <div style="font-size:15px;font-weight:700;color:#fff">R$ 500,00</div>
+                        <div id="p-sim-500" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 50,00</div>
+                      </div>
+                    </div>
+                    <div style="margin-top:10px;padding:8px;background:#22c55e11;border-radius:8px;text-align:center;font-size:12px;color:#4ade80">
+                      ✅ Valor enviado automaticamente via PIX para: <span id="p-sim-chave" style="font-family:monospace;color:#a855f7">—</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2093,7 +2147,7 @@ function showTab(tab) {
     sistema: '🖥️ Sistema',
     paypix: '💸 PayPix',
     api: '🔌 API & Webhooks',
-    bot2: '🤖 @paypix_nexbot',
+    bot2: '🤖 Bot Mercado Pago — @paypix_nexbot',
   };
   document.getElementById('page-title').textContent = titles[tab] || tab;
   fecharSidebar();
