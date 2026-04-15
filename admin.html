@@ -1873,10 +1873,9 @@
         <!-- ═══ ASSINATURAS RECORRENTES ═══ -->
         <div class="table-card" style="margin-bottom:16px">
           <div class="table-header">
-            <h3>🔄 Assinaturas Mensais Recorrentes</h3>
+            <h3>💙 Débito Automático — Assinaturas Mensais</h3>
             <div style="display:flex;gap:8px;align-items:center">
               <button onclick="recCarregarLista()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
-              <button onclick="recDispararJob()" class="action-btn" style="font-size:12px;padding:6px 12px;background:#9c27b0;color:#fff;border-color:#9c27b0">⚡ Cobrar Vencidos</button>
             </div>
           </div>
 
@@ -1915,36 +1914,25 @@
             <div id="rec-criar-plano-msg" style="font-size:12px;margin-top:8px;display:none"></div>
           </div>
 
-          <!-- Formulário: adicionar novo assinante manual -->
+          <!-- Como compartilhar o link de assinatura -->
           <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:#0a0a1a">
-            <div style="font-size:12px;font-weight:700;color:#9c27b0;margin-bottom:10px">➕ Cadastrar Assinante Manual (PIX gerado pelo admin)</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-              <div>
-                <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">Nome *</div>
-                <input id="rec-nome" type="text" placeholder="Ex: João da Silva" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
-              </div>
-              <div>
-                <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">Valor R$ *</div>
-                <input id="rec-valor" type="number" placeholder="10.00" min="1" step="0.01" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
-              </div>
-              <div>
-                <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">Dia Vencimento (1-28)</div>
-                <input id="rec-dia" type="number" placeholder="1" min="1" max="28" value="1" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
-              </div>
-              <div>
-                <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">Descrição</div>
-                <input id="rec-desc" type="text" placeholder="Mensalidade" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
-              </div>
-              <div>
-                <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">WhatsApp (opcional)</div>
-                <input id="rec-tel" type="tel" placeholder="(11)99999-9999" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
-              </div>
-              <div>
-                <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase">Parceiro (ref, opcional)</div>
-                <input id="rec-ref" type="text" placeholder="Código parceiro" style="width:100%;padding:8px 12px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
-              </div>
+            <div style="font-size:12px;font-weight:700;color:#009ee3;margin-bottom:10px">📤 Como adicionar novos assinantes</div>
+            <div style="font-size:12px;color:#888;line-height:1.7;margin-bottom:10px">
+              Compartilhe o link abaixo com o cliente. Ele acessa, preenche os dados e autoriza o débito automático no Mercado Pago.<br>
+              <strong style="color:#fff">Após autorizar 1 vez, todas as cobranças são automáticas — sem precisar enviar nada!</strong>
             </div>
-            <button onclick="recCadastrar()" class="action-btn" style="background:#9c27b0;color:#fff;border-color:#9c27b0;padding:9px 20px;font-size:13px">✅ Cadastrar e Gerar PIX Manual</button>
+            <div style="display:flex;align-items:center;gap:8px;background:#ffffff08;border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+              <code id="rec-link-assinar" style="color:#ce93d8;font-size:12px;flex:1;word-break:break-all">https://paynexbet.com/assinar</code>
+              <button onclick="copiar(document.getElementById('rec-link-assinar').textContent)" class="action-btn" style="font-size:11px;padding:5px 10px;white-space:nowrap">📋 Copiar</button>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <button onclick="window.open('https://paynexbet.com/assinar','_blank')" class="action-btn" style="font-size:12px;padding:7px 14px;background:#009ee310;border-color:#009ee350;color:#29b6f6">🔗 Abrir página</button>
+              <button onclick="recGerarQRAssinar()" class="action-btn" style="font-size:12px;padding:7px 14px">📷 Gerar QR Code</button>
+            </div>
+            <div id="rec-qr-inline" style="margin-top:12px;display:none;text-align:center">
+              <img id="rec-qr-img" src="" style="width:160px;height:160px;border-radius:10px;border:2px solid #9c27b0"/>
+              <div style="font-size:11px;color:#555;margin-top:6px">Imprima ou envie este QR para o cliente escanear</div>
+            </div>
             <div id="rec-cadastro-msg" style="font-size:12px;margin-top:8px;display:none"></div>
           </div>
 
@@ -1961,9 +1949,28 @@
             </table>
           </div>
 
-          <div style="padding:12px 16px;background:#0a0a1a;border-top:1px solid var(--border);font-size:11px;color:#555;border-radius:0 0 12px 12px">
-            💙 <b style="color:#009ee3">Débito Automático (Preapproval):</b> Cliente autoriza 1× no MP → cobranças automáticas todo mês sem ação necessária.<br>
-            🔄 <b style="color:#9c27b0">PIX Manual:</b> Job automático (a cada 6h) gera QR PIX no dia do vencimento. Cliente acessa <code style="color:#ce93d8">/pagar/{id}</code> para pagar.
+          <div style="padding:14px 16px;background:#060612;border-top:1px solid var(--border);border-radius:0 0 12px 12px">
+            <div style="font-size:12px;font-weight:700;color:#29b6f6;margin-bottom:10px">💙 Como funciona o Débito Automático</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11px">
+              <div style="background:#009ee315;border:1px solid #009ee340;border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:20px;margin-bottom:6px">1️⃣</div>
+                <strong style="color:#29b6f6">Cliente acessa /assinar</strong><br>
+                <span style="color:#666">Preenche nome e e-mail</span>
+              </div>
+              <div style="background:#9c27b015;border:1px solid #9c27b040;border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:20px;margin-bottom:6px">2️⃣</div>
+                <strong style="color:#ce93d8">Autoriza 1 vez no MP</strong><br>
+                <span style="color:#666">Clica no botão azul e autoriza</span>
+              </div>
+              <div style="background:#00c85315;border:1px solid #00c85340;border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:20px;margin-bottom:6px">3️⃣</div>
+                <strong style="color:#00c853">Automático para sempre</strong><br>
+                <span style="color:#666">MP debita todo mês sozinho</span>
+              </div>
+            </div>
+            <div style="margin-top:10px;background:#f4433610;border:1px solid #f4433330;border-radius:8px;padding:10px;font-size:11px;color:#ef9a9a">
+              🚫 <strong>Não há envio de QR Code mensal.</strong> O Mercado Pago debita automaticamente da conta do cliente todo mês. O cliente cancela pelo próprio app do Mercado Pago quando quiser.
+            </div>
           </div>
         </div><!-- /assinaturas recorrentes -->
 
@@ -4448,16 +4455,27 @@ async function recCarregarPlanoStatus() {
 }
 
 async function recDispararJob() {
-  if(!confirm('Disparar o job de cobranças agora?\nIsso gerará PIX para todos os assinantes com vencimento hoje ou em atraso.')) return;
+  // Mantido apenas para compatibilidade — não é mais o fluxo principal
+  if(!confirm('Disparar cobranças manuais?\n\nNota: O fluxo principal é o Débito Automático via Mercado Pago.\nEste job só afeta assinantes do tipo Manual.')) return;
   try {
     const r = await fetch(`${BASE}/api/recorrente/job`, {
       method:'POST',
       headers:{'X-PaynexBet-Secret':SECRET()}
     });
     const d = await r.json();
-    alert(`✅ Job executado!\n${d.pix_gerados||0} PIX gerados`);
+    alert(`✅ Job executado!\n${d.pix_gerados||0} cobranças manuais processadas`);
     recCarregarLista();
   } catch(e) { alert('Erro: '+e.message); }
+}
+
+async function recGerarQRAssinar() {
+  const link   = `${location.origin}/assinar`;
+  const qrUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&color=006db3&bgcolor=ffffff&data=${encodeURIComponent(link)}&qzone=2`;
+  const wrap   = document.getElementById('rec-qr-inline');
+  const img    = document.getElementById('rec-qr-img');
+  if (!wrap || !img) return;
+  img.src = qrUrl;
+  wrap.style.display = 'block';
 }
 
 // ═══════════════════════════════════════════════════════════════════
