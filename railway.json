@@ -2,8 +2,8 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "rebuildTimestamp": "20260415151904",
-    "forceBust": "fix-parceiros-sql-20260415151904"
+    "rebuildTimestamp": "20260415152230",
+    "forceBust": "v31-parceiros-20260415152230"
   },
   "deploy": {
     "startCommand": "bash start.sh",
@@ -15,5 +15,6 @@
   "_rebuild": "20260413132213",
   "rebuildTimestamp": 1776102118857,
   "forceRebuild": true,
-  "bust": "manual-force-1776100930"
+  "bust": "manual-force-1776100930",
+  "_forceNew": "20260415152230"
 }
