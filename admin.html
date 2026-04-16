@@ -1066,22 +1066,22 @@
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div>
                   <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">👥 Participantes</label>
-                  <input id="sc-part-manual" type="number" min="0" placeholder="auto (calculado)" 
+                  <input id="sc-part-manual" type="text" inputmode="numeric" placeholder="auto (calculado) — ex: 500"
                     style="width:100%;background:#3b82f610;border:1px solid #3b82f640;border-radius:8px;padding:10px;color:#60a5fa;font-size:14px;font-weight:700">
                 </div>
                 <div>
                   <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">🎫 Total Bilhetes</label>
-                  <input id="sc-bilhetes-manual" type="number" min="0" placeholder="auto (calculado)"
+                  <input id="sc-bilhetes-manual" type="text" inputmode="numeric" placeholder="auto (calculado) — ex: 10000"
                     style="width:100%;background:#d97706 10;border:1px solid #d9770640;border-radius:8px;padding:10px;color:#fbbf24;font-size:14px;font-weight:700">
                 </div>
                 <div>
                   <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">💰 Total Depositado (R$)</label>
-                  <input id="sc-deposito-manual" type="number" min="0" step="0.01" placeholder="auto (calculado)"
+                  <input id="sc-deposito-manual" type="text" inputmode="decimal" placeholder="auto (calculado) — ex: 1500,00"
                     style="width:100%;background:#f9731610;border:1px solid #f9731640;border-radius:8px;padding:10px;color:#fb923c;font-size:14px;font-weight:700">
                 </div>
                 <div>
                   <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">🏆 Prêmio Estimado (R$)</label>
-                  <input id="sc-premio-manual" type="number" min="0" step="0.01" placeholder="auto (% do total)"
+                  <input id="sc-premio-manual" type="text" inputmode="decimal" placeholder="auto (% do total) — ex: 750,00"
                     style="width:100%;background:#22c55e10;border:1px solid #22c55e40;border-radius:8px;padding:10px;color:#4ade80;font-size:14px;font-weight:700">
                 </div>
               </div>
@@ -4681,23 +4681,33 @@ async function carregarSorteioAdmin() {
     // Cards de métricas — usa valor manual se configurado, senão usa calculado
     const partVal    = s.part_manual     != null ? s.part_manual     : s.total_participantes;
     const bilhVal    = s.bilhetes_manual != null ? s.bilhetes_manual : (s.total_bilhetes || 0);
-    const depVal     = s.deposito_manual != null ? s.deposito_manual : (s.total_depositado || s.total_saldo || 0);
-    const premioVal  = s.premio_manual   != null ? s.premio_manual   : s.premio_estimado_total;
+    const depVal     = parseFloat(s.deposito_manual != null ? s.deposito_manual : (s.total_depositado || s.total_saldo || 0)) || 0;
+    const premioVal  = parseFloat(s.premio_manual   != null ? s.premio_manual   : (s.premio_estimado_total || 0)) || 0;
 
-    document.getElementById('s-total-part').textContent = partVal;
+    // Formatar número com separador de milhar (pt-BR)
+    const _fmtNum = (n) => Number(n || 0).toLocaleString('pt-BR');
+    const _fmtBRL = (n) => `R$ ${Number(n || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+
+    document.getElementById('s-total-part').textContent = _fmtNum(partVal);
     if (document.getElementById('s-total-bilhetes'))
-      document.getElementById('s-total-bilhetes').textContent = bilhVal;
-    document.getElementById('s-total-saldo').textContent = `R$ ${depVal.toFixed(2).replace('.',',')}`;
-    document.getElementById('s-premio').textContent = `R$ ${premioVal.toFixed(2).replace('.',',')}`;
+      document.getElementById('s-total-bilhetes').textContent = _fmtNum(bilhVal);
+    document.getElementById('s-total-saldo').textContent = _fmtBRL(depVal);
+    document.getElementById('s-premio').textContent = _fmtBRL(premioVal);
     if (document.getElementById('s-premio-sub'))
       document.getElementById('s-premio-sub').textContent = `${s.percentual||50}% do total · enviado via Pix`;
 
     // Preencher campos de ajuste manual com valores salvos (vazio = auto)
-    const _setManual = (id, val) => { const el = document.getElementById(id); if (el) el.value = val != null ? val : ''; };
-    _setManual('sc-part-manual',     s.part_manual);
-    _setManual('sc-bilhetes-manual', s.bilhetes_manual);
-    _setManual('sc-deposito-manual', s.deposito_manual);
-    _setManual('sc-premio-manual',   s.premio_manual);
+    // Para campos de texto: exibe inteiro sem decimais para contagens, string limpa para R$
+    const _setManual = (id, val, decimais) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (val == null) { el.value = ''; return; }
+      el.value = decimais ? Number(val).toFixed(decimais).replace('.',',') : String(Math.round(Number(val)));
+    };
+    _setManual('sc-part-manual',     s.part_manual,     0);
+    _setManual('sc-bilhetes-manual', s.bilhetes_manual, 0);
+    _setManual('sc-deposito-manual', s.deposito_manual, 2);
+    _setManual('sc-premio-manual',   s.premio_manual,   2);
 
     // Preencher config
     document.getElementById('sc-descricao').value = s.descricao || '';
@@ -4792,7 +4802,15 @@ async function carregarParticipantes() {
 async function salvarConfigSorteio() {
   const secret = sessionStorage.getItem('vp_secret');
   const proxVal = document.getElementById('sc-proximo').value;
-  const _toNum = (id) => { const v = document.getElementById(id)?.value?.trim(); return v === '' || v == null ? null : parseFloat(v); };
+  // Aceita formatos pt-BR: "10.000", "10000", "1.500,50" → número JS
+  const _toNum = (id) => {
+    const v = document.getElementById(id)?.value?.trim();
+    if (v === '' || v == null) return null;
+    // Remove pontos de milhar, troca vírgula decimal por ponto
+    const clean = v.replace(/\./g,'').replace(',','.');
+    const n = parseFloat(clean);
+    return isNaN(n) ? null : n;
+  };
   const body = {
     descricao: document.getElementById('sc-descricao').value,
     percentual: parseFloat(document.getElementById('sc-percentual').value) || 50,

@@ -538,9 +538,14 @@ async function carregarInfo() {
     const r = await fetch(BASE+'/api/sorteio/info');
     info = await r.json();
     const s = info.sorteio;
+    // Helpers de formatação pt-BR com separador de milhar
+    const _fmtNum = (n) => Number(n || 0).toLocaleString('pt-BR');
+    const _fmtBRL = (n) => 'R$ ' + Number(n || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
     document.getElementById('desc-sorteio').textContent = s.descricao;
-    document.getElementById('st-part').textContent = s.total_participantes;
-    const premioExato = s.premio_estimado_total || 0;
+    // Participantes: usa manual se configurado
+    const partExib = s.part_manual != null ? s.part_manual : (s.total_participantes || 0);
+    document.getElementById('st-part').textContent = _fmtNum(partExib);
+    const premioExato = parseFloat(s.premio_manual != null ? s.premio_manual : (s.premio_estimado_total || 0)) || 0;
     const acumExato   = s.premio_acumulado || 0;
     const pct         = s.percentual || 50;
     // Atualizar badge de última atualização
@@ -552,11 +557,11 @@ async function carregarInfo() {
       const ss = String(agora.getSeconds()).padStart(2,'0');
       badge.textContent = `✅ Atualizado às ${hh}:${mm}:${ss} — auto-refresh 30s`;
     }
-    const totalDep    = s.total_depositado || 0;
+    const totalDep    = parseFloat(s.deposito_manual != null ? s.deposito_manual : (s.total_depositado || 0)) || 0;
     const premioBase  = Math.round((totalDep * pct / 100) * 100) / 100;
 
     // Atualizar valor principal
-    document.getElementById('st-premio').textContent = 'R$ '+premioExato.toFixed(2).replace('.',',');
+    document.getElementById('st-premio').textContent = _fmtBRL(premioExato);
 
     // Atualizar breakdown
     const elBreakdown = document.getElementById('st-breakdown');
@@ -567,19 +572,20 @@ async function carregarInfo() {
     const elTotalLbl  = document.getElementById('st-total-label');
     if (elBreakdown) {
       elBreakdown.style.display = 'block';
-      if (elBase)  elBase.textContent  = 'R$ '+premioBase.toFixed(2).replace('.',',');
+      if (elBase)  elBase.textContent  = _fmtBRL(premioBase);
       if (elPct)   elPct.textContent   = pct.toFixed(0);
-      if (elTotalLbl) elTotalLbl.textContent = 'R$ '+premioExato.toFixed(2).replace('.',',');
+      if (elTotalLbl) elTotalLbl.textContent = _fmtBRL(premioExato);
       // Linha de acumulado sempre visível (mesmo R$0,00)
       if (elAcumRow && elAcumVal) {
         elAcumRow.style.display = 'flex';
-        elAcumVal.textContent = 'R$ '+acumExato.toFixed(2).replace('.',',');
+        elAcumVal.textContent = _fmtBRL(acumExato);
       }
     }
 
-    // Participantes e bilhetes
+    // Participantes e bilhetes — respeita valores manuais
+    const bilhExib = s.bilhetes_manual != null ? s.bilhetes_manual : (s.total_bilhetes || 0);
     const elBilhetes = document.getElementById('st-bilhetes');
-    if (elBilhetes) elBilhetes.textContent = s.total_bilhetes || 0;
+    if (elBilhetes) elBilhetes.textContent = _fmtNum(bilhExib);
 
     // ── Atualizar card de prêmio na tela principal (aba Meus Nºs) ──
     const elHomePremio  = document.getElementById('home-premio');
@@ -589,13 +595,13 @@ async function carregarInfo() {
     const elHomePctLbl  = document.getElementById('home-pct-label');
     const elHomeAcumVal = document.getElementById('home-acum-valor');
     const elHomeTotalLbl = document.getElementById('home-total-label');
-    if (elHomePremio)   elHomePremio.textContent  = 'R$ '+premioExato.toFixed(2).replace('.',',');
-    if (elHomePart)     elHomePart.textContent     = s.total_participantes || 0;
-    if (elHomeBil)      elHomeBil.textContent      = s.total_bilhetes || 0;
-    if (elHomeBaseVal)  elHomeBaseVal.textContent  = 'R$ '+premioBase.toFixed(2).replace('.',',');
+    if (elHomePremio)   elHomePremio.textContent  = _fmtBRL(premioExato);
+    if (elHomePart)     elHomePart.textContent     = _fmtNum(partExib);
+    if (elHomeBil)      elHomeBil.textContent      = _fmtNum(bilhExib);
+    if (elHomeBaseVal)  elHomeBaseVal.textContent  = _fmtBRL(premioBase);
     if (elHomePctLbl)   elHomePctLbl.textContent   = pct.toFixed(0);
-    if (elHomeAcumVal)  elHomeAcumVal.textContent  = 'R$ '+(acumExato||0).toFixed(2).replace('.',',');
-    if (elHomeTotalLbl) elHomeTotalLbl.textContent = 'R$ '+premioExato.toFixed(2).replace('.',',');
+    if (elHomeAcumVal)  elHomeAcumVal.textContent  = _fmtBRL(acumExato);
+    if (elHomeTotalLbl) elHomeTotalLbl.textContent = _fmtBRL(premioExato);
 
     const vp = s.valor_por_numero || 5;
     const ri = document.getElementById('regra-itens');
