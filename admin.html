@@ -1085,7 +1085,10 @@
                     style="width:100%;background:#22c55e10;border:1px solid #22c55e40;border-radius:8px;padding:10px;color:#4ade80;font-size:14px;font-weight:700">
                 </div>
               </div>
-              <div style="font-size:11px;color:#555;margin-top:8px">💡 Deixe em branco para usar o valor calculado automaticamente pelos participantes reais</div>
+              <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <div style="font-size:11px;color:#555;flex:1">💡 Valores salvos são preservados. Deixe em branco = mantém o último valor salvo.</div>
+                <button onclick="limparManuais()" style="background:#ff444410;border:1px solid #ff444440;color:#f87171;border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;white-space:nowrap">🗑️ Limpar tudo (voltar ao auto)</button>
+              </div>
             </div>
 
           </div>
@@ -4797,6 +4800,24 @@ async function carregarParticipantes() {
   } catch(e) {
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#f66;padding:20px">Erro ao carregar</td></tr>';
   }
+}
+
+async function limparManuais() {
+  if (!confirm('Limpar todos os valores manuais e voltar ao cálculo automático?')) return;
+  ['sc-part-manual','sc-bilhetes-manual','sc-deposito-manual','sc-premio-manual'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const secret = sessionStorage.getItem('vp_secret');
+  try {
+    const r = await fetch(`${BASE}/api/sorteio/config/limpar-manuais`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret}
+    });
+    const d = await r.json();
+    if (d.success) { toast('🗑️ Valores manuais removidos — usando cálculo automático'); setTimeout(() => carregarSorteioAdmin(), 600); }
+    else toast('❌ ' + (d.error||'Erro'), 'error');
+  } catch(e) { toast('❌ Erro de conexão', 'error'); }
 }
 
 async function salvarConfigSorteio() {

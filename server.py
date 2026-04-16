@@ -1123,27 +1123,32 @@ def get_sorteio_config():
     cols = ['id','ativo','valor_por_numero','premio_fixo','percentual',
             'usar_media','dias_media','descricao','proximo_sorteio','updated_at',
             'paypix_pct','paypix_ativo','paypix_descricao','premio_acumulado',
-            'min_participantes','acumulativo']
-    select_cols = ', '.join(f'COALESCE({c}, NULL) AS {c}' if c not in ('id','ativo','descricao','proximo_sorteio','updated_at') else c for c in cols)
+            'min_participantes','acumulativo',
+            'part_manual','bilhetes_manual','deposito_manual','premio_manual']
+    cols_base = cols[:16]  # colunas sem os campos manuais (fallback)
     conn = sqlite3_connect()
     try:
         cur = conn.execute(f'SELECT {", ".join(cols)} FROM sorteio_config WHERE id=1')
         row = cur.fetchone()
-    except Exception:
-        # fallback: SELECT * com mapeamento por posição
-        cur = conn.execute('SELECT * FROM sorteio_config WHERE id=1')
-        row = cur.fetchone()
         conn.close()
         if row:
-            d = {}
-            for i, col in enumerate(cols):
-                d[col] = row[i] if i < len(row) else None
-            return d
+            return {col: row[i] for i, col in enumerate(cols)}
         return {}
-    conn.close()
-    if row:
-        return {col: row[i] for i, col in enumerate(cols)}
-    return {}
+    except Exception:
+        # Colunas manuais ainda não existem — tentar sem elas
+        try:
+            cur = conn.execute(f'SELECT {", ".join(cols_base)} FROM sorteio_config WHERE id=1')
+            row = cur.fetchone()
+            conn.close()
+            if row:
+                d = {col: row[i] for i, col in enumerate(cols_base)}
+                for c in ['part_manual','bilhetes_manual','deposito_manual','premio_manual']:
+                    d[c] = None
+                return d
+        except Exception:
+            pass
+        conn.close()
+        return {}
 
 def get_paypix_config():
     """Retorna configuração do PayPix (%, ativo, descrição, valor mínimo)"""
@@ -2772,11 +2777,15 @@ async def route_sorteio_config(request):
                 try: cur.execute(mig)
                 except Exception: pass
             pg.autocommit = False
+            # COALESCE: preserva valor existente quando frontend envia null (campo deixado em branco)
             cur.execute('''UPDATE sorteio_config SET
                 ativo=%s, valor_por_numero=%s, percentual=%s, usar_media=%s, dias_media=%s,
                 premio_fixo=%s, descricao=%s, proximo_sorteio=%s, updated_at=%s,
                 acumulativo=%s, min_participantes=%s,
-                part_manual=%s, bilhetes_manual=%s, deposito_manual=%s, premio_manual=%s
+                part_manual=COALESCE(%s, part_manual),
+                bilhetes_manual=COALESCE(%s, bilhetes_manual),
+                deposito_manual=COALESCE(%s, deposito_manual),
+                premio_manual=COALESCE(%s, premio_manual)
                 WHERE id=1''', params + (part_manual, bilhetes_manual, deposito_manual, premio_manual))
             pg.commit()
             pg.close()
@@ -2790,14 +2799,44 @@ async def route_sorteio_config(request):
             ]:
                 try: conn.execute(mig)
                 except Exception: pass
+            # COALESCE: preserva valor existente quando frontend envia null (campo deixado em branco)
             conn.execute('''UPDATE sorteio_config SET
                 ativo=?, valor_por_numero=?, percentual=?, usar_media=?, dias_media=?,
                 premio_fixo=?, descricao=?, proximo_sorteio=?, updated_at=?,
                 acumulativo=?, min_participantes=?,
-                part_manual=?, bilhetes_manual=?, deposito_manual=?, premio_manual=?
+                part_manual=COALESCE(?, part_manual),
+                bilhetes_manual=COALESCE(?, bilhetes_manual),
+                deposito_manual=COALESCE(?, deposito_manual),
+                premio_manual=COALESCE(?, premio_manual)
                 WHERE id=1''', params + (part_manual, bilhetes_manual, deposito_manual, premio_manual))
             conn.commit(); conn.close()
         return web.json_response({'success': True, 'message': 'Configuração salva!'})
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
+async def route_sorteio_limpar_manuais(request):
+    """ADMIN - Limpar todos os valores manuais dos cards (volta ao cálculo automático)"""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        if _USE_PG and DATABASE_URL:
+            import psycopg2
+            pg = psycopg2.connect(DATABASE_URL)
+            pg.autocommit = False
+            cur = pg.cursor()
+            cur.execute('''UPDATE sorteio_config SET
+                part_manual=NULL, bilhetes_manual=NULL, deposito_manual=NULL, premio_manual=NULL
+                WHERE id=1''')
+            pg.commit(); pg.close()
+        else:
+            conn = sqlite3_connect()
+            conn.execute('''UPDATE sorteio_config SET
+                part_manual=NULL, bilhetes_manual=NULL, deposito_manual=NULL, premio_manual=NULL
+                WHERE id=1''')
+            conn.commit(); conn.close()
+        return web.json_response({'success': True})
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
 
@@ -7645,6 +7684,7 @@ async def main():
     app.router.add_post('/api/sorteio/deposito', route_sorteio_adicionar_deposito)
     app.router.add_post('/api/sorteio/realizar', route_sorteio_realizar)
     app.router.add_post('/api/sorteio/config', route_sorteio_config)
+    app.router.add_post('/api/sorteio/config/limpar-manuais', route_sorteio_limpar_manuais)
     app.router.add_get('/api/sorteio/participantes', route_sorteio_participantes)
     app.router.add_post('/api/sorteio/acumular', route_sorteio_acumular)
     app.router.add_post('/api/sorteio/set-acumulado', route_sorteio_set_acumulado)
