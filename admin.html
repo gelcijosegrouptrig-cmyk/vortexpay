@@ -1045,6 +1045,12 @@
                 style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px">
             </div>
             <div>
+              <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">👥 Mín. participantes para sortear</label>
+              <input id="sc-min-participantes" type="number" value="1" min="1" step="1"
+                style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px">
+              <div style="font-size:11px;color:#666;margin-top:4px">Sorteio só ocorre quando atingir este número</div>
+            </div>
+            <div>
               <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Próximo sorteio (data/hora)</label>
               <input id="sc-proximo" type="datetime-local"
                 style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px">
@@ -4721,6 +4727,8 @@ async function carregarSorteioAdmin() {
       document.getElementById('sc-valor-por-numero').value = s.valor_por_numero || 5;
     if (document.getElementById('sc-premio-fixo'))
       document.getElementById('sc-premio-fixo').value = s.premio_fixo || 0;
+    if (document.getElementById('sc-min-participantes'))
+      document.getElementById('sc-min-participantes').value = s.min_participantes || 1;
 
     if (s.proximo_sorteio) {
       const d = new Date(s.proximo_sorteio);
@@ -4840,6 +4848,7 @@ async function salvarConfigSorteio() {
     ativo: document.getElementById('sc-ativo').checked ? 1 : 0,
     proximo_sorteio: proxVal ? new Date(proxVal).toISOString() : null,
     valor_por_numero: parseFloat(document.getElementById('sc-valor-por-numero')?.value) || 5,
+    min_participantes: parseInt(document.getElementById('sc-min-participantes')?.value) || 1,
     // Ajuste manual dos cards (null = usar valor calculado automaticamente)
     part_manual:     _toNum('sc-part-manual'),
     bilhetes_manual: _toNum('sc-bilhetes-manual'),

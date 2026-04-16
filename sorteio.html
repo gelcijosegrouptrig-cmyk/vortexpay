@@ -618,8 +618,13 @@ async function carregarInfo() {
     const elMinAviso = document.getElementById('home-min-aviso');
     const elMinNum   = document.getElementById('home-min-num');
     if (elMinAviso && elMinNum) {
-      elMinNum.textContent = minPart;
-      elMinAviso.style.display = (totalPart < minPart) ? 'block' : 'none';
+      // Só mostra aviso se min > 1 E ainda não atingiu o mínimo
+      if (minPart > 1 && totalPart < minPart) {
+        elMinNum.textContent = minPart;
+        elMinAviso.style.display = 'block';
+      } else {
+        elMinAviso.style.display = 'none';
+      }
     }
     if (s.proximo_sorteio) {
       // Converter para horário de Brasília (UTC-3)

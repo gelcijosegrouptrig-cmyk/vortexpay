@@ -2745,7 +2745,7 @@ async def route_sorteio_config(request):
             data.get('proximo_sorteio'),
             datetime.now().isoformat(),
             int(data.get('acumulativo', 1)),
-            int(data.get('min_participantes', 5)),
+            int(data.get('min_participantes', 1)),
         )
         # Campos de ajuste manual (None = usar valor calculado automaticamente)
         def _opt_float(key):
@@ -2767,7 +2767,7 @@ async def route_sorteio_config(request):
             cur = pg.cursor()
             for mig in [
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS acumulativo INTEGER DEFAULT 1",
-                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS min_participantes INTEGER DEFAULT 5",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS min_participantes INTEGER DEFAULT 1",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS premio_acumulado REAL DEFAULT 0",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS part_manual INTEGER DEFAULT NULL",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS bilhetes_manual INTEGER DEFAULT NULL",
@@ -3451,7 +3451,7 @@ async def route_db_migrate(request):
     migrations = [
         "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS premio_acumulado REAL DEFAULT 0",
         "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS acumulativo INTEGER DEFAULT 1",
-        "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS min_participantes INTEGER DEFAULT 5",
+        "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS min_participantes INTEGER DEFAULT 1",
         "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_pct REAL DEFAULT 0.6",
         "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_ativo INTEGER DEFAULT 1",
         "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_descricao TEXT DEFAULT 'Gere seu Pix e receba sua % do valor'",
