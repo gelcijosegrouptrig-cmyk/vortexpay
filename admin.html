@@ -4832,8 +4832,13 @@ async function salvarConfigSorteio() {
       body: JSON.stringify(body)
     });
     const data = await r.json();
-    if (data.success) toast('✅ Configuração salva!');
-    else toast('❌ ' + (data.error||'Erro'), 'error');
+    if (data.success) {
+      toast('✅ Configuração salva!');
+      // Recarregar cards imediatamente para refletir os novos valores
+      setTimeout(() => carregarSorteioAdmin(), 600);
+    } else {
+      toast('❌ ' + (data.error||'Erro'), 'error');
+    }
   } catch(e) { toast('❌ Erro de conexão', 'error'); }
 }
 
