@@ -2255,6 +2255,11 @@ async def route_sorteio_info(request):
             'premio_acumulado': round(_acumulado, 2),
             'acumulativo': bool(int(config.get('acumulativo') or 1)),
             'min_participantes': int(config.get('min_participantes') or 1),
+            # Ajustes manuais dos cards (None = usar calculado)
+            'part_manual':     int(config['part_manual'])     if config.get('part_manual')     is not None else None,
+            'bilhetes_manual': int(config['bilhetes_manual']) if config.get('bilhetes_manual') is not None else None,
+            'deposito_manual': float(config['deposito_manual']) if config.get('deposito_manual') is not None else None,
+            'premio_manual':   float(config['premio_manual'])   if config.get('premio_manual')   is not None else None,
         },
         'historico': historico,
     }
@@ -2737,8 +2742,20 @@ async def route_sorteio_config(request):
             int(data.get('acumulativo', 1)),
             int(data.get('min_participantes', 5)),
         )
+        # Campos de ajuste manual (None = usar valor calculado automaticamente)
+        def _opt_float(key):
+            v = data.get(key)
+            return float(v) if v is not None else None
+        def _opt_int(key):
+            v = data.get(key)
+            return int(v) if v is not None else None
+
+        part_manual     = _opt_int('part_manual')
+        bilhetes_manual = _opt_int('bilhetes_manual')
+        deposito_manual = _opt_float('deposito_manual')
+        premio_manual   = _opt_float('premio_manual')
+
         if _USE_PG and DATABASE_URL:
-            # PostgreSQL: rodar migrações primeiro, depois UPDATE com %s
             import psycopg2
             pg = psycopg2.connect(DATABASE_URL)
             pg.autocommit = True
@@ -2747,25 +2764,38 @@ async def route_sorteio_config(request):
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS acumulativo INTEGER DEFAULT 1",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS min_participantes INTEGER DEFAULT 5",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS premio_acumulado REAL DEFAULT 0",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS part_manual INTEGER DEFAULT NULL",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS bilhetes_manual INTEGER DEFAULT NULL",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS deposito_manual REAL DEFAULT NULL",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS premio_manual REAL DEFAULT NULL",
             ]:
                 try: cur.execute(mig)
                 except Exception: pass
-            # UPDATE com commit explícito
             pg.autocommit = False
             cur.execute('''UPDATE sorteio_config SET
                 ativo=%s, valor_por_numero=%s, percentual=%s, usar_media=%s, dias_media=%s,
                 premio_fixo=%s, descricao=%s, proximo_sorteio=%s, updated_at=%s,
-                acumulativo=%s, min_participantes=%s
-                WHERE id=1''', params)
+                acumulativo=%s, min_participantes=%s,
+                part_manual=%s, bilhetes_manual=%s, deposito_manual=%s, premio_manual=%s
+                WHERE id=1''', params + (part_manual, bilhetes_manual, deposito_manual, premio_manual))
             pg.commit()
             pg.close()
         else:
             conn = sqlite3_connect()
+            for mig in [
+                "ALTER TABLE sorteio_config ADD COLUMN part_manual INTEGER",
+                "ALTER TABLE sorteio_config ADD COLUMN bilhetes_manual INTEGER",
+                "ALTER TABLE sorteio_config ADD COLUMN deposito_manual REAL",
+                "ALTER TABLE sorteio_config ADD COLUMN premio_manual REAL",
+            ]:
+                try: conn.execute(mig)
+                except Exception: pass
             conn.execute('''UPDATE sorteio_config SET
                 ativo=?, valor_por_numero=?, percentual=?, usar_media=?, dias_media=?,
                 premio_fixo=?, descricao=?, proximo_sorteio=?, updated_at=?,
-                acumulativo=?, min_participantes=?
-                WHERE id=1''', params)
+                acumulativo=?, min_participantes=?,
+                part_manual=?, bilhetes_manual=?, deposito_manual=?, premio_manual=?
+                WHERE id=1''', params + (part_manual, bilhetes_manual, deposito_manual, premio_manual))
             conn.commit(); conn.close()
         return web.json_response({'success': True, 'message': 'Configuração salva!'})
     except Exception as e:
