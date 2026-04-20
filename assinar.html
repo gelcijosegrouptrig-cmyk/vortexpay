@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,user-scalable=yes"/>
 <title>Assinar — Débito Automático</title>
 <meta name="description" content="Autorize uma vez. As próximas mensalidades são debitadas automaticamente do seu Mercado Pago.">
 <style>
@@ -237,6 +237,14 @@ body{
 .footer a{color:var(--blue);text-decoration:none}
 .secure-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px;flex-wrap:wrap}
 .secure-badge{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);background:#ffffff08;padding:5px 10px;border-radius:20px}
+
+/* ── RESPONSIVIDADE MOBILE ── */
+.card{padding:clamp(16px,4.5vw,24px)}
+.footer{font-size:clamp(10px,2.8vw,12px)}
+.secure-badge{font-size:clamp(10px,2.8vw,11px)}
+@media(max-width:360px){
+  .card{padding:14px}
+}
 </style>
 </head>
 <body>

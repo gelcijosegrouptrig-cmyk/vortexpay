@@ -737,22 +737,21 @@ def listar_saques(limit=50):
 def load_home_html():
     if os.path.exists('home.html'):
         html = open('home.html', encoding='utf-8').read()
-        # ── Patch v29: remover participantes/bilhetes da seção stats ──
+        # ── Patch v30: card grande de prêmio responsivo ──
         import re as _reh
-        # Substituir seção STATS antiga pelos 2 cards corretos (prêmio + por número)
+        # Substituir seção STATS com novo layout prize-card responsivo
         html = _reh.sub(
             r'<!-- STATS -->.*?<!-- URGÊNCIA -->',
             '<!-- STATS -->\n'
             '  <div class="divider"><span>🏆 Prêmio atual do sorteio</span></div>\n\n'
-            '  <div class="stats-grid" style="grid-template-columns:1fr 1fr">\n'
-            '    <div class="stat-card">\n'
-            '      <div class="stat-val" id="s-premio">--</div>\n'
-            '      <div class="stat-lbl">🏆 Prêmio estimado</div>\n'
-            '    </div>\n'
-            '    <div class="stat-card">\n'
-            '      <div class="stat-val" id="s-valor-num">R$5</div>\n'
-            '      <div class="stat-lbl">Por número da sorte</div>\n'
-            '    </div>\n'
+            '  <div class="prize-card">\n'
+            '    <div class="prize-label">🏆 Prêmio estimado</div>\n'
+            '    <div class="prize-value" id="s-premio">--</div>\n'
+            '    <div class="prize-sub">💸 Valor exato enviado via Pix ao ganhador</div>\n'
+            '  </div>\n'
+            '  <div class="prize-num-card">\n'
+            '    <div class="prize-num-val" id="s-valor-num">R$5</div>\n'
+            '    <div class="prize-num-lbl">Por número da sorte</div>\n'
             '  </div>\n\n'
             '  <!-- URGÊNCIA -->',
             html, flags=_reh.DOTALL
@@ -765,6 +764,20 @@ def load_home_html():
         )
         # Corrigir label prêmio acumulado → prêmio estimado
         html = html.replace('Prêmio acumulado</div>', 'Prêmio estimado</div>')
+        # Injetar CSS das novas classes prize-card (se não existir no arquivo)
+        if 'prize-card' not in html:
+            _css_extra = (
+                '<style>'
+                '.prize-card{background:linear-gradient(135deg,#1a1200,#251a00);border:2px solid #FFD70055;border-radius:16px;padding:clamp(16px,4vw,24px) clamp(12px,3vw,20px);text-align:center;margin-bottom:8px}'
+                '.prize-label{font-size:clamp(9px,2.5vw,11px);color:#888;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px}'
+                '.prize-value{font-size:clamp(26px,8vw,48px);font-weight:900;color:#FFD700;line-height:1.1;word-break:break-all;overflow-wrap:anywhere}'
+                '.prize-sub{font-size:clamp(10px,3vw,13px);color:#888;margin-top:6px}'
+                '.prize-num-card{background:#111118;border:1px solid #ffffff0c;border-radius:12px;padding:clamp(12px,3vw,16px);text-align:center}'
+                '.prize-num-val{font-size:clamp(20px,6vw,28px);font-weight:900;color:#FFD700}'
+                '.prize-num-lbl{font-size:clamp(9px,2.5vw,11px);color:#555;margin-top:4px}'
+                '</style>'
+            )
+            html = html.replace('</head>', _css_extra + '</head>', 1)
         # Patch JS: substituir cálculo de prêmio para usar premio_manual e s-valor-num
         old_js = (
             "const p=s.premio_estimado_total||0;\n"
@@ -794,11 +807,35 @@ def load_home_html():
     return '<h1>PaynexBet</h1>'
 
 def load_html():
+    try:
+        if DATABASE_URL:
+            import psycopg2 as _pg
+            _c = _pg.connect(DATABASE_URL, connect_timeout=3)
+            _cur = _c.cursor()
+            _cur.execute("SELECT valor FROM configuracoes WHERE chave='index_html_patch'")
+            _row = _cur.fetchone()
+            _c.close()
+            if _row and _row[0] and len(_row[0]) > 1000:
+                return _row[0]
+    except Exception:
+        pass
     if os.path.exists('index.html'):
         return open('index.html', encoding='utf-8').read()
     return '<h1>PaynexBet</h1>'
 
 def load_saque_html():
+    try:
+        if DATABASE_URL:
+            import psycopg2 as _pg
+            _c = _pg.connect(DATABASE_URL, connect_timeout=3)
+            _cur = _c.cursor()
+            _cur.execute("SELECT valor FROM configuracoes WHERE chave='saque_html_patch'")
+            _row = _cur.fetchone()
+            _c.close()
+            if _row and _row[0] and len(_row[0]) > 1000:
+                return _row[0]
+    except Exception:
+        pass
     if os.path.exists('saque.html'):
         return open('saque.html', encoding='utf-8').read()
     return '<h1>PaynexBet - Saque</h1>'

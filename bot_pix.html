@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0"/>
 <title>PayPixNex — Pague via PIX</title>
 <meta name="description" content="Pagamento seguro via Mercado Pago PIX">
 <style>
@@ -161,6 +161,15 @@ input:checked~.toggle-thumb{transform:translateX(20px)}
 
 /* Indicador vencimento */
 .venc-badge{background:#9c27b020;border:1px solid #9c27b040;border-radius:8px;padding:6px 12px;font-size:11px;color:#ce93d8;text-align:center;margin-bottom:12px;display:none}
+
+/* ── RESPONSIVIDADE MOBILE ── */
+.wrap{padding:clamp(12px,3.5vw,16px) clamp(12px,4vw,16px) clamp(30px,8vw,50px)}
+.card{padding:clamp(16px,4.5vw,24px)}
+.pix-code{font-size:clamp(.68rem,2.5vw,.75rem)}
+.footer-txt{font-size:clamp(10px,2.8vw,12px)}
+@media(max-width:360px){
+  .wrap{padding:10px 10px 40px}
+}
 </style>
 </head>
 <body>

@@ -16,14 +16,16 @@ body{
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  padding:20px;
+  padding:clamp(12px,4vw,20px);
+  overflow-x:hidden;
+  -webkit-text-size-adjust:100%;
 }
 
 .card{
   background:linear-gradient(145deg,#1a1a2e,#16213e);
   border:1px solid #00d4ff33;
   border-radius:24px;
-  padding:32px 24px;
+  padding:clamp(20px,5vw,32px) clamp(16px,4vw,24px);
   width:100%;
   max-width:420px;
   box-shadow:0 0 40px rgba(0,212,255,0.1);
@@ -49,15 +51,16 @@ body{
   background:#0a0a18;
   border:2px solid #00d4ff44;
   border-radius:16px;
-  padding:20px;
+  padding:clamp(14px,4vw,20px);
   text-align:center;
-  font-size:36px;
+  font-size:clamp(24px,8vw,36px);
   font-weight:800;
   color:#00d4ff;
   margin-bottom:16px;
-  min-height:76px;
+  min-height:clamp(58px,15vw,76px);
   display:flex;align-items:center;justify-content:center;
   letter-spacing:1px;
+  word-break:break-all;
 }
 .valor-display.has-value{color:#fff;}
 
@@ -231,7 +234,19 @@ body{
 .pago-pulse{animation:pulsePago 1s ease-out 3;}
 
 /* FOOTER */
-.footer{margin-top:20px;text-align:center;font-size:11px;color:#444;}
+.footer{margin-top:20px;text-align:center;font-size:clamp(9px,2.5vw,11px);color:#444;}
+
+/* ── RESPONSIVIDADE MOBILE ── */
+.logo h1{font-size:clamp(18px,5.5vw,24px)}
+.logo p{font-size:clamp(11px,3vw,13px)}
+.valor-conf{font-size:clamp(22px,7vw,32px)}
+.pix-gerado .titulo{font-size:clamp(13px,4vw,16px)}
+.pix-gerado .subtitulo{font-size:clamp(11px,3vw,13px)}
+.copy-btn{font-size:clamp(13px,3.8vw,15px);padding:clamp(12px,3.5vw,16px)}
+@media(max-width:360px){
+  body{padding:10px}
+  .logo-icon{width:60px;height:60px;font-size:26px}
+}
 </style>
 </head>
 <body>

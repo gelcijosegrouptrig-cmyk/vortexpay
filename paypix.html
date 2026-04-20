@@ -77,6 +77,22 @@
 
   /* Alerta de retry */
   .retry-aviso{background:#1a1000;border:1px solid #6a4400;color:#FFD700;border-radius:10px;padding:10px 14px;font-size:.78rem;text-align:center;margin-top:10px;display:none}
+
+  /* ── RESPONSIVIDADE MOBILE ── */
+  body{padding:clamp(14px,4vw,20px) clamp(12px,3.5vw,16px) clamp(24px,6vw,40px)}
+  .logo h1{font-size:clamp(1.3rem,5.5vw,1.7rem)}
+  .logo p{font-size:clamp(.75rem,2.8vw,.85rem)}
+  .card{padding:clamp(16px,4.5vw,24px)}
+  input,select{font-size:clamp(.85rem,3.5vw,.95rem);padding:clamp(10px,3vw,12px) 14px}
+  label{font-size:clamp(.72rem,2.5vw,.8rem)}
+  .btn{font-size:clamp(.88rem,3.5vw,1rem);padding:clamp(12px,3.5vw,15px)}
+  .split-row{font-size:clamp(.78rem,3vw,.85rem)}
+  .val.verde,.val.amarelo{font-size:clamp(.85rem,3.5vw,.95rem)}
+  .info-tip{font-size:clamp(.7rem,2.5vw,.75rem)}
+  @media(max-width:360px){
+    body{padding:10px 10px 30px}
+    .card{padding:14px}
+  }
 </style>
 </head>
 <body>
