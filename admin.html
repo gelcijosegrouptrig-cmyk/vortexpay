@@ -627,22 +627,33 @@
     <h2>PaynexBet Admin</h2>
     <p>Painel de controle financeiro</p>
     <div style="position:relative;width:100%">
-      <input id="login-secret" class="login-input" type="password" placeholder="Senha de acesso" autocomplete="off"
+      <input id="login-secret" class="login-input" type="password" placeholder="Digite sua senha de acesso" autocomplete="current-password"
         style="width:100%;padding-right:48px;box-sizing:border-box">
-      <button onclick="toggleLoginSenha()" id="btn-toggle-senha"
+      <button onclick="toggleLoginSenha()" id="btn-toggle-senha" title="Mostrar/ocultar senha"
         style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#aaa;padding:4px">
         👁️
       </button>
     </div>
-    <button class="login-btn" onclick="fazerLogin()">🔐 Entrar</button>
+    <button class="login-btn" id="btn-login" onclick="fazerLogin()">🔐 Entrar</button>
     <div id="login-error" class="login-error"></div>
+    <div id="login-hint" style="font-size:11px;color:#666;margin-top:12px;line-height:1.5;display:none">
+      💡 Senha padrão: <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;font-size:12px;color:#f7931e;user-select:all">vortex_webhook_2024</code><br>
+      <span style="color:#888">Ou a senha definida na variável WEBHOOK_SECRET do Railway.</span>
+    </div>
   </div>
 </div>
 
 <script>
 function toggleLoginSenha() {
   const inp = document.getElementById('login-secret');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
+  const btn = document.getElementById('btn-toggle-senha');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    inp.type = 'password';
+    btn.textContent = '👁️';
+  }
 }
 </script>
 
@@ -2273,7 +2284,7 @@ function toggleLoginSenha() {
       <!-- ╔══════════════════════════════════════════════════════════════╗
      ║              API & WEBHOOKS — Tab Completa v3               ║
      ╚══════════════════════════════════════════════════════════════╝ -->
-<div id="tab-api" class="tab-content" style="display:none">
+<div id="tab-api" class="tab-content">
   <div style="max-width:960px;margin:0 auto;padding:12px 8px 40px">
 
     <!-- Cabeçalho -->
@@ -3840,7 +3851,19 @@ document.getElementById('login-secret').addEventListener('keypress', e => {
 
 async function fazerLogin() {
   const secret = document.getElementById('login-secret').value.trim();
-  if (!secret) return;
+  const errEl = document.getElementById('login-error');
+  const hintEl = document.getElementById('login-hint');
+  const btnEl = document.getElementById('btn-login');
+  
+  if (!secret) {
+    errEl.textContent = '⚠️ Digite a senha para continuar.';
+    return;
+  }
+  
+  // Loading state
+  btnEl.disabled = true;
+  btnEl.textContent = '⏳ Verificando...';
+  errEl.textContent = '';
   
   try {
     const r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(secret)}`);
@@ -3848,14 +3871,20 @@ async function fazerLogin() {
       sessionStorage.setItem('vp_secret', secret);
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('admin-screen').style.display = 'block';
-      loadAll(); // carga inicial: health + stats + saldo local
-      setInterval(loadAll, 30000); // auto-refresh 30s automático
-      iniciarPollingPix(); // detecta PIX confirmado e atualiza saldo automaticamente
+      loadAll();
+      setInterval(loadAll, 30000);
+      iniciarPollingPix();
     } else {
-      document.getElementById('login-error').textContent = '❌ Senha incorreta. Tente novamente.';
+      errEl.textContent = `❌ Senha incorreta (código ${r.status}). Tente novamente.`;
+      if (hintEl) hintEl.style.display = 'block';
+      btnEl.disabled = false;
+      btnEl.textContent = '🔐 Entrar';
     }
-  } catch {
-    document.getElementById('login-error').textContent = '❌ Erro de conexão.';
+  } catch (err) {
+    errEl.textContent = `❌ Erro de conexão: ${err.message || 'sem resposta do servidor'}.`;
+    if (hintEl) hintEl.style.display = 'block';
+    btnEl.disabled = false;
+    btnEl.textContent = '🔐 Entrar';
   }
 }
 
@@ -3863,9 +3892,10 @@ async function fazerLogin() {
 //  NAVEGAÇÃO
 // ═══════════════════════════════════════════════
 function showTab(tab) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => { t.classList.remove('active'); t.style.display = ''; });
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
+  const activeTab = document.getElementById('tab-' + tab);
+  if (activeTab) { activeTab.classList.add('active'); activeTab.style.display = 'block'; }
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.textContent.toLowerCase().includes(tabName(tab))) n.classList.add('active');
   });
