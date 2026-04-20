@@ -626,11 +626,25 @@
     <div class="logo-icon">⚡</div>
     <h2>PaynexBet Admin</h2>
     <p>Painel de controle financeiro</p>
-    <input id="login-secret" class="login-input" type="password" placeholder="Senha de acesso" autocomplete="off">
+    <div style="position:relative;width:100%">
+      <input id="login-secret" class="login-input" type="password" placeholder="Senha de acesso" autocomplete="off"
+        style="width:100%;padding-right:48px;box-sizing:border-box">
+      <button onclick="toggleLoginSenha()" id="btn-toggle-senha"
+        style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#aaa;padding:4px">
+        👁️
+      </button>
+    </div>
     <button class="login-btn" onclick="fazerLogin()">🔐 Entrar</button>
     <div id="login-error" class="login-error"></div>
   </div>
 </div>
+
+<script>
+function toggleLoginSenha() {
+  const inp = document.getElementById('login-secret');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+</script>
 
 <!-- ADMIN -->
 <div id="admin-screen">
