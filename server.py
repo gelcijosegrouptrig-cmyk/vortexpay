@@ -750,7 +750,7 @@ def load_home_html():
             '      <div class="stat-lbl">🏆 Prêmio estimado</div>\n'
             '    </div>\n'
             '    <div class="stat-card">\n'
-            '      <div class="stat-val">R$5</div>\n'
+            '      <div class="stat-val" id="s-valor-num">R$5</div>\n'
             '      <div class="stat-lbl">Por número da sorte</div>\n'
             '    </div>\n'
             '  </div>\n\n'
@@ -765,6 +765,31 @@ def load_home_html():
         )
         # Corrigir label prêmio acumulado → prêmio estimado
         html = html.replace('Prêmio acumulado</div>', 'Prêmio estimado</div>')
+        # Patch JS: substituir cálculo de prêmio para usar premio_manual e s-valor-num
+        old_js = (
+            "const p=s.premio_estimado_total||0;\n"
+            "    const elP=document.getElementById('s-premio');\n"
+            "    if(elP) elP.textContent='R$'+p.toFixed(2).replace('.',',');"
+        )
+        new_js = (
+            "const p=parseFloat(s.premio_manual!=null?s.premio_manual:(s.premio_estimado_total||0))||0;\n"
+            "    const vp=parseFloat(s.valor_por_numero||5);\n"
+            "    const _fmtBRL=(n)=>'R$'+Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});\n"
+            "    const elP=document.getElementById('s-premio');\n"
+            "    if(elP) elP.textContent=_fmtBRL(p);\n"
+            "    const elV=document.getElementById('s-valor-num');\n"
+            "    if(elV) elV.textContent='R$'+vp.toFixed(0);"
+        )
+        if old_js in html:
+            html = html.replace(old_js, new_js)
+        else:
+            # Patch robusto: substituir via regex qualquer variante
+            html = _reh.sub(
+                r"const p\s*=\s*s\.premio_estimado_total\|\|0;.*?"
+                r"if\(elP\)\s*elP\.textContent\s*=\s*'R\$'\+p\.toFixed\(2\)\.replace\('\.',','\);",
+                new_js,
+                html, flags=_reh.DOTALL
+            )
         return html
     return '<h1>PaynexBet</h1>'
 

@@ -186,7 +186,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <div class="stat-lbl">🏆 Prêmio estimado</div>
     </div>
     <div class="stat-card">
-      <div class="stat-val">R$5</div>
+      <div class="stat-val" id="s-valor-num">R$5</div>
       <div class="stat-lbl">Por número da sorte</div>
     </div>
   </div>
@@ -240,9 +240,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     const r=await fetch('/api/sorteio/info');
     const d=await r.json();
     const s=d.sorteio;
-    const p=s.premio_estimado_total||0;
+    // Usar premio_manual se configurado, senão usar calculado
+    const p=parseFloat(s.premio_manual!=null?s.premio_manual:(s.premio_estimado_total||0))||0;
+    const vp=parseFloat(s.valor_por_numero||5);
+    const _fmtBRL=(n)=>'R$'+Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
     const elP=document.getElementById('s-premio');
-    if(elP) elP.textContent='R$'+p.toFixed(2).replace('.',',');
+    if(elP) elP.textContent=_fmtBRL(p);
+    const elV=document.getElementById('s-valor-num');
+    if(elV) elV.textContent='R$'+vp.toFixed(0);
   }catch(e){}
 })();
 </script>
