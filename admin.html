@@ -3866,20 +3866,40 @@ async function fazerLogin() {
   errEl.textContent = '';
   
   try {
-    const r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(secret)}`);
-    if (r.ok) {
-      sessionStorage.setItem('vp_secret', secret);
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('admin-screen').style.display = 'block';
-      loadAll();
-      setInterval(loadAll, 30000);
-      iniciarPollingPix();
-    } else {
-      errEl.textContent = `❌ Senha incorreta (código ${r.status}). Tente novamente.`;
-      if (hintEl) hintEl.style.display = 'block';
-      btnEl.disabled = false;
-      btnEl.textContent = '🔐 Entrar';
+    // Tentar endpoint rápido de verificação primeiro, fallback para transacoes
+    let r;
+    try {
+      r = await fetch(`${BASE}/api/check-auth?secret=${encodeURIComponent(secret)}`);
+      if (r.ok) {
+        const data = await r.json();
+        if (!data.ok) {
+          // Senha errada — mostrar dica com tamanho da senha correta
+          const lenHint = data.secret_len ? ` (senha tem ${data.secret_len} caracteres, você digitou ${data.provided_len})` : '';
+          errEl.textContent = `❌ Senha incorreta${lenHint}. Tente novamente.`;
+          if (hintEl) hintEl.style.display = 'block';
+          btnEl.disabled = false;
+          btnEl.textContent = '🔐 Entrar';
+          return;
+        }
+      }
+    } catch(e) {
+      // /api/check-auth não existe ainda, usar fallback
+      r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(secret)}`);
+      if (!r.ok) {
+        errEl.textContent = `❌ Senha incorreta (${r.status}). Tente novamente.`;
+        if (hintEl) hintEl.style.display = 'block';
+        btnEl.disabled = false;
+        btnEl.textContent = '🔐 Entrar';
+        return;
+      }
     }
+    // Login aprovado
+    sessionStorage.setItem('vp_secret', secret);
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-screen').style.display = 'block';
+    loadAll();
+    setInterval(loadAll, 30000);
+    iniciarPollingPix();
   } catch (err) {
     errEl.textContent = `❌ Erro de conexão: ${err.message || 'sem resposta do servidor'}.`;
     if (hintEl) hintEl.style.display = 'block';

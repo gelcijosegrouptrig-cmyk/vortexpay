@@ -4133,6 +4133,18 @@ async def route_health(request):
         'floodwait_min': fw_restante,
     })
 
+async def route_check_auth(request):
+    """GET /api/check-auth?secret=... — verifica se a senha está correta (sem revelar a senha real)"""
+    secret = request.headers.get('X-PaynexBet-Secret') or request.rel_url.query.get('secret', '')
+    ok = (secret == WEBHOOK_SECRET)
+    return web.json_response({
+        'ok': ok,
+        'message': 'Senha correta ✅' if ok else 'Senha incorreta ❌',
+        'hint': 'Use a variável WEBHOOK_SECRET do Railway ou o valor padrão do server.py' if not ok else None,
+        'secret_len': len(WEBHOOK_SECRET),  # tamanho da senha real (ajuda a conferir)
+        'provided_len': len(secret),         # tamanho do que foi enviado
+    })
+
 async def route_debug_pix(request):
     """Endpoint de diagnóstico - testa DBConn e INSERT diretamente"""
     import traceback, time
@@ -7557,6 +7569,7 @@ async def main():
     app.router.add_post('/api/pix', route_pix)
     app.router.add_get('/api/pix/status/{tx_id}', route_pix_status)
     app.router.add_get('/api/debug-pix', route_debug_pix)
+    app.router.add_get('/api/check-auth', route_check_auth)
     app.router.add_route('OPTIONS', '/api/pix', lambda r: web.Response(status=200))
     app.router.add_get('/api/status/{tx_id}', route_status_tx)
     app.router.add_get('/api/transacoes', route_transacoes)
