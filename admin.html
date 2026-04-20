@@ -627,18 +627,28 @@
     <h2>PaynexBet Admin</h2>
     <p>Painel de controle financeiro</p>
     <div style="position:relative;width:100%">
-      <input id="login-secret" class="login-input" type="password" placeholder="Digite sua senha de acesso" autocomplete="current-password"
-        style="width:100%;padding-right:48px;box-sizing:border-box">
+      <input id="login-secret" class="login-input" type="text" placeholder="Digite sua senha de acesso"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        style="width:100%;padding-right:48px;box-sizing:border-box;-webkit-text-security:disc"
+        oninput="document.getElementById('login-char-count').textContent=this.value.length+' chars'">
       <button onclick="toggleLoginSenha()" id="btn-toggle-senha" title="Mostrar/ocultar senha"
         style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#aaa;padding:4px">
         👁️
       </button>
     </div>
+    <div style="text-align:right;font-size:10px;color:#555;margin-top:-6px;margin-bottom:8px">
+      <span id="login-char-count">0 chars</span>
+    </div>
     <button class="login-btn" id="btn-login" onclick="fazerLogin()">🔐 Entrar</button>
     <div id="login-error" class="login-error"></div>
-    <div id="login-hint" style="font-size:11px;color:#666;margin-top:12px;line-height:1.5;display:none">
-      💡 Senha padrão: <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;font-size:12px;color:#f7931e;user-select:all">vortex_webhook_2024</code><br>
-      <span style="color:#888">Ou a senha definida na variável WEBHOOK_SECRET do Railway.</span>
+    <div id="login-hint" style="font-size:11px;color:#666;margin-top:12px;line-height:1.8;display:none">
+      💡 <strong style="color:#f7931e">Senha padrão:</strong><br>
+      <div onclick="document.getElementById('login-secret').value='vortex_webhook_2024';document.getElementById('login-char-count').textContent='20 chars'"
+        style="background:rgba(255,107,53,0.15);border:1px solid #f7931e44;border-radius:8px;padding:8px 12px;margin:6px 0;cursor:pointer;font-family:monospace;font-size:13px;color:#f7931e;letter-spacing:0.5px">
+        vortex_webhook_2024
+        <span style="font-size:10px;color:#aaa;display:block;font-family:sans-serif;margin-top:2px">👆 Toque para preencher automaticamente</span>
+      </div>
+      <span style="color:#666;font-size:10px">Ou use a variável WEBHOOK_SECRET definida no Railway.</span>
     </div>
   </div>
 </div>
@@ -647,11 +657,13 @@
 function toggleLoginSenha() {
   const inp = document.getElementById('login-secret');
   const btn = document.getElementById('btn-toggle-senha');
-  if (inp.type === 'password') {
-    inp.type = 'text';
+  // Usa -webkit-text-security para ocultar sem mudar type (evita problemas mobile)
+  const hidden = inp.style.webkitTextSecurity === 'disc' || inp.style.webkitTextSecurity === '';
+  if (hidden) {
+    inp.style.webkitTextSecurity = 'none';
     btn.textContent = '🙈';
   } else {
-    inp.type = 'password';
+    inp.style.webkitTextSecurity = 'disc';
     btn.textContent = '👁️';
   }
 }
