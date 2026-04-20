@@ -3878,12 +3878,15 @@ async function fazerLogin() {
   fetch(url)
     .then(function(r) {
       if (r.ok) {
+        // 1. Guardar senha na sessão
         sessionStorage.setItem('vp_secret', secret);
+        // 2. Trocar tela IMEDIATAMENTE (antes de qualquer outra coisa)
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('admin-screen').style.display = 'block';
-        loadAll();
-        setInterval(loadAll, 30000);
-        iniciarPollingPix();
+        // 3. Carregar dados em background (erros aqui não afetam o login)
+        try { loadAll(); } catch(e) {}
+        try { setInterval(loadAll, 30000); } catch(e) {}
+        try { iniciarPollingPix(); } catch(e) {}
       } else {
         errEl.textContent = '❌ Senha incorreta. Verifique e tente novamente.';
         if (hintEl) hintEl.style.display = 'block';
@@ -4584,7 +4587,7 @@ function initApiTab() {
   if (urlEl) urlEl.innerHTML = `<span style="font-family:monospace;color:#7dd3fc">${BASE}</span> <button onclick="copiar('${BASE}')" style="background:#3b82f620;border:1px solid #3b82f640;color:#7dd3fc;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;margin-left:6px">📋 Copiar</button>`;
   // cURL exemplo
   const curl = document.getElementById('curl-example');
-  if (curl) curl.textContent = 'curl -X POST ' + BASE + '/webhook/confirmar \\\n  -H "Content-Type: application/json" \\\n  -H "X-PaynexBet-Secret: ' + SECRET() + '" \\\n  -d '{"tx_id":"txn_abc123","status":"pago"}'';
+  if (curl) curl.textContent = 'curl -X POST ' + BASE + '/webhook/confirmar \\\n  -H "Content-Type: application/json" \\\n  -H "X-PaynexBet-Secret: ' + SECRET() + '" \\\n  -d \'{"tx_id":"txn_abc123","status":"pago"}\'';
 }
 
 function showResult(id, data, ok) {
