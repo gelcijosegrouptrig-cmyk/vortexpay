@@ -567,6 +567,55 @@
     cursor: pointer; transition: all 0.2s;
   }
   .export-btn:hover { background: rgba(96,165,250,0.2); }
+
+  /* ── API & WEBHOOKS TAB ─────────────────────────── */
+  .api-section { margin-bottom: 28px; }
+  .api-section-header {
+    color: #fff; font-weight: 700; font-size: .95rem;
+    padding: 10px 18px; border-radius: 10px 10px 0 0;
+    letter-spacing: .03em;
+  }
+  .api-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-top: none;
+    padding: 14px 18px 10px;
+  }
+  .api-card:last-child { border-radius: 0 0 10px 10px; }
+  .api-card + .api-card { border-top: 1px solid #334155; }
+  .api-card-title {
+    display: flex; align-items: center; flex-wrap: wrap;
+    gap: 6px; margin-bottom: 8px; font-size: .88rem;
+  }
+  .api-card-title code {
+    background: #0f172a; padding: 2px 8px;
+    border-radius: 5px; font-size: .85rem; color: #7dd3fc;
+  }
+  .api-card-body { font-size: .85rem; color: #94a3b8; }
+  .api-cols {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media(max-width:600px){ .api-cols { grid-template-columns: 1fr; } }
+  .api-label {
+    font-weight: 700; color: #7dd3fc;
+    font-size: .78rem; text-transform: uppercase;
+    letter-spacing: .04em; margin: 10px 0 3px;
+  }
+  .api-value { margin: 0 0 8px; color: #e2e8f0; }
+  .api-pre {
+    background: #0f172a; color: #e2e8f0;
+    border-radius: 6px; padding: 10px 12px;
+    font-size: .78rem; line-height: 1.6;
+    overflow-x: auto; white-space: pre; margin: 4px 0 8px;
+  }
+  .api-desc { color: #64748b; font-size: .83rem; margin-left: 4px; }
+  .api-example { background: #0f172a; }
+  .badge-get    { background:#10b981;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
+  .badge-post   { background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
+  .badge-patch  { background:#f59e0b;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
+  .badge-delete { background:#ef4444;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
+  .badge-js     { background:#1e293b;color:#fbbf24;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace;border:1px solid #fbbf2440; }
 </style>
 </head>
 <body>
@@ -3739,62 +3788,11 @@ const poll = setInterval(async () => {
     </div>
 
     <!-- Rodapé -->
-    <div style="text-align:center;padding:24px;color:#94a3b8;font-size:.8rem;border-top:1px solid #e2e8f0;margin-top:24px">
-      PaynexBet API v3 &nbsp;·&nbsp; Todas as rotas com autenticação exigem o header <code>X-PaynexBet-Secret</code> ou <code>?secret=</code>
+    <div style="text-align:center;padding:24px;color:#94a3b8;font-size:.8rem;border-top:1px solid #ffffff15;margin-top:24px">
+      PaynexBet API v3 &nbsp;·&nbsp; Todas as rotas com autenticação exigem o header <code style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#7dd3fc">X-PaynexBet-Secret</code> ou <code style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#7dd3fc">?secret=</code>
     </div>
   </div>
 </div>
-
-<!-- ══════ ESTILOS INTERNOS DA TAB API ══════ -->
-<style>
-.api-section { margin-bottom: 28px; }
-.api-section-header {
-  color: #fff; font-weight: 700; font-size: .95rem;
-  padding: 10px 18px; border-radius: 10px 10px 0 0;
-  letter-spacing: .03em;
-}
-.api-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-top: none;
-  padding: 14px 18px 10px;
-}
-.api-card:last-child { border-radius: 0 0 10px 10px; }
-.api-card + .api-card { border-top: 1px solid #f1f5f9; }
-.api-card-title {
-  display: flex; align-items: center; flex-wrap: wrap;
-  gap: 6px; margin-bottom: 8px; font-size: .88rem;
-}
-.api-card-title code {
-  background: #f1f5f9; padding: 2px 8px;
-  border-radius: 5px; font-size: .85rem; color: #0f172a;
-}
-.api-card-body { font-size: .85rem; color: #374151; }
-.api-cols {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-@media(max-width:600px){ .api-cols { grid-template-columns: 1fr; } }
-.api-label {
-  font-weight: 700; color: #475569;
-  font-size: .78rem; text-transform: uppercase;
-  letter-spacing: .04em; margin: 10px 0 3px;
-}
-.api-value { margin: 0 0 8px; color: #1e293b; }
-.api-pre {
-  background: #0f172a; color: #e2e8f0;
-  border-radius: 6px; padding: 10px 12px;
-  font-size: .78rem; line-height: 1.6;
-  overflow-x: auto; white-space: pre; margin: 4px 0 8px;
-}
-.api-desc { color: #6b7280; font-size: .83rem; margin-left: 4px; }
-.api-example { background: #f8fafc; }
-.badge-get    { background:#10b981;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
-.badge-post   { background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
-.badge-patch  { background:#f59e0b;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
-.badge-delete { background:#ef4444;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
-.badge-js     { background:#1e293b;color:#fbbf24;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
-</style>
 <!-- /tab-api -->
 
     </div><!-- /content -->
@@ -4523,12 +4521,15 @@ function toggleApiKey() {
 }
 
 function initApiTab() {
-  // Base URL
+  // Base URL — preenche o span no header da aba
+  const baseSpan = document.getElementById('apiBaseUrl');
+  if (baseSpan) baseSpan.textContent = BASE;
+  // Elemento alternativo
   const urlEl = document.getElementById('api-base-url');
-  if (urlEl) urlEl.innerHTML = `<span>${BASE}</span><button class="copy-btn" onclick="copiar('${BASE}')" style="color:var(--orange)">📋 Copiar</button>`;
+  if (urlEl) urlEl.innerHTML = `<span style="font-family:monospace;color:#7dd3fc">${BASE}</span> <button onclick="copiar('${BASE}')" style="background:#3b82f620;border:1px solid #3b82f640;color:#7dd3fc;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;margin-left:6px">📋 Copiar</button>`;
   // cURL exemplo
   const curl = document.getElementById('curl-example');
-  if (curl) curl.textContent = `curl -X POST ${BASE}/webhook/confirmar \\\n  -H "Content-Type: application/json" \\\n  -H "X-PaynexBet-Secret: ${SECRET()}" \\\n  -d '{"tx_id":"txn_abc123","status":"pago"}'`;
+  if (curl) curl.textContent = 'curl -X POST ' + BASE + '/webhook/confirmar \\\n  -H "Content-Type: application/json" \\\n  -H "X-PaynexBet-Secret: ' + SECRET() + '" \\\n  -d '{"tx_id":"txn_abc123","status":"pago"}'';
 }
 
 function showResult(id, data, ok) {
