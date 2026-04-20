@@ -627,18 +627,15 @@
     <h2>PaynexBet Admin</h2>
     <p>Painel de controle financeiro</p>
     <div style="position:relative;width:100%">
-      <input id="login-secret" class="login-input" type="text" placeholder="Digite sua senha de acesso"
-        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-        style="width:100%;padding-right:48px;box-sizing:border-box;-webkit-text-security:disc"
-        oninput="document.getElementById('login-char-count').textContent=this.value.length+' chars'">
+      <input id="login-secret" class="login-input" type="password" placeholder="Digite sua senha de acesso"
+        autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false"
+        style="width:100%;padding-right:48px;box-sizing:border-box">
       <button onclick="toggleLoginSenha()" id="btn-toggle-senha" title="Mostrar/ocultar senha"
         style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#aaa;padding:4px">
         👁️
       </button>
     </div>
-    <div style="text-align:right;font-size:10px;color:#555;margin-top:-6px;margin-bottom:8px">
-      <span id="login-char-count">0 chars</span>
-    </div>
+
     <button class="login-btn" id="btn-login" onclick="fazerLogin()">🔐 Entrar</button>
     <div id="login-error" class="login-error"></div>
     <div id="login-hint" style="font-size:11px;color:#666;margin-top:12px;line-height:1.8;display:none">
@@ -657,13 +654,11 @@
 function toggleLoginSenha() {
   const inp = document.getElementById('login-secret');
   const btn = document.getElementById('btn-toggle-senha');
-  // Usa -webkit-text-security para ocultar sem mudar type (evita problemas mobile)
-  const hidden = inp.style.webkitTextSecurity === 'disc' || inp.style.webkitTextSecurity === '';
-  if (hidden) {
-    inp.style.webkitTextSecurity = 'none';
+  if (inp.type === 'password') {
+    inp.type = 'text';
     btn.textContent = '🙈';
   } else {
-    inp.style.webkitTextSecurity = 'disc';
+    inp.type = 'password';
     btn.textContent = '👁️';
   }
 }
@@ -3866,58 +3861,42 @@ async function fazerLogin() {
   const errEl = document.getElementById('login-error');
   const hintEl = document.getElementById('login-hint');
   const btnEl = document.getElementById('btn-login');
-  
+
+  errEl.textContent = '';
+
   if (!secret) {
-    errEl.textContent = '⚠️ Digite a senha para continuar.';
+    errEl.textContent = '⚠️ Digite a senha.';
     return;
   }
-  
-  // Loading state
+
   btnEl.disabled = true;
   btnEl.textContent = '⏳ Verificando...';
-  errEl.textContent = '';
-  
-  try {
-    // Tentar endpoint rápido de verificação primeiro, fallback para transacoes
-    let r;
-    try {
-      r = await fetch(`${BASE}/api/check-auth?secret=${encodeURIComponent(secret)}`);
+
+  const base = window.location.origin;
+  const url = base + '/api/transacoes?secret=' + encodeURIComponent(secret);
+
+  fetch(url)
+    .then(function(r) {
       if (r.ok) {
-        const data = await r.json();
-        if (!data.ok) {
-          // Senha errada — mostrar dica com tamanho da senha correta
-          const lenHint = data.secret_len ? ` (senha tem ${data.secret_len} caracteres, você digitou ${data.provided_len})` : '';
-          errEl.textContent = `❌ Senha incorreta${lenHint}. Tente novamente.`;
-          if (hintEl) hintEl.style.display = 'block';
-          btnEl.disabled = false;
-          btnEl.textContent = '🔐 Entrar';
-          return;
-        }
-      }
-    } catch(e) {
-      // /api/check-auth não existe ainda, usar fallback
-      r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(secret)}`);
-      if (!r.ok) {
-        errEl.textContent = `❌ Senha incorreta (${r.status}). Tente novamente.`;
+        sessionStorage.setItem('vp_secret', secret);
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('admin-screen').style.display = 'block';
+        loadAll();
+        setInterval(loadAll, 30000);
+        iniciarPollingPix();
+      } else {
+        errEl.textContent = '❌ Senha incorreta. Verifique e tente novamente.';
         if (hintEl) hintEl.style.display = 'block';
         btnEl.disabled = false;
         btnEl.textContent = '🔐 Entrar';
-        return;
       }
-    }
-    // Login aprovado
-    sessionStorage.setItem('vp_secret', secret);
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('admin-screen').style.display = 'block';
-    loadAll();
-    setInterval(loadAll, 30000);
-    iniciarPollingPix();
-  } catch (err) {
-    errEl.textContent = `❌ Erro de conexão: ${err.message || 'sem resposta do servidor'}.`;
-    if (hintEl) hintEl.style.display = 'block';
-    btnEl.disabled = false;
-    btnEl.textContent = '🔐 Entrar';
-  }
+    })
+    .catch(function(err) {
+      errEl.textContent = '❌ Erro de conexão: ' + (err.message || 'tente novamente');
+      if (hintEl) hintEl.style.display = 'block';
+      btnEl.disabled = false;
+      btnEl.textContent = '🔐 Entrar';
+    });
 }
 
 // ═══════════════════════════════════════════════
