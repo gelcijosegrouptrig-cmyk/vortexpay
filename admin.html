@@ -964,12 +964,6 @@ function toggleLoginSenha() {
       <!-- SISTEMA -->
       <div id="tab-sistema" class="tab-content">
         <div class="metrics-grid">
-          <div class="metric-card orange">
-            <div class="metric-icon">🤖</div>
-            <div class="metric-label">Telegram</div>
-            <div class="metric-value" id="sys-tg">—</div>
-            <div class="metric-sub">Bot VortexBank</div>
-          </div>
           <div class="metric-card blue">
             <div class="metric-icon">🌐</div>
             <div class="metric-label">Servidor</div>
@@ -981,12 +975,6 @@ function toggleLoginSenha() {
             <div class="metric-label">Webhook</div>
             <div class="metric-value" style="font-size:16px">/webhook/confirmar</div>
             <div class="metric-sub">Endpoint ativo</div>
-          </div>
-          <div class="metric-card purple">
-            <div class="metric-icon">🔄</div>
-            <div class="metric-label">Tentativas TG</div>
-            <div class="metric-value" id="sys-tent">—</div>
-            <div class="metric-sub">reconexões Telegram</div>
           </div>
         </div>
 
@@ -1006,65 +994,6 @@ function toggleLoginSenha() {
           </table>
         </div>
 
-        <!-- ═══ PAINEL TELEGRAM ═══ -->
-        <div class="table-card" style="margin-top:16px" id="tg-reconnect-panel">
-          <div class="table-header">
-            <h3>🤖 Reconexão Telegram</h3>
-            <span id="tg-panel-status" style="font-size:13px;padding:4px 12px;border-radius:20px;background:#1a2a1a;color:#4caf50">🟢 Conectado</span>
-          </div>
-          <div style="padding:20px">
-
-            <!-- Status Banner -->
-            <div id="tg-status-banner" style="display:none;background:linear-gradient(135deg,#2d1a0e,#3d2010);border:1px solid #ff6b35;border-radius:12px;padding:16px;margin-bottom:20px;text-align:center">
-              <div style="font-size:28px;margin-bottom:8px">⚠️</div>
-              <div style="color:#ff6b35;font-weight:700;font-size:16px">Telegram Desconectado</div>
-              <div style="color:#aaa;font-size:13px;margin-top:4px" id="tg-banner-motivo">Sessão inválida — reconexão necessária</div>
-            </div>
-
-            <!-- PASSO 1: Número + Solicitar código -->
-            <div id="tg-step1" style="margin-bottom:20px">
-              <div style="color:var(--text2);font-size:13px;margin-bottom:12px">
-                <b style="color:var(--text)">Passo 1:</b> Informe o número e clique para receber o código
-              </div>
-              <!-- Campo número com DDD -->
-              <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
-                <span style="background:#0a0a14;border:2px solid #333;border-radius:10px;padding:12px 14px;color:#aaa;font-size:15px;white-space:nowrap">🇧🇷 +55</span>
-                <input type="tel" id="tg-phone-input" placeholder="DDD + número (ex: 27999887766)" maxlength="13"
-                  style="flex:1;padding:12px 14px;background:#0a0a14;border:2px solid #1a6fc4;border-radius:10px;color:#fff;font-size:16px;font-weight:600;letter-spacing:1px"
-                  onkeypress="if(event.key==='Enter') tgSolicitarCodigo()"
-                  value="">
-              </div>
-              <button onclick="tgSolicitarCodigo()" id="btn-solicitar" style="width:100%;padding:14px;background:linear-gradient(135deg,#1a6fc4,#0d47a1);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s">
-                📱 Enviar código para o Telegram
-              </button>
-              <div id="msg-solicitar" style="margin-top:10px;font-size:13px;text-align:center"></div>
-            </div>
-
-            <!-- PASSO 2: Inserir código (inicialmente oculto) -->
-            <div id="tg-step2" style="display:none;border-top:1px solid #ffffff11;padding-top:20px">
-              <div style="color:var(--text2);font-size:13px;margin-bottom:12px">
-                <b style="color:var(--text)">Passo 2:</b> Digite o código de 5 dígitos que chegou no Telegram
-              </div>
-              <div style="display:flex;gap:10px">
-                <input type="text" id="tg-codigo-input" maxlength="5" placeholder="Ex: 16379"
-                  style="flex:1;padding:14px;background:#0a0a14;border:2px solid #1a6fc4;border-radius:10px;color:#fff;font-size:20px;letter-spacing:6px;text-align:center;font-weight:700"
-                  onkeypress="if(event.key==='Enter') tgConfirmarCodigo()">
-                <button onclick="tgConfirmarCodigo()" id="btn-confirmar" style="padding:14px 20px;background:linear-gradient(135deg,#2e7d32,#1b5e20);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">
-                  ✅ Confirmar
-                </button>
-              </div>
-              <div id="msg-confirmar" style="margin-top:10px;font-size:13px;text-align:center"></div>
-              <div style="margin-top:10px;text-align:center">
-                <a href="#" onclick="tgSolicitarCodigo();return false" style="color:#666;font-size:12px">↩ Reenviar código</a>
-              </div>
-            </div>
-
-            <!-- Dica -->
-            <div style="margin-top:16px;padding:12px;background:#0a0a14;border-radius:8px;font-size:12px;color:#666;line-height:1.5">
-              💡 <b style="color:#888">Como funciona:</b> Digite seu número (sem +55), clique em "Enviar código", aguarde o código chegar no Telegram e confirme aqui. <b style="color:#FFD700">Você mesmo controla sem precisar de suporte!</b>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- ═══ SORTEIO ═══ -->
@@ -2325,26 +2254,26 @@ function toggleLoginSenha() {
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
                 <div>
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Nome do Parceiro *</label>
-                  <input type="text" id="p-nome" placeholder="Ex: João Silva"
+                  <input type="text" id="mp2-p-nome" placeholder="Ex: João Silva"
                     style="width:100%;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
                 </div>
                 <div>
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Código (opcional)</label>
-                  <input type="text" id="p-codigo" placeholder="joao-silva (gerado automaticamente)"
+                  <input type="text" id="mp2-p-codigo" placeholder="joao-silva (gerado automaticamente)"
                     style="width:100%;background:#0a0a14;border:2px solid #7c3aed22;border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;font-family:monospace">
                 </div>
                 <div>
                   <label style="font-size:11px;color:#22c55e;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">
                     🏦 Chave PIX para Saque Automático *
                   </label>
-                  <input type="text" id="p-chave-pix" placeholder="email@exemplo.com ou CPF (11 dígitos)"
+                  <input type="text" id="mp2-p-chave-pix" placeholder="email@exemplo.com ou CPF (11 dígitos)"
                     oninput="mp2PreviewComissao()"
                     style="width:100%;background:#0a0a14;border:2px solid #22c55e55;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
                   <div style="font-size:11px;color:#555;margin-top:4px">💡 Quando o pagamento for confirmado, a comissão é enviada automaticamente para esta chave</div>
                 </div>
                 <div>
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Tipo da Chave *</label>
-                  <select id="p-tipo-chave"
+                  <select id="mp2-p-tipo-chave"
                     style="width:100%;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
                     <option value="email">E-mail</option>
                     <option value="cpf">CPF</option>
@@ -2356,34 +2285,34 @@ function toggleLoginSenha() {
                 <div style="grid-column:1/-1">
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">% Comissão por Pagamento *</label>
                   <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-                    <input type="number" id="p-comissao" min="1" max="50" value="10"
+                    <input type="number" id="mp2-p-comissao" min="1" max="50" value="10"
                       oninput="mp2PreviewComissao()"
                       style="width:90px;background:#0a0a14;border:2px solid #a855f7;border-radius:8px;padding:10px 12px;color:#a855f7;font-size:22px;font-weight:900;text-align:center;font-family:monospace">
                     <span style="color:#a855f7;font-weight:700;font-size:22px">%</span>
                     <span style="font-size:12px;color:#666">do valor pago pelo cliente</span>
                   </div>
                   <!-- Preview visual da comissão -->
-                  <div id="p-comissao-preview" style="background:#0a0a1a;border:1px solid #a855f733;border-radius:10px;padding:12px 16px">
+                  <div id="mp2-p-comissao-preview" style="background:#0a0a1a;border:1px solid #a855f733;border-radius:10px;padding:12px 16px">
                     <div style="font-size:11px;color:#666;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">📊 Simulação de comissão</div>
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
                       <div>
                         <div style="font-size:11px;color:#666">Cliente paga</div>
                         <div style="font-size:15px;font-weight:700;color:#fff">R$ 50,00</div>
-                        <div id="p-sim-50" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 5,00</div>
+                        <div id="mp2-p-sim-50" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 5,00</div>
                       </div>
                       <div>
                         <div style="font-size:11px;color:#666">Cliente paga</div>
                         <div style="font-size:15px;font-weight:700;color:#fff">R$ 100,00</div>
-                        <div id="p-sim-100" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 10,00</div>
+                        <div id="mp2-p-sim-100" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 10,00</div>
                       </div>
                       <div>
                         <div style="font-size:11px;color:#666">Cliente paga</div>
                         <div style="font-size:15px;font-weight:700;color:#fff">R$ 500,00</div>
-                        <div id="p-sim-500" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 50,00</div>
+                        <div id="mp2-p-sim-500" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 50,00</div>
                       </div>
                     </div>
                     <div style="margin-top:10px;padding:8px;background:#22c55e11;border-radius:8px;text-align:center;font-size:12px;color:#4ade80">
-                      ✅ Valor enviado automaticamente via PIX para: <span id="p-sim-chave" style="font-family:monospace;color:#a855f7">—</span>
+                      ✅ Valor enviado automaticamente via PIX para: <span id="mp2-p-sim-chave" style="font-family:monospace;color:#a855f7">—</span>
                     </div>
                   </div>
                 </div>
@@ -4568,7 +4497,7 @@ function showTab(tab) {
   };
   document.getElementById('page-title').textContent = titles[tab] || tab;
   fecharSidebar();
-  if (tab === 'api') initApiTab();
+  if (tab === 'api') { /* conteúdo estático, nada a carregar */ }
   if (tab === 'depositos' && allDepositos.length === 0) loadDepositos();
   if (tab === 'saques' && allSaques.length === 0) loadSaques();
   if (tab === 'sorteio') carregarSorteioAdmin();
@@ -4621,11 +4550,11 @@ async function loadHealth() {
     
     const online = d.telegram;
     const dot = document.getElementById('tg-dot');
-    dot.className = 'dot' + (online ? ' online' : '');
-    document.getElementById('tg-status').textContent = online ? '🟢 Telegram Online' : '🔴 Reconectando...';
-    document.getElementById('sys-tg').textContent = online ? '🟢 OK' : '🔴 OFF';
-    document.getElementById('sys-tent').textContent = d.tentativas || 0;
-    document.getElementById('sys-url').textContent = BASE.replace('https://','');
+    if (dot) dot.className = 'dot' + (online ? ' online' : '');
+    const tgStatus = document.getElementById('tg-status');
+    if (tgStatus) tgStatus.textContent = online ? '🟢 MP Online' : '🔴 Reconectando...';
+    const sysUrl = document.getElementById('sys-url');
+    if (sysUrl) sysUrl.textContent = BASE.replace('https://','');
 
     // Links do sistema
     document.getElementById('sys-links-table').innerHTML = `
@@ -4650,65 +4579,10 @@ async function loadHealth() {
   } catch(e) {}
 }
 
-// ═══════════════════════════════════════════════
-//  PAINEL RECONEXÃO TELEGRAM
-// ═══════════════════════════════════════════════
-function atualizarPainelTelegram(online, motivo) {
-  const banner  = document.getElementById('tg-status-banner');
-  const panelSt = document.getElementById('tg-panel-status');
-  if (!banner || !panelSt) return;
+// Painel Telegram removido — Mercado Pago é o único gateway ativo
+function atualizarPainelTelegram(online, motivo) { return; }
 
-  if (online) {
-    banner.style.display = 'none';
-    panelSt.style.background = '#1a2a1a';
-    panelSt.style.color = '#4caf50';
-    panelSt.textContent = '🟢 Conectado';
-  } else {
-    banner.style.display = 'block';
-    panelSt.style.background = '#2d1a0e';
-    panelSt.style.color = '#ff6b35';
-    panelSt.textContent = '🔴 Desconectado';
-    const mot = document.getElementById('tg-banner-motivo');
-    if (mot) mot.textContent = motivo === 'sessao_invalida'
-      ? 'Sessão inválida — clique em "Enviar código" abaixo'
-      : (motivo || 'Reconexão necessária');
-  }
-}
-
-async function tgSolicitarCodigo() {
-  const btn = document.getElementById('btn-solicitar');
-  const msg = document.getElementById('msg-solicitar');
-  // Pegar número digitado (remover tudo que não for dígito e adicionar +55)
-  const phoneRaw = (document.getElementById('tg-phone-input')?.value || '').replace(/\D/g,'');
-  if (!phoneRaw || phoneRaw.length < 10) {
-    msg.innerHTML = '<span style="color:#f44">❌ Digite o número com DDD (ex: 27998823669)</span>';
-    return;
-  }
-  const phone = '+55' + phoneRaw.replace(/^55/,''); // garante +55 sem duplicar
-  btn.disabled = true;
-  btn.textContent = '⏳ Enviando...';
-  msg.innerHTML = `<span style="color:#aaa">📲 Enviando código para ${phone}...</span>`;
-  try {
-    const r = await fetch(`${BASE}/api/telegram/solicitar-codigo`, {
-      method: 'POST',
-      headers: { 'X-PaynexBet-Secret': SECRET(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: phone })
-    });
-    const d = await r.json();
-    if (d.success) {
-      msg.innerHTML = `<span style="color:#4caf50">✅ Código enviado para ${phone}! Verifique o Telegram.</span>`;
-      document.getElementById('tg-step2').style.display = 'block';
-      setTimeout(() => { document.getElementById('tg-codigo-input').focus(); }, 200);
-    } else {
-      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || d.message || 'Erro ao solicitar'}</span>`;
-    }
-  } catch(e) {
-    msg.innerHTML = `<span style="color:#f44">❌ Erro de conexão: ${e.message}</span>`;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '📱 Enviar código para o Telegram';
-  }
-}
+// tgSolicitarCodigo removido — Telegram não é mais utilizado
 
 
 // ═══════════════════════════════════════════════
@@ -7582,6 +7456,16 @@ async function _salvarBotPixHtmlNoBanco() {
 
 // ─── PARCEIROS AFILIADOS ───────────────────────────────────────────────────────
 
+// Preview de comissão para Bot Mercado Pago
+function mp2PreviewComissao() {
+  const pct = parseFloat(document.getElementById('mp2-p-comissao')?.value) || 10;
+  const chave = document.getElementById('mp2-p-chave-pix')?.value || '—';
+  const sim50  = document.getElementById('mp2-p-sim-50');  if (sim50)  sim50.textContent  = `→ R$ ${(50  * pct / 100).toFixed(2).replace('.',',')}`;
+  const sim100 = document.getElementById('mp2-p-sim-100'); if (sim100) sim100.textContent = `→ R$ ${(100 * pct / 100).toFixed(2).replace('.',',')}`;
+  const sim500 = document.getElementById('mp2-p-sim-500'); if (sim500) sim500.textContent = `→ R$ ${(500 * pct / 100).toFixed(2).replace('.',',')}`;
+  const simKey = document.getElementById('mp2-p-sim-chave'); if (simKey) simKey.textContent = chave || '—';
+}
+
 function mp2MostrarFormParceiro() {
   const f = document.getElementById('mp2-form-parceiro');
   f.style.display = f.style.display === 'none' ? 'block' : 'none';
@@ -7589,11 +7473,11 @@ function mp2MostrarFormParceiro() {
 }
 
 async function mp2CriarParceiro() {
-  const nome       = document.getElementById('p-nome').value.trim();
-  const codigo     = document.getElementById('p-codigo').value.trim();
-  const chavePix   = document.getElementById('p-chave-pix').value.trim();
-  const tipoChave  = document.getElementById('p-tipo-chave').value;
-  const comissao   = parseFloat(document.getElementById('p-comissao').value) || 10;
+  const nome       = document.getElementById('mp2-p-nome').value.trim();
+  const codigo     = document.getElementById('mp2-p-codigo').value.trim();
+  const chavePix   = document.getElementById('mp2-p-chave-pix').value.trim();
+  const tipoChave  = document.getElementById('mp2-p-tipo-chave').value;
+  const comissao   = parseFloat(document.getElementById('mp2-p-comissao').value) || 10;
   const msg        = document.getElementById('mp2-form-msg');
 
   if (!nome) { msg.innerHTML = '<span style="color:#f44">Nome obrigatório</span>'; return; }
@@ -7614,10 +7498,10 @@ async function mp2CriarParceiro() {
       linkEl.textContent = d.link || d.parceiro?.link || '';
       document.getElementById('mp2-link-novo').style.display = 'block';
       // Limpar form
-      document.getElementById('p-nome').value = '';
-      document.getElementById('p-codigo').value = '';
-      document.getElementById('p-chave-pix').value = '';
-      document.getElementById('p-comissao').value = '10';
+      document.getElementById('mp2-p-nome').value = '';
+      document.getElementById('mp2-p-codigo').value = '';
+      document.getElementById('mp2-p-chave-pix').value = '';
+      document.getElementById('mp2-p-comissao').value = '10';
       document.getElementById('mp2-form-parceiro').style.display = 'none';
       // Recarregar lista
       await mp2CarregarParceiros();
