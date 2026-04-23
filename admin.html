@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250427u</title>
+<title>PaynexBet - Painel Admin v20250427v</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427u';
+  const VER = '20250427v';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -9902,25 +9902,29 @@ function colInitState() {
   // Padrão 2 (QR/débito): {prefix}-col-body-{suffix}, {prefix}-col-hdr-{suffix}, {prefix}-col-arrow-{suffix}
 
   // Padrão 1 — busca via 'col-body-' + id
+  // ═══ TODAS FECHADAS POR PADRÃO — abre ao clicar ═══
   const defaults = {
-    'b2-status':          true,
-    'b2-config':          true,
-    'b2-parceiros':       true,
-    'b2-cfg-pagamento':   false,
-    'b2-stats':           true,
-    'b2-saques':          false,
+    // ── PayPix (pp) ──────────────────────
     'pp-status':          false,
-    'pp-config':          true,
+    'pp-config':          false,
     'pp-parceiros':       false,
     'pp-cfg-pagamento':   false,
     'pp-stats':           false,
     'pp-saques':          false,
-    'pc-status':          true,
-    'pc-config':          true,
-    'pc-parceiros':       true,
+    // ── PayPix-Cob (pc) ──────────────────
+    'pc-status':          false,
+    'pc-config':          false,
+    'pc-parceiros':       false,
     'pc-cfg-pagamento':   false,
-    'pc-stats':           true,
+    'pc-stats':           false,
     'pc-saques':          false,
+    // ── Bot2 (b2) ────────────────────────
+    'b2-status':          false,
+    'b2-config':          false,
+    'b2-parceiros':       false,
+    'b2-cfg-pagamento':   false,
+    'b2-stats':           false,
+    'b2-saques':          false,
   };
 
   // Padrão 2 — IDs com prefixo invertido: {prefix}-col-body-{suffix}
@@ -10435,7 +10439,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427u ===');
+  out.push('=== VERSÃO: 20250427v ===');
   out.push('');
 
   // Estado dos elementos críticos
