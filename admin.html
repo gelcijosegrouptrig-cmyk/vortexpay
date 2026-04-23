@@ -6582,9 +6582,9 @@ async function bot2Confirmar2FA() {
   }
 }
 
-// Checar status do Bot2 ao carregar e a cada 60s
-bot2CheckStatus();
-setInterval(bot2CheckStatus, 60000);
+// Checar status do Bot2 ao carregar e a cada 60s (só se logado)
+if (SECRET()) bot2CheckStatus();
+setInterval(() => { if (SECRET()) bot2CheckStatus(); }, 60000);
 
 // ═══════════════════════════════════════════════════════
 //  MERCADO PAGO — @paypix_nexbot
@@ -6909,6 +6909,8 @@ async function mp2PagarComissaoManual(sauqueId, parceiro, valor) {
 // Inicializa painel MP2 ao entrar na aba bot2
 const _origShowTab = typeof showTab === 'function' ? showTab : null;
 document.addEventListener('DOMContentLoaded', () => {
+  // Só executa se o usuário já estiver logado (secret na sessão)
+  if (!SECRET()) return;
   // Verifica status MP e carrega totais de parceiros nos cards de métricas
   bot2CheckStatus();
   mp2CarregarChaves();
