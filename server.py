@@ -4055,9 +4055,10 @@ async def route_railway_domain_status(request):
         return web.json_response({'error': 'Não autorizado'}, status=401)
 
     try:
-        railway_token = request.rel_url.query.get('railway_token') or os.environ.get('RAILWAY_TOKEN', '')
-        service_id    = request.rel_url.query.get('service_id')    or os.environ.get('RAILWAY_SERVICE_ID', '')
+        railway_token  = request.rel_url.query.get('railway_token')  or os.environ.get('RAILWAY_TOKEN', '')
+        service_id     = request.rel_url.query.get('service_id')     or os.environ.get('RAILWAY_SERVICE_ID', '')
         environment_id = request.rel_url.query.get('environment_id') or os.environ.get('RAILWAY_ENVIRONMENT_ID', '')
+        project_id     = request.rel_url.query.get('project_id')     or os.environ.get('RAILWAY_PROJECT_ID', '')
 
         if not railway_token:
             return web.json_response({
@@ -4066,66 +4067,85 @@ async def route_railway_domain_status(request):
                 'instrucao': 'Passe ?railway_token=xxx ou configure RAILWAY_TOKEN nas env vars'
             })
 
-        if not all([service_id, environment_id]):
+        if not all([service_id, environment_id, project_id]):
+            missing = []
+            if not service_id:     missing.append('service_id')
+            if not environment_id: missing.append('environment_id')
+            if not project_id:     missing.append('project_id')
             return web.json_response({
                 'success': False,
-                'error': 'service_id e environment_id obrigatórios'
+                'error': f'Parâmetros faltando: {missing}',
+                'instrucao': 'Informe service_id, environment_id e project_id'
             })
 
-        query = """
-        query($serviceId: String!, $environmentId: String!) {
-          service(id: $serviceId) {
+        # Buscar nome do serviço
+        svc_query = """
+        query($id: String!) {
+          service(id: $id) {
             id
             name
-            domains {
-              customDomains {
-                id
-                domain
-                updatedAt
-                status {
-                  dns {
-                    hostname
-                    type
-                    value
-                    status
-                  }
+          }
+        }
+        """
+
+        # Buscar domínios via query separada (API Railway v2)
+        dom_query = """
+        query($serviceId: String!, $environmentId: String!, $projectId: String!) {
+          domains(serviceId: $serviceId, environmentId: $environmentId, projectId: $projectId) {
+            customDomains {
+              id
+              domain
+              updatedAt
+              status {
+                dns {
+                  hostname
+                  type
+                  value
+                  status
                 }
               }
-              serviceDomains {
-                id
-                domain
-              }
+            }
+            serviceDomains {
+              id
+              domain
             }
           }
         }
         """
 
-        payload = {
-            "query": query,
-            "variables": {
-                "serviceId": service_id,
-                "environmentId": environment_id
-            }
-        }
-
         async with aiohttp.ClientSession() as session:
-            async with session.post(
-                'https://backboard.railway.app/graphql/v2',
-                json=payload,
-                headers={
-                    "Authorization": f"Bearer {railway_token}",
-                    "Content-Type": "application/json"
-                },
-                timeout=aiohttp.ClientTimeout(total=15)
-            ) as resp:
-                result = await resp.json()
+            headers = {
+                "Authorization": f"Bearer {railway_token}",
+                "Content-Type": "application/json"
+            }
+            timeout = aiohttp.ClientTimeout(total=15)
 
-        if result.get('errors'):
-            msg = result['errors'][0].get('message', str(result['errors']))
+            # Buscar nome do serviço
+            svc_resp = await session.post(
+                'https://backboard.railway.app/graphql/v2',
+                json={"query": svc_query, "variables": {"id": service_id}},
+                headers=headers, timeout=timeout
+            )
+            svc_result = await svc_resp.json()
+
+            # Buscar domínios
+            dom_resp = await session.post(
+                'https://backboard.railway.app/graphql/v2',
+                json={"query": dom_query, "variables": {
+                    "serviceId": service_id,
+                    "environmentId": environment_id,
+                    "projectId": project_id
+                }},
+                headers=headers, timeout=timeout
+            )
+            dom_result = await dom_resp.json()
+
+        if dom_result.get('errors'):
+            msg = dom_result['errors'][0].get('message', str(dom_result['errors']))
             return web.json_response({'success': False, 'error': msg})
 
-        service_data = result.get('data', {}).get('service', {})
-        domains = service_data.get('domains', {})
+        service_name = svc_result.get('data', {}).get('service', {}).get('name', 'N/A')
+        domains = dom_result.get('data', {}).get('domains', {})
 
         return web.json_response({
             'success': True,

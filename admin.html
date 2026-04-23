@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250427t</title>
+<title>PaynexBet - Painel Admin v20250427u</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427t';
+  const VER = '20250427u';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -10435,7 +10435,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427t ===');
+  out.push('=== VERSÃO: 20250427u ===');
   out.push('');
 
   // Estado dos elementos críticos
@@ -10698,12 +10698,14 @@ async function railwayAdicionarDominio() {
 }
 
 async function railwayVerificarDominio() {
-  const token = (document.getElementById('rw-token')?.value || '').trim();
-  const envId = document.getElementById('rw-env-sel')?.value || '';
-  const svcId = document.getElementById('rw-svc-sel')?.value || '';
+  const token  = (document.getElementById('rw-token')?.value || '').trim();
+  const envId  = document.getElementById('rw-env-sel')?.value || '';
+  const svcId  = document.getElementById('rw-svc-sel')?.value || '';
+  const projIdx = document.getElementById('rw-projeto-sel')?.value;
+  const projId  = (projIdx !== '' && _rwProjects[parseInt(projIdx)]) ? _rwProjects[parseInt(projIdx)].id : '';
 
-  if (!token || !svcId || !envId) {
-    alert('Preencha Token, Serviço e Ambiente primeiro (use Buscar Projetos)');
+  if (!token || !svcId || !envId || !projId) {
+    alert('Preencha Token, Projeto, Serviço e Ambiente primeiro (use Buscar Projetos)');
     return;
   }
 
@@ -10715,7 +10717,7 @@ async function railwayVerificarDominio() {
   res.textContent = '⏳ Verificando domínios...';
 
   try {
-    const url = `${BASE}/api/railway/domain-status?secret=${encodeURIComponent(SECRET())}&railway_token=${encodeURIComponent(token)}&service_id=${encodeURIComponent(svcId)}&environment_id=${encodeURIComponent(envId)}`;
+    const url = `${BASE}/api/railway/domain-status?secret=${encodeURIComponent(SECRET())}&railway_token=${encodeURIComponent(token)}&service_id=${encodeURIComponent(svcId)}&environment_id=${encodeURIComponent(envId)}&project_id=${encodeURIComponent(projId)}`;
     const r = await fetch(url, { headers: { 'X-PaynexBet-Secret': SECRET() } });
     const d = await r.json();
 
