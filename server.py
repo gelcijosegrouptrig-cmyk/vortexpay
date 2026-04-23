@@ -4822,87 +4822,187 @@ async def route_solicitar_saque(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 async def route_saques_admin(request):
-    """Painel admin - listar todos os saques"""
-
-    auth = (request.headers.get('X-PaynexBet-Secret', '') or
-            request.rel_url.query.get('secret', ''))
-    if auth != WEBHOOK_SECRET:
-        return web.json_response({'error': 'Não autorizado'}, status=401)
-    limit = int(request.rel_url.query.get('limit', 200))
-    saques = listar_saques(limit)
-    enviados = [s for s in saques if s['status'] in ('enviado','confirmado','processado')]
-    return web.json_response({
-        'saques': saques,
-        'resumo': {
-            'total': len(saques),
-            'pendentes': len([s for s in saques if s['status'] == 'pendente']),
-            'processados': len(enviados),
-            'erros': len([s for s in saques if s['status'] == 'erro']),
-            'valor_pendente': sum(s['valor'] for s in saques if s['status'] == 'pendente'),
-            'valor_pago': sum(s['valor'] for s in enviados),
-        }
-    })
-
-async def route_stats(request):
-    """Dashboard completo com métricas consolidadas"""
+    """Painel admin - listar todos os saques do Mercado Pago"""
 
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
-        def _q(sql):
-            conn2 = sqlite3_connect()
-            cur2 = conn2.execute(sql)
-            rows2 = cur2.fetchall()
-            conn2.close()
-            return rows2
+        from mp2_api import _get_conn
+        import psycopg2.extras
+        conn = _get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT s.id, s.telegram_id, s.valor, s.chave_pix, s.tipo_chave,
+                   s.status, s.obs, s.criado_em, s.processado_em,
+                   u.username, u.nome
+            FROM mp2_saques s
+            LEFT JOIN mp2_usuarios u ON u.telegram_id = s.telegram_id
+            ORDER BY s.criado_em DESC
+            LIMIT 500
+        """)
+        rows = cur.fetchall()
+        saques = []
+        for r in rows:
+            row = dict(r)
+            for k, v in row.items():
+                if hasattr(v, 'isoformat'):
+                    row[k] = v.isoformat()
+                elif v is None:
+                    row[k] = ''
+            saques.append(row)
+        cur.close(); conn.close()
+        pendentes   = [s for s in saques if s['status'] == 'pendente']
+        aprovados   = [s for s in saques if s['status'] == 'aprovado']
+        rejeitados  = [s for s in saques if s['status'] == 'rejeitado']
+        return web.json_response({
+            'saques': saques,
+            'resumo': {
+                'total':         len(saques),
+                'pendentes':     len(pendentes),
+                'aprovados':     len(aprovados),
+                'rejeitados':    len(rejeitados),
+                'valor_pendente': float(sum(float(s['valor']) for s in pendentes)),
+                'valor_pago':     float(sum(float(s['valor']) for s in aprovados)),
+            }
+        })
+    except Exception as e:
+        return web.json_response({'error': str(e), 'saques': [], 'resumo': {}}, status=500)
 
-        # Depósitos
-        dep_conf, val_dep_conf = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE status='pago'")[0]
-        dep_pend, val_dep_pend = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE status='pendente'")[0]
-        dep_total, val_dep_total = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM transacoes")[0]
+async def route_stats(request):
+    """Dashboard completo com métricas consolidadas — Mercado Pago (mp2_*)"""
 
-        # Saques
-        saq_conf, val_saq_conf = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status IN ('enviado','confirmado','processado')")[0]
-        saq_pend, val_saq_pend = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status='pendente'")[0]
-        saq_erro, _ = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status='erro'")[0]
-        saq_total, val_saq_total = _q("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques")[0]
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        from mp2_api import _get_conn as mp2_conn
+        import psycopg2.extras
 
-        # Últimos 7 dias - depósitos por dia (query com try/except para SQLite e PostgreSQL)
+        conn = mp2_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # ── Depósitos MP2 ─────────────────────────────────────────────────────
+        cur.execute("""
+            SELECT
+              COUNT(*) FILTER (WHERE status = 'confirmado') AS dep_conf,
+              COALESCE(SUM(valor) FILTER (WHERE status = 'confirmado'), 0) AS val_dep_conf,
+              COUNT(*) FILTER (WHERE status = 'pendente')   AS dep_pend,
+              COALESCE(SUM(valor) FILTER (WHERE status = 'pendente'), 0)   AS val_dep_pend,
+              COUNT(*) AS dep_total,
+              COALESCE(SUM(valor), 0) AS val_dep_total
+            FROM mp2_transacoes WHERE tipo = 'deposito'
+        """)
+        dep_row = cur.fetchone()
+        dep_conf      = int(dep_row['dep_conf'])
+        val_dep_conf  = float(dep_row['val_dep_conf'])
+        dep_pend      = int(dep_row['dep_pend'])
+        val_dep_pend  = float(dep_row['val_dep_pend'])
+        dep_total     = int(dep_row['dep_total'])
+
+        # ── Saques MP2 ────────────────────────────────────────────────────────
+        cur.execute("""
+            SELECT
+              COUNT(*) FILTER (WHERE status = 'aprovado')   AS saq_conf,
+              COALESCE(SUM(valor) FILTER (WHERE status = 'aprovado'), 0)   AS val_saq_conf,
+              COUNT(*) FILTER (WHERE status = 'pendente')   AS saq_pend,
+              COALESCE(SUM(valor) FILTER (WHERE status = 'pendente'), 0)   AS val_saq_pend,
+              COUNT(*) AS saq_total,
+              COALESCE(SUM(valor), 0) AS val_saq_total
+            FROM mp2_saques
+        """)
+        saq_row = cur.fetchone()
+        saq_conf      = int(saq_row['saq_conf'])
+        val_saq_conf  = float(saq_row['val_saq_conf'])
+        saq_pend      = int(saq_row['saq_pend'])
+        val_saq_pend  = float(saq_row['val_saq_pend'])
+        saq_total     = int(saq_row['saq_total'])
+
+        # ── Depósitos por dia (últimos 7 dias) ────────────────────────────────
         try:
-            dep_por_dia = [{'data': str(r[0])[:10], 'qtd': r[1], 'valor': round(float(r[2]),2)} for r in _q(
-                "SELECT DATE(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM transacoes WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY DATE(created_at)")]
+            cur.execute("""
+                SELECT DATE(criado_em) AS dia, COUNT(*) AS qtd, COALESCE(SUM(valor),0) AS valor
+                FROM mp2_transacoes
+                WHERE tipo = 'deposito' AND criado_em >= NOW() - INTERVAL '7 days'
+                GROUP BY DATE(criado_em) ORDER BY DATE(criado_em)
+            """)
+            dep_por_dia = [{'data': str(r['dia']), 'qtd': r['qtd'], 'valor': round(float(r['valor']),2)}
+                           for r in cur.fetchall()]
         except Exception:
             dep_por_dia = []
+
+        # ── Saques por dia (últimos 7 dias) ───────────────────────────────────
         try:
-            saq_por_dia = [{'data': str(r[0])[:10], 'qtd': r[1], 'valor': round(float(r[2]),2)} for r in _q(
-                "SELECT DATE(created_at), COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY DATE(created_at)")]
+            cur.execute("""
+                SELECT DATE(criado_em) AS dia, COUNT(*) AS qtd, COALESCE(SUM(valor),0) AS valor
+                FROM mp2_saques
+                WHERE criado_em >= NOW() - INTERVAL '7 days'
+                GROUP BY DATE(criado_em) ORDER BY DATE(criado_em)
+            """)
+            saq_por_dia = [{'data': str(r['dia']), 'qtd': r['qtd'], 'valor': round(float(r['valor']),2)}
+                           for r in cur.fetchall()]
         except Exception:
             saq_por_dia = []
 
-        # Últimos depósitos e saques
-        ult_dep = [{'tx_id':r[0],'valor':r[1],'status':r[2],'created_at':r[3],'paid_at':r[4]} for r in _q(
-            "SELECT tx_id,valor,status,created_at,paid_at FROM transacoes ORDER BY created_at DESC LIMIT 10")]
+        # ── Recentes ──────────────────────────────────────────────────────────
+        cur.execute("""
+            SELECT t.id, t.telegram_id, t.valor, t.status, t.criado_em, t.atualizado_em,
+                   t.mp_payment_id, t.pix_copia_cola, u.username, u.nome
+            FROM mp2_transacoes t
+            LEFT JOIN mp2_usuarios u ON u.telegram_id = t.telegram_id
+            WHERE t.tipo = 'deposito'
+            ORDER BY t.criado_em DESC LIMIT 10
+        """)
+        ult_dep = []
+        for r in cur.fetchall():
+            row = dict(r)
+            for k, v in row.items():
+                if hasattr(v, 'isoformat'):
+                    row[k] = v.isoformat()
+                elif v is None:
+                    row[k] = ''
+            ult_dep.append(row)
 
-        ult_saq = [{'saque_id':r[0],'valor':r[1],'chave_pix':r[2],'tipo_chave':r[3],'status':r[4],'created_at':r[5],'processado_at':r[6]} for r in _q(
-            "SELECT saque_id,valor,chave_pix,tipo_chave,status,created_at,processado_at FROM saques ORDER BY created_at DESC LIMIT 10")]
+        cur.execute("""
+            SELECT s.id, s.telegram_id, s.valor, s.chave_pix, s.tipo_chave,
+                   s.status, s.criado_em, s.processado_em, u.username, u.nome
+            FROM mp2_saques s
+            LEFT JOIN mp2_usuarios u ON u.telegram_id = s.telegram_id
+            ORDER BY s.criado_em DESC LIMIT 10
+        """)
+        ult_saq = []
+        for r in cur.fetchall():
+            row = dict(r)
+            for k, v in row.items():
+                if hasattr(v, 'isoformat'):
+                    row[k] = v.isoformat()
+                elif v is None:
+                    row[k] = ''
+            ult_saq.append(row)
+
+        cur.close(); conn.close()
+
         return web.json_response({
             'depositos': {
-                'total': dep_total, 'confirmados': dep_conf, 'pendentes': dep_pend,
+                'total':          dep_total,
+                'confirmados':    dep_conf,
+                'pendentes':      dep_pend,
                 'valor_recebido': round(val_dep_conf, 2),
                 'valor_pendente': round(val_dep_pend, 2),
-                'valor_total': round(val_dep_total, 2),
-                'por_dia': dep_por_dia,
-                'recentes': ult_dep,
+                'por_dia':        dep_por_dia,
+                'recentes':       ult_dep,
             },
             'saques': {
-                'total': saq_total, 'realizados': saq_conf, 'pendentes': saq_pend, 'erros': saq_erro,
-                'valor_sacado': round(val_saq_conf, 2),
+                'total':          saq_total,
+                'realizados':     saq_conf,
+                'pendentes':      saq_pend,
+                'erros':          0,
+                'valor_sacado':   round(val_saq_conf, 2),
                 'valor_pendente': round(val_saq_pend, 2),
-                'valor_total': round(val_saq_total, 2),
-                'por_dia': saq_por_dia,
-                'recentes': ult_saq,
+                'por_dia':        saq_por_dia,
+                'recentes':       ult_saq,
             },
             'telegram': _telegram_ready,
             'timestamp': datetime.now().isoformat(),
@@ -6065,6 +6165,20 @@ def _mp2_pagar_comissao_parceiro_webhook(external_ref: str, valor: float):
 
     except Exception as e:
         print(f'[comissao_webhook] Erro: {e}', flush=True)
+
+
+async def route_mp2_depositos_admin(request):
+    """Lista todos os depósitos MP2 para o painel admin."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        from mp2_api import mp2_listar_depositos_admin
+        result = mp2_listar_depositos_admin(limit=500)
+        return web.json_response(result)
+    except Exception as e:
+        return web.json_response({'error': str(e), 'depositos': [], 'resumo': {}}, status=500)
 
 
 async def route_mp2_saques_pendentes(request):
@@ -8128,6 +8242,7 @@ async def main():
     app.router.add_get('/api/mp2/status',                   route_mp2_status)
     app.router.add_get('/api/mp2/stats',                    route_mp2_stats)
     app.router.add_post('/webhook/mp2',                     route_mp2_webhook)
+    app.router.add_get('/api/mp2/depositos',                route_mp2_depositos_admin)
     app.router.add_get('/api/mp2/saques',                   route_mp2_saques_pendentes)
     app.router.add_post('/api/mp2/saques/processar',        route_mp2_processar_saque)
     app.router.add_get('/api/mp2/config',                   route_mp2_config_get)

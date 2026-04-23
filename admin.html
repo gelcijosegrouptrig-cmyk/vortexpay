@@ -670,9 +670,12 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250426b';
+  const VER = '20250427a';
   if (sessionStorage.getItem('adminVer') !== VER) {
+    // Preservar senha antes do reload
+    const savedSecret = sessionStorage.getItem('vp_secret');
     sessionStorage.setItem('adminVer', VER);
+    if (savedSecret) sessionStorage.setItem('vp_secret', savedSecret);
     location.replace(location.pathname + '?v=' + VER + '&t=' + Date.now());
   }
 })();
@@ -905,19 +908,61 @@ function toggleLoginSenha() {
 
       <!-- DEPÓSITOS -->
       <div id="tab-depositos" class="tab-content">
+
+        <!-- Banner Mercado Pago -->
+        <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid #00b3ff44;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+          <div style="font-size:28px">💳</div>
+          <div>
+            <div style="font-weight:800;font-size:16px;color:#00b3ff">📥 Depósitos — Mercado Pago</div>
+            <div style="font-size:12px;color:#666;margin-top:2px">Depósitos PIX via Bot MP · <span style="color:#00b3ff">paynexbet.com/pix</span></div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button onclick="loadDepositos()" style="background:#00b3ff22;border:1px solid #00b3ff44;color:#00b3ff;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700;font-size:13px">🔄 Atualizar</button>
+          </div>
+        </div>
+
+        <!-- Cards resumo depósitos -->
+        <div class="metrics-grid" style="margin-bottom:20px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <div class="metric-card green">
+            <div class="metric-icon">📊</div>
+            <div class="metric-label">Total</div>
+            <div class="metric-value" id="dep-res-total">—</div>
+          </div>
+          <div class="metric-card blue">
+            <div class="metric-icon">✅</div>
+            <div class="metric-label">Confirmados</div>
+            <div class="metric-value" id="dep-res-confirmados">—</div>
+          </div>
+          <div class="metric-card orange">
+            <div class="metric-icon">⏳</div>
+            <div class="metric-label">Pendentes</div>
+            <div class="metric-value" id="dep-res-pendentes">—</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-icon">💰</div>
+            <div class="metric-label">Valor Recebido</div>
+            <div class="metric-value" id="dep-res-val-recebido" style="font-size:14px">R$ —</div>
+          </div>
+          <div class="metric-card orange">
+            <div class="metric-icon">⏳</div>
+            <div class="metric-label">Valor Pendente</div>
+            <div class="metric-value" id="dep-res-val-pendente" style="font-size:14px">R$ —</div>
+          </div>
+        </div>
+
         <div class="filter-row">
           <select class="filter-select" id="filter-dep-status" onchange="renderDepositos()">
             <option value="">Todos os status</option>
-            <option value="pago">✅ Pagos</option>
+            <option value="confirmado">✅ Confirmados</option>
             <option value="pendente">⏳ Pendentes</option>
+            <option value="cancelado">❌ Cancelados</option>
           </select>
-          <input class="filter-input" id="filter-dep-search" placeholder="🔍 Buscar por ID ou valor..." oninput="renderDepositos()">
-          <button class="refresh-btn" onclick="loadDepositos()">🔄 Atualizar</button>
+          <input class="filter-input" id="filter-dep-search" placeholder="🔍 Buscar por usuário, ID MP ou valor..." oninput="renderDepositos()">
           <button class="export-btn" onclick="exportarCSV('depositos')">📥 CSV</button>
         </div>
         <div class="table-card">
           <div class="table-header">
-            <h3>📥 Todos os Depósitos</h3>
+            <h3>📥 Todos os Depósitos MP</h3>
             <span class="count" id="count-dep-all">—</span>
           </div>
           <div class="table-wrapper">
@@ -925,13 +970,12 @@ function toggleLoginSenha() {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>ID Transação</th>
+                  <th>Usuário</th>
                   <th>Valor</th>
                   <th>Status</th>
-                  <th>Criado em</th>
-                  <th>Confirmado em</th>
+                  <th>ID MP</th>
                   <th>Código Pix</th>
-                  <th>Ações</th>
+                  <th>Criado em</th>
                 </tr>
               </thead>
               <tbody id="table-depositos">
@@ -945,49 +989,89 @@ function toggleLoginSenha() {
 
       <!-- SAQUES -->
       <div id="tab-saques" class="tab-content">
-        <div class="filter-row">
-          <select class="filter-select" id="filter-saq-status" onchange="renderSaques()">
-            <option value="">Todos os status</option>
-            <option value="enviado">✅ Realizados</option>
-            <option value="confirmado">✅ Confirmados</option>
-            <option value="pendente">⏳ Pendentes</option>
-            <option value="erro">❌ Erros</option>
-            <option value="cancelado">🚫 Cancelados</option>
-          </select>
-          <input class="filter-input" id="filter-saq-search" placeholder="🔍 Buscar por ID ou chave Pix..." oninput="renderSaques()">
-          <button class="refresh-btn" onclick="loadSaques()">🔄 Atualizar</button>
-          <button class="export-btn" onclick="exportarCSV('saques')">📥 CSV</button>
+
+      <!-- Banner Mercado Pago -->
+      <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid #f59e0b44;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-size:28px">💳</div>
+        <div>
+          <div style="font-weight:800;font-size:16px;color:#f59e0b">📤 Saques — Mercado Pago</div>
+          <div style="font-size:12px;color:#666;margin-top:2px">Saques solicitados pelos usuários via Bot MP · Aprovar = envia Pix ao usuário</div>
         </div>
-        <div class="table-card">
-          <div class="table-header">
-            <h3>📤 Todos os Saques</h3>
-            <span class="count" id="count-saq-all">—</span>
-          </div>
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>ID Saque</th>
-                  <th>Valor</th>
-                  <th>Chave Pix</th>
-                  <th>Tipo</th>
-                  <th>Status</th>
-                  <th>Solicitado em</th>
-                  <th>Processado em</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody id="table-saques">
-                <tr class="loading-row"><td colspan="9"><div class="spinner"></div></td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="pagination" id="pag-saq"></div>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button onclick="loadSaques()" style="background:#f59e0b22;border:1px solid #f59e0b44;color:#f59e0b;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700;font-size:13px">🔄 Atualizar</button>
         </div>
       </div>
 
-      <!-- SISTEMA -->
+      <!-- Cards de resumo -->
+      <div class="metrics-grid" style="margin-bottom:20px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+        <div class="metric-card yellow">
+          <div class="metric-icon">⏳</div>
+          <div class="metric-label">Pendentes</div>
+          <div class="metric-value" id="saq-res-pendentes">—</div>
+          <div class="metric-sub" id="saq-res-val-pendente">aguardando aprovação</div>
+        </div>
+        <div class="metric-card green">
+          <div class="metric-icon">✅</div>
+          <div class="metric-label">Aprovados</div>
+          <div class="metric-value" id="saq-res-aprovados">—</div>
+          <div class="metric-sub" id="saq-res-val-pago">total pago</div>
+        </div>
+        <div class="metric-card red">
+          <div class="metric-icon">❌</div>
+          <div class="metric-label">Rejeitados</div>
+          <div class="metric-value" id="saq-res-rejeitados">—</div>
+          <div class="metric-sub">saques recusados</div>
+        </div>
+        <div class="metric-card blue">
+          <div class="metric-icon">📊</div>
+          <div class="metric-label">Total</div>
+          <div class="metric-value" id="saq-res-total">—</div>
+          <div class="metric-sub">todos os registros</div>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filter-row" style="margin-bottom:16px">
+        <select class="filter-select" id="filter-saq-status" onchange="renderSaques()">
+          <option value="">Todos os status</option>
+          <option value="pendente">⏳ Pendentes</option>
+          <option value="aprovado">✅ Aprovados</option>
+          <option value="rejeitado">❌ Rejeitados</option>
+        </select>
+        <input class="filter-input" id="filter-saq-search" placeholder="🔍 Buscar por nome, chave Pix, ID..." oninput="renderSaques()">
+        <button class="export-btn" onclick="exportarCSV('saques')">📥 CSV</button>
+      </div>
+
+      <!-- Tabela -->
+      <div class="table-card">
+        <div class="table-header">
+          <h3>📤 Saques Mercado Pago</h3>
+          <span class="count" id="count-saq-all">—</span>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>#ID</th>
+                <th>Usuário</th>
+                <th>Valor</th>
+                <th>Chave Pix</th>
+                <th>Tipo</th>
+                <th>Status</th>
+                <th>Solicitado em</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="table-saques">
+              <tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pag-saq"></div>
+      </div>
+
+      </div>
+
       <div id="tab-sistema" class="tab-content">
         <div class="metrics-grid">
           <div class="metric-card orange">
@@ -4484,6 +4568,8 @@ async function fazerLogin() {
         // 2. Trocar tela IMEDIATAMENTE (antes de qualquer outra coisa)
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('admin-screen').style.display = 'block';
+        // 2.5 Ativar dashboard explicitamente
+        try { showTab('dashboard'); } catch(e) {}
         // 3. Carregar dados em background (erros aqui não afetam o login)
         try { loadAll(); } catch(e) {}
         try { setInterval(loadAll, 30000); } catch(e) {}
@@ -4915,93 +5001,193 @@ function renderGrafico(depDias, saqDias) {
 //  DEPÓSITOS
 // ═══════════════════════════════════════════════
 async function loadDepositos() {
+  const tbody = document.getElementById('table-depositos');
+  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>';
   try {
-    const r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(SECRET())}&limit=200`);
+    const r = await fetch(`${BASE}/api/mp2/depositos?secret=${encodeURIComponent(SECRET())}`);
     if (!r.ok) return;
     const d = await r.json();
-    allDepositos = d.transacoes || [];
+    allDepositos = d.depositos || [];
+    // Atualizar cards de resumo
+    const res = d.resumo || {};
+    const el = (id) => document.getElementById(id);
+    if (el('dep-res-total'))        el('dep-res-total').textContent        = res.total        || 0;
+    if (el('dep-res-confirmados'))  el('dep-res-confirmados').textContent  = res.confirmados  || 0;
+    if (el('dep-res-pendentes'))    el('dep-res-pendentes').textContent    = res.pendentes    || 0;
+    if (el('dep-res-val-recebido')) el('dep-res-val-recebido').textContent = 'R$ ' + formatVal(res.valor_recebido || 0);
+    if (el('dep-res-val-pendente')) el('dep-res-val-pendente').textContent = 'R$ ' + formatVal(res.valor_pendente || 0);
+    // Badge no menu
+    const badge = document.getElementById('badge-dep');
+    if (badge) badge.textContent = res.pendentes || 0;
     renderDepositos();
-  } catch(e) {}
+  } catch(e) {
+    console.error('[loadDepositos]', e);
+  }
 }
 
 function renderDepositosRecentes() {
   const tbody = document.getElementById('table-dep-recent');
+  if (!tbody) return;
   const recent = allDepositos.slice(0, 8);
-  document.getElementById('count-dep-recent').textContent = allDepositos.length + ' total';
+  const countEl = document.getElementById('count-dep-recent');
+  if (countEl) countEl.textContent = allDepositos.length + ' total';
   
   if (!recent.length) {
     tbody.innerHTML = '<tr><td colspan="4" class="empty"><div class="empty-icon">📭</div><p>Nenhum depósito ainda</p></td></tr>';
     return;
   }
-  tbody.innerHTML = recent.map(tx => `
-    <tr>
-      <td class="mono">${tx.tx_id ? tx.tx_id.substring(0,12)+'...' : '—'}</td>
-      <td><strong style="color:var(--green)">R$ ${(tx.valor||0).toFixed(2).replace('.',',')}</strong></td>
-      <td>${badgeStatus(tx.status)}</td>
-      <td style="color:var(--text3);font-size:11px">${formatDate(tx.created_at)}</td>
-    </tr>
-  `).join('');
+  const statusMap = {
+    confirmado: '✅ Confirmado',
+    pendente:   '⏳ Pendente',
+    cancelado:  '❌ Cancelado',
+    pago:       '✅ Pago',
+  };
+  tbody.innerHTML = recent.map(tx => {
+    const nome = tx.nome || tx.username || `#${tx.telegram_id}` || '—';
+    const val  = parseFloat(tx.valor || 0).toFixed(2).replace('.', ',');
+    const st   = statusMap[tx.status] || tx.status || '—';
+    const data = (tx.criado_em || tx.created_at || '').substring(0, 10) || '—';
+    return `<tr>
+      <td style="font-size:12px;font-weight:600">${nome}</td>
+      <td><strong style="color:var(--green)">R$ ${val}</strong></td>
+      <td style="font-size:11px">${st}</td>
+      <td style="color:var(--text3);font-size:11px">${data}</td>
+    </tr>`;
+  }).join('');
 }
 
 function renderDepositos() {
-  const statusFilter = document.getElementById('filter-dep-status').value;
-  const search = document.getElementById('filter-dep-search').value.toLowerCase();
-  
+  const statusFilter = document.getElementById('filter-dep-status')?.value || '';
+  const search       = (document.getElementById('filter-dep-search')?.value || '').toLowerCase();
+
   let filtered = allDepositos.filter(tx => {
     const matchStatus = !statusFilter || tx.status === statusFilter;
-    const matchSearch = !search || 
-      (tx.tx_id||'').toLowerCase().includes(search) ||
-      String(tx.valor||'').includes(search);
+    const matchSearch = !search ||
+      String(tx.id || '').includes(search) ||
+      (tx.username || '').toLowerCase().includes(search) ||
+      (tx.nome     || '').toLowerCase().includes(search) ||
+      (tx.mp_payment_id || '').toLowerCase().includes(search) ||
+      String(tx.valor || '').includes(search);
     return matchStatus && matchSearch;
   });
 
-  document.getElementById('count-dep-all').textContent = filtered.length + ' registros';
+  const countEl = document.getElementById('count-dep-all');
+  if (countEl) countEl.textContent = filtered.length + ' registros';
+
   const start = (pagDep - 1) * PER_PAGE;
-  const page = filtered.slice(start, start + PER_PAGE);
-  
+  const page  = filtered.slice(start, start + PER_PAGE);
   const tbody = document.getElementById('table-depositos');
+  if (!tbody) return;
+
   if (!page.length) {
-    tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-icon">🔍</div><p>Nenhum resultado encontrado</p></div></td></tr>';
-  } else {
-    tbody.innerHTML = page.map((tx, i) => `
-      <tr>
-        <td style="color:var(--text3)">${start + i + 1}</td>
-        <td class="mono">
-          ${tx.tx_id ? tx.tx_id.substring(0,14)+'...' : '—'}
-          <button class="copy-btn" onclick="copiar('${tx.tx_id}')">📋</button>
-        </td>
-        <td><strong style="color:var(--green)">R$ ${(tx.valor||0).toFixed(2).replace('.',',')}</strong></td>
-        <td>${badgeStatus(tx.status)}</td>
-        <td style="font-size:12px;color:var(--text2)">${formatDateTime(tx.created_at)}</td>
-        <td style="font-size:12px;color:var(--text2)">${tx.paid_at ? formatDateTime(tx.paid_at) : '—'}</td>
-        <td>
-          ${tx.pix_code ? 
-            `<button class="copy-btn" onclick="copiar('${tx.pix_code}')">📋 Copiar</button>` : 
-            '<span style="color:var(--text3)">—</span>'}
-        </td>
-        <td>
-          ${tx.status === 'pendente' ? 
-            `<button class="action-btn ok-btn" onclick="confirmarDeposito('${tx.tx_id}')">✅ Confirmar</button>` : 
-            '<span style="color:var(--text3);font-size:11px">—</span>'}
-        </td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-icon">🔍</div><p>Nenhum depósito encontrado</p></div></td></tr>';
+    renderPagination('pag-dep', filtered.length, pagDep, (p) => { pagDep = p; renderDepositos(); });
+    return;
   }
 
-  renderPagination('pag-dep', Math.ceil(filtered.length / PER_PAGE), pagDep, 'dep');
+  const statusInfo = {
+    pendente:   { cor: '#f59e0b', bg: '#f59e0b22', icon: '⏳', label: 'Pendente'    },
+    confirmado: { cor: '#4caf50', bg: '#4caf5022', icon: '✅', label: 'Confirmado'  },
+    cancelado:  { cor: '#f44336', bg: '#f4433622', icon: '❌', label: 'Cancelado'   },
+    pago:       { cor: '#4caf50', bg: '#4caf5022', icon: '✅', label: 'Pago'        },
+  };
+
+  tbody.innerHTML = page.map((tx, i) => {
+    const st   = statusInfo[tx.status] || { cor: '#888', bg: '#88888822', icon: '❓', label: tx.status };
+    const data = tx.criado_em ? tx.criado_em.substring(0,16).replace('T',' ') : '—';
+    const nome = tx.nome || tx.username || `#${tx.telegram_id}` || '—';
+    const val  = parseFloat(tx.valor || 0).toFixed(2).replace('.', ',');
+    const mpId = tx.mp_payment_id || '—';
+    const pixCode = (tx.pix_copia_cola || '').substring(0, 20);
+
+    return `<tr>
+      <td style="color:var(--text3);font-size:11px">#${tx.id}</td>
+      <td>
+        <div style="font-weight:600;font-size:13px">${nome}</div>
+        ${tx.username ? `<div style="font-size:11px;color:#666">@${tx.username}</div>` : ''}
+      </td>
+      <td><strong style="color:var(--green);font-size:15px">R$ ${val}</strong></td>
+      <td>
+        <span style="background:${st.bg};color:${st.cor};padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700">
+          ${st.icon} ${st.label}
+        </span>
+      </td>
+      <td style="font-size:11px;color:#888;font-family:monospace">
+        ${mpId !== '—' ? `<span title="${mpId}">${mpId.substring(0,14)}...</span>` : '—'}
+      </td>
+      <td style="font-size:11px">
+        ${pixCode ? `<button class="copy-btn" onclick="copiar('${tx.pix_copia_cola}')">📋 Copiar</button>` : '<span style="color:#555">—</span>'}
+      </td>
+      <td style="font-size:11px;color:#888">${data}</td>
+    </tr>`;
+  }).join('');
+
+  renderPagination('pag-dep', filtered.length, pagDep, (p) => { pagDep = p; renderDepositos(); });
 }
 
 // ═══════════════════════════════════════════════
 //  SAQUES
 // ═══════════════════════════════════════════════
 async function loadSaques() {
+  const tbody = document.getElementById('table-saques');
+  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>';
   try {
-    const r = await fetch(`${BASE}/api/saques?secret=${encodeURIComponent(SECRET())}&limit=200`);
+    const r = await fetch(`${BASE}/api/saques?secret=${encodeURIComponent(SECRET())}&limit=500`);
     if (!r.ok) return;
     const d = await r.json();
     allSaques = d.saques || [];
+    // Atualizar cards de resumo
+    const res = d.resumo || {};
+    const el = (id) => document.getElementById(id);
+    if (el('saq-res-pendentes'))  el('saq-res-pendentes').textContent  = res.pendentes  || 0;
+    if (el('saq-res-aprovados'))  el('saq-res-aprovados').textContent  = res.aprovados  || 0;
+    if (el('saq-res-rejeitados')) el('saq-res-rejeitados').textContent = res.rejeitados || 0;
+    if (el('saq-res-total'))      el('saq-res-total').textContent      = res.total      || 0;
+    if (el('saq-res-val-pendente')) el('saq-res-val-pendente').textContent = 'R$ ' + formatVal(res.valor_pendente || 0);
+    if (el('saq-res-val-pago'))     el('saq-res-val-pago').textContent     = 'R$ ' + formatVal(res.valor_pago    || 0);
+    // Atualizar badge no menu
+    const badge = document.getElementById('badge-saq');
+    if (badge) badge.textContent = res.pendentes || 0;
     renderSaques();
-  } catch(e) {}
+  } catch(e) {
+    console.error('[loadSaques]', e);
+  }
+}
+
+function formatVal(v) {
+  return parseFloat(v || 0).toFixed(2).replace('.', ',');
+}
+
+async function processarSaque(id, aprovado) {
+  const acao = aprovado ? 'aprovar' : 'rejeitar';
+  if (!confirm(`Tem certeza que deseja ${acao} o saque #${id}?`)) return;
+  const btn = document.getElementById('saq-btn-' + id);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  try {
+    const r = await fetch(`${BASE}/api/mp2/saques/processar?secret=${encodeURIComponent(SECRET())}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET()},
+      body: JSON.stringify({saque_id: id, aprovado: aprovado, obs: ''})
+    });
+    const d = await r.json();
+    if (d.success) {
+      const cor = aprovado ? '#4caf50' : '#f44336';
+      const msg = aprovado ? '✅ Aprovado!' : '❌ Rejeitado!';
+      const row = document.getElementById('saq-row-' + id);
+      if (row) {
+        row.style.background = aprovado ? '#0a2a0a' : '#2a0a0a';
+        row.querySelector('.saq-status').innerHTML = `<span style="background:${cor}22;color:${cor};padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700">${aprovado ? '✅ Aprovado' : '❌ Rejeitado'}</span>`;
+        row.querySelector('.saq-acoes').innerHTML = `<span style="color:${cor};font-size:12px">${msg}</span>`;
+      }
+      await loadSaques();
+    } else {
+      alert('Erro: ' + (d.error || 'tente novamente'));
+      if (btn) { btn.disabled = false; btn.textContent = aprovado ? '✅ Aprovar' : '❌ Rejeitar'; }
+    }
+  } catch(e) {
+    alert('Erro de conexão: ' + e.message);
+    if (btn) { btn.disabled = false; }
+  }
 }
 
 function renderResumoFinanceiro(dep, saq, saldoBotReal, saldoLocal) {
@@ -5053,52 +5239,85 @@ function renderSaquesRecentes() {
 }
 
 function renderSaques() {
-  const statusFilter = document.getElementById('filter-saq-status').value;
-  const search = document.getElementById('filter-saq-search').value.toLowerCase();
-  
+  const statusFilter = document.getElementById('filter-saq-status')?.value || '';
+  const search       = (document.getElementById('filter-saq-search')?.value || '').toLowerCase();
+
   let filtered = allSaques.filter(s => {
     const matchStatus = !statusFilter || s.status === statusFilter;
     const matchSearch = !search ||
-      (s.saque_id||'').toLowerCase().includes(search) ||
-      (s.chave_pix||'').toLowerCase().includes(search) ||
-      String(s.valor||'').includes(search);
+      String(s.id || '').includes(search) ||
+      (s.username || '').toLowerCase().includes(search) ||
+      (s.nome     || '').toLowerCase().includes(search) ||
+      (s.chave_pix|| '').toLowerCase().includes(search) ||
+      String(s.valor || '').includes(search);
     return matchStatus && matchSearch;
   });
 
-  document.getElementById('count-saq-all').textContent = filtered.length + ' registros';
+  const countEl = document.getElementById('count-saq-all');
+  if (countEl) countEl.textContent = filtered.length + ' registros';
+
   const start = (pagSaq - 1) * PER_PAGE;
-  const page = filtered.slice(start, start + PER_PAGE);
-  
+  const page  = filtered.slice(start, start + PER_PAGE);
   const tbody = document.getElementById('table-saques');
+  if (!tbody) return;
+
   if (!page.length) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><div class="empty-icon">🔍</div><p>Nenhum resultado encontrado</p></div></td></tr>';
-  } else {
-    tbody.innerHTML = page.map((s, i) => `
-      <tr>
-        <td style="color:var(--text3)">${start + i + 1}</td>
-        <td class="mono">
-          ${(s.saque_id||'—').substring(0,12)+'...'}
-          <button class="copy-btn" onclick="copiar('${s.saque_id}')">📋</button>
-        </td>
-        <td><strong style="color:var(--red)">R$ ${(s.valor||0).toFixed(2).replace('.',',')}</strong></td>
-        <td style="font-size:11px;max-width:140px;word-break:break-all">
-          ${s.chave_pix||'—'}
-          ${s.chave_pix ? `<button class="copy-btn" onclick="copiar('${s.chave_pix}')">📋</button>` : ''}
-        </td>
-        <td><span style="background:rgba(96,165,250,0.1);color:var(--blue);padding:3px 8px;border-radius:6px;font-size:11px">${(s.tipo_chave||'').toUpperCase()}</span></td>
-        <td>${badgeStatus(s.status)}</td>
-        <td style="font-size:12px;color:var(--text2)">${formatDateTime(s.created_at)}</td>
-        <td style="font-size:12px;color:var(--text2)">${s.processado_at ? formatDateTime(s.processado_at) : '—'}</td>
-        <td>
-          ${(s.status === 'pendente' || s.status === 'erro') ? 
-            `<button class="action-btn danger" onclick="cancelarSaque('${s.saque_id}')">🚫 Cancelar</button>` : 
-            '<span style="color:var(--text3);font-size:11px">—</span>'}
-        </td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><div class="empty-icon">🔍</div><p>Nenhum saque encontrado</p></div></td></tr>';
+    return;
   }
 
-  renderPagination('pag-saq', Math.ceil(filtered.length / PER_PAGE), pagSaq, 'saq');
+  const statusInfo = {
+    pendente:  { cor: '#f59e0b', bg: '#f59e0b22', icon: '⏳', label: 'Pendente'  },
+    aprovado:  { cor: '#4caf50', bg: '#4caf5022', icon: '✅', label: 'Aprovado'  },
+    rejeitado: { cor: '#f44336', bg: '#f4433622', icon: '❌', label: 'Rejeitado' },
+  };
+
+  tbody.innerHTML = page.map((s) => {
+    const st   = statusInfo[s.status] || { cor: '#888', bg: '#88888822', icon: '❓', label: s.status };
+    const data = s.criado_em ? s.criado_em.substring(0,16).replace('T',' ') : '—';
+    const nome = s.nome || s.username || `#${s.telegram_id}` || '—';
+    const val  = parseFloat(s.valor || 0).toFixed(2).replace('.', ',');
+    const isPendente = s.status === 'pendente';
+
+    return `<tr id="saq-row-${s.id}" style="transition:background 0.3s">
+      <td style="color:var(--text3);font-size:11px">#${s.id}</td>
+      <td>
+        <div style="font-weight:600;font-size:13px">${nome}</div>
+        ${s.username ? `<div style="font-size:11px;color:#666">@${s.username}</div>` : ''}
+      </td>
+      <td><strong style="color:var(--red);font-size:15px">R$ ${val}</strong></td>
+      <td style="font-size:11px;max-width:150px;word-break:break-all">
+        <span style="font-family:monospace">${s.chave_pix || '—'}</span>
+        ${s.chave_pix ? `<button class="copy-btn" onclick="copiar('${s.chave_pix}')">📋</button>` : ''}
+      </td>
+      <td style="font-size:11px;color:#888;text-transform:uppercase">${s.tipo_chave || '—'}</td>
+      <td class="saq-status">
+        <span style="background:${st.bg};color:${st.cor};padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700">
+          ${st.icon} ${st.label}
+        </span>
+      </td>
+      <td style="font-size:11px;color:#888">${data}</td>
+      <td class="saq-acoes">
+        ${isPendente ? `
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button id="saq-btn-apr-${s.id}"
+              onclick="processarSaque(${s.id}, true)"
+              style="background:#1a3a1a;border:1px solid #4caf5066;color:#4caf50;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap">
+              ✅ Aprovar
+            </button>
+            <button id="saq-btn-rej-${s.id}"
+              onclick="processarSaque(${s.id}, false)"
+              style="background:#3a1a1a;border:1px solid #f4433666;color:#f44336;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap">
+              ❌ Rejeitar
+            </button>
+          </div>
+        ` : `<span style="color:#555;font-size:12px">${s.obs || '—'}</span>`}
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Paginação
+  renderPagination('pag-saq', filtered.length, pagSaq, (p) => { pagSaq = p; renderSaques(); });
 }
 
 // ═══════════════════════════════════════════════

@@ -478,6 +478,55 @@ def mp2_stats_admin() -> dict:
         print(f'[mp2_stats] Erro: {e}', flush=True)
         return {}
 
+def mp2_listar_depositos_admin(limit=500) -> dict:
+    """Lista todos os depósitos MP2 para o painel admin."""
+    try:
+        conn = _get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            """SELECT t.id, t.telegram_id, t.valor, t.status, t.mp_payment_id,
+                      t.mp_external_ref, t.pix_copia_cola, t.descricao,
+                      t.criado_em, t.atualizado_em,
+                      u.username, u.nome
+               FROM mp2_transacoes t
+               LEFT JOIN mp2_usuarios u ON u.telegram_id = t.telegram_id
+               WHERE t.tipo = 'deposito'
+               ORDER BY t.criado_em DESC
+               LIMIT %s""",
+            (limit,)
+        )
+        rows = cur.fetchall()
+        depositos = []
+        for r in rows:
+            row = dict(r)
+            for k, v in row.items():
+                if hasattr(v, 'isoformat'):
+                    row[k] = v.isoformat()
+                elif v is None:
+                    row[k] = ''
+            depositos.append(row)
+        cur.close(); conn.close()
+
+        pendentes  = [d for d in depositos if d['status'] == 'pendente']
+        confirmados = [d for d in depositos if d['status'] == 'confirmado']
+        cancelados = [d for d in depositos if d['status'] == 'cancelado']
+
+        return {
+            'depositos': depositos,
+            'resumo': {
+                'total':           len(depositos),
+                'pendentes':       len(pendentes),
+                'confirmados':     len(confirmados),
+                'cancelados':      len(cancelados),
+                'valor_pendente':  float(sum(float(d['valor']) for d in pendentes if d['valor'])),
+                'valor_recebido':  float(sum(float(d['valor']) for d in confirmados if d['valor'])),
+            }
+        }
+    except Exception as e:
+        print(f'[mp2_depositos_admin] Erro: {e}', flush=True)
+        return {'depositos': [], 'resumo': {}}
+
+
 def mp2_listar_saques_pendentes() -> list:
     """Lista saques pendentes para o admin processar."""
     try:
