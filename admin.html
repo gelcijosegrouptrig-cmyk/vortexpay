@@ -160,10 +160,10 @@
   }
   .refresh-btn:hover { background: rgba(255,255,255,0.1); }
   .last-update { font-size: 12px; color: var(--text3); }
-  .content { padding: 28px; }
+  .content { padding: 28px; min-height: calc(100vh - 70px); }
 
   /* ── TABS ───────────────────────────────────────── */
-  .tab-content { display: none; }
+  .tab-content { display: none; min-height: 200px; }
   .tab-content.active { display: block; }
 
   /* ── CARDS MÉTRICAS ─────────────────────────────── */
@@ -4412,8 +4412,7 @@ const poll = setInterval(async () => {
     <!-- Rodapé -->
     <div style="text-align:center;padding:24px;color:#94a3b8;font-size:.8rem;border-top:1px solid #ffffff15;margin-top:24px">
       PaynexBet API v3 &nbsp;·&nbsp; Todas as rotas com autenticação exigem o header <code style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#7dd3fc">X-PaynexBet-Secret</code> ou <code style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#7dd3fc">?secret=</code>
-      </div>
-        </div>
+    </div>
       </div><!-- /tab-api -->
 
     </div><!-- /content -->
