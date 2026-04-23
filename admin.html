@@ -619,6 +619,20 @@
   .badge-patch  { background:#f59e0b;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
   .badge-delete { background:#ef4444;color:#fff;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace; }
   .badge-js     { background:#1e293b;color:#fbbf24;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace;border:1px solid #fbbf2440; }
+
+  /* FORÇA visibilidade do tab-bot2 quando ativo */
+  #tab-bot2 {
+    min-height: 100px;
+  }
+  #tab-bot2.active,
+  #tab-bot2[style*="display: block"],
+  #tab-bot2[style*="display:block"] {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-height: 400px !important;
+  }
+
 </style>
 </head>
 <body>
@@ -656,7 +670,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250426';
+  const VER = '20250426b';
   if (sessionStorage.getItem('adminVer') !== VER) {
     sessionStorage.setItem('adminVer', VER);
     location.replace(location.pathname + '?v=' + VER + '&t=' + Date.now());
@@ -4504,6 +4518,31 @@ function showTab(tab) {
   if (activeTab) {
     activeTab.classList.add('active');
     activeTab.style.display = 'block';
+    // DEBUG: forçar visibilidade
+    activeTab.style.visibility = 'visible';
+    activeTab.style.opacity = '1';
+    activeTab.style.minHeight = '400px';
+    activeTab.style.position = 'relative';
+    activeTab.style.zIndex = '1';
+    if (tab === 'bot2') {
+      console.log('[bot2] tab ativado, display:', activeTab.style.display, 'height:', activeTab.offsetHeight);
+      // Toast de debug
+      const t = document.getElementById('toast');
+      if (t) {
+        t.textContent = '✅ Bot2: display=' + activeTab.style.display + ' h=' + activeTab.offsetHeight + 'px';
+        t.style.display = 'block';
+        t.style.background = '#f59e0b';
+        t.style.color = '#000';
+        t.style.padding = '12px 20px';
+        t.style.position = 'fixed';
+        t.style.bottom = '60px';
+        t.style.right = '20px';
+        t.style.zIndex = '99999';
+        t.style.borderRadius = '8px';
+        t.style.fontWeight = '700';
+        setTimeout(() => { t.style.display = 'none'; }, 5000);
+      }
+    }
   }
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.textContent.toLowerCase().includes(tabName(tab))) n.classList.add('active');
@@ -6864,5 +6903,76 @@ function colInitState() {
 document.addEventListener('DOMContentLoaded', () => { setTimeout(colInitState, 50); });
 
 </script>
+
+<!-- DEBUG PANEL - REMOVER APÓS DIAGNÓSTICO -->
+<div id="debug-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:99999;padding:20px;overflow:auto;font-family:monospace;font-size:13px;color:#0f0">
+  <button onclick="document.getElementById('debug-overlay').style.display='none'" style="position:fixed;top:10px;right:10px;background:red;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px">✕ Fechar</button>
+  <h2 style="color:#ff0;margin-bottom:16px">🔍 DIAGNÓSTICO BOT2</h2>
+  <div id="debug-output" style="white-space:pre-wrap"></div>
+</div>
+<button onclick="runDebug()" style="position:fixed;bottom:20px;right:20px;background:#f59e0b;color:#000;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-weight:800;z-index:9999;font-size:14px">🔍 DEBUG</button>
+<script>
+function runDebug() {
+  const out = [];
+  const overlay = document.getElementById('debug-overlay');
+  overlay.style.display = 'block';
+  
+  // Estado dos elementos críticos
+  const ids = ['admin-screen','login-screen','tab-bot2','tab-paypix','tab-dashboard'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) { out.push(id + ': NAO EXISTE'); return; }
+    const cs = window.getComputedStyle(el);
+    out.push(id + ':');
+    out.push('  display=' + cs.display);
+    out.push('  visibility=' + cs.visibility);
+    out.push('  opacity=' + cs.opacity);
+    out.push('  height=' + cs.height);
+    out.push('  width=' + cs.width);
+    out.push('  class=' + el.className);
+    out.push('  style=' + el.getAttribute('style'));
+    out.push('');
+  });
+  
+  // Estado do content
+  const content = document.querySelector('.content');
+  if (content) {
+    const cs = window.getComputedStyle(content);
+    out.push('.content:');
+    out.push('  display=' + cs.display);
+    out.push('  height=' + cs.height);
+    out.push('  overflow=' + cs.overflow);
+    out.push('  marginLeft=' + cs.marginLeft);
+    out.push('');
+  }
+  
+  // Estado do .main
+  const main = document.querySelector('.main');
+  if (main) {
+    const cs = window.getComputedStyle(main);
+    out.push('.main:');
+    out.push('  display=' + cs.display);
+    out.push('  height=' + cs.height);
+    out.push('  marginLeft=' + cs.marginLeft);
+    out.push('');
+  }
+  
+  // sessionStorage
+  out.push('sessionStorage:');
+  out.push('  vp_secret=' + (sessionStorage.getItem("vp_secret") ? "SET(***)" : "NULL"));
+  out.push('  adminVer=' + sessionStorage.getItem("adminVer"));
+  out.push('');
+  
+  // Posição de scroll
+  out.push('Window:');
+  out.push('  scrollX=' + window.scrollX);
+  out.push('  scrollY=' + window.scrollY);
+  out.push('  innerWidth=' + window.innerWidth);
+  out.push('  innerHeight=' + window.innerHeight);
+  
+  document.getElementById('debug-output').textContent = out.join('\n');
+}
+</script>
+
 </body>
 </html>
