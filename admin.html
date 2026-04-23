@@ -5004,8 +5004,29 @@ async function loadDepositos() {
   const tbody = document.getElementById('table-depositos');
   if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>';
   try {
-    const r = await fetch(`${BASE}/api/mp2/depositos?secret=${encodeURIComponent(SECRET())}`);
-    if (!r.ok) return;
+    // Tenta endpoint MP2 (disponível após deploy server.py)
+    let r = await fetch(`${BASE}/api/mp2/depositos?secret=${encodeURIComponent(SECRET())}`);
+    if (!r.ok) {
+      // Fallback: endpoint legado
+      r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(SECRET())}&limit=500`);
+      if (!r.ok) return;
+      const d = await r.json();
+      allDepositos = (d.transacoes || []).map(tx => ({
+        id: tx.id, valor: tx.valor, status: tx.status === 'pago' ? 'confirmado' : tx.status,
+        criado_em: tx.created_at, atualizado_em: tx.paid_at,
+        mp_payment_id: tx.tx_id, pix_copia_cola: tx.pix_code,
+        telegram_id: '', username: '', nome: '',
+      }));
+      const res = d.resumo || {};
+      const el = (id) => document.getElementById(id);
+      if (el('dep-res-total'))       el('dep-res-total').textContent       = res.total || 0;
+      if (el('dep-res-confirmados')) el('dep-res-confirmados').textContent = res.pagos  || 0;
+      if (el('dep-res-pendentes'))   el('dep-res-pendentes').textContent   = res.pendentes || 0;
+      if (el('dep-res-val-recebido')) el('dep-res-val-recebido').textContent = 'R$ ' + formatVal(res.valor_recebido || 0);
+      if (el('dep-res-val-pendente')) el('dep-res-val-pendente').textContent = 'R$ ' + formatVal(res.valor_pendente || 0);
+      renderDepositos();
+      return;
+    }
     const d = await r.json();
     allDepositos = d.depositos || [];
     // Atualizar cards de resumo
