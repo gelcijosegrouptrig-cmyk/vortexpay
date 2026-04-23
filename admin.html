@@ -163,20 +163,8 @@
   .content { padding: 28px; }
 
   /* ── TABS ───────────────────────────────────────── */
-  .tab-content {
-    display: none !important;
-    visibility: hidden;
-    opacity: 0;
-    pointer-events: none;
-  }
-  .tab-content.active {
-    display: block !important;
-    visibility: visible;
-    opacity: 1;
-    pointer-events: auto;
-    position: relative;
-    z-index: 1;
-  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
 
   /* ── CARDS MÉTRICAS ─────────────────────────────── */
   .metrics-grid {
@@ -666,14 +654,13 @@
 </div>
 
 <script>
-// Anti-cache: força reload se versão antiga
+// Anti-cache: adiciona parâmetro de versão sem redirect invasivo
 (function(){
-  const VER = '20250423b';
-  if (sessionStorage.getItem('adminVer') !== VER) {
-    sessionStorage.setItem('adminVer', VER);
-    if (!location.search.includes('v=')) {
-      location.replace(location.pathname + '?v=' + VER);
-    }
+  const VER = '20250423c';
+  // Só adiciona na URL se necessário, sem redirect (preserva sessionStorage)
+  if (!location.search.includes('v=20250423c')) {
+    const url = location.pathname + '?v=20250423c' + (location.hash || '');
+    history.replaceState(null, '', url);
   }
 })();
 
@@ -4509,25 +4496,17 @@ async function fazerLogin() {
 //  NAVEGAÇÃO
 // ═══════════════════════════════════════════════
 function showTab(tab) {
-  // Esconde TODOS os tabs explicitamente
+  // Esconde todos os tabs
   document.querySelectorAll('.tab-content').forEach(t => {
     t.classList.remove('active');
-    t.style.setProperty('display', 'none', 'important');
-    t.style.visibility = 'hidden';
-    t.style.opacity = '0';
-    t.style.pointerEvents = 'none';
+    t.style.display = 'none';
   });
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   // Mostra o tab ativo
   const activeTab = document.getElementById('tab-' + tab);
   if (activeTab) {
     activeTab.classList.add('active');
-    activeTab.style.setProperty('display', 'block', 'important');
-    activeTab.style.visibility = 'visible';
-    activeTab.style.opacity = '1';
-    activeTab.style.pointerEvents = 'auto';
-    activeTab.style.position = 'relative';
-    activeTab.style.zIndex = '1';
+    activeTab.style.display = 'block';
   }
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.textContent.toLowerCase().includes(tabName(tab))) n.classList.add('active');
@@ -4550,7 +4529,7 @@ function showTab(tab) {
   if (tab === 'saques' && allSaques.length === 0) loadSaques();
   if (tab === 'sorteio') carregarSorteioAdmin();
   if (tab === 'paypix') carregarPaypixAdmin();
-  if (tab === 'bot2') { bot2CheckStatus(); mp2CarregarChaves(); mp2CarregarStats(); mp2CarregarParceiros(); }
+  if (tab === 'bot2') carregarBot2Admin();
   if (tab === 'sistema') loadHealth();
 }
 
@@ -6238,7 +6217,50 @@ function colToggle(id) {
   }
 }
 
-// Estado inicial: salva no sessionStorage qual está ab
+// ── Funções auxiliares PayPix (stubs para compatibilidade) ──
+async function ppCarregarChaves() {
+  try {
+    const r = await fetch(`${BASE}/api/pp/chaves?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) return;
+    // Preenche campos de chaves se existirem
+    if (d.access_token) { const el = document.getElementById('pp-access-token'); if (el) { el.placeholder = '✅ Configurado'; const b = document.getElementById('pp-token-badge'); if (b) b.style.display = 'inline'; } }
+    if (d.webhook_url) { const el = document.getElementById('pp-webhook-url'); if (el) el.textContent = d.webhook_url; }
+  } catch(e) {}
+}
+async function ppCarregarStats() {
+  try {
+    const r = await fetch(`${BASE}/api/pp/stats?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) return;
+    const tg = document.getElementById('pp-total-gerado'); if (tg) tg.textContent = 'R$ ' + (d.total_gerado || '0,00');
+    const tp = document.getElementById('pp-total-pago');   if (tp) tp.textContent = 'R$ ' + (d.total_pago   || '0,00');
+    const cp = document.getElementById('pp-comissao-pend'); if (cp) cp.textContent = 'pendentes: R$ ' + (d.pendente || '0,00');
+  } catch(e) {}
+}
+async function ppCarregarComissoes() {
+  try {
+    const tbody = document.getElementById('pp-comissoes-tbody');
+    if (!tbody) return;
+    const r = await fetch(`${BASE}/api/pp/comissoes?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success || !d.comissoes || d.comissoes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Nenhuma comissão ainda</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.comissoes.map(c => `<tr>
+      <td style="padding:10px 14px;font-size:12px;color:#aaa">${c.id||''}</td>
+      <td style="padding:10px 14px">${c.parceiro||''}</td>
+      <td style="padding:10px 14px;color:#4ade80">R$ ${c.valor||'0'}</td>
+      <td style="padding:10px 14px;font-size:11px;color:#888">${c.chave_pix||''}</td>
+      <td style="padding:10px 14px"><span style="background:${c.status==='pago'?'#1a2a1a':'#2a1a0a'};color:${c.status==='pago'?'#4caf50':'#f59e0b'};padding:2px 8px;border-radius:10px;font-size:11px">${c.status||''}</span></td>
+      <td style="padding:10px 14px;font-size:11px;color:#666">${c.obs||''}</td>
+      <td style="padding:10px 14px;font-size:11px;color:#555">${c.data||''}</td>
+      <td style="padding:10px 14px"></td>
+    </tr>`).join('');
+  } catch(e) {}
+}
+
 // Carrega aba PayPix (chamado pelo showTab)
 async function carregarPaypixAdmin() {
   await ppCheckStatus();
@@ -6257,6 +6279,18 @@ setInterval(() => { if (SECRET()) ppCheckStatus(); }, 60000);
 // ════════════════════════════════════════════════════════════════
 // BOT 2 — @paypix_nexbot — JavaScript
 // ════════════════════════════════════════════════════════════════
+
+async function carregarBot2Admin() {
+  await bot2CheckStatus();
+  await mp2CarregarChaves();
+  await mp2CarregarStats();
+  await mp2CarregarParceiros();
+  await mp2CarregarComissoes();
+}
+
+// Igual ao PayPix — checar status ao carregar e a cada 60s
+if (SECRET()) bot2CheckStatus();
+setInterval(() => { if (SECRET()) bot2CheckStatus(); }, 60000);
 
 // bot2CheckStatus — usa API do Mercado Pago (não Telegram)
 async function bot2CheckStatus() {
