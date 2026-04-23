@@ -642,6 +642,27 @@
     min-height: 400px !important;
   }
 
+  /* FORÇA visibilidade do tab-paypixcob quando ativo */
+  #tab-paypixcob { min-height: 100px; }
+  #tab-paypixcob.active,
+  #tab-paypixcob[style*="display: block"],
+  #tab-paypixcob[style*="display:block"] {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-height: 400px !important;
+  }
+  /* FORÇA visibilidade do tab-paypix quando ativo */
+  #tab-paypix { min-height: 100px; }
+  #tab-paypix.active,
+  #tab-paypix[style*="display: block"],
+  #tab-paypix[style*="display:block"] {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-height: 400px !important;
+  }
+
 </style>
 </head>
 <body>
@@ -679,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427h';
+  const VER = '20250427i';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -5783,13 +5804,10 @@ function showTab(tab) {
   const activeTab = document.getElementById('tab-' + tab);
   if (activeTab) {
     activeTab.classList.add('active');
-    activeTab.style.display = 'block';
-    // DEBUG: forçar visibilidade
-    activeTab.style.visibility = 'visible';
-    activeTab.style.opacity = '1';
-    activeTab.style.minHeight = '400px';
-    activeTab.style.position = 'relative';
-    activeTab.style.zIndex = '1';
+    activeTab.style.cssText += '; display:block !important; visibility:visible !important; opacity:1 !important; min-height:400px !important;';
+    // Forçar re-render
+    void activeTab.offsetHeight;
+    console.log('[showTab] ativando', tab, 'display:', activeTab.style.display, 'offsetHeight:', activeTab.offsetHeight);
     if (tab === 'bot2') {
       console.log('[bot2] tab ativado, display:', activeTab.style.display, 'height:', activeTab.offsetHeight);
       // Toast de debug
