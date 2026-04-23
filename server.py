@@ -6605,6 +6605,138 @@ async def route_mp2_config_save(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# ███  PAYPIX-COB (pc) — Config ISOLADA (tabela pc_config)  ███
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def route_pc_config_get(request):
+    """GET /api/pc/config  ou  GET /api/pc/chaves — retorna credenciais PayPix-Cob."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        chaves = ['pc_access_token', 'pc_public_key', 'pc_client_id', 'pc_client_secret']
+        resultado = {}
+        for c in chaves:
+            cur.execute("SELECT valor FROM pc_config WHERE chave = %s", (c,))
+            row = cur.fetchone()
+            if row and row[0]:
+                resultado[c.replace('pc_', '')] = row[0]
+        cur.close(); conn.close()
+        resultado['configurado'] = bool(resultado.get('access_token'))
+        return web.json_response({'success': True, **resultado})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_pc_config_save(request):
+    """POST /api/pc/config — salva credenciais PayPix-Cob na tabela pc_config (ISOLADA)."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        body          = await request.json()
+        access_token  = body.get('access_token', '').strip()
+        public_key    = body.get('public_key',   '').strip()
+        client_id     = body.get('client_id',    '').strip()
+        client_secret = body.get('client_secret','').strip()
+
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+
+        # Garante que a tabela existe
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS pc_config (
+                chave TEXT PRIMARY KEY,
+                valor TEXT,
+                atualizado_em TIMESTAMPTZ DEFAULT NOW()
+            )
+        ''')
+
+        def _resolve_pc(campo_db, valor_novo):
+            if valor_novo and valor_novo != '__keep__':
+                return valor_novo
+            cur.execute("SELECT valor FROM pc_config WHERE chave = %s", (campo_db,))
+            row = cur.fetchone()
+            return row[0] if row else None
+
+        token_final  = _resolve_pc('pc_access_token',  access_token)
+        pubkey_final = _resolve_pc('pc_public_key',    public_key)
+        cid_final    = _resolve_pc('pc_client_id',     client_id)
+        csec_final   = _resolve_pc('pc_client_secret', client_secret)
+
+        if not token_final:
+            cur.close(); conn.close()
+            return web.json_response({'success': False,
+                                      'error': 'Access Token do PayPix-Cob é obrigatório!'})
+
+        pares = [
+            ('pc_access_token',  token_final),
+            ('pc_public_key',    pubkey_final),
+            ('pc_client_id',     cid_final),
+            ('pc_client_secret', csec_final),
+        ]
+        for chave, valor in pares:
+            if valor:
+                cur.execute('''
+                    INSERT INTO pc_config (chave, valor, atualizado_em)
+                    VALUES (%s, %s, NOW())
+                    ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = NOW()
+                ''', (chave, valor))
+        conn.commit()
+        cur.close(); conn.close()
+
+        suffix = token_final[-6:] if token_final else '???'
+        print(f'✅ [pc_config] Chaves PayPix-Cob atualizadas. Token: ...{suffix}', flush=True)
+        return web.json_response({'success': True, 'mensagem': 'Chaves PayPix-Cob salvas com sucesso!'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_pc_testar(request):
+    """GET /api/pc/testar — testa credenciais PayPix-Cob com a API do Mercado Pago."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import psycopg2, requests as _req
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("SELECT valor FROM pc_config WHERE chave = 'pc_access_token'")
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        token = row[0] if row else ''
+
+        if not token:
+            return web.json_response({'success': False, 'error': 'Access Token PayPix-Cob não configurado'})
+
+        resp = _req.get(
+            'https://api.mercadopago.com/users/me',
+            headers={'Authorization': f'Bearer {token}'},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            d = resp.json()
+            return web.json_response({
+                'success': True,
+                'email':   d.get('email', ''),
+                'site_id': d.get('site_id', ''),
+                'conta':   'PayPix-Cob (pc)',
+                'mensagem': f'✅ Conectado: {d.get("email","")} — conta ISOLADA PayPix-Cob'
+            })
+        else:
+            return web.json_response({'success': False, 'error': f'MP retornou {resp.status_code}: {resp.text[:200]}'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
 async def route_mp2_testar(request):
     """GET /api/mp2/testar - verifica conexão com a API do Mercado Pago."""
 
@@ -9459,9 +9591,9 @@ async def main():
     # ── PC (PayPix-Cob) — segundo canal PayPix, mesma infra MP2 ──────────
     app.router.add_get('/api/pc/status',                    route_mp2_status)
     app.router.add_get('/api/pc/stats',                     route_mp2_stats)
-    app.router.add_get('/api/pc/config',                    route_mp2_config_get)
-    app.router.add_post('/api/pc/config',                   route_mp2_config_save)
-    app.router.add_get('/api/pc/testar',                    route_mp2_testar)
+    app.router.add_get('/api/pc/config',                    route_pc_config_get)
+    app.router.add_post('/api/pc/config',                   route_pc_config_save)
+    app.router.add_get('/api/pc/testar',                    route_pc_testar)
     app.router.add_get('/api/pc/parceiros',                 route_mp2_parceiros_listar)
     app.router.add_post('/api/pc/parceiros',                route_mp2_parceiros_criar)
     app.router.add_delete('/api/pc/parceiros/{codigo}',     route_mp2_parceiros_deletar)
@@ -9469,7 +9601,7 @@ async def main():
     app.router.add_get('/api/pc/comissoes',                 route_mp2_comissoes_listar)
     app.router.add_post('/api/pc/comissoes/pagar',          route_mp2_comissoes_pagar_manual)
     app.router.add_get('/api/pc/fila',                      route_paypix_fila)
-    app.router.add_get('/api/pc/chaves',                    route_mp2_config_get)
+    app.router.add_get('/api/pc/chaves',                    route_pc_config_get)
     app.router.add_post('/api/pc/solicitar-codigo',         route_bot2_solicitar_codigo)
     app.router.add_post('/api/pc/confirmar-codigo',         route_bot2_confirmar_codigo)
 

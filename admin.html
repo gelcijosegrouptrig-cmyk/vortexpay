@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250427q</title>
+<title>PaynexBet - Painel Admin v20250427r</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427q';
+  const VER = '20250427r';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -8608,9 +8608,32 @@ async function pcCarregarChaves() {
     const r = await fetch(`${BASE}/api/pc/chaves?secret=${encodeURIComponent(SECRET())}`);
     const d = await r.json();
     if (!d.success) return;
-    // Preenche campos de chaves se existirem
-    if (d.access_token) { const el = document.getElementById('pc-access-token'); if (el) { el.placeholder = '✅ Configurado'; const b = document.getElementById('pc-token-badge'); if (b) b.style.display = 'inline'; } }
-    if (d.webhook_url) { const el = document.getElementById('pc-webhook-url'); if (el) el.textContent = d.webhook_url; }
+
+    // Preenche placeholders com últimos 6 chars (não exibe token em claro)
+    const setConf = (id, val) => {
+      const el = document.getElementById(id);
+      if (el && val) { el.placeholder = '✅ Configurado (...' + val.slice(-6) + ')'; el.value = ''; }
+    };
+    setConf('pc-access-token',  d.access_token);
+    setConf('pc-public-key',    d.public_key);
+    setConf('pc-client-id',     d.client_id);
+    setConf('pc-client-secret', d.client_secret);
+
+    // Badge token
+    const badge = document.getElementById('pc-token-badge');
+    if (badge && d.access_token) badge.style.display = 'inline';
+
+    // Webhook URL
+    const whUrl = document.getElementById('pc-webhook-url');
+    if (whUrl) whUrl.textContent = (window.location.origin || 'https://paynexbet.com') + '/webhook/pc';
+
+    // Badge MP status
+    const mpBadge = document.getElementById('pc-mp-badge');
+    if (mpBadge) {
+      mpBadge.textContent = d.configurado ? '✅ Configurado' : '⚠️ Não configurado';
+      mpBadge.style.background = d.configurado ? '#4caf5030' : '#f4433630';
+      mpBadge.style.color = d.configurado ? '#4caf50' : '#f44336';
+    }
   } catch(e) {}
 }
 async function pcCarregarStats() {
@@ -10312,7 +10335,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427q ===');
+  out.push('=== VERSÃO: 20250427r ===');
   out.push('');
 
   // Estado dos elementos críticos
