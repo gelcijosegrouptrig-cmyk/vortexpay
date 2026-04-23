@@ -654,6 +654,17 @@
 </div>
 
 <script>
+// Anti-cache: força reload se versão antiga
+(function(){
+  const VER = '20250423b';
+  if (sessionStorage.getItem('adminVer') !== VER) {
+    sessionStorage.setItem('adminVer', VER);
+    if (!location.search.includes('v=')) {
+      location.replace(location.pathname + '?v=' + VER);
+    }
+  }
+})();
+
 function toggleLoginSenha() {
   const inp = document.getElementById('login-secret');
   const btn = document.getElementById('btn-toggle-senha');
