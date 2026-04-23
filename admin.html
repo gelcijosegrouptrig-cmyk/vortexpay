@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250427p</title>
+<title>PaynexBet - Painel Admin v20250427q</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427p';
+  const VER = '20250427q';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -1853,7 +1853,7 @@ function toggleLoginSenha() {
 
         <!-- ═══ QR CODE DE AUTOCADASTRO ═══ -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header collapsible" id="pp-col-hdr-qr-auto" onclick="colToggle('qr-auto')">
+          <div class="table-header collapsible" id="pp-col-hdr-qr-auto" onclick="colToggle('pp-col-body-qr-auto')">
             <h3>📲 QR Code de Autocadastro <span id="pp-col-arrow-qr-auto" class="collapse-arrow">▼</span></h3>
             <button onclick="event.stopPropagation();qrAtualizarPreview()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
@@ -1964,7 +1964,7 @@ function toggleLoginSenha() {
 
         <!-- ═══ ASSINATURAS RECORRENTES ═══ -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header collapsible" id="pp-col-hdr-debito-auto" onclick="colToggle('debito-auto')">
+          <div class="table-header collapsible" id="pp-col-hdr-debito-auto" onclick="colToggle('pp-col-body-debito-auto')">
             <h3>💙 Débito Automático — Assinaturas Mensais <span id="pp-col-arrow-debito-auto" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <button onclick="recCarregarLista()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
@@ -2695,7 +2695,7 @@ function toggleLoginSenha() {
 
         <!-- ═══ QR CODE DE AUTOCADASTRO ═══ -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header collapsible" id="pc-col-hdr-qr-auto" onclick="colToggle('qr-auto')">
+          <div class="table-header collapsible" id="pc-col-hdr-qr-auto" onclick="colToggle('pc-col-body-qr-auto')">
             <h3>📲 QR Code de Autocadastro <span id="pc-col-arrow-qr-auto" class="collapse-arrow">▼</span></h3>
             <button onclick="event.stopPropagation();qrAtualizarPreview()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
@@ -2806,7 +2806,7 @@ function toggleLoginSenha() {
 
         <!-- ═══ ASSINATURAS RECORRENTES ═══ -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header collapsible" id="pc-col-hdr-debito-auto" onclick="colToggle('debito-auto')">
+          <div class="table-header collapsible" id="pc-col-hdr-debito-auto" onclick="colToggle('pc-col-body-debito-auto')">
             <h3>💙 Débito Automático — Assinaturas Mensais <span id="pc-col-arrow-debito-auto" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <button onclick="recCarregarLista()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
@@ -3564,7 +3564,7 @@ function toggleLoginSenha() {
         </div>
 
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header collapsible" id="b2-col-hdr-qr-auto" onclick="colToggle('qr-auto')">
+          <div class="table-header collapsible" id="b2-col-hdr-qr-auto" onclick="colToggle('b2-col-body-qr-auto')">
             <h3>📲 QR Code de Autocadastro <span id="b2-col-arrow-qr-auto" class="collapse-arrow">▼</span></h3>
             <button onclick="event.stopPropagation();qrAtualizarPreview()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
@@ -3675,7 +3675,7 @@ function toggleLoginSenha() {
 
         <!-- ═══ ASSINATURAS RECORRENTES ═══ -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header collapsible" id="b2-col-hdr-debito-auto" onclick="colToggle('debito-auto')">
+          <div class="table-header collapsible" id="b2-col-hdr-debito-auto" onclick="colToggle('b2-col-body-debito-auto')">
             <h3>💙 Débito Automático — Assinaturas Mensais <span id="b2-col-arrow-debito-auto" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <button onclick="recCarregarLista()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
@@ -9752,12 +9752,85 @@ if (SECRET()) b3CheckStatus();
 setInterval(() => { if (SECRET()) b3CheckStatus(); }, 90000);
 
 function colToggle(id) {
-  const body   = document.getElementById('col-body-' + id);
-  const header = document.getElementById('col-hdr-' + id);
-  const arrow  = document.getElementById('col-arrow-' + id);
+  // Suporta padrão 1: col-body-{id}  e  padrão 2: {id}-col-body (para qr-auto/debito-auto)
+  let body   = document.getElementById('col-body-' + id);
+  let header = document.getElementById('col-hdr-'  + id);
+  let arrow  = document.getElementById('col-arrow-'+ id);
+  // Padrão 2: o ID passado É o bodyId completo (ex: 'pp-col-body-qr-auto')
+  if (!body) {
+    body   = document.getElementById(id);
+    // tenta derivar header/arrow substituindo -col-body- por -col-hdr- / -col-arrow-
+    if (body) {
+      const hdrId   = id.replace('-col-body-', '-col-hdr-');
+      const arrowId = id.replace('-col-body-', '-col-arrow-');
+      header = document.getElementById(hdrId);
+      arrow  = document.getElementById(arrowId);
+    }
+  }
   if (!body) return;
   const isOpen = !body.classList.contains('collapsed');
-  if (isOpen) {
+  _colApply(body, arrow, header, !isOpen);
+}
+
+// Estado inicial: salva no sessionStorage qual está aberto
+function colInitState() {
+  // Mapa completo: ID-chave → [aberto?, prefixo-do-ID-no-HTML]
+  // Padrão 1 (maioria): col-body-{key}, col-hdr-{key}, col-arrow-{key}
+  // Padrão 2 (QR/débito): {prefix}-col-body-{suffix}, {prefix}-col-hdr-{suffix}, {prefix}-col-arrow-{suffix}
+
+  // Padrão 1 — busca via 'col-body-' + id
+  const defaults = {
+    'b2-status':          true,
+    'b2-config':          true,
+    'b2-parceiros':       true,
+    'b2-cfg-pagamento':   false,
+    'b2-stats':           true,
+    'b2-saques':          false,
+    'pp-status':          false,
+    'pp-config':          true,
+    'pp-parceiros':       false,
+    'pp-cfg-pagamento':   false,
+    'pp-stats':           false,
+    'pp-saques':          false,
+    'pc-status':          true,
+    'pc-config':          true,
+    'pc-parceiros':       true,
+    'pc-cfg-pagamento':   false,
+    'pc-stats':           true,
+    'pc-saques':          false,
+  };
+
+  // Padrão 2 — IDs com prefixo invertido: {prefix}-col-body-{suffix}
+  const defaults2 = {
+    'pp-col-body-qr-auto':     { open: false, hdr: 'pp-col-hdr-qr-auto',     arrow: 'pp-col-arrow-qr-auto'     },
+    'pp-col-body-debito-auto': { open: false, hdr: 'pp-col-hdr-debito-auto', arrow: 'pp-col-arrow-debito-auto' },
+    'pc-col-body-qr-auto':     { open: false, hdr: 'pc-col-hdr-qr-auto',     arrow: 'pc-col-arrow-qr-auto'     },
+    'pc-col-body-debito-auto': { open: false, hdr: 'pc-col-hdr-debito-auto', arrow: 'pc-col-arrow-debito-auto' },
+    'b2-col-body-qr-auto':     { open: false, hdr: 'b2-col-hdr-qr-auto',     arrow: 'b2-col-arrow-qr-auto'     },
+    'b2-col-body-debito-auto': { open: false, hdr: 'b2-col-hdr-debito-auto', arrow: 'b2-col-arrow-debito-auto' },
+  };
+
+  // Aplicar padrão 1
+  Object.entries(defaults).forEach(([id, open]) => {
+    const body   = document.getElementById('col-body-' + id);
+    const arrow  = document.getElementById('col-arrow-' + id);
+    const header = document.getElementById('col-hdr-' + id);
+    if (!body) return;
+    _colApply(body, arrow, header, open);
+  });
+
+  // Aplicar padrão 2
+  Object.entries(defaults2).forEach(([bodyId, cfg]) => {
+    const body   = document.getElementById(bodyId);
+    const arrow  = document.getElementById(cfg.arrow);
+    const header = document.getElementById(cfg.hdr);
+    if (!body) return;
+    _colApply(body, arrow, header, cfg.open);
+  });
+}
+
+function _colApply(body, arrow, header, open) {
+  if (!open) {
     body.classList.add('collapsed');
     if (arrow)  arrow.classList.add('rotated');
     if (header) header.classList.add('is-collapsed');
@@ -9766,55 +9839,6 @@ function colToggle(id) {
     if (arrow)  arrow.classList.remove('rotated');
     if (header) header.classList.remove('is-collapsed');
   }
-}
-
-// Estado inicial: salva no sessionStorage qual está aberto
-function colInitState() {
-  // IDs REAIS dos col-body no HTML (verificados no DOM)
-  // Bot Mercado Pago: prefixo b2-
-  // PayPix: prefixo pp-
-  const defaults = {
-    // Bot Mercado Pago (tab-bot2) — usa IDs reais com prefixo b2-
-    'b2-status':          true,   // col-body-b2-status
-    'b2-config':          true,   // col-body-b2-config
-    'b2-parceiros':       true,   // col-body-b2-parceiros
-    'b2-cfg-pagamento':   false,  // col-body-b2-cfg-pagamento
-    'b2-stats':           true,   // col-body-b2-stats
-    'b2-saques':          false,  // col-body-b2-saques
-    // PayPix (tab-paypix) — prefixo pp-
-    'pp-status':          false,
-    'pp-config':          true,
-    'pp-parceiros':       false,
-    'pp-cfg-pagamento':   false,
-    'pp-stats':           false,
-    'pp-saques':          false,
-    'pp-qr-auto':         false,
-    'pp-debito-auto':     false,
-    // PayPix-Cob (tab-paypixcob) — prefixo pc-
-    'pc-status':          true,
-    'pc-config':          true,
-    'pc-parceiros':       true,
-    'pc-cfg-pagamento':   false,
-    'pc-stats':           true,
-    'pc-saques':          false,
-    'pc-qr-auto':         false,
-    'pc-debito-auto':     false,
-  };
-  Object.entries(defaults).forEach(([id, open]) => {
-    const body   = document.getElementById('col-body-' + id);
-    const arrow  = document.getElementById('col-arrow-' + id);
-    const header = document.getElementById('col-hdr-' + id);
-    if (!body) return;
-    if (!open) {
-      body.classList.add('collapsed');
-      if (arrow)  arrow.classList.add('rotated');
-      if (header) header.classList.add('is-collapsed');
-    } else {
-      body.classList.remove('collapsed');
-      if (arrow)  arrow.classList.remove('rotated');
-      if (header) header.classList.remove('is-collapsed');
-    }
-  });
 }
 document.addEventListener('DOMContentLoaded', () => { setTimeout(colInitState, 50); });
 
@@ -10288,7 +10312,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427p ===');
+  out.push('=== VERSÃO: 20250427q ===');
   out.push('');
 
   // Estado dos elementos críticos
