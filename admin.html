@@ -656,7 +656,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250425';
+  const VER = '20250426';
   if (sessionStorage.getItem('adminVer') !== VER) {
     sessionStorage.setItem('adminVer', VER);
     location.replace(location.pathname + '?v=' + VER + '&t=' + Date.now());
@@ -2037,19 +2037,16 @@ function toggleLoginSenha() {
 
       </div><!-- /tab-paypix -->
 
+
       <!-- ═══ BOT 2 — @paypix_nexbot ═══ -->
       <div id="tab-bot2" class="tab-content">
-        <!-- DEBUG: se você vê isso, o tab está carregando -->
-        <div id="bot2-debug-bar" style="background:#f59e0b;color:#000;padding:8px 16px;border-radius:8px;font-weight:700;font-size:14px;margin-bottom:12px">
-          ✅ Tab Bot2 Carregado — se aparecer em branco abaixo, é problema de CSS interno
-        </div>
 
         <!-- Banner de identificação -->
         <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid #f59e0b44;border-radius:12px;padding:12px 16px;margin-bottom:16px">
           <div style="font-size:28px">🤖</div>
           <div>
             <div style="font-weight:800;font-size:16px;color:#f59e0b">🤖 Bot Mercado Pago — @paypix_nexbot</div>
-            <div style="font-size:12px;color:#666;margin-top:2px">Bot separado do PayPix Vortex · Usa Mercado Pago para processar PIX · <span style="color:#f59e0b">paynexbet.com/pix</span></div>
+            <div style="font-size:12px;color:#666;margin-top:2px">Bot PIX separado · Mercado Pago · Afiliados com % automática · <span style="color:#f59e0b">paynexbet.com/pix</span></div>
           </div>
           <div style="margin-left:auto">
             <span style="font-size:11px;background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44;padding:4px 10px;border-radius:20px;font-weight:700">💳 MERCADO PAGO</span>
@@ -2088,15 +2085,15 @@ function toggleLoginSenha() {
 
         <!-- Card principal — Status Mercado Pago -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header collapsible" id="col-hdr-bot2-status" onclick="colToggle('bot2-status')">
-            <h3>💳 @paypix_nexbot — Status <span id="col-arrow-bot2-status" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="col-hdr-b2-status" onclick="colToggle('b2-status')">
+            <h3>💳 🤖 @paypix_nexbot — Status Bot <span id="col-arrow-b2-status" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <span id="b2-badge" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#1a2a1a;color:#4caf50">Verificando...</span>
-              <button onclick="bot2AtualizarSaldo()" style="padding:6px 14px;background:#1a3a5c;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔄 Saldo</button>
-              <button onclick="bot2CheckStatus()" style="padding:6px 14px;background:#222;border:none;border-radius:8px;color:#aaa;font-size:13px;cursor:pointer">↻ Status</button>
+              <button onclick="b2AtualizarSaldo()" style="padding:6px 14px;background:#1a3a5c;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔄 Saldo</button>
+              <button onclick="b2CheckStatus()" style="padding:6px 14px;background:#222;border:none;border-radius:8px;color:#aaa;font-size:13px;cursor:pointer">↻ Status</button>
             </div>
           </div>
-          <div class="collapse-body" id="col-body-bot2-status">
+          <div class="collapse-body" id="col-body-b2-status">
           <div style="padding:20px">
 
             <!-- Info resumida — só Mercado Pago (sem Telegram) -->
@@ -2119,7 +2116,7 @@ function toggleLoginSenha() {
             <div id="b2-alert" style="display:none"></div>
 
           </div>
-        </div></div><!-- /col-body-bot2-status -->
+        </div></div><!-- /col-body-pp-status -->
 
         <!-- Seção Telegram OCULTA — não usamos Telegram no bot MP -->
         <div style="display:none" id="b2-telegram-section">
@@ -2137,22 +2134,22 @@ function toggleLoginSenha() {
 
         <!-- ══ MERCADO PAGO — Configuração de Chaves ══ -->
         <div class="table-card" style="margin-top:16px;border-color:#009ee3aa">
-          <div class="table-header collapsible" id="col-hdr-mp-config" style="background:linear-gradient(135deg,#003087,#009ee3)20" onclick="colToggle('mp-config')">
-            <h3>💳 Mercado Pago — @paypix_nexbot <span id="col-arrow-mp-config" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="col-hdr-b2-config" style="background:linear-gradient(135deg,#003087,#009ee3)20" onclick="colToggle('b2-config')">
+            <h3>💳 Mercado Pago — @paypix_nexbot <span id="col-arrow-b2-config" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
-              <span id="mp2-badge-status" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#0a1a2a;color:#aaa">Verificando...</span>
-              <button onclick="mp2TestarConexao()" style="padding:6px 14px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔗 Testar</button>
+              <span id="b2-badge-status" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#0a1a2a;color:#aaa">Verificando...</span>
+              <button onclick="b2TestarConexao()" style="padding:6px 14px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔗 Testar</button>
             </div>
           </div>
-          <div class="collapse-body" id="col-body-mp-config">
+          <div class="collapse-body" id="col-body-b2-config">
           <div style="padding:20px">
 
             <!-- Status da integração -->
-            <div id="mp2-status-bar" style="background:#0a1020;border:1px solid #009ee344;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
+            <div id="b2-status-bar" style="background:#0a1020;border:1px solid #009ee344;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
               <div style="font-size:28px">💳</div>
               <div>
-                <div id="mp2-status-txt" style="font-weight:700;color:#009ee3">Carregando status...</div>
-                <div id="mp2-status-sub" style="font-size:12px;color:#666;margin-top:2px">Integração com Mercado Pago PIX</div>
+                <div id="b2-status-txt" style="font-weight:700;color:#009ee3">Carregando status...</div>
+                <div id="b2-status-sub" style="font-size:12px;color:#666;margin-top:2px">Integração com Mercado Pago PIX</div>
               </div>
             </div>
 
@@ -2167,11 +2164,11 @@ function toggleLoginSenha() {
                 </label>
                 <div style="display:flex;gap:8px;align-items:center">
                   <div style="flex:1;position:relative">
-                    <input type="password" id="mp2-access-token"
+                    <input type="password" id="b2-access-token"
                       placeholder="Cole o Access Token aqui (APP_USR-...)"
                       autocomplete="new-password"
                       style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #009ee344;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
-                    <span id="mp2-token-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
+                    <span id="b2-token-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
                   </div>
                   <button onclick="toggleMp2Field('mp2-access-token','mp2-token-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
                 </div>
@@ -2186,11 +2183,11 @@ function toggleLoginSenha() {
                 </label>
                 <div style="display:flex;gap:8px;align-items:center">
                   <div style="flex:1;position:relative">
-                    <input type="password" id="mp2-public-key"
+                    <input type="password" id="b2-public-key"
                       placeholder="Cole a Public Key aqui (APP_USR-...)"
                       autocomplete="new-password"
                       style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
-                    <span id="mp2-pubkey-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
+                    <span id="b2-pubkey-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
                   </div>
                   <button onclick="toggleMp2Field('mp2-public-key','mp2-pubkey-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
                 </div>
@@ -2201,13 +2198,13 @@ function toggleLoginSenha() {
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div>
                   <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Client ID</label>
-                  <input type="text" id="mp2-client-id" placeholder="0000000000000000"
+                  <input type="text" id="b2-client-id" placeholder="0000000000000000"
                     style="width:100%;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:11px 14px;color:#fff;font-size:13px;font-family:monospace">
                 </div>
                 <div>
                   <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Client Secret</label>
                   <div style="display:flex;gap:6px">
-                    <input type="password" id="mp2-client-secret" placeholder="xxxxxxxxxxxxxxxxxxx"
+                    <input type="password" id="b2-client-secret" placeholder="xxxxxxxxxxxxxxxxxxx"
                       style="flex:1;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:11px 14px;color:#fff;font-size:13px;font-family:monospace">
                     <button onclick="toggleMp2Field('mp2-client-secret')" style="padding:10px 12px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer;font-size:12px">👁</button>
                   </div>
@@ -2218,7 +2215,7 @@ function toggleLoginSenha() {
               <div style="background:#0a1020;border:1px solid #009ee322;border-radius:10px;padding:14px">
                 <div style="font-size:12px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📡 Webhook URL — configurar no painel MP</div>
                 <div style="display:flex;align-items:center;gap:8px">
-                  <code id="mp2-webhook-url" style="flex:1;font-size:12px;color:#009ee3;word-break:break-all">Carregando...</code>
+                  <code id="b2-webhook-url" style="flex:1;font-size:12px;color:#009ee3;word-break:break-all">Carregando...</code>
                   <button onclick="copiarMp2Webhook()" style="padding:8px 12px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap">📋 Copiar</button>
                 </div>
                 <div style="font-size:11px;color:#555;margin-top:6px">
@@ -2230,16 +2227,16 @@ function toggleLoginSenha() {
 
             <!-- Botões -->
             <div style="display:flex;gap:12px;flex-wrap:wrap">
-              <button onclick="mp2SalvarChaves()" id="mp2-btn-salvar"
+              <button onclick="b2SalvarChaves()" id="b2-btn-salvar"
                 style="flex:1;min-width:180px;padding:14px;background:linear-gradient(135deg,#003087,#009ee3);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">
                 💾 Salvar Chaves Mercado Pago
               </button>
-              <button onclick="mp2TestarConexao()"
+              <button onclick="b2TestarConexao()"
                 style="padding:14px 20px;background:#0a1020;border:1px solid #009ee344;border-radius:10px;color:#009ee3;font-size:13px;font-weight:600;cursor:pointer">
                 🔗 Testar Conexão
               </button>
             </div>
-            <div id="mp2-msg" style="margin-top:12px;font-size:13px;text-align:center;min-height:20px"></div>
+            <div id="b2-msg" style="margin-top:12px;font-size:13px;text-align:center;min-height:20px"></div>
 
             <!-- Info -->
             <div style="margin-top:16px;padding:12px;background:#0a0a14;border-radius:8px;font-size:12px;color:#666;line-height:1.6">
@@ -2248,54 +2245,54 @@ function toggleLoginSenha() {
             </div>
 
           </div>
-          </div><!-- /col-body-mp-config -->
+          </div><!-- /col-body-pp-config -->
         </div>
 
         <!-- ══ PARCEIROS AFILIADOS ══ -->
         <div class="table-card" style="margin-top:16px;border-color:#a855f7aa">
-          <div class="table-header collapsible" id="col-hdr-parceiros" style="background:linear-gradient(135deg,#4c1d9520,#7c3aed20)" onclick="colToggle('parceiros')">
-            <h3>🤝 Parceiros Afiliados <span id="col-arrow-parceiros" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="col-hdr-b2-parceiros" style="background:linear-gradient(135deg,#4c1d9520,#7c3aed20)" onclick="colToggle('b2-parceiros')">
+            <h3>🤝 Parceiros Afiliados <span id="col-arrow-b2-parceiros" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px" onclick="event.stopPropagation()">
-              <button onclick="mp2CarregarParceiros()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
-              <button onclick="mp2MostrarFormParceiro()" style="padding:6px 14px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer;font-weight:600">+ Novo Parceiro</button>
+              <button onclick="b2CarregarParceiros()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+              <button onclick="b2MostrarFormParceiro()" style="padding:6px 14px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer;font-weight:600">+ Novo Parceiro</button>
             </div>
           </div>
-          <div class="collapse-body" id="col-body-parceiros">
+          <div class="collapse-body" id="col-body-b2-parceiros">
           <div style="padding:16px 20px">
 
             <!-- Explicação -->
             <div style="background:#0a0a14;border:1px solid #7c3aed44;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:#aaa;line-height:1.6">
               🔗 Cada parceiro recebe um <b style="color:#a855f7">link único</b>:
-              <code style="color:#a855f7;font-size:12px"> /bot?ref=CODIGO</code><br>
+              <code style="color:#a855f7;font-size:12px"> /paypix?ref=CODIGO</code><br>
               Quando alguém paga via esse link, a <b style="color:#4ade80">% de comissão</b> é automaticamente enviada via PIX para a chave do parceiro.
             </div>
 
             <!-- Formulário novo parceiro (oculto por padrão) -->
-            <div id="mp2-form-parceiro" style="display:none;background:#0a1020;border:1px solid #7c3aed44;border-radius:12px;padding:20px;margin-bottom:20px">
+            <div id="b2-form-parceiro" style="display:none;background:#0a1020;border:1px solid #7c3aed44;border-radius:12px;padding:20px;margin-bottom:20px">
               <div style="font-size:14px;font-weight:700;color:#a855f7;margin-bottom:16px">➕ Cadastrar Novo Parceiro</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
                 <div>
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Nome do Parceiro *</label>
-                  <input type="text" id="mp2-p-nome" placeholder="Ex: João Silva"
+                  <input type="text" id="b2-p-nome" placeholder="Ex: João Silva"
                     style="width:100%;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
                 </div>
                 <div>
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Código (opcional)</label>
-                  <input type="text" id="mp2-p-codigo" placeholder="joao-silva (gerado automaticamente)"
+                  <input type="text" id="b2-p-codigo" placeholder="joao-silva (gerado automaticamente)"
                     style="width:100%;background:#0a0a14;border:2px solid #7c3aed22;border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;font-family:monospace">
                 </div>
                 <div>
                   <label style="font-size:11px;color:#22c55e;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">
                     🏦 Chave PIX para Saque Automático *
                   </label>
-                  <input type="text" id="mp2-p-chave-pix" placeholder="email@exemplo.com ou CPF (11 dígitos)"
-                    oninput="mp2PreviewComissao()"
+                  <input type="text" id="b2-p-chave-pix" placeholder="email@exemplo.com ou CPF (11 dígitos)"
+                    oninput="ppPreviewComissao()"
                     style="width:100%;background:#0a0a14;border:2px solid #22c55e55;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
                   <div style="font-size:11px;color:#555;margin-top:4px">💡 Quando o pagamento for confirmado, a comissão é enviada automaticamente para esta chave</div>
                 </div>
                 <div>
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Tipo da Chave *</label>
-                  <select id="mp2-p-tipo-chave"
+                  <select id="b2-p-tipo-chave"
                     style="width:100%;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
                     <option value="email">E-mail</option>
                     <option value="cpf">CPF</option>
@@ -2307,57 +2304,57 @@ function toggleLoginSenha() {
                 <div style="grid-column:1/-1">
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">% Comissão por Pagamento *</label>
                   <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-                    <input type="number" id="mp2-p-comissao" min="1" max="50" value="10"
-                      oninput="mp2PreviewComissao()"
+                    <input type="number" id="b2-p-comissao" min="1" max="50" value="10"
+                      oninput="ppPreviewComissao()"
                       style="width:90px;background:#0a0a14;border:2px solid #a855f7;border-radius:8px;padding:10px 12px;color:#a855f7;font-size:22px;font-weight:900;text-align:center;font-family:monospace">
                     <span style="color:#a855f7;font-weight:700;font-size:22px">%</span>
                     <span style="font-size:12px;color:#666">do valor pago pelo cliente</span>
                   </div>
                   <!-- Preview visual da comissão -->
-                  <div id="mp2-p-comissao-preview" style="background:#0a0a1a;border:1px solid #a855f733;border-radius:10px;padding:12px 16px">
+                  <div id="b2-p-comissao-preview" style="background:#0a0a1a;border:1px solid #a855f733;border-radius:10px;padding:12px 16px">
                     <div style="font-size:11px;color:#666;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">📊 Simulação de comissão</div>
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
                       <div>
                         <div style="font-size:11px;color:#666">Cliente paga</div>
                         <div style="font-size:15px;font-weight:700;color:#fff">R$ 50,00</div>
-                        <div id="mp2-p-sim-50" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 5,00</div>
+                        <div id="b2-p-sim-50" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 5,00</div>
                       </div>
                       <div>
                         <div style="font-size:11px;color:#666">Cliente paga</div>
                         <div style="font-size:15px;font-weight:700;color:#fff">R$ 100,00</div>
-                        <div id="mp2-p-sim-100" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 10,00</div>
+                        <div id="b2-p-sim-100" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 10,00</div>
                       </div>
                       <div>
                         <div style="font-size:11px;color:#666">Cliente paga</div>
                         <div style="font-size:15px;font-weight:700;color:#fff">R$ 500,00</div>
-                        <div id="mp2-p-sim-500" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 50,00</div>
+                        <div id="b2-p-sim-500" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 50,00</div>
                       </div>
                     </div>
                     <div style="margin-top:10px;padding:8px;background:#22c55e11;border-radius:8px;text-align:center;font-size:12px;color:#4ade80">
-                      ✅ Valor enviado automaticamente via PIX para: <span id="mp2-p-sim-chave" style="font-family:monospace;color:#a855f7">—</span>
+                      ✅ Valor enviado automaticamente via PIX para: <span id="b2-p-sim-chave" style="font-family:monospace;color:#a855f7">—</span>
                     </div>
                   </div>
                 </div>
               </div>
               <div style="margin-top:16px;display:flex;gap:10px">
-                <button onclick="mp2CriarParceiro()"
+                <button onclick="b2CriarParceiro()"
                   style="flex:1;padding:12px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:14px;cursor:pointer">
                   ✅ Criar Parceiro
                 </button>
-                <button onclick="document.getElementById('mp2-form-parceiro').style.display='none'"
+                <button onclick="document.getElementById('b2-form-parceiro').style.display='none'"
                   style="padding:12px 20px;background:#0a0a14;border:1px solid #333;border-radius:10px;color:#aaa;font-size:14px;cursor:pointer">
                   Cancelar
                 </button>
               </div>
-              <div id="mp2-form-msg" style="margin-top:10px;font-size:13px;text-align:center;min-height:18px"></div>
+              <div id="b2-form-msg" style="margin-top:10px;font-size:13px;text-align:center;min-height:18px"></div>
             </div>
 
             <!-- Link gerado após criar parceiro -->
-            <div id="mp2-link-novo" style="display:none;background:#0a2010;border:2px solid #22c55e;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">
+            <div id="b2-link-novo" style="display:none;background:#0a2010;border:2px solid #22c55e;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">
               <div style="font-size:13px;color:#aaa;margin-bottom:8px">🎉 Parceiro criado! Link de afiliado:</div>
               <div style="display:flex;align-items:center;gap:8px;justify-content:center">
-                <code id="mp2-link-novo-url" style="color:#4ade80;font-size:13px;word-break:break-all"></code>
-                <button onclick="mp2CopiarLinkNovo()"
+                <code id="b2-link-novo-url" style="color:#4ade80;font-size:13px;word-break:break-all"></code>
+                <button onclick="b2CopiarLinkNovo()"
                   style="padding:8px 14px;background:#22c55e;border:none;border-radius:8px;color:#000;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap">
                   📋 Copiar
                 </button>
@@ -2379,40 +2376,40 @@ function toggleLoginSenha() {
                     <th>Ação</th>
                   </tr>
                 </thead>
-                <tbody id="mp2-parceiros-tbody">
+                <tbody id="b2-parceiros-tbody">
                   <tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Carregando...</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
-          </div><!-- /col-body-parceiros -->
+          </div><!-- /col-body-pp-parceiros -->
         </div>
 
         <!-- ══ CONFIG PÁGINA /bot E /pix ══ -->
         <div class="table-card" style="margin-top:16px;border-color:#f59e0b44">
-          <div class="table-header collapsible" id="col-hdr-cfg-pagamento" style="background:linear-gradient(135deg,#1a0e0033,#f59e0b11)" onclick="colToggle('cfg-pagamento')">
-            <h3>⚙️ Configurar Página de Pagamento <span id="col-arrow-cfg-pagamento" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="col-hdr-b2-cfg-pagamento" style="background:linear-gradient(135deg,#1a0e0033,#f59e0b11)" onclick="colToggle('b2-cfg-pagamento')">
+            <h3>⚙️ Configurar Página de Pagamento <span id="col-arrow-b2-cfg-pagamento" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <span style="font-size:11px;color:#888">paynexbet.com/bot &amp; /pix</span>
               <button onclick="botConfigSalvar()" style="padding:6px 16px;background:#f59e0b;border:none;border-radius:8px;color:#000;font-size:13px;font-weight:700;cursor:pointer">💾 Salvar</button>
             </div>
           </div>
-          <div class="collapse-body" id="col-body-cfg-pagamento">
+          <div class="collapse-body" id="col-body-b2-cfg-pagamento">
           <div style="padding:20px;display:grid;gap:16px">
 
             <!-- Modo: fixo ou livre -->
             <div style="background:#0a0a14;border:1px solid #f59e0b33;border-radius:12px;padding:16px">
               <div style="font-size:13px;font-weight:700;color:#f59e0b;margin-bottom:12px">🎯 Modo de Cobrança</div>
               <div style="display:flex;gap:12px;flex-wrap:wrap">
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#0a1500;border:2px solid #22c55e44;border-radius:10px;padding:10px 14px;flex:1;min-width:140px" id="lbl-modo-fixo">
-                  <input type="radio" name="bot-modo" id="radio-fixo" value="fixo" onchange="botModoChange()" style="accent-color:#22c55e">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#0a1500;border:2px solid #22c55e44;border-radius:10px;padding:10px 14px;flex:1;min-width:140px" id="b2-lbl-modo-fixo">
+                  <input type="radio" name="bot-modo" id="b2-radio-fixo" value="fixo" onchange="botModoChange()" style="accent-color:#22c55e">
                   <div>
                     <div style="font-weight:700;color:#4ade80;font-size:13px">💰 Valor Fixo</div>
                     <div style="font-size:11px;color:#666">Você define o valor. QR gerado automaticamente.</div>
                   </div>
                 </label>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#0a0a1a;border:2px solid #ffffff11;border-radius:10px;padding:10px 14px;flex:1;min-width:140px" id="lbl-modo-livre">
-                  <input type="radio" name="bot-modo" id="radio-livre" value="livre" onchange="botModoChange()">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#0a0a1a;border:2px solid #ffffff11;border-radius:10px;padding:10px 14px;flex:1;min-width:140px" id="b2-lbl-modo-livre">
+                  <input type="radio" name="bot-modo" id="b2-radio-livre" value="livre" onchange="botModoChange()">
                   <div>
                     <div style="font-weight:700;color:#aaa;font-size:13px">✏️ Valor Livre</div>
                     <div style="font-size:11px;color:#666">Cliente digita o valor que desejar.</div>
@@ -2422,27 +2419,27 @@ function toggleLoginSenha() {
             </div>
 
             <!-- Valor fixo -->
-            <div id="cfg-valor-fixo-wrap">
+            <div id="b2-cfg-valor-fixo-wrap">
               <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">💵 Valor Fixo (R$)</label>
               <div style="display:flex;align-items:center;gap:8px;background:#0a0a14;border:2px solid #f59e0b55;border-radius:10px;padding:10px 14px">
                 <span style="font-size:20px;font-weight:800;color:#666">R$</span>
-                <input type="number" id="cfg-valor-fixo" min="1" max="10000" step="0.01" placeholder="10.00"
+                <input type="number" id="b2-cfg-valor-fixo" min="1" max="10000" step="0.01" placeholder="10.00"
                   style="flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:24px;font-weight:800">
               </div>
               <div style="font-size:11px;color:#555;margin-top:4px">Ex: 10.00 — cada cliente que abrir /bot ou /pix verá esse valor e terá um QR exclusivo gerado.</div>
             </div>
 
             <!-- Min/Max (modo livre) -->
-            <div id="cfg-minmax-wrap" style="display:none">
+            <div id="b2-cfg-minmax-wrap" style="display:none">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div>
                   <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Mínimo (R$)</label>
-                  <input type="number" id="cfg-min-valor" min="1" max="9999" placeholder="5"
+                  <input type="number" id="b2-cfg-min-valor" min="1" max="9999" placeholder="5"
                     style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:16px;font-weight:700">
                 </div>
                 <div>
                   <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Máximo (R$)</label>
-                  <input type="number" id="cfg-max-valor" min="1" max="100000" placeholder="10000"
+                  <input type="number" id="b2-cfg-max-valor" min="1" max="100000" placeholder="10000"
                     style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:16px;font-weight:700">
                 </div>
               </div>
@@ -2452,12 +2449,12 @@ function toggleLoginSenha() {
             <div style="display:grid;gap:12px">
               <div>
                 <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📝 Título da Página</label>
-                <input type="text" id="cfg-titulo" placeholder="PayPixNex — Pague via PIX" maxlength="60"
+                <input type="text" id="b2-cfg-titulo" placeholder="Bot MPNex — Pague via PIX" maxlength="60"
                   style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:14px">
               </div>
               <div>
                 <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📄 Descrição / Subtítulo</label>
-                <input type="text" id="cfg-descricao" placeholder="Pagamento seguro via Mercado Pago" maxlength="100"
+                <input type="text" id="b2-cfg-descricao" placeholder="Pagamento seguro via Mercado Pago" maxlength="100"
                   style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:14px">
               </div>
             </div>
@@ -2468,43 +2465,43 @@ function toggleLoginSenha() {
               <div style="display:flex;flex-direction:column;gap:4px">
                 <div><span style="color:#009ee3">paynexbet.com/bot</span> <span style="color:#555">— link público principal</span></div>
                 <div><span style="color:#009ee3">paynexbet.com/pix</span> <span style="color:#555">— alias do /bot</span></div>
-                <div><span style="color:#f59e0b">paynexbet.com/bot?ref=<i>codigo</i></span> <span style="color:#555">— link de afiliado (comissão automática)</span></div>
+                <div><span style="color:#f59e0b">paynexbet.com/pix?ref=<i>codigo</i></span> <span style="color:#555">— link de afiliado (comissão automática)</span></div>
               </div>
             </div>
 
-            <div id="cfg-bot-msg" style="font-size:13px;text-align:center;min-height:20px"></div>
+            <div id="b2-cfg-bot-msg" style="font-size:13px;text-align:center;min-height:20px"></div>
           </div>
-          </div><!-- /col-body-cfg-pagamento -->
+          </div><!-- /col-body-pp-cfg-pagamento -->
         </div>
 
         <!-- ══ STATS BOT2 ══ -->
         <div class="table-card" style="margin-top:16px">
-          <div class="table-header collapsible" id="col-hdr-stats" onclick="colToggle('stats')">
-            <h3>📊 Estatísticas @paypix_nexbot <span id="col-arrow-stats" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="col-hdr-b2-stats" onclick="colToggle('b2-stats')">
+            <h3>📊 Estatísticas @paypix_nexbot <span id="col-arrow-b2-stats" class="collapse-arrow">▼</span></h3>
             <button onclick="event.stopPropagation();mp2CarregarStats()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
-          <div class="collapse-body" id="col-body-stats">
+          <div class="collapse-body" id="col-body-b2-stats">
           <div style="padding:16px 20px">
             <div class="metrics-grid" style="margin:0">
               <div class="metric-card blue">
                 <div class="metric-icon">👥</div>
                 <div class="metric-label">Usuários</div>
-                <div class="metric-value" id="mp2-total-users">—</div>
+                <div class="metric-value" id="b2-total-users">—</div>
               </div>
               <div class="metric-card green">
                 <div class="metric-icon">📥</div>
                 <div class="metric-label">Dep. Confirmados</div>
-                <div class="metric-value" id="mp2-dep-confirmados">—</div>
+                <div class="metric-value" id="b2-dep-confirmados">—</div>
               </div>
               <div class="metric-card orange">
                 <div class="metric-icon">💰</div>
                 <div class="metric-label">Total Depositado</div>
-                <div class="metric-value" id="mp2-total-dep">—</div>
+                <div class="metric-value" id="b2-total-dep">—</div>
               </div>
               <div class="metric-card" style="border-color:#f4433644">
                 <div class="metric-icon">📤</div>
                 <div class="metric-label">Saques Pendentes</div>
-                <div class="metric-value" id="mp2-saques-pend">—</div>
+                <div class="metric-value" id="b2-saques-pend">—</div>
               </div>
             </div>
             <!-- Totais de Parceiros/Afiliados -->
@@ -2514,45 +2511,45 @@ function toggleLoginSenha() {
                 <div class="metric-card" style="border-color:#009ee344">
                   <div class="metric-icon">🤝</div>
                   <div class="metric-label">Parceiros Ativos</div>
-                  <div class="metric-value" id="mp2-parceiros-ativos" style="color:#009ee3">—</div>
-                  <div class="metric-sub" id="mp2-parceiros-total">de — total</div>
+                  <div class="metric-value" id="b2-parceiros-ativos" style="color:#009ee3">—</div>
+                  <div class="metric-sub" id="b2-parceiros-total">de — total</div>
                 </div>
                 <div class="metric-card" style="border-color:#f59e0b44">
                   <div class="metric-icon">💸</div>
                   <div class="metric-label">Total Gerado</div>
-                  <div class="metric-value" id="mp2-stats-total-gerado" style="color:#f59e0b;font-size:15px">R$ —</div>
+                  <div class="metric-value" id="b2-stats-total-gerado" style="color:#f59e0b;font-size:15px">R$ —</div>
                   <div class="metric-sub">via links afiliados</div>
                 </div>
                 <div class="metric-card" style="border-color:#22c55e44">
                   <div class="metric-icon">✅</div>
                   <div class="metric-label">Comissões Pagas</div>
-                  <div class="metric-value" id="mp2-stats-total-pago" style="color:#4ade80;font-size:15px">R$ —</div>
-                  <div class="metric-sub" id="mp2-stats-pend-comissao">pendente: R$ —</div>
+                  <div class="metric-value" id="b2-stats-total-pago" style="color:#4ade80;font-size:15px">R$ —</div>
+                  <div class="metric-sub" id="b2-stats-pend-comissao">pendente: R$ —</div>
                 </div>
               </div>
             </div>
           </div>
-          </div><!-- /col-body-stats -->
+          </div><!-- /col-body-pp-stats -->
         </div>
 
         <!-- ══ SAQUES PENDENTES BOT2 ══ -->
         <div class="table-card" style="margin-top:16px">
-          <div class="table-header collapsible" id="col-hdr-saques" onclick="colToggle('saques')">
-            <h3>📤 Saques Pendentes — @paypix_nexbot <span id="col-arrow-saques" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="col-hdr-b2-saques" onclick="colToggle('b2-saques')">
+            <h3>📤 Saques Pendentes — @paypix_nexbot <span id="col-arrow-b2-saques" class="collapse-arrow">▼</span></h3>
             <button onclick="event.stopPropagation();mp2CarregarSaques()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
-          <div class="collapse-body" id="col-body-saques">
+          <div class="collapse-body" id="col-body-b2-saques">
           <div style="overflow-x:auto">
             <table class="data-table">
               <thead><tr>
                 <th>ID</th><th>Usuário</th><th>Valor</th><th>Chave PIX</th><th>Tipo</th><th>Data</th><th>Ação</th>
               </tr></thead>
-              <tbody id="mp2-saques-tbody">
+              <tbody id="b2-saques-tbody">
                 <tr><td colspan="7" style="text-align:center;color:#666;padding:20px">Clique em Atualizar para carregar</td></tr>
               </tbody>
             </table>
           </div>
-          </div><!-- /col-body-saques -->
+          </div><!-- /col-body-pp-saques -->
         </div>
 
         <!-- ═══ Comissões de Parceiros ═══ -->
@@ -2560,11 +2557,11 @@ function toggleLoginSenha() {
 
         <!-- ═══ QR CODE DE AUTOCADASTRO ═══ -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header collapsible" id="col-hdr-qr-auto" onclick="colToggle('qr-auto')">
-            <h3>📲 QR Code de Autocadastro <span id="col-arrow-qr-auto" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="b2-col-hdr-qr-auto" onclick="colToggle('qr-auto')">
+            <h3>📲 QR Code de Autocadastro <span id="b2-col-arrow-qr-auto" class="collapse-arrow">▼</span></h3>
             <button onclick="event.stopPropagation();qrAtualizarPreview()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
-          <div class="collapse-body" id="col-body-qr-auto">
+          <div class="collapse-body" id="b2-col-body-qr-auto">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
 
             <!-- Coluna esquerda: config do plano -->
@@ -2573,36 +2570,36 @@ function toggleLoginSenha() {
               <div style="display:flex;flex-direction:column;gap:10px">
                 <div>
                   <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Título da página</div>
-                  <input id="qr-titulo" type="text" placeholder="Assine e pague todo mês via PIX" value="Assine e pague todo mês via PIX"
+                  <input id="b2-qr-titulo" type="text" placeholder="Assine e pague todo mês via PIX" value="Assine e pague todo mês via PIX"
                     style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
                 </div>
                 <div>
                   <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Descrição</div>
-                  <input id="qr-desc" type="text" placeholder="Mensalidade — acesso completo"
+                  <input id="b2-qr-desc" type="text" placeholder="Mensalidade — acesso completo"
                     style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                   <div>
                     <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Valor R$</div>
-                    <input id="qr-valor" type="number" placeholder="10.00" min="1" step="0.01" value="10"
+                    <input id="b2-qr-valor" type="number" placeholder="10.00" min="1" step="0.01" value="10"
                       style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
                   </div>
                   <div>
                     <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Dia padrão</div>
-                    <input id="qr-dia" type="number" placeholder="1" min="1" max="28" value="1"
+                    <input id="b2-qr-dia" type="number" placeholder="1" min="1" max="28" value="1"
                       style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
                   </div>
                 </div>
                 <div>
                   <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Benefícios (1 por linha)</div>
-                  <textarea id="qr-beneficios" rows="3" placeholder="🎯 Acesso VIP ao conteúdo&#10;💬 Suporte prioritário&#10;🎁 Bônus exclusivos"
+                  <textarea id="b2-qr-beneficios" rows="3" placeholder="🎯 Acesso VIP ao conteúdo&#10;💬 Suporte prioritário&#10;🎁 Bônus exclusivos"
                     style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px;resize:vertical"></textarea>
                 </div>
                 <!-- Seletor de Afiliado -->
                 <div>
                   <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Afiliado / Parceiro (opcional)</div>
                   <div style="display:flex;gap:6px;align-items:center">
-                    <select id="qr-ref-select"
+                    <select id="b2-qr-ref-select"
                       onchange="qrOnAfiliadoChange()"
                       style="flex:1;padding:7px 10px;background:#1a1a2e;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px;cursor:pointer">
                       <option value="">🌐 Sem afiliado (link geral)</option>
@@ -2612,10 +2609,10 @@ function toggleLoginSenha() {
                   </div>
                   <!-- Campo manual fallback -->
                   <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
-                    <input id="qr-ref" type="text" placeholder="ou digite o código manualmente"
+                    <input id="b2-qr-ref" type="text" placeholder="ou digite o código manualmente"
                       oninput="qrOnRefManualChange()"
                       style="flex:1;padding:6px 10px;background:#ffffff08;border:1px solid #ffffff15;border-radius:8px;color:#aaa;font-size:11px"/>
-                    <span id="qr-ref-badge" style="display:none;font-size:10px;background:#9c27b030;color:#ce93d8;padding:3px 8px;border-radius:20px;white-space:nowrap">✅ afiliado</span>
+                    <span id="b2-qr-ref-badge" style="display:none;font-size:10px;background:#9c27b030;color:#ce93d8;padding:3px 8px;border-radius:20px;white-space:nowrap">✅ afiliado</span>
                   </div>
                   <div style="font-size:10px;color:#555;margin-top:3px">O link e QR gerados incluirão o código do afiliado automaticamente</div>
                 </div>
@@ -2623,7 +2620,7 @@ function toggleLoginSenha() {
                   <button onclick="qrSalvarConfig()" class="action-btn" style="flex:1;background:#9c27b0;color:#fff;border-color:#9c27b0;padding:9px;font-size:12px">💾 Salvar config</button>
                   <button onclick="qrCopiarLink()" class="action-btn" style="flex:1;padding:9px;font-size:12px">🔗 Copiar link</button>
                 </div>
-                <div id="qr-cfg-msg" style="font-size:11px;display:none"></div>
+                <div id="b2-qr-cfg-msg" style="font-size:11px;display:none"></div>
               </div>
             </div>
 
@@ -2631,12 +2628,12 @@ function toggleLoginSenha() {
             <div style="padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
               <div style="font-size:12px;font-weight:700;color:#ce93d8;margin-bottom:2px">📲 QR para imprimir / compartilhar</div>
               <!-- Label do afiliado selecionado -->
-              <div id="qr-afiliado-label" style="font-size:11px;background:#9c27b020;border:1px solid #9c27b040;border-radius:20px;padding:3px 12px;color:#ce93d8;display:none">👤 —</div>
+              <div id="b2-qr-afiliado-label" style="font-size:11px;background:#9c27b020;border:1px solid #9c27b040;border-radius:20px;padding:3px 12px;color:#ce93d8;display:none">👤 —</div>
               <!-- QR via API externa (não precisa lib Python) -->
               <div style="background:#fff;padding:10px;border-radius:14px;border:3px solid #9c27b0">
-                <img id="qr-preview-img" src="" width="180" height="180" alt="QR Code" style="display:block;border-radius:6px"/>
+                <img id="b2-qr-preview-img" src="" width="180" height="180" alt="QR Code" style="display:block;border-radius:6px"/>
               </div>
-              <div style="font-size:11px;color:#666;text-align:center;word-break:break-all;max-width:220px" id="qr-link-txt">—</div>
+              <div style="font-size:11px;color:#666;text-align:center;word-break:break-all;max-width:220px" id="b2-qr-link-txt">—</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
                 <button onclick="qrDownload()" class="action-btn" style="font-size:11px;padding:6px 12px">⬇️ Baixar QR</button>
                 <button onclick="qrCopiarLinkAtual()" class="action-btn" style="font-size:11px;padding:6px 12px">📋 Copiar link</button>
@@ -2661,7 +2658,7 @@ function toggleLoginSenha() {
               <div style="font-size:12px;font-weight:700;color:#a855f7">👥 QR Code por Afiliado — link individual por parceiro</div>
               <button onclick="qrCarregarAfiliados()" class="action-btn" style="font-size:11px;padding:5px 11px">🔄 Atualizar</button>
             </div>
-            <div id="qr-afiliados-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+            <div id="b2-qr-afiliados-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
               <div style="font-size:12px;color:#555;padding:20px;text-align:center;grid-column:1/-1">Carregando afiliados...</div>
             </div>
           </div>
@@ -2671,31 +2668,31 @@ function toggleLoginSenha() {
 
         <!-- ═══ ASSINATURAS RECORRENTES ═══ -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header collapsible" id="col-hdr-debito-auto" onclick="colToggle('debito-auto')">
-            <h3>💙 Débito Automático — Assinaturas Mensais <span id="col-arrow-debito-auto" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="b2-col-hdr-debito-auto" onclick="colToggle('debito-auto')">
+            <h3>💙 Débito Automático — Assinaturas Mensais <span id="b2-col-arrow-debito-auto" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <button onclick="recCarregarLista()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
             </div>
           </div>
-          <div class="collapse-body" id="col-body-debito-auto">
+          <div class="collapse-body" id="b2-col-body-debito-auto">
 
           <!-- Stats recorrentes -->
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)">
             <div class="metric-card" style="background:#9c27b015;border-color:#9c27b040">
               <div class="metric-label">Assinantes Ativos</div>
-              <div class="metric-value" id="rec-ativos" style="color:#ce93d8">—</div>
+              <div class="metric-value" id="b2-rec-ativos" style="color:#ce93d8">—</div>
             </div>
             <div class="metric-card" style="background:#009ee315;border-color:#009ee340">
               <div class="metric-label">MRR (Receita/mês)</div>
-              <div class="metric-value" id="rec-mrr" style="color:#009ee3">—</div>
+              <div class="metric-value" id="b2-rec-mrr" style="color:#009ee3">—</div>
             </div>
             <div class="metric-card" style="background:#00c85315;border-color:#00c85340">
               <div class="metric-label">Total Arrecadado</div>
-              <div class="metric-value" id="rec-total" style="color:#00c853">—</div>
+              <div class="metric-value" id="b2-rec-total" style="color:#00c853">—</div>
             </div>
             <div class="metric-card" style="background:#f4433615;border-color:#f4433640">
               <div class="metric-label">Pausados/Cancelados</div>
-              <div class="metric-value" id="rec-pausados" style="color:#f44336">—</div>
+              <div class="metric-value" id="b2-rec-pausados" style="color:#f44336">—</div>
             </div>
           </div>
 
@@ -2705,7 +2702,7 @@ function toggleLoginSenha() {
             <!-- Header do sub-painel -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
               <div style="font-size:12px;font-weight:700;color:#009ee3">⚙️ Configurar Plano de Débito Automático</div>
-              <button onclick="recCriarPlanoMP()" id="rec-btn-criar-plano" class="action-btn"
+              <button onclick="recCriarPlanoMP()" id="b2-rec-btn-criar-plano" class="action-btn"
                 style="font-size:12px;padding:7px 16px;background:#009ee3;color:#fff;border-color:#009ee3;font-weight:700">
                 ⚡ Criar / Atualizar Plano no MP
               </button>
@@ -2717,28 +2714,28 @@ function toggleLoginSenha() {
               <!-- Nome do plano -->
               <div style="grid-column:1/-1">
                 <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">📝 Nome do plano (aparece no MP)</label>
-                <input id="rec-plano-titulo" type="text" placeholder="Ex: Mensalidade, Plano Ouro…"
+                <input id="b2-rec-plano-titulo" type="text" placeholder="Ex: Mensalidade, Plano Ouro…"
                   style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
               </div>
 
               <!-- Valor -->
               <div>
                 <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">💰 Valor mensal (R$)</label>
-                <input id="rec-plano-valor" type="number" min="1" step="0.01" placeholder="10.00"
+                <input id="b2-rec-plano-valor" type="number" min="1" step="0.01" placeholder="10.00"
                   style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
               </div>
 
               <!-- Dia de cobrança -->
               <div>
                 <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">📅 Dia de cobrança (1-28)</label>
-                <input id="rec-plano-dia" type="number" min="1" max="28" placeholder="1"
+                <input id="b2-rec-plano-dia" type="number" min="1" max="28" placeholder="1"
                   style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
               </div>
 
               <!-- Benefícios -->
               <div style="grid-column:1/-1">
                 <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">🎁 Benefícios (mostrados na página /assinar)</label>
-                <input id="rec-plano-beneficios" type="text" placeholder="Ex: Acesso premium, Suporte prioritário…"
+                <input id="b2-rec-plano-beneficios" type="text" placeholder="Ex: Acesso premium, Suporte prioritário…"
                   style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
               </div>
 
@@ -2755,10 +2752,10 @@ function toggleLoginSenha() {
             </div>
 
             <!-- Status do plano ativo -->
-            <div id="rec-plano-status" style="font-size:12px;color:#aaa;background:#009ee310;border:1px solid #009ee330;border-radius:8px;padding:10px;margin-bottom:8px;display:none">
+            <div id="b2-rec-plano-status" style="font-size:12px;color:#aaa;background:#009ee310;border:1px solid #009ee330;border-radius:8px;padding:10px;margin-bottom:8px;display:none">
               Carregando status do plano...
             </div>
-            <div id="rec-criar-plano-msg" style="font-size:12px;margin-top:6px;display:none"></div>
+            <div id="b2-rec-criar-plano-msg" style="font-size:12px;margin-top:6px;display:none"></div>
           </div><!-- /configurar plano -->
 
           <!-- ▸ LINK DE ASSINATURA + SELETOR DE AFILIADO ───────────────────── -->
@@ -2769,7 +2766,7 @@ function toggleLoginSenha() {
             <div style="margin-bottom:10px">
               <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">🤝 Selecionar afiliado (opcional)</label>
               <div style="display:flex;gap:8px;align-items:center">
-                <select id="rec-link-afiliado" onchange="recAtualizarLinkAfiliado()"
+                <select id="b2-rec-link-afiliado" onchange="recAtualizarLinkAfiliado()"
                   style="flex:1;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
                   <option value="">— Sem afiliado (link genérico) —</option>
                 </select>
@@ -2781,7 +2778,7 @@ function toggleLoginSenha() {
             <!-- Link gerado -->
             <div style="font-size:11px;color:#666;margin-bottom:4px">🔗 Link gerado:</div>
             <div style="display:flex;align-items:center;gap:8px;background:#ffffff08;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px">
-              <code id="rec-link-assinar" style="color:#ce93d8;font-size:12px;flex:1;word-break:break-all">https://paynexbet.com/assinar</code>
+              <code id="b2-rec-link-assinar" style="color:#ce93d8;font-size:12px;flex:1;word-break:break-all">https://paynexbet.com/assinar</code>
               <button onclick="copiar(document.getElementById('rec-link-assinar').textContent)" class="action-btn" style="font-size:11px;padding:5px 10px;white-space:nowrap">📋 Copiar</button>
             </div>
 
@@ -2793,14 +2790,14 @@ function toggleLoginSenha() {
             </div>
 
             <!-- QR Code inline -->
-            <div id="rec-qr-inline" style="display:none;text-align:center;margin-top:8px">
-              <img id="rec-qr-img" src="" style="width:180px;height:180px;border-radius:10px;border:2px solid #9c27b0"/>
+            <div id="b2-rec-qr-inline" style="display:none;text-align:center;margin-top:8px">
+              <img id="b2-rec-qr-img" src="" style="width:180px;height:180px;border-radius:10px;border:2px solid #9c27b0"/>
               <div style="font-size:11px;color:#555;margin-top:6px">Escaneie ou compartilhe este QR</div>
               <button onclick="copiar(document.getElementById('rec-link-assinar').textContent)" class="action-btn"
                 style="font-size:11px;margin-top:6px;padding:5px 12px">📋 Copiar link</button>
             </div>
 
-            <div id="rec-cadastro-msg" style="font-size:12px;margin-top:8px;display:none"></div>
+            <div id="b2-rec-cadastro-msg" style="font-size:12px;margin-top:8px;display:none"></div>
           </div><!-- /link afiliado -->
 
           <!-- Tabela assinantes -->
@@ -2810,7 +2807,7 @@ function toggleLoginSenha() {
                 <th>ID</th><th>Nome</th><th>Tipo</th><th>Valor</th><th>Próx. Venc.</th>
                 <th>Total Pago</th><th>Status</th><th>Ações</th>
               </tr></thead>
-              <tbody id="rec-tbody">
+              <tbody id="b2-rec-tbody">
                 <tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Clique em 🔄 Atualizar para carregar</td></tr>
               </tbody>
             </table>
@@ -2846,7 +2843,7 @@ function toggleLoginSenha() {
         <div class="table-card" style="margin-bottom:16px">
           <div class="table-header">
             <h3>💰 Comissões de Parceiros — Histórico de Repasses</h3>
-            <button onclick="mp2CarregarComissoes()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+            <button onclick="b2CarregarComissoes()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
 
           <!-- Info sobre como funciona o pagamento -->
@@ -2872,19 +2869,17 @@ function toggleLoginSenha() {
               <thead><tr>
                 <th>ID</th><th>Parceiro</th><th>Valor</th><th>Chave PIX</th><th>Status</th><th>Obs</th><th>Data</th><th>Ação</th>
               </tr></thead>
-              <tbody id="mp2-comissoes-tbody">
+              <tbody id="b2-comissoes-tbody">
                 <tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Clique em 🔄 Atualizar para carregar</td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
-      </div><!-- /tab-bot2 -->
+      </div><!-- /tab-paypix -->
 
-      <!-- API & WEBHOOKS -->
-      <!-- ╔══════════════════════════════════════════════════════════════╗
-     ║              API & WEBHOOKS — Tab Completa v3               ║
-     ╚══════════════════════════════════════════════════════════════╝ -->
+      <!-- ═══ BOT 2 — @paypix_nexbot ═══ -->
+
       <div id="tab-api" class="tab-content">
         <div style="max-width:960px;margin:0 auto;padding:12px 8px 40px">
 
@@ -6279,23 +6274,11 @@ setInterval(() => { if (SECRET()) ppCheckStatus(); }, 60000);
 
 
 // ════════════════════════════════════════════════════════════════
-// BOT 2 — @paypix_nexbot — JavaScript
+// BOT2 — Mercado Pago — JavaScript (clone do PayPix)
 // ════════════════════════════════════════════════════════════════
 
-async function carregarBot2Admin() {
-  await bot2CheckStatus();
-  await mp2CarregarChaves();
-  await mp2CarregarStats();
-  await mp2CarregarParceiros();
-  await mp2CarregarComissoes();
-}
-
-// Igual ao PayPix — checar status ao carregar e a cada 60s
-if (SECRET()) bot2CheckStatus();
-setInterval(() => { if (SECRET()) bot2CheckStatus(); }, 60000);
-
-// bot2CheckStatus — usa API do Mercado Pago (não Telegram)
-async function bot2CheckStatus() {
+// b2CheckStatus — usa API do Mercado Pago (não Telegram)
+async function b2CheckStatus() {
   try {
     // Testa conexão com MP via /api/mp2/testar
     const r = await fetch(`${BASE}/api/mp2/testar?secret=${encodeURIComponent(SECRET())}`);
@@ -6305,7 +6288,7 @@ async function bot2CheckStatus() {
     const amb   = d.ambiente || 'produção';
 
     // Badge no menu lateral
-    const badge = document.getElementById('badge-bot2');
+    const badge = document.getElementById('badge-pp');
     if (badge) {
       badge.textContent = mpOk ? 'ON' : 'OFF';
       badge.style.background = mpOk ? '#2e7d32' : '#c62828';
@@ -6345,7 +6328,7 @@ async function bot2CheckStatus() {
     }
 
     // Carrega stats de parceiros/comissões também
-    await bot2CarregarTotaisParcerios();
+    await b2CarregarTotaisParcerios();
   } catch(e) {
     const st = document.getElementById('b2-status-text');
     if (st) st.textContent = '❓ Erro';
@@ -6353,8 +6336,8 @@ async function bot2CheckStatus() {
   }
 }
 
-// bot2AtualizarSaldo — usa MP2/testar para mostrar conta ativa
-async function bot2AtualizarSaldo() {
+// b2AtualizarSaldo — usa MP2/testar para mostrar conta ativa
+async function b2AtualizarSaldo() {
   const el = document.getElementById('b2-saldo');
   const hr = document.getElementById('b2-saldo-hora');
   if (el) el.textContent = 'Consultando...';
@@ -6374,11 +6357,11 @@ async function bot2AtualizarSaldo() {
     if (hr) hr.textContent = 'Falha de conexão';
   }
   // Atualiza totais de parceiros junto
-  await bot2CarregarTotaisParcerios();
+  await b2CarregarTotaisParcerios();
 }
 
 // Carrega totais de parceiros/comissões para os cards de métricas
-async function bot2CarregarTotaisParcerios() {
+async function b2CarregarTotaisParcerios() {
   try {
     const r = await fetch(`${BASE}/api/mp2/parceiros?secret=${encodeURIComponent(SECRET())}`);
     const d = await r.json();
@@ -6401,7 +6384,7 @@ async function bot2CarregarTotaisParcerios() {
   }
 }
 
-async function bot2SolicitarCodigo() {
+async function b2SolicitarCodigo() {
   const phone = document.getElementById('b2-phone-input').value.trim();
   const btn   = document.getElementById('b2-btn-solicitar');
   const msg   = document.getElementById('b2-msg-solicitar');
@@ -6413,7 +6396,7 @@ async function bot2SolicitarCodigo() {
   btn.textContent = '⏳ Enviando...';
   msg.innerHTML = '';
   try {
-    const r = await fetch(`${BASE}/api/bot2/solicitar-codigo`, {
+    const r = await fetch(`${BASE}/api/mp2/solicitar-codigo`, {
       method: 'POST',
       headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
       body: JSON.stringify({ phone }),
@@ -6433,7 +6416,7 @@ async function bot2SolicitarCodigo() {
   btn.textContent = '📱 Enviar código para o Telegram';
 }
 
-async function bot2ConfirmarCodigo() {
+async function b2ConfirmarCodigo() {
   const code = document.getElementById('b2-codigo-input').value.trim();
   const btn  = document.getElementById('b2-btn-confirmar');
   const msg  = document.getElementById('b2-msg-confirmar');
@@ -6442,7 +6425,7 @@ async function bot2ConfirmarCodigo() {
   btn.textContent = '⏳ Confirmando...';
   msg.innerHTML = '';
   try {
-    const r = await fetch(`${BASE}/api/bot2/confirmar-codigo`, {
+    const r = await fetch(`${BASE}/api/mp2/confirmar-codigo`, {
       method: 'POST',
       headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
       body: JSON.stringify({ code }),
@@ -6452,7 +6435,7 @@ async function bot2ConfirmarCodigo() {
       msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message}</span>`;
       document.getElementById('b2-step2').style.display = 'none';
       document.getElementById('b2-alert').style.display = 'none';
-      setTimeout(bot2CheckStatus, 2000);
+      setTimeout(b2CheckStatus, 2000);
     } else if (d.needs_2fa) {
       msg.innerHTML = '<span style="color:#ff9800">🔐 2FA necessário — preencha a senha abaixo</span>';
       document.getElementById('b2-2fa-box').style.display = 'block';
@@ -6466,13 +6449,13 @@ async function bot2ConfirmarCodigo() {
   btn.textContent = '✅ Confirmar';
 }
 
-async function bot2Confirmar2FA() {
+async function b2Confirmar2FA() {
   const senha = document.getElementById('b2-2fa-input').value.trim();
   const code  = document.getElementById('b2-codigo-input').value.trim();
   const msg   = document.getElementById('b2-msg-confirmar');
   if (!senha) { msg.innerHTML = '<span style="color:#f44">❌ Digite a senha 2FA</span>'; return; }
   try {
-    const r = await fetch(`${BASE}/api/bot2/confirmar-codigo`, {
+    const r = await fetch(`${BASE}/api/mp2/confirmar-codigo`, {
       method: 'POST',
       headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
       body: JSON.stringify({ code, password: senha }),
@@ -6482,7 +6465,7 @@ async function bot2Confirmar2FA() {
       msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message}</span>`;
       document.getElementById('b2-2fa-box').style.display = 'none';
       document.getElementById('b2-step2').style.display = 'none';
-      setTimeout(bot2CheckStatus, 2000);
+      setTimeout(b2CheckStatus, 2000);
     } else {
       msg.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
     }
@@ -6492,1085 +6475,24 @@ async function bot2Confirmar2FA() {
 }
 
 // Checar status do Bot2 ao carregar e a cada 60s (só se logado)
-if (SECRET()) bot2CheckStatus();
-setInterval(() => { if (SECRET()) bot2CheckStatus(); }, 60000);
+if (SECRET()) b2CheckStatus();
+setInterval(() => { if (SECRET()) b2CheckStatus(); }, 60000);
 
-// ═══════════════════════════════════════════════════════
-//  MERCADO PAGO — @paypix_nexbot
-// ═══════════════════════════════════════════════════════
+// ─── PARCEIROS AFILIADOS PAYPIX ───────────────────────────────────────────────────────
 
-// Alterna visibilidade do campo
-function toggleMp2Field(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.type = el.type === 'password' ? 'text' : 'password';
-}
-
-// Copia webhook URL
-function copiarMp2Webhook() {
-  const url = document.getElementById('mp2-webhook-url')?.textContent || '';
-  navigator.clipboard.writeText(url).then(() => {
-    const msg = document.getElementById('mp2-msg');
-    if (msg) { msg.innerHTML = '<span style="color:#009ee3">✅ URL copiada!</span>'; setTimeout(()=>msg.innerHTML='',2000); }
-  });
-}
-
-// Carrega chaves salvas e preenche os campos
-async function mp2CarregarChaves() {
-  try {
-    const webhookUrl = `${BASE}/webhook/mp2`;
-    const el = document.getElementById('mp2-webhook-url');
-    if (el) el.textContent = webhookUrl;
-
-    const r = await fetch(`${BASE}/api/mp2/config?secret=${encodeURIComponent(SECRET())}`);
-    if (!r.ok) return;
-    const d = await r.json();
-
-    // Preenche campos mascarados + salva em data-saved para fallback de keep
-    const fillField = (id, badgeId, val) => {
-      const el = document.getElementById(id);
-      const bg = document.getElementById(badgeId);
-      if (!el) return;
-      if (val) {
-        el.value = val;
-        el.dataset.saved = '1';            // marca que já existe valor salvo
-        if (bg) bg.style.display = 'inline-block'; // mostra badge ✅
-      } else {
-        el.dataset.saved = '';
-        if (bg) bg.style.display = 'none';
-      }
-    };
-    fillField('mp2-access-token', 'mp2-token-badge',  d.access_token);
-    fillField('mp2-public-key',   'mp2-pubkey-badge', d.public_key);
-    fillField('mp2-client-id',    null,               d.client_id);
-    fillField('mp2-client-secret',null,               d.client_secret);
-
-    // Atualiza status
-    const configurado = d.configurado || false;
-    const badge  = document.getElementById('mp2-badge-status');
-    const stxt   = document.getElementById('mp2-status-txt');
-    const ssub   = document.getElementById('mp2-status-sub');
-    const mpStat = document.getElementById('b2-mp-status');
-
-    if (configurado) {
-      if (badge)  { badge.textContent = '✅ Configurado'; badge.style.color = '#4caf50'; badge.style.background = '#0a2a0a'; }
-      if (stxt)   stxt.textContent = '✅ Mercado Pago configurado e ativo';
-      if (ssub)   ssub.textContent = 'PIX sendo gerado via API MP — Access Token ativo';
-      if (mpStat) { mpStat.textContent = '✅ Ativo'; mpStat.style.color = '#4caf50'; }
-    } else {
-      if (badge)  { badge.textContent = '⚠️ Sem chaves'; badge.style.color = '#ff9800'; badge.style.background = '#1a1200'; }
-      if (stxt)   { stxt.textContent = '⚠️ Access Token não configurado'; stxt.style.color = '#ff9800'; }
-      if (ssub)   ssub.textContent = 'Configure as chaves abaixo para ativar PIX';
-      if (mpStat) { mpStat.textContent = '⚠️ Sem token'; mpStat.style.color = '#ff9800'; }
-    }
-
-  } catch(e) { console.error('mp2CarregarChaves:', e); }
-}
-
-// Salva as chaves no banco via API
-async function mp2SalvarChaves() {
-  const btn = document.getElementById('mp2-btn-salvar');
-  const msg = document.getElementById('mp2-msg');
-
-  const elToken = document.getElementById('mp2-access-token');
-  const elPub   = document.getElementById('mp2-public-key');
-  const elCid   = document.getElementById('mp2-client-id');
-  const elCsec  = document.getElementById('mp2-client-secret');
-
-  // Se o campo estiver vazio mas já havia valor salvo, usamos '__keep__' para
-  // instruir o servidor a manter o token atual do banco — não requeremos que o
-  // usuário redigite um campo do tipo password que o browser mascarou.
-  const rawToken = elToken?.value.trim();
-  const accessToken  = rawToken  || (elToken?.dataset.saved  ? '__keep__' : '');
-  const publicKey    = elPub?.value.trim()    || (elPub?.dataset.saved    ? '__keep__' : '');
-  const clientId     = elCid?.value.trim()    || (elCid?.dataset.saved    ? '__keep__' : '');
-  const clientSecret = elCsec?.value.trim()   || (elCsec?.dataset.saved   ? '__keep__' : '');
-
-  // Só bloqueia se NUNCA houve token salvo E o campo continua vazio
-  if (!accessToken) {
-    if (msg) msg.innerHTML = '<span style="color:#f44">❌ Access Token é obrigatório! Cole o token e clique em Salvar.</span>';
-    return;
-  }
-
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
-  if (msg) msg.innerHTML = '<span style="color:#aaa">💾 Salvando no banco...</span>';
-
-  try {
-    const r = await fetch(`${BASE}/api/mp2/config`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-PaynexBet-Secret': SECRET()
-      },
-      body: JSON.stringify({
-        access_token:  accessToken,
-        public_key:    publicKey,
-        client_id:     clientId,
-        client_secret: clientSecret
-      })
-    });
-    const d = await r.json();
-    if (d.success) {
-      if (msg) msg.innerHTML = '<span style="color:#4caf50">✅ Chaves salvas! Integração ativa imediatamente.</span>';
-      await mp2CarregarChaves();
-      await mp2TestarConexao();
-    } else {
-      if (msg) msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao salvar'}</span>`;
-    }
-  } catch(e) {
-    if (msg) msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Chaves Mercado Pago'; }
-  }
-}
-
-// Testa conexão com MP
-async function mp2TestarConexao() {
-  const msg  = document.getElementById('mp2-msg');
-  const stxt = document.getElementById('mp2-status-txt');
-  const ssub = document.getElementById('mp2-status-sub');
-
-  if (msg)  msg.innerHTML = '<span style="color:#009ee3">🔗 Testando conexão com Mercado Pago...</span>';
-  if (stxt) stxt.textContent = '🔗 Testando...';
-
-  try {
-    const r = await fetch(`${BASE}/api/mp2/testar?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    if (d.success) {
-      if (msg)  msg.innerHTML = `<span style="color:#4caf50">✅ Conexão OK — ${d.email || 'conta MP ativa'}</span>`;
-      if (stxt) { stxt.textContent = '✅ Mercado Pago conectado'; stxt.style.color = '#4caf50'; }
-      if (ssub) ssub.textContent = `Conta: ${d.email || '—'} · Ambiente: ${d.ambiente || 'produção'}`;
-      const badge = document.getElementById('mp2-badge-status');
-      if (badge) { badge.textContent = '✅ Online'; badge.style.color = '#4caf50'; badge.style.background = '#0a2a0a'; }
-    } else {
-      if (msg)  msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Falha na conexão'}</span>`;
-      if (stxt) { stxt.textContent = '❌ Falha na conexão'; stxt.style.color = '#f44'; }
-    }
-  } catch(e) {
-    if (msg) msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
-  }
-}
-
-// Carrega stats do bot2
-async function mp2CarregarStats() {
-  try {
-    const r = await fetch(`${BASE}/api/mp2/stats?secret=${encodeURIComponent(SECRET())}`);
-    if (!r.ok) return;
-    const d = await r.json();
-    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
-    const s = d.stats || d;
-    const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-    // Stats gerais
-    el('mp2-total-users',      s.total_usuarios || 0);
-    el('mp2-dep-confirmados',  s.depositos_confirmados || 0);
-    el('mp2-total-dep',        fmt(s.total_depositado || 0));
-    el('mp2-saques-pend',      s.saques_pendentes || 0);
-    // Parceiros/afiliados
-    el('mp2-parceiros-ativos',     s.parceiros_ativos || 0);
-    el('mp2-parceiros-total',      `de ${s.parceiros_total || 0} total`);
-    el('mp2-stats-total-gerado',   fmt(s.total_gerado_parceiros || 0));
-    el('mp2-stats-total-pago',     fmt(s.total_pago_parceiros || 0));
-    const pendComissao = (s.total_comissao_parceiros || 0) - (s.total_pago_parceiros || 0);
-    el('mp2-stats-pend-comissao',  `pendente: ${fmt(pendComissao > 0 ? pendComissao : 0)}`);
-  } catch(e) { console.warn('mp2CarregarStats:', e); }
-}
-
-// Carrega saques pendentes do bot2
-async function mp2CarregarSaques() {
-  const tbody = document.getElementById('mp2-saques-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;padding:16px">⏳ Carregando...</td></tr>';
-  try {
-    const r = await fetch(`${BASE}/api/mp2/saques?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    const saques = d.saques || [];
-    if (!saques.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;padding:20px">✅ Nenhum saque pendente</td></tr>';
-      return;
-    }
-    const fmt = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ',');
-    tbody.innerHTML = saques.map(s => `
-      <tr>
-        <td><code>#${s.id}</code></td>
-        <td style="font-size:12px">${s.nome || '—'}<br><span style="color:#666">ID ${s.telegram_id}</span></td>
-        <td style="color:#4caf50;font-weight:700">${fmt(s.valor)}</td>
-        <td style="font-family:monospace;font-size:12px;max-width:160px;word-break:break-all">${s.chave_pix}</td>
-        <td><span style="background:#009ee322;color:#009ee3;border-radius:6px;padding:2px 8px;font-size:11px">${s.tipo_chave}</span></td>
-        <td style="font-size:12px;color:#888">${s.criado_em ? new Date(s.criado_em).toLocaleString('pt-BR') : '—'}</td>
-        <td style="white-space:nowrap">
-          <button onclick="mp2AprovarSaque(${s.id})" style="background:#22c55e22;border:1px solid #22c55e44;border-radius:6px;padding:5px 10px;color:#22c55e;font-size:12px;cursor:pointer;margin-right:4px">✅ Aprovar</button>
-          <button onclick="mp2RejeitarSaque(${s.id})" style="background:#f4433622;border:1px solid #f4433644;border-radius:6px;padding:5px 10px;color:#f44;font-size:12px;cursor:pointer">❌ Rejeitar</button>
-        </td>
-      </tr>
-    `).join('');
-  } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#f44;padding:16px">Erro: ${e.message}</td></tr>`;
-  }
-}
-
-async function mp2AprovarSaque(id) {
-  if (!confirm(`Aprovar saque #${id}? O pagamento deve ser feito MANUALMENTE via PIX.`)) return;
-  const obs = prompt('Observação (opcional):', 'Pago manualmente') || '';
-  try {
-    const r = await fetch(`${BASE}/api/mp2/saques/processar`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
-      body: JSON.stringify({ saque_id: id, aprovado: true, obs })
-    });
-    const d = await r.json();
-    if (d.success) { alert(`✅ Saque #${id} aprovado!`); mp2CarregarSaques(); mp2CarregarStats(); }
-    else           { alert(`❌ Erro: ${d.error}`); }
-  } catch(e) { alert(`❌ Erro: ${e.message}`); }
-}
-
-async function mp2RejeitarSaque(id) {
-  const motivo = prompt(`Motivo da rejeição do saque #${id}:`, 'Saldo insuficiente');
-  if (motivo === null) return;
-  try {
-    const r = await fetch(`${BASE}/api/mp2/saques/processar`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
-      body: JSON.stringify({ saque_id: id, aprovado: false, obs: motivo })
-    });
-    const d = await r.json();
-    if (d.success) { alert(`❌ Saque #${id} rejeitado.`); mp2CarregarSaques(); }
-    else           { alert(`❌ Erro: ${d.error}`); }
-  } catch(e) { alert(`❌ Erro: ${e.message}`); }
-}
-
-// ─── COMISSÕES DE PARCEIROS ───────────────────────────────────────────────────
-
-async function mp2CarregarComissoes() {
-  const tbody = document.getElementById('mp2-comissoes-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">⏳ Carregando...</td></tr>';
-  try {
-    const r = await fetch(`${BASE}/api/mp2/comissoes?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    if (!d.success) {
-      tbody.innerHTML = `<tr><td colspan="8" style="color:#f44;text-align:center;padding:20px">Erro: ${d.error}</td></tr>`;
-      return;
-    }
-    if (!d.saques || d.saques.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Nenhuma comissão registrada ainda</td></tr>';
-      return;
-    }
-    const statusBadge = (st) => {
-      const map = {
-        'pago':            '<span style="background:#0a2a0a;color:#4ade80;border:1px solid #22c55e44;padding:2px 8px;border-radius:12px;font-size:11px">✅ Pago</span>',
-        'pendente':        '<span style="background:#1a1a0a;color:#fbbf24;border:1px solid #f59e0b44;padding:2px 8px;border-radius:12px;font-size:11px">⏳ Pendente</span>',
-        'pendente_manual': '<span style="background:#2a0a0a;color:#f87171;border:1px solid #ef444444;padding:2px 8px;border-radius:12px;font-size:11px">⚠️ Manual</span>',
-        'erro':            '<span style="background:#2a0a0a;color:#f87171;border:1px solid #ef444444;padding:2px 8px;border-radius:12px;font-size:11px">❌ Erro</span>',
-      };
-      return map[st] || `<span style="color:#888;font-size:11px">${st}</span>`;
-    };
-    tbody.innerHTML = d.saques.map(s => `
-      <tr>
-        <td><span style="font-size:11px;color:#555">#${s.id}</span></td>
-        <td>
-          <div style="font-weight:600;font-size:13px">${s.parceiro_nome || s.parceiro_codigo}</div>
-          <div style="font-size:10px;color:#555;font-family:monospace">${s.parceiro_codigo}</div>
-        </td>
-        <td style="color:#4ade80;font-weight:700">R$ ${parseFloat(s.valor||0).toFixed(2)}</td>
-        <td>
-          <div style="font-family:monospace;font-size:12px;color:#60a5fa">${s.chave_pix}</div>
-          <div style="font-size:10px;color:#555">${s.tipo_chave}</div>
-        </td>
-        <td>${statusBadge(s.status)}</td>
-        <td style="font-size:11px;color:#555;max-width:150px;overflow:hidden;text-overflow:ellipsis">${s.obs || '—'}</td>
-        <td style="font-size:11px;color:#555">${s.criado_em || '—'}</td>
-        <td>
-          ${(s.status === 'pendente_manual' || s.status === 'pendente' || s.status === 'erro') ? `
-            <button onclick="mp2PagarComissaoManual(${s.id}, '${(s.parceiro_nome||s.parceiro_codigo).replace(/'/g,'').substring(0,20)}', ${parseFloat(s.valor||0).toFixed(2)})"
-              style="padding:4px 10px;background:#22c55e22;border:1px solid #22c55e;border-radius:6px;color:#4ade80;font-size:11px;cursor:pointer;white-space:nowrap">
-              ✅ Confirmar Pago
-            </button>
-          ` : s.mp_payment_id ? `<span style="font-size:10px;color:#555;font-family:monospace">${s.mp_payment_id.substring(0,12)}...</span>` : '—'}
-        </td>
-      </tr>
-    `).join('');
-  } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="8" style="color:#f44;text-align:center;padding:20px">Erro: ${e.message}</td></tr>`;
-  }
-}
-
-async function mp2PagarComissaoManual(sauqueId, parceiro, valor) {
-  if (!confirm(`Confirmar pagamento manual de R$ ${valor.toFixed(2)} para ${parceiro}?\n\nVocê já fez o PIX manual pelo app do Mercado Pago?`)) return;
-  const obs = prompt('Observação (opcional):', `PIX manual feito pelo admin em ${new Date().toLocaleDateString('pt-BR')}`);
-  if (obs === null) return; // cancelou
-  try {
-    const r = await fetch(`${BASE}/api/mp2/comissoes/pagar`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
-      body: JSON.stringify({ saque_id: sauqueId, obs: obs || 'Pago manualmente' })
-    });
-    const d = await r.json();
-    if (d.success) {
-      alert(`✅ ${d.msg}`);
-      mp2CarregarComissoes();
-      mp2CarregarParceiros();
-    } else {
-      alert(`❌ Erro: ${d.error}`);
-    }
-  } catch(e) { alert(`❌ Erro: ${e.message}`); }
-}
-
-// Inicializa painel MP2 ao entrar na aba bot2
-const _origShowTab = typeof showTab === 'function' ? showTab : null;
-document.addEventListener('DOMContentLoaded', () => {
-  // Só executa se o usuário já estiver logado (secret na sessão)
-  if (!SECRET()) return;
-  // Verifica status MP e carrega totais de parceiros nos cards de métricas
-  bot2CheckStatus();
-  mp2CarregarChaves();
-  mp2CarregarStats();
-  mp2CarregarParceiros();
-  mp2CarregarComissoes();
-  bot2CarregarTotaisParcerios();
-  botConfigCarregar();  // carrega configurações da página /bot e /pix
-  recCarregarStats();        // carrega stats de recorrências
-  recCarregarPlanoStatus();  // carrega status do plano preapproval + preenche form
-  recCarregarAfiliados();    // popula select de afiliados no link de assinatura
-});
-
-// ═══════════════════════════════════════════════════════════════════
-// RECORRÊNCIAS — Assinaturas Mensais
-// ═══════════════════════════════════════════════════════════════════
-
-async function recCarregarStats() {
-  try {
-    const r = await fetch(`${BASE}/api/recorrente/stats?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    if (!d.success) return;
-    const fmt = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',');
-    const el  = id => document.getElementById(id);
-    if(el('rec-ativos'))  el('rec-ativos').textContent  = d.ativos || 0;
-    if(el('rec-mrr'))     el('rec-mrr').textContent     = fmt(d.mrr);
-    if(el('rec-total'))   el('rec-total').textContent   = fmt(d.total_arrecadado);
-    if(el('rec-pausados'))el('rec-pausados').textContent= (d.pausados||0) + ' / ' + (d.cancelados||0);
-  } catch(e) { console.warn('recCarregarStats:', e); }
-}
-
-async function recCarregarLista() {
-  const tbody = document.getElementById('rec-tbody');
-  if(!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;padding:20px">Carregando...</td></tr>';
-  await recCarregarStats();
-  try {
-    const r = await fetch(`${BASE}/api/recorrente/listar?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    if(!d.success || !d.recorrentes.length){
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;padding:20px">Nenhum assinante cadastrado</td></tr>';
-      return;
-    }
-    const fmt    = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',');
-    const status_cor = {ativo:'#00c853',pausado:'#f59e0b',cancelado:'#f44336'};
-    tbody.innerHTML = d.recorrentes.map(r => {
-      const isAuto = r.tipo === 'preapproval';
-      const tipoHtml = isAuto
-        ? `<span style="color:#009ee3;font-weight:700;font-size:10px">💙 Auto</span>${r.preapproval_status ? `<br><span style="font-size:10px;color:${r.preapproval_status==='authorized'?'#00c853':r.preapproval_status==='cancelled'?'#f44336':'#f59e0b'}">${r.preapproval_status}</span>` : ''}`
-        : `<span style="color:#9c27b0;font-weight:700;font-size:10px">🔄 Manual</span>`;
-      return `
-      <tr>
-        <td>#${r.id}</td>
-        <td style="font-weight:700">${r.nome||'—'}<br><span style="font-size:10px;color:#555">${r.telefone||r.email||''}</span></td>
-        <td style="text-align:center">${tipoHtml}</td>
-        <td style="color:#009ee3;font-weight:700">${fmt(r.valor)}</td>
-        <td style="color:#f59e0b">${r.proximo_vencimento||'—'}</td>
-        <td style="color:#00c853">${fmt(r.total_pago)}</td>
-        <td><span style="color:${status_cor[r.status]||'#888'};font-weight:700">${r.status}</span></td>
-        <td style="white-space:nowrap">
-          ${!isAuto ? `<button onclick="recCobrarAgora(${r.id})" class="action-btn" style="font-size:11px;padding:4px 9px;background:#009ee3;color:#fff;border-color:#009ee3" title="Gerar PIX agora">💳</button>` : ''}
-          ${r.status==='ativo' ? `<button onclick="recPausar(${r.id},true)" class="action-btn" style="font-size:11px;padding:4px 9px;background:#f59e0b;color:#000;border-color:#f59e0b" title="Pausar">⏸</button>` : ''}
-          ${r.status==='pausado' ? `<button onclick="recPausar(${r.id},false)" class="action-btn" style="font-size:11px;padding:4px 9px;background:#00c853;color:#000;border-color:#00c853" title="Reativar">▶️</button>` : ''}
-          ${r.status!=='cancelado' ? `<button onclick="recCancelar(${r.id})" class="action-btn" style="font-size:11px;padding:4px 9px;background:#f44336;color:#fff;border-color:#f44336" title="Cancelar">🗑</button>` : ''}
-          ${!isAuto ? `<button onclick="copiar('${location.origin}/pagar/${r.id}')" class="action-btn" style="font-size:11px;padding:4px 9px" title="Copiar link PIX">🔗</button>` : ''}
-          ${isAuto && r.preapproval_init_point ? `<button onclick="copiar('${window.location.origin}/assinar')" class="action-btn" style="font-size:11px;padding:4px 9px;background:#009ee315;border-color:#009ee350" title="Copiar link /assinar">📋</button>` : ''}
-        </td>
-      </tr>`;
-    }).join('');
-  } catch(e) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red;padding:20px">Erro: ${e.message}</td></tr>`; }
-}
-
-async function recCadastrar() {
-  const nome  = document.getElementById('rec-nome').value.trim();
-  const valor = parseFloat(document.getElementById('rec-valor').value||0);
-  const dia   = parseInt(document.getElementById('rec-dia').value||1);
-  const desc  = document.getElementById('rec-desc').value.trim() || 'Mensalidade';
-  const tel   = document.getElementById('rec-tel').value.trim();
-  const ref   = document.getElementById('rec-ref').value.trim();
-  const msg   = document.getElementById('rec-cadastro-msg');
-  if(!nome){ alert('Informe o nome do assinante'); return; }
-  if(valor < 1){ alert('Valor mínimo: R$ 1,00'); return; }
-  msg.style.display = 'block';
-  msg.style.color   = '#aaa';
-  msg.textContent   = 'Cadastrando...';
-  try {
-    const r = await fetch(`${BASE}/api/recorrente/criar`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({nome, valor, dia_vencimento:dia, descricao:desc, telefone:tel, ref})
-    });
-    const d = await r.json();
-    if(d.success){
-      msg.style.color = '#00c853';
-      msg.textContent = `✅ ${nome} cadastrado! Próx. venc: ${d.recorrente?.proximo_vencimento||'—'}`;
-      // Limpa campos
-      ['rec-nome','rec-valor','rec-tel','rec-ref'].forEach(id=>{ const e=document.getElementById(id); if(e)e.value=''; });
-      document.getElementById('rec-dia').value = 1;
-      document.getElementById('rec-desc').value = '';
-      // Gera primeiro PIX automaticamente
-      const r2 = await fetch(`${BASE}/api/recorrente/cobrar`, {
-        method:'POST',
-        headers:{'Content-Type':'application/json','X-PaynexBet-Secret':SECRET()},
-        body: JSON.stringify({id: d.recorrente.id})
-      });
-      const d2 = await r2.json();
-      if(d2.success){
-        msg.textContent += ` | ✅ Primeiro PIX gerado: ${d2.payment_id}`;
-      } else {
-        msg.textContent += ` | ⚠️ Primeiro PIX: ${d2.error||'erro'}`;
-      }
-      recCarregarLista();
-    } else {
-      msg.style.color = '#f44336';
-      msg.textContent = '❌ ' + (d.error || 'Erro ao cadastrar');
-    }
-  } catch(e) {
-    msg.style.color = '#f44336';
-    msg.textContent = '❌ Erro: ' + e.message;
-  }
-}
-
-async function recCobrarAgora(id) {
-  if(!confirm(`Gerar PIX agora para o assinante #${id}?`)) return;
-  try {
-    const r = await fetch(`${BASE}/api/recorrente/cobrar`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-PaynexBet-Secret':SECRET()},
-      body: JSON.stringify({id})
-    });
-    const d = await r.json();
-    if(d.success){
-      alert(`✅ PIX gerado!\nPayment ID: ${d.payment_id}\nPróx. venc: ${d.proximo_vencimento}`);
-      recCarregarLista();
-    } else {
-      alert('❌ ' + (d.error||'Erro'));
-    }
-  } catch(e) { alert('Erro: '+e.message); }
-}
-
-async function recPausar(id, pausar) {
-  const acao = pausar ? 'pausar' : 'reativar';
-  if(!confirm(`Deseja ${acao} o assinante #${id}?`)) return;
-  try {
-    const r = await fetch(`${BASE}/api/recorrente/pausar`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-PaynexBet-Secret':SECRET()},
-      body: JSON.stringify({id, pausar})
-    });
-    const d = await r.json();
-    if(d.success){ recCarregarLista(); }
-    else { alert('❌ ' + (d.error||'Erro')); }
-  } catch(e) { alert('Erro: '+e.message); }
-}
-
-async function recCancelar(id) {
-  if(!confirm(`⚠️ Cancelar definitivamente o assinante #${id}? Esta ação não pode ser desfeita.`)) return;
-  try {
-    const r = await fetch(`${BASE}/api/recorrente/cancelar`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-PaynexBet-Secret':SECRET()},
-      body: JSON.stringify({id})
-    });
-    const d = await r.json();
-    if(d.success){ recCarregarLista(); alert('✅ Assinatura cancelada'); }
-    else { alert('❌ ' + (d.error||'Erro')); }
-  } catch(e) { alert('Erro: '+e.message); }
-}
-
-async function recCriarPlanoMP() {
-  const msg  = document.getElementById('rec-criar-plano-msg');
-  const btn  = document.getElementById('rec-btn-criar-plano');
-  if (!msg) return;
-  msg.style.display = 'block';
-
-  // Coleta valores do formulário
-  const titulo    = document.getElementById('rec-plano-titulo')?.value.trim()    || '';
-  const valor     = parseFloat(document.getElementById('rec-plano-valor')?.value) || 0;
-  const dia       = parseInt(document.getElementById('rec-plano-dia')?.value)     || 1;
-  const beneficios= document.getElementById('rec-plano-beneficios')?.value.trim() || '';
-
-  if (!titulo) {
-    msg.style.color = '#f44'; msg.textContent = '❌ Informe o nome do plano.'; return;
-  }
-  if (valor < 1) {
-    msg.style.color = '#f44'; msg.textContent = '❌ Valor mínimo: R$ 1,00.'; return;
-  }
-
-  msg.style.color = '#aaa';
-  msg.textContent = '💾 Salvando configurações do plano...';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Aguarde...'; }
-
-  try {
-    // 1) Salva config do plano no banco
-    const rCfg = await fetch(`${BASE}/api/assinar/config`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
-      body: JSON.stringify({ titulo, descricao: titulo, valor, dia, beneficios, ativo: true })
-    });
-    const dCfg = await rCfg.json();
-    if (!dCfg.success) {
-      msg.style.color = '#f44'; msg.textContent = '❌ Erro ao salvar config: ' + (dCfg.error||'desconhecido'); return;
-    }
-
-    // 2) Cria / atualiza plano no Mercado Pago
-    msg.textContent = '⚡ Criando plano no Mercado Pago...';
-    const rMP = await fetch(`${BASE}/api/assinar/criar-plano`, {
-      method:  'POST',
-      headers: {'X-PaynexBet-Secret': SECRET()}
-    });
-    const dMP = await rMP.json();
-
-    if (dMP.success) {
-      // Monta link /assinar com afiliado, se houver
-      const afiliado = document.getElementById('rec-link-afiliado');
-      const ref = afiliado && afiliado.value ? `?ref=${encodeURIComponent(afiliado.value)}` : '';
-      const linkAssinar = `${window.location.origin}/assinar${ref}`;
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(linkAssinar)}`;
-
-      msg.style.color = '#00c853';
-      msg.innerHTML = `✅ Plano criado/atualizado! ID: <code style="color:#ce93d8">${dMP.plan_id}</code><br>
-        <span style="color:#aaa;font-size:11px">Compartilhe o link abaixo com seus clientes:</span><br>
-        <code style="color:#29b6f6;font-size:12px">${linkAssinar}</code>
-        <button onclick="copiar('${linkAssinar}')" class="action-btn" style="font-size:11px;padding:3px 8px;margin-left:6px">📋</button>`;
-
-      // Atualiza painel de status com QR
-      const status = document.getElementById('rec-plano-status');
-      if (status) {
-        status.style.display = 'block';
-        status.style.background = '#009ee310'; status.style.borderColor = '#009ee330';
-        status.innerHTML = `
-          <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">
-            <img src="${qrUrl}" alt="QR Code" style="width:90px;height:90px;border-radius:8px;border:2px solid #009ee350;flex-shrink:0"/>
-            <div>
-              💙 <strong style="color:#29b6f6">Plano ativo no Mercado Pago</strong><br>
-              <span style="color:#aaa;font-size:11px">ID: <code style="color:#ce93d8">${dMP.plan_id}</code></span><br>
-              <span style="color:#aaa;font-size:11px">Valor: <strong style="color:#fff">R$ ${parseFloat(valor).toFixed(2).replace('.',',')}</strong>/mês</span><br>
-              <div style="margin-top:6px;background:#009ee310;border:1px solid #009ee350;border-radius:6px;padding:5px 8px;font-size:11px">
-                🔵 <strong style="color:#29b6f6">Link de autorização para o cliente:</strong><br>
-                <code style="color:#fff;word-break:break-all">${linkAssinar}</code>
-                <button onclick="copiar('${linkAssinar}')" class="action-btn" style="font-size:10px;padding:2px 7px;margin-left:4px">📋 Copiar</button>
-              </div>
-              <div style="margin-top:4px;font-size:10px;color:#555">
-                📲 O cliente escaneia o QR ou acessa o link, autoriza <strong style="color:#29b6f6">1 única vez</strong> via PIX no próprio banco e o MP cobra todo mês automaticamente.
-              </div>
-            </div>
-          </div>`;
-      }
-    } else {
-      msg.style.color = '#f44336';
-      msg.textContent = '❌ ' + (dMP.error || 'Erro ao criar plano no MP');
-    }
-  } catch(e) {
-    msg.style.color = '#f44336';
-    msg.textContent = '❌ Erro: ' + e.message;
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '⚡ Criar / Atualizar Plano no MP'; }
-  }
-}
-
-async function recCarregarPlanoStatus() {
-  try {
-    // Carrega config do plano (titulo, valor, dia, beneficios)
-    const rCfg = await fetch(`${BASE}/api/assinar/config?secret=${encodeURIComponent(SECRET())}`);
-    if (rCfg.ok) {
-      const cfg = await rCfg.json();
-      if (cfg.titulo)     { const el = document.getElementById('rec-plano-titulo');    if (el) el.value = cfg.titulo; }
-      if (cfg.valor)      { const el = document.getElementById('rec-plano-valor');     if (el) el.value = parseFloat(cfg.valor).toFixed(2); }
-      if (cfg.dia)        { const el = document.getElementById('rec-plano-dia');       if (el) el.value = cfg.dia; }
-      if (cfg.beneficios) { const el = document.getElementById('rec-plano-beneficios');if (el) el.value = cfg.beneficios; }
-    }
-
-    // Carrega status do plano MP
-    const r = await fetch(`${BASE}/api/assinar/plano?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    const el = document.getElementById('rec-plano-status');
-    if (!el) return;
-    if (d.success && d.plan_id) {
-      el.style.display = 'block';
-      el.style.background = '#009ee310'; el.style.borderColor = '#009ee330';
-      // Monta link /assinar com afiliado, se houver
-      const afiliadoEl = document.getElementById('rec-link-afiliado');
-      const refSt = afiliadoEl && afiliadoEl.value ? `?ref=${encodeURIComponent(afiliadoEl.value)}` : '';
-      const linkSt = `${window.location.origin}/assinar${refSt}`;
-      const qrSt   = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(linkSt)}`;
-
-      el.innerHTML = `
-        <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">
-          <img src="${qrSt}" alt="QR" style="width:80px;height:80px;border-radius:8px;border:2px solid #009ee350;flex-shrink:0"/>
-          <div style="flex:1;min-width:200px">
-            💙 <strong style="color:#29b6f6">Plano ativo no Mercado Pago</strong><br>
-            <span style="color:#aaa;font-size:11px">ID: <code style="color:#ce93d8">${d.plan_id}</code></span>&nbsp;&nbsp;
-            <span style="color:#aaa;font-size:11px">Valor: <strong style="color:#fff">R$ ${parseFloat(d.valor||0).toFixed(2).replace('.',',')}</strong>/mês</span><br>
-            <div style="margin-top:6px;background:#009ee308;border:1px solid #009ee330;border-radius:6px;padding:5px 8px;font-size:11px">
-              🔵 <strong style="color:#29b6f6">Link para o cliente autorizar:</strong>
-              <button onclick="copiar('${linkSt}')" class="action-btn" style="font-size:10px;padding:2px 7px;margin-left:4px">📋 Copiar</button><br>
-              <code style="color:#fff;word-break:break-all;font-size:11px">${linkSt}</code>
-            </div>
-            <div style="margin-top:4px;font-size:10px;color:#555">
-              📲 Cliente escaneia o QR ou acessa o link → autoriza <strong style="color:#29b6f6">1 única vez</strong> via PIX → MP cobra automaticamente todo mês.
-            </div>
-          </div>
-        </div>`;
-    } else {
-      el.style.display = 'block';
-      el.style.background = '#f4433610'; el.style.borderColor = '#f4433330';
-      el.innerHTML = '⚠️ Nenhum plano configurado ainda. Preencha o formulário acima e clique em <strong>⚡ Criar / Atualizar Plano no MP</strong>.';
-    }
-  } catch(e) { console.warn('recCarregarPlanoStatus:', e); }
-}
-
-async function recDispararJob() {
-  // Mantido apenas para compatibilidade — não é mais o fluxo principal
-  if(!confirm('Disparar cobranças manuais?\n\nNota: O fluxo principal é o Débito Automático via Mercado Pago.\nEste job só afeta assinantes do tipo Manual.')) return;
-  try {
-    const r = await fetch(`${BASE}/api/recorrente/job`, {
-      method:'POST',
-      headers:{'X-PaynexBet-Secret':SECRET()}
-    });
-    const d = await r.json();
-    alert(`✅ Job executado!\n${d.pix_gerados||0} cobranças manuais processadas`);
-    recCarregarLista();
-  } catch(e) { alert('Erro: '+e.message); }
-}
-
-async function recGerarQRAssinar() {
-  // Usa o link já gerado (pode incluir ?ref= do afiliado selecionado)
-  const linkEl = document.getElementById('rec-link-assinar');
-  const link   = linkEl ? linkEl.textContent.trim() : `${location.origin}/assinar`;
-  const qrUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&color=006db3&bgcolor=ffffff&data=${encodeURIComponent(link)}&qzone=2`;
-  const wrap   = document.getElementById('rec-qr-inline');
-  const img    = document.getElementById('rec-qr-img');
-  if (!wrap || !img) return;
-  img.src = qrUrl;
-  wrap.style.display = 'block';
-}
-
-// Carrega afiliados no <select> do painel Débito Automático
-async function recCarregarAfiliados() {
-  const sel = document.getElementById('rec-link-afiliado');
-  if (!sel) return;
-  try {
-    const r = await fetch(`${BASE}/api/mp2/parceiros?secret=${encodeURIComponent(SECRET())}`);
-    if (!r.ok) return;
-    const d = await r.json();
-    const lista = d.parceiros || d.items || d || [];
-    // Mantém a opção "Sem afiliado"
-    sel.innerHTML = '<option value="">— Sem afiliado (link genérico) —</option>';
-    lista.filter(p => p.ativo !== false).forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.codigo || p.code || '';
-      opt.textContent = `${p.nome || p.name || p.codigo} (${p.codigo || ''})`;
-      sel.appendChild(opt);
-    });
-    recAtualizarLinkAfiliado();
-  } catch(e) { console.warn('recCarregarAfiliados:', e); }
-}
-
-// Atualiza o link gerado quando o afiliado muda
-function recAtualizarLinkAfiliado() {
-  const sel    = document.getElementById('rec-link-afiliado');
-  const linkEl = document.getElementById('rec-link-assinar');
-  const qrWrap = document.getElementById('rec-qr-inline');
-  if (!linkEl) return;
-  const base = `${location.origin}/assinar`;
-  const ref  = sel ? sel.value.trim() : '';
-  linkEl.textContent = ref ? `${base}?ref=${encodeURIComponent(ref)}` : base;
-  // Fecha QR code ao trocar afiliado (evita QR obsoleto)
-  if (qrWrap) qrWrap.style.display = 'none';
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════
-// QR CODE DE AUTOCADASTRO — /assinar  (com suporte a afiliados)
-// ═══════════════════════════════════════════════════════════════════
-
-// Retorna o ref ativo: select tem prioridade, campo manual é fallback
-function qrGetRef() {
-  const sel = (document.getElementById('qr-ref-select')?.value||'').trim();
-  const man = (document.getElementById('qr-ref')?.value||'').trim();
-  return sel || man;
-}
-
-// Monta o link /assinar com os parâmetros corretos
-function qrGetLink(refOverride) {
-  const ref   = refOverride !== undefined ? refOverride : qrGetRef();
-  const valor = (document.getElementById('qr-valor')?.value||'').trim();
-  let link = `${BASE}/assinar`;
-  const params = [];
-  if (ref)   params.push(`ref=${encodeURIComponent(ref)}`);
-  if (valor) params.push(`valor=${encodeURIComponent(valor)}`);
-  if (params.length) link += '?' + params.join('&');
-  return link;
-}
-
-// Atualiza preview do QR principal
-function qrAtualizarPreview() {
-  const ref      = qrGetRef();
-  const fullLink = qrGetLink(ref);
-  const qrUrl    = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&color=6a0080&bgcolor=ffffff&data=${encodeURIComponent(fullLink)}&qzone=2`;
-  document.getElementById('qr-preview-img').src = qrUrl;
-  document.getElementById('qr-link-txt').textContent = fullLink;
-
-  // Atualiza badge do afiliado selecionado
-  const lbl = document.getElementById('qr-afiliado-label');
-  const sel  = document.getElementById('qr-ref-select');
-  if (ref && lbl) {
-    const nome = sel?.options[sel.selectedIndex]?.dataset?.nome || ref;
-    lbl.textContent = '👤 ' + nome;
-    lbl.style.display = 'inline-block';
-  } else if (lbl) {
-    lbl.style.display = 'none';
-  }
-}
-
-// Quando usuário muda o select de afiliado
-function qrOnAfiliadoChange() {
-  const sel = document.getElementById('qr-ref-select');
-  const val = sel?.value || '';
-  // Limpa campo manual se select tem valor
-  if (val) {
-    const inp = document.getElementById('qr-ref');
-    if (inp) { inp.value = ''; inp.placeholder = 'afiliado selecionado acima'; }
-    const badge = document.getElementById('qr-ref-badge');
-    if (badge) badge.style.display = 'none';
-  }
-  qrAtualizarPreview();
-}
-
-// Quando usuário digita no campo manual
-function qrOnRefManualChange() {
-  const val = (document.getElementById('qr-ref')?.value||'').trim();
-  // Limpa o select se digitou manualmente
-  if (val) {
-    const sel = document.getElementById('qr-ref-select');
-    if (sel) sel.value = '';
-    const badge = document.getElementById('qr-ref-badge');
-    if (badge) { badge.style.display = 'inline-block'; badge.textContent = '✅ ' + val; }
-  }
-  qrAtualizarPreview();
-}
-
-// Carrega lista de afiliados/parceiros no select e na tabela de QRs
-async function qrCarregarAfiliados() {
-  try {
-    const r = await fetch(`${BASE}/api/mp2/parceiros?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    const lista = (d.parceiros || []).filter(p => p.ativo !== false);
-
-    // Atualiza o SELECT
-    const sel = document.getElementById('qr-ref-select');
-    if (sel) {
-      const curVal = sel.value;
-      sel.innerHTML = '<option value="">🌐 Sem afiliado (link geral)</option>';
-      lista.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.codigo;
-        opt.dataset.nome = p.nome;
-        opt.textContent = `👤 ${p.nome} (${p.codigo})`;
-        if (p.comissao_pct) opt.textContent += ` — ${p.comissao_pct}%`;
-        sel.appendChild(opt);
-      });
-      // Restaura seleção anterior se ainda existe
-      if (curVal) sel.value = curVal;
-    }
-
-    // Renderiza tabela de QRs por afiliado
-    qrRenderizarTabelaAfiliados(lista);
-
-    qrAtualizarPreview();
-  } catch(e) {
-    const cont = document.getElementById('qr-afiliados-lista');
-    if (cont) cont.innerHTML = `<div style="font-size:12px;color:#f44336;padding:12px;grid-column:1/-1">❌ Erro ao carregar afiliados: ${e.message}</div>`;
-  }
-}
-
-// Renderiza os cards de QR individuais por afiliado
-function qrRenderizarTabelaAfiliados(lista) {
-  const cont = document.getElementById('qr-afiliados-lista');
-  if (!cont) return;
-
-  if (!lista || !lista.length) {
-    cont.innerHTML = `<div style="font-size:12px;color:#555;padding:20px;text-align:center;grid-column:1/-1">
-      Nenhum afiliado cadastrado. <a href="#" onclick="document.getElementById('mp2-form-parceiro').style.display='block'" style="color:#a855f7">Cadastrar primeiro afiliado →</a>
-    </div>`;
-    return;
-  }
-
-  // Card do link geral (sem afiliado)
-  const linkGeral = `${location.origin}/assinar`;
-  const qrGeral   = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=6a0080&bgcolor=ffffff&data=${encodeURIComponent(linkGeral)}&qzone=2`;
-  let html = `
-    <div style="background:#ffffff08;border:1px solid #ffffff15;border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:10px">
-      <div style="font-size:11px;font-weight:700;color:#aaa">🌐 Link Geral (sem afiliado)</div>
-      <div style="background:#fff;padding:6px;border-radius:10px;border:2px solid #555">
-        <img src="${qrGeral}" width="120" height="120" style="display:block"/>
-      </div>
-      <div style="font-size:10px;color:#666;word-break:break-all;text-align:center;max-width:190px">${linkGeral}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
-        <button onclick="qrCopiarLinkCustom('${linkGeral}')" class="action-btn" style="font-size:10px;padding:4px 9px">📋 Copiar</button>
-        <button onclick="window.open('${linkGeral}','_blank')" class="action-btn" style="font-size:10px;padding:4px 9px;background:#009ee3;color:#fff;border-color:#009ee3">🌐 Abrir</button>
-      </div>
-    </div>`;
-
-  lista.forEach(p => {
-    const link = `${location.origin}/assinar?ref=${encodeURIComponent(p.codigo)}`;
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=5b21b6&bgcolor=ffffff&data=${encodeURIComponent(link)}&qzone=2`;
-    const statusColor = p.ativo ? '#00c853' : '#f44336';
-    const statusTxt   = p.ativo ? 'ativo' : 'inativo';
-    html += `
-    <div style="background:#ffffff08;border:1px solid #a855f740;border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:10px">
-      <div style="text-align:center">
-        <div style="font-size:12px;font-weight:700;color:#ce93d8">${p.nome}</div>
-        <div style="font-size:10px;color:#777;margin-top:2px">
-          código: <code style="color:#a855f7">${p.codigo}</code>
-          &nbsp;·&nbsp;<span style="color:${statusColor}">${statusTxt}</span>
-          ${p.comissao_pct ? `&nbsp;·&nbsp;<span style="color:#fbbf24">${p.comissao_pct}% comissão</span>` : ''}
-        </div>
-      </div>
-      <div style="background:#fff;padding:6px;border-radius:10px;border:2px solid #a855f7">
-        <img src="${qrUrl}" width="120" height="120" style="display:block"/>
-      </div>
-      <div style="font-size:10px;color:#666;word-break:break-all;text-align:center;max-width:190px">/assinar?ref=${p.codigo}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
-        <button onclick="qrCopiarLinkCustom('${link}')" class="action-btn" style="font-size:10px;padding:4px 9px">📋 Copiar link</button>
-        <button onclick="qrSelecionarAfiliado('${p.codigo}')" class="action-btn" style="font-size:10px;padding:4px 9px;background:#9c27b0;color:#fff;border-color:#9c27b0">⬆️ Usar no QR</button>
-        <button onclick="window.open('${link}','_blank')" class="action-btn" style="font-size:10px;padding:4px 9px;background:#009ee3;color:#fff;border-color:#009ee3">🌐 Abrir</button>
-      </div>
-    </div>`;
-  });
-
-  cont.innerHTML = html;
-}
-
-// Seleciona um afiliado no dropdown principal e atualiza o QR
-function qrSelecionarAfiliado(codigo) {
-  const sel = document.getElementById('qr-ref-select');
-  if (sel) { sel.value = codigo; }
-  const inp = document.getElementById('qr-ref');
-  if (inp) { inp.value = ''; inp.placeholder = 'afiliado selecionado acima'; }
-  qrAtualizarPreview();
-  // Scroll até o QR principal
-  document.getElementById('qr-preview-img')?.scrollIntoView({behavior:'smooth', block:'center'});
-}
-
-async function qrSalvarConfig() {
-  const titulo    = document.getElementById('qr-titulo').value.trim();
-  const desc      = document.getElementById('qr-desc').value.trim();
-  const valor     = parseFloat(document.getElementById('qr-valor').value||10);
-  const dia       = parseInt(document.getElementById('qr-dia').value||1);
-  const benes     = document.getElementById('qr-beneficios').value.trim();
-  const msg       = document.getElementById('qr-cfg-msg');
-
-  msg.style.display = 'block'; msg.style.color = '#aaa'; msg.textContent = 'Salvando...';
-  try {
-    const r = await fetch(`${BASE}/api/assinar/config`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-PaynexBet-Secret':SECRET()},
-      body: JSON.stringify({titulo, descricao:desc, valor, dia, beneficios:benes, ativo:true})
-    });
-    const d = await r.json();
-    if(d.success){
-      msg.style.color = '#00c853';
-      msg.textContent = '✅ Config salva!';
-      qrAtualizarPreview();
-    } else {
-      msg.style.color = '#f44336';
-      msg.textContent = '❌ ' + (d.error||'Erro');
-    }
-  } catch(e) {
-    msg.style.color = '#f44336'; msg.textContent = '❌ Erro: '+e.message;
-  }
-}
-
-async function qrCarregarConfig() {
-  try {
-    const r = await fetch(`${BASE}/api/assinar/config`);
-    const d = await r.json();
-    if(!d.success) return;
-    if(d.titulo)      document.getElementById('qr-titulo').value = d.titulo;
-    if(d.descricao)   document.getElementById('qr-desc').value   = d.descricao;
-    if(d.valor)       document.getElementById('qr-valor').value  = d.valor;
-    if(d.dia)         document.getElementById('qr-dia').value    = d.dia;
-    if(d.beneficios)  document.getElementById('qr-beneficios').value = d.beneficios;
-  } catch(e) {}
-  // Carrega afiliados e depois atualiza o preview
-  await qrCarregarAfiliados();
-}
-
-// Copia link do QR que está sendo exibido no preview principal
-function qrCopiarLinkAtual() {
-  const link = document.getElementById('qr-link-txt')?.textContent || qrGetLink();
-  if (link && link !== '—') {
-    navigator.clipboard.writeText(link).then(()=>{
-      const btn = event?.target; const orig = btn?.textContent;
-      if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(()=>btn.textContent=orig,2000); }
-    });
-  }
-}
-
-// Copia um link arbitrário (usado nos cards de afiliados)
-function qrCopiarLinkCustom(link) {
-  navigator.clipboard.writeText(link).then(()=>{
-    const btn = event?.target; const orig = btn?.textContent;
-    if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(()=>btn.textContent=orig,1800); }
-  });
-}
-
-// Mantido para compatibilidade com botões antigos
-function qrCopiarLink() { qrCopiarLinkAtual(); }
-
-function qrAbrirLink() {
-  window.open(qrGetLink(), '_blank');
-}
-
-function qrDownload() {
-  const img = document.getElementById('qr-preview-img');
-  const ref = qrGetRef();
-  const a   = document.createElement('a');
-  a.href     = img.src;
-  a.download = ref ? `qr-assinar-${ref}.png` : 'qr-assinar.png';
-  a.target   = '_blank';
-  a.click();
-}
-
-// Carrega config QR ao iniciar
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(qrCarregarConfig, 500);
-});
-
-// ═══════════════════════════════════════════════════════════════════
-// CONFIGURAÇÃO DA PÁGINA /bot e /pix — VALOR FIXO OU LIVRE
-// ═══════════════════════════════════════════════════════════════════
-
-async function botConfigCarregar() {
-  try {
-    const r = await fetch(`${BASE}/api/bot/config`);
-    const d = await r.json();
-    if (!d.success) return;
-
-    // Modo
-    const modoFixo = d.modo_fixo;
-    document.getElementById('radio-fixo').checked  =  modoFixo;
-    document.getElementById('radio-livre').checked = !modoFixo;
-    _botAtualizarModoUI(modoFixo);
-
-    // Valores
-    if (d.valor_fixo > 0)
-      document.getElementById('cfg-valor-fixo').value = d.valor_fixo.toFixed(2);
-    if (d.min_valor)
-      document.getElementById('cfg-min-valor').value = d.min_valor;
-    if (d.max_valor)
-      document.getElementById('cfg-max-valor').value = d.max_valor;
-
-    // Título e descrição
-    if (d.titulo)
-      document.getElementById('cfg-titulo').value    = d.titulo;
-    if (d.descricao)
-      document.getElementById('cfg-descricao').value = d.descricao;
-
-  } catch(e) {
-    console.warn('[botConfig] Erro ao carregar:', e);
-  }
-}
-
-function botModoChange() {
-  const fixo = document.getElementById('radio-fixo').checked;
-  _botAtualizarModoUI(fixo);
-}
-
-function _botAtualizarModoUI(fixo) {
-  document.getElementById('cfg-valor-fixo-wrap').style.display = fixo ? 'block' : 'none';
-  document.getElementById('cfg-minmax-wrap').style.display     = fixo ? 'none'  : 'block';
-  // Destacar seleção ativa
-  const lF = document.getElementById('lbl-modo-fixo');
-  const lL = document.getElementById('lbl-modo-livre');
-  if (lF) lF.style.borderColor = fixo ? '#22c55e' : '#ffffff11';
-  if (lL) lL.style.borderColor = fixo ? '#ffffff11' : '#009ee3';
-}
-
-async function botConfigSalvar() {
-  const msg    = document.getElementById('cfg-bot-msg');
-  const modoFixo   = document.getElementById('radio-fixo').checked;
-  const valorFixo  = parseFloat(document.getElementById('cfg-valor-fixo').value || 0);
-  const minValor   = parseFloat(document.getElementById('cfg-min-valor').value  || 5);
-  const maxValor   = parseFloat(document.getElementById('cfg-max-valor').value  || 10000);
-  const titulo     = document.getElementById('cfg-titulo').value.trim()    || 'PayPixNex — Pague via PIX';
-  const descricao  = document.getElementById('cfg-descricao').value.trim() || 'Pagamento seguro via Mercado Pago';
-
-  if (modoFixo && (!valorFixo || valorFixo < 1)) {
-    if (msg) msg.innerHTML = '<span style="color:#f44">❌ Informe um valor fixo maior que R$ 1,00</span>';
-    return;
-  }
-
-  if (msg) msg.innerHTML = '<span style="color:#009ee3">💾 Salvando...</span>';
-
-  try {
-    const r = await fetch(`${BASE}/api/bot/config`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
-      body: JSON.stringify({ modo_fixo: modoFixo, valor_fixo: valorFixo, min_valor: minValor, max_valor: maxValor, titulo, descricao, ativo: true })
-    });
-    const d = await r.json();
-    if (d.success) {
-      if (msg) msg.innerHTML = `<span style="color:#4caf50">✅ Salvo! Página /bot e /pix atualizadas. <a href="/bot" target="_blank" style="color:#009ee3">Ver página →</a></span>`;
-      // Atualiza bot_pix.html no banco via save interno
-      await _salvarBotPixHtmlNoBanco();
-    } else {
-      if (msg) msg.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
-    }
-  } catch(e) {
-    if (msg) msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
-  }
-}
-
-// Salva bot_pix.html atualizado no banco (para que o servidor sirva a versão correta)
-async function _salvarBotPixHtmlNoBanco() {
-  try {
-    // Busca o HTML da página /bot atual e salva no banco via endpoint interno
-    const r = await fetch(`${BASE}/api/bot/config/save-html`, {
-      method: 'POST',
-      headers: { 'X-PaynexBet-Secret': SECRET() }
-    });
-  } catch(e) {}
-}
-
-// ─── PARCEIROS AFILIADOS ───────────────────────────────────────────────────────
-
-// Preview de comissão para Bot Mercado Pago
-function mp2PreviewComissao() {
-  const pct = parseFloat(document.getElementById('mp2-p-comissao')?.value) || 10;
-  const chave = document.getElementById('mp2-p-chave-pix')?.value || '—';
-  const sim50  = document.getElementById('mp2-p-sim-50');  if (sim50)  sim50.textContent  = `→ R$ ${(50  * pct / 100).toFixed(2).replace('.',',')}`;
-  const sim100 = document.getElementById('mp2-p-sim-100'); if (sim100) sim100.textContent = `→ R$ ${(100 * pct / 100).toFixed(2).replace('.',',')}`;
-  const sim500 = document.getElementById('mp2-p-sim-500'); if (sim500) sim500.textContent = `→ R$ ${(500 * pct / 100).toFixed(2).replace('.',',')}`;
-  const simKey = document.getElementById('mp2-p-sim-chave'); if (simKey) simKey.textContent = chave || '—';
-}
-
-function mp2MostrarFormParceiro() {
-  const f = document.getElementById('mp2-form-parceiro');
+function b2MostrarFormParceiro() {
+  const f = document.getElementById('b2-form-parceiro');
   f.style.display = f.style.display === 'none' ? 'block' : 'none';
-  document.getElementById('mp2-link-novo').style.display = 'none';
+  document.getElementById('b2-link-novo').style.display = 'none';
 }
 
-async function mp2CriarParceiro() {
-  const nome       = document.getElementById('mp2-p-nome').value.trim();
-  const codigo     = document.getElementById('mp2-p-codigo').value.trim();
-  const chavePix   = document.getElementById('mp2-p-chave-pix').value.trim();
-  const tipoChave  = document.getElementById('mp2-p-tipo-chave').value;
-  const comissao   = parseFloat(document.getElementById('mp2-p-comissao').value) || 10;
-  const msg        = document.getElementById('mp2-form-msg');
+async function b2CriarParceiro() {
+  const nome       = document.getElementById('b2-p-nome').value.trim();
+  const codigo     = document.getElementById('b2-p-codigo').value.trim();
+  const chavePix   = document.getElementById('b2-p-chave-pix').value.trim();
+  const tipoChave  = document.getElementById('b2-p-tipo-chave').value;
+  const comissao   = parseFloat(document.getElementById('b2-p-comissao').value) || 10;
+  const msg        = document.getElementById('b2-form-msg');
 
   if (!nome) { msg.innerHTML = '<span style="color:#f44">Nome obrigatório</span>'; return; }
   if (!chavePix) { msg.innerHTML = '<span style="color:#f44">Chave PIX obrigatória</span>'; return; }
@@ -7586,17 +6508,17 @@ async function mp2CriarParceiro() {
     if (d.success) {
       msg.innerHTML = '<span style="color:#4ade80">✅ Parceiro criado!</span>';
       // Mostrar link gerado
-      const linkEl = document.getElementById('mp2-link-novo-url');
+      const linkEl = document.getElementById('b2-link-novo-url');
       linkEl.textContent = d.link || d.parceiro?.link || '';
-      document.getElementById('mp2-link-novo').style.display = 'block';
+      document.getElementById('b2-link-novo').style.display = 'block';
       // Limpar form
-      document.getElementById('mp2-p-nome').value = '';
-      document.getElementById('mp2-p-codigo').value = '';
-      document.getElementById('mp2-p-chave-pix').value = '';
-      document.getElementById('mp2-p-comissao').value = '10';
-      document.getElementById('mp2-form-parceiro').style.display = 'none';
+      document.getElementById('b2-p-nome').value = '';
+      document.getElementById('b2-p-codigo').value = '';
+      document.getElementById('b2-p-chave-pix').value = '';
+      document.getElementById('b2-p-comissao').value = '10';
+      document.getElementById('b2-form-parceiro').style.display = 'none';
       // Recarregar lista
-      await mp2CarregarParceiros();
+      await b2CarregarParceiros();
     } else {
       msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao criar'}</span>`;
     }
@@ -7605,8 +6527,8 @@ async function mp2CriarParceiro() {
   }
 }
 
-function mp2CopiarLinkNovo() {
-  const url = document.getElementById('mp2-link-novo-url').textContent;
+function b2CopiarLinkNovo() {
+  const url = document.getElementById('b2-link-novo-url').textContent;
   navigator.clipboard.writeText(url).then(() => {
     const btn = event.target;
     const orig = btn.textContent;
@@ -7615,8 +6537,8 @@ function mp2CopiarLinkNovo() {
   });
 }
 
-async function mp2CarregarParceiros() {
-  const tbody = document.getElementById('mp2-parceiros-tbody');
+async function b2CarregarParceiros() {
+  const tbody = document.getElementById('b2-parceiros-tbody');
   if (!tbody) return;
   try {
     const r = await fetch(`${BASE}/api/mp2/parceiros?secret=${encodeURIComponent(SECRET())}`);
@@ -7626,7 +6548,7 @@ async function mp2CarregarParceiros() {
       return;
     }
     tbody.innerHTML = d.parceiros.map(p => {
-      const link = p.link || `https://web-production-9f54e.up.railway.app/bot?ref=${p.codigo}`;
+      const link = p.link || `https://web-production-9f54e.up.railway.app/paypix?ref=${p.codigo}`;
       const isAtivo = p.ativo;
       const statusBadge = isAtivo
         ? '<span style="color:#4ade80;font-size:11px;font-weight:700">● ativo</span>'
@@ -7655,7 +6577,7 @@ async function mp2CarregarParceiros() {
         <td>
           <div style="display:flex;align-items:center;gap:4px;max-width:200px">
             <code style="font-size:10px;color:#a855f7;word-break:break-all;flex:1">${link}</code>
-            <button onclick="mp2CopiarLink('${link}')" title="Copiar link"
+            <button onclick="b2CopiarLink('${link}')" title="Copiar link"
               style="padding:3px 7px;background:#7c3aed22;border:1px solid #7c3aed44;border-radius:5px;color:#a855f7;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0">📋</button>
           </div>
         </td>
@@ -7663,17 +6585,17 @@ async function mp2CarregarParceiros() {
           <div style="display:flex;flex-direction:column;gap:5px;min-width:120px">
             <!-- Ativar/Desativar -->
             ${isAtivo
-              ? `<button onclick="mp2ToggleParceiro('${p.codigo}','${p.nome.replace(/'/g,'')}',false)"
+              ? `<button onclick="b2ToggleParceiro('${p.codigo}','${p.nome.replace(/'/g,'')}',false)"
                   style="padding:5px 10px;background:#2a0a0a;border:1px solid #ef444466;border-radius:7px;color:#f87171;font-size:11px;cursor:pointer;font-weight:600">
                   ⏸ Desativar
                 </button>`
-              : `<button onclick="mp2ToggleParceiro('${p.codigo}','${p.nome.replace(/'/g,'')}',true)"
+              : `<button onclick="b2ToggleParceiro('${p.codigo}','${p.nome.replace(/'/g,'')}',true)"
                   style="padding:5px 10px;background:#0a2a0a;border:1px solid #22c55e66;border-radius:7px;color:#4ade80;font-size:11px;cursor:pointer;font-weight:600">
                   ▶ Ativar
                 </button>`
             }
             <!-- Editar -->
-            <button onclick="mp2AbrirEdicao('${p.codigo}','${p.nome.replace(/'/g,'')}','${p.chave_pix}','${p.tipo_chave}',${p.comissao_pct})"
+            <button onclick="b2AbrirEdicao('${p.codigo}','${p.nome.replace(/'/g,'')}','${p.chave_pix}','${p.tipo_chave}',${p.comissao_pct})"
               style="padding:5px 10px;background:#0a1a2a;border:1px solid #3b82f666;border-radius:7px;color:#60a5fa;font-size:11px;cursor:pointer;font-weight:600">
               ✏️ Editar
             </button>
@@ -7716,7 +6638,7 @@ async function mp2CarregarParceiros() {
               </div>
             </div>
             <div style="display:flex;gap:8px;margin-top:12px">
-              <button onclick="mp2SalvarEdicao('${p.codigo}')"
+              <button onclick="b2SalvarEdicao('${p.codigo}')"
                 style="padding:8px 20px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">
                 💾 Salvar
               </button>
@@ -7735,7 +6657,7 @@ async function mp2CarregarParceiros() {
   }
 }
 
-function mp2CopiarLink(url) {
+function b2CopiarLink(url) {
   navigator.clipboard.writeText(url).then(() => {
     const btn = event.target;
     const orig = btn.textContent;
@@ -7744,7 +6666,7 @@ function mp2CopiarLink(url) {
   });
 }
 
-function mp2AbrirEdicao(codigo, nome, chave, tipo, pct) {
+function b2AbrirEdicao(codigo, nome, chave, tipo, pct) {
   // Fechar todas outras edições abertas
   document.querySelectorAll('[id^="edit-"]').forEach(el => {
     if (el.id.startsWith('edit-') && !el.id.startsWith('edit-nome-') && !el.id.startsWith('edit-tipo-') && !el.id.startsWith('edit-chave-') && !el.id.startsWith('edit-pct-') && !el.id.startsWith('edit-msg-')) {
@@ -7755,7 +6677,7 @@ function mp2AbrirEdicao(codigo, nome, chave, tipo, pct) {
   if (editRow) editRow.style.display = editRow.style.display === 'none' ? '' : 'none';
 }
 
-async function mp2SalvarEdicao(codigo) {
+async function b2SalvarEdicao(codigo) {
   const nome    = document.getElementById(`edit-nome-${codigo}`).value.trim();
   const chave   = document.getElementById(`edit-chave-${codigo}`).value.trim();
   const tipo    = document.getElementById(`edit-tipo-${codigo}`).value;
@@ -7775,7 +6697,7 @@ async function mp2SalvarEdicao(codigo) {
       msgEl.innerHTML = '<span style="color:#4ade80">✅ Salvo!</span>';
       setTimeout(async () => {
         document.getElementById(`edit-${codigo}`).style.display = 'none';
-        await mp2CarregarParceiros();
+        await b2CarregarParceiros();
       }, 800);
     } else {
       msgEl.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
@@ -7783,7 +6705,7 @@ async function mp2SalvarEdicao(codigo) {
   } catch(e) { msgEl.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`; }
 }
 
-async function mp2ToggleParceiro(codigo, nome, ativar) {
+async function b2ToggleParceiro(codigo, nome, ativar) {
   const acao = ativar ? 'ativar' : 'desativar';
   if (!confirm(`${ativar ? '▶ Ativar' : '⏸ Desativar'} parceiro "${nome}" (${codigo})?${!ativar ? '\nO link deixará de funcionar.' : '\nO link voltará a funcionar.'}`)) return;
   try {
@@ -7794,7 +6716,7 @@ async function mp2ToggleParceiro(codigo, nome, ativar) {
     });
     const d = await r.json();
     if (d.success) {
-      await mp2CarregarParceiros();
+      await b2CarregarParceiros();
     } else {
       alert(`❌ Erro: ${d.error || 'desconhecido'}`);
     }
@@ -7803,13 +6725,90 @@ async function mp2ToggleParceiro(codigo, nome, ativar) {
   }
 }
 
-async function mp2DesativarParceiro(codigo, nome) {
-  await mp2ToggleParceiro(codigo, nome, false);
+async function b2DesativarParceiro(codigo, nome) {
+  await b2ToggleParceiro(codigo, nome, false);
 }
 
 // ═══════════════════════════════════════════════════════════
 // ACORDEÃO — collapse/expand dos cards do bot2
 // ═══════════════════════════════════════════════════════════
+function colToggle(id) {
+  const body   = document.getElementById('col-body-' + id);
+  const header = document.getElementById('col-hdr-' + id);
+  const arrow  = document.getElementById('col-arrow-' + id);
+  if (!body) return;
+  const isOpen = !body.classList.contains('collapsed');
+  if (isOpen) {
+    body.classList.add('collapsed');
+    if (arrow)  arrow.classList.add('rotated');
+    if (header) header.classList.add('is-collapsed');
+  } else {
+    body.classList.remove('collapsed');
+    if (arrow)  arrow.classList.remove('rotated');
+    if (header) header.classList.remove('is-collapsed');
+  }
+}
+
+// ── Funções auxiliares PayPix (stubs para compatibilidade) ──
+async function b2CarregarChaves() {
+  try {
+    const r = await fetch(`${BASE}/api/mp2/chaves?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) return;
+    // Preenche campos de chaves se existirem
+    if (d.access_token) { const el = document.getElementById('b2-access-token'); if (el) { el.placeholder = '✅ Configurado'; const b = document.getElementById('b2-token-badge'); if (b) b.style.display = 'inline'; } }
+    if (d.webhook_url) { const el = document.getElementById('b2-webhook-url'); if (el) el.textContent = d.webhook_url; }
+  } catch(e) {}
+}
+async function b2CarregarStats() {
+  try {
+    const r = await fetch(`${BASE}/api/mp2/stats?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) return;
+    const tg = document.getElementById('b2-total-gerado'); if (tg) tg.textContent = 'R$ ' + (d.total_gerado || '0,00');
+    const tp = document.getElementById('b2-total-pago');   if (tp) tp.textContent = 'R$ ' + (d.total_pago   || '0,00');
+    const cp = document.getElementById('b2-comissao-pend'); if (cp) cp.textContent = 'pendentes: R$ ' + (d.pendente || '0,00');
+  } catch(e) {}
+}
+async function b2CarregarComissoes() {
+  try {
+    const tbody = document.getElementById('b2-comissoes-tbody');
+    if (!tbody) return;
+    const r = await fetch(`${BASE}/api/mp2/comissoes?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success || !d.comissoes || d.comissoes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Nenhuma comissão ainda</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.comissoes.map(c => `<tr>
+      <td style="padding:10px 14px;font-size:12px;color:#aaa">${c.id||''}</td>
+      <td style="padding:10px 14px">${c.parceiro||''}</td>
+      <td style="padding:10px 14px;color:#4ade80">R$ ${c.valor||'0'}</td>
+      <td style="padding:10px 14px;font-size:11px;color:#888">${c.chave_pix||''}</td>
+      <td style="padding:10px 14px"><span style="background:${c.status==='pago'?'#1a2a1a':'#2a1a0a'};color:${c.status==='pago'?'#4caf50':'#f59e0b'};padding:2px 8px;border-radius:10px;font-size:11px">${c.status||''}</span></td>
+      <td style="padding:10px 14px;font-size:11px;color:#666">${c.obs||''}</td>
+      <td style="padding:10px 14px;font-size:11px;color:#555">${c.data||''}</td>
+      <td style="padding:10px 14px"></td>
+    </tr>`).join('');
+  } catch(e) {}
+}
+
+// Carrega aba PayPix (chamado pelo showTab)
+async function carregarBot2Admin() {
+  await b2CheckStatus();
+  await b2CarregarChaves();
+  await b2CarregarStats();
+  await b2CarregarParceiros();
+  await b2CarregarComissoes();
+}
+
+// Checar status PayPix ao carregar e a cada 60s (só se logado)
+if (SECRET()) b2CheckStatus();
+setInterval(() => { if (SECRET()) b2CheckStatus(); }, 60000);
+
+
+
+
 function colToggle(id) {
   const body   = document.getElementById('col-body-' + id);
   const header = document.getElementById('col-hdr-' + id);
