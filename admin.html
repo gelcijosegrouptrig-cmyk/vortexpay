@@ -670,10 +670,12 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427a';
+  const VER = '20250427b';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
+    // Limpar storage mas preservar senha
+    sessionStorage.clear();
     sessionStorage.setItem('adminVer', VER);
     if (savedSecret) sessionStorage.setItem('vp_secret', savedSecret);
     location.replace(location.pathname + '?v=' + VER + '&t=' + Date.now());
@@ -7107,26 +7109,26 @@ function colToggle(id) {
 
 // Estado inicial: salva no sessionStorage qual está aberto
 function colInitState() {
-  // Por padrão: cards do Bot Mercado Pago abertos, PayPix fechados
+  // IDs REAIS dos col-body no HTML (verificados no DOM)
+  // Bot Mercado Pago: prefixo b2-
+  // PayPix: prefixo pp-
   const defaults = {
-    // Bot Mercado Pago (tab-bot2) — TODOS ABERTOS por padrão
-    'bot2-status':    true,
-    'mp-config':      true,
-    'parceiros':      true,
-    'cfg-pagamento':  false,
-    'stats':          true,
-    'saques':         false,
-    'qr-auto':        false,
-    'debito-auto':    false,
-    // PayPix (tab-paypix) — réplica com prefixo pp-
-    'pp-status':      false,
-    'pp-config':      true,
-    'pp-parceiros':   false,
-    'pp-cfg-pagamento': false,
-    'pp-stats':       false,
-    'pp-saques':      false,
-    'pp-qr-auto':     false,
-    'pp-debito-auto': false,
+    // Bot Mercado Pago (tab-bot2) — usa IDs reais com prefixo b2-
+    'b2-status':          true,   // col-body-b2-status
+    'b2-config':          true,   // col-body-b2-config
+    'b2-parceiros':       true,   // col-body-b2-parceiros
+    'b2-cfg-pagamento':   false,  // col-body-b2-cfg-pagamento
+    'b2-stats':           true,   // col-body-b2-stats
+    'b2-saques':          false,  // col-body-b2-saques
+    // PayPix (tab-paypix) — prefixo pp-
+    'pp-status':          false,
+    'pp-config':          true,
+    'pp-parceiros':       false,
+    'pp-cfg-pagamento':   false,
+    'pp-stats':           false,
+    'pp-saques':          false,
+    'pp-qr-auto':         false,
+    'pp-debito-auto':     false,
   };
   Object.entries(defaults).forEach(([id, open]) => {
     const body   = document.getElementById('col-body-' + id);
@@ -7137,6 +7139,10 @@ function colInitState() {
       body.classList.add('collapsed');
       if (arrow)  arrow.classList.add('rotated');
       if (header) header.classList.add('is-collapsed');
+    } else {
+      body.classList.remove('collapsed');
+      if (arrow)  arrow.classList.remove('rotated');
+      if (header) header.classList.remove('is-collapsed');
     }
   });
 }
@@ -7157,6 +7163,9 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
+  out.push('=== VERSÃO: 20250427b ===');
+  out.push('');
+
   // Estado dos elementos críticos
   const ids = ['admin-screen','login-screen','tab-bot2','tab-paypix','tab-dashboard'];
   ids.forEach(id => {
@@ -7164,51 +7173,42 @@ function runDebug() {
     if (!el) { out.push(id + ': NAO EXISTE'); return; }
     const cs = window.getComputedStyle(el);
     out.push(id + ':');
-    out.push('  display=' + cs.display);
-    out.push('  visibility=' + cs.visibility);
-    out.push('  opacity=' + cs.opacity);
-    out.push('  height=' + cs.height);
-    out.push('  width=' + cs.width);
+    out.push('  display=' + cs.display + ' | height=' + cs.height);
     out.push('  class=' + el.className);
-    out.push('  style=' + el.getAttribute('style'));
     out.push('');
   });
-  
-  // Estado do content
-  const content = document.querySelector('.content');
-  if (content) {
-    const cs = window.getComputedStyle(content);
-    out.push('.content:');
-    out.push('  display=' + cs.display);
-    out.push('  height=' + cs.height);
-    out.push('  overflow=' + cs.overflow);
-    out.push('  marginLeft=' + cs.marginLeft);
+
+  // Cards col-body do bot2
+  out.push('=== CARDS BOT2 (col-body-b2-*) ===');
+  ['b2-status','b2-config','b2-parceiros','b2-cfg-pagamento','b2-stats','b2-saques'].forEach(id => {
+    const el = document.getElementById('col-body-' + id);
+    if (!el) { out.push('col-body-' + id + ': NAO EXISTE'); return; }
+    const cs = window.getComputedStyle(el);
+    out.push('col-body-' + id + ':');
+    out.push('  maxHeight=' + cs.maxHeight + ' | height=' + cs.height + ' | opacity=' + cs.opacity);
+    out.push('  class=' + el.className);
     out.push('');
-  }
-  
-  // Estado do .main
-  const main = document.querySelector('.main');
-  if (main) {
-    const cs = window.getComputedStyle(main);
-    out.push('.main:');
-    out.push('  display=' + cs.display);
-    out.push('  height=' + cs.height);
-    out.push('  marginLeft=' + cs.marginLeft);
-    out.push('');
-  }
-  
+  });
+
   // sessionStorage
-  out.push('sessionStorage:');
+  out.push('=== SESSION ===');
   out.push('  vp_secret=' + (sessionStorage.getItem("vp_secret") ? "SET(***)" : "NULL"));
   out.push('  adminVer=' + sessionStorage.getItem("adminVer"));
   out.push('');
   
-  // Posição de scroll
-  out.push('Window:');
-  out.push('  scrollX=' + window.scrollX);
-  out.push('  scrollY=' + window.scrollY);
-  out.push('  innerWidth=' + window.innerWidth);
-  out.push('  innerHeight=' + window.innerHeight);
+  // Layout
+  const main = document.querySelector('.main');
+  if (main) {
+    const cs = window.getComputedStyle(main);
+    out.push('.main: marginLeft=' + cs.marginLeft + ' | width=' + cs.width);
+  }
+  const content = document.querySelector('.content');
+  if (content) {
+    const cs = window.getComputedStyle(content);
+    out.push('.content: height=' + cs.height + ' | overflow=' + cs.overflow);
+  }
+  out.push('');
+  out.push('Window: ' + window.innerWidth + 'x' + window.innerHeight);
   
   document.getElementById('debug-output').textContent = out.join('\n');
 }
