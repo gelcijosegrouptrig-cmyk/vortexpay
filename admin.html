@@ -670,7 +670,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427f';
+  const VER = '20250427g';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -2681,10 +2681,6 @@ function toggleLoginSenha() {
           </div><!-- /col-body-pp-saques -->
         </div>
 
-        <!-- ═══ Comissões de Parceiros ═══ -->
-        <div class="table-card" style="margin-bottom:16px">
-
-        <!-- ═══ QR CODE DE AUTOCADASTRO ═══ -->
         <div class="table-card" style="margin-bottom:16px">
           <div class="table-header collapsible" id="b2-col-hdr-qr-auto" onclick="colToggle('qr-auto')">
             <h3>📲 QR Code de Autocadastro <span id="b2-col-arrow-qr-auto" class="collapse-arrow">▼</span></h3>
@@ -3005,9 +3001,7 @@ function toggleLoginSenha() {
           </div>
         </div>
 
-      </div><!-- /tab-paypix -->
-
-      <!-- ═══ BOT 2 — @paypix_nexbot ═══ -->
+      </div><!-- /tab-bot2 -->
 
       <div id="tab-api" class="tab-content">
         <div style="max-width:960px;margin:0 auto;padding:12px 8px 40px">
@@ -7389,7 +7383,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427f ===');
+  out.push('=== VERSÃO: 20250427g ===');
   out.push('');
 
   // Estado dos elementos críticos
