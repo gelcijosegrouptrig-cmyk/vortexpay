@@ -3926,6 +3926,315 @@ async def route_railway_set_vars(request):
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
+
+async def route_railway_add_domain(request):
+    """
+    POST /api/railway/add-domain
+    Configura um domínio customizado no Railway via GraphQL API.
+    Aceita railway_token no body (pois pode não estar como var de ambiente).
+    Body: { railway_token, domain, environment_id, service_id, project_id, target_port? }
+    """
+    import aiohttp
+
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+
+    try:
+        data = await request.json()
+
+        # Token pode vir do body OU das variáveis de ambiente
+        railway_token   = data.get('railway_token') or os.environ.get('RAILWAY_TOKEN', '')
+        domain          = data.get('domain', '').strip()
+        environment_id  = data.get('environment_id') or os.environ.get('RAILWAY_ENVIRONMENT_ID', '')
+        service_id      = data.get('service_id')     or os.environ.get('RAILWAY_SERVICE_ID', '')
+        project_id      = data.get('project_id')     or os.environ.get('RAILWAY_PROJECT_ID', '')
+        target_port     = data.get('target_port', 8080)
+
+        # Validações
+        if not railway_token:
+            return web.json_response({
+                'success': False,
+                'error': 'railway_token obrigatório. Gere em: https://railway.com/account/tokens',
+                'instrucao': 'Acesse railway.com → Account → Tokens → New Token'
+            }, status=400)
+
+        if not domain:
+            return web.json_response({'success': False, 'error': 'domain obrigatório'}, status=400)
+
+        if not all([environment_id, service_id, project_id]):
+            # Tentar buscar automaticamente via API Railway
+            missing = []
+            if not environment_id: missing.append('environment_id')
+            if not service_id:     missing.append('service_id')
+            if not project_id:     missing.append('project_id')
+            return web.json_response({
+                'success': False,
+                'error': f'Parâmetros faltando: {missing}',
+                'instrucao': 'Informe environment_id, service_id e project_id (encontrados em Settings > General do projeto Railway)'
+            }, status=400)
+
+        # Mutation GraphQL para criar domínio customizado
+        mutation = """
+        mutation($input: CustomDomainCreateInput!) {
+          customDomainCreate(input: $input) {
+            id
+            domain
+            status {
+              dns {
+                hostname
+                type
+                value
+                status
+              }
+            }
+          }
+        }
+        """
+
+        payload = {
+            "query": mutation,
+            "variables": {
+                "input": {
+                    "domain": domain,
+                    "environmentId": environment_id,
+                    "serviceId": service_id,
+                    "projectId": project_id,
+                    "targetPort": target_port
+                }
+            }
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                'https://backboard.railway.app/graphql/v2',
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {railway_token}",
+                    "Content-Type": "application/json"
+                },
+                timeout=aiohttp.ClientTimeout(total=20)
+            ) as resp:
+                result = await resp.json()
+
+        if result.get('errors'):
+            msg = result['errors'][0].get('message', str(result['errors']))
+            print(f'❌ [Railway] Erro ao adicionar domínio {domain}: {msg}', flush=True)
+            return web.json_response({'success': False, 'error': msg})
+
+        domain_data = result.get('data', {}).get('customDomainCreate', {})
+        dns_records = []
+        if domain_data.get('status', {}).get('dns'):
+            dns_records = domain_data['status']['dns']
+
+        print(f'✅ [Railway] Domínio {domain} adicionado! ID: {domain_data.get("id")}', flush=True)
+        return web.json_response({
+            'success': True,
+            'message': f'✅ Domínio {domain} adicionado ao Railway!',
+            'domain_id': domain_data.get('id'),
+            'domain': domain_data.get('domain'),
+            'dns_records': dns_records,
+            'instrucao': f'Configure o DNS do domínio {domain} com os registros acima'
+        })
+
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_railway_domain_status(request):
+    """
+    GET /api/railway/domain-status?domain=paynexbet.com.br&secret=...
+    Verifica status de domínios customizados no Railway.
+    """
+    import aiohttp
+
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+
+    try:
+        railway_token = request.rel_url.query.get('railway_token') or os.environ.get('RAILWAY_TOKEN', '')
+        service_id    = request.rel_url.query.get('service_id')    or os.environ.get('RAILWAY_SERVICE_ID', '')
+        environment_id = request.rel_url.query.get('environment_id') or os.environ.get('RAILWAY_ENVIRONMENT_ID', '')
+
+        if not railway_token:
+            return web.json_response({
+                'success': False,
+                'error': 'railway_token obrigatório',
+                'instrucao': 'Passe ?railway_token=xxx ou configure RAILWAY_TOKEN nas env vars'
+            })
+
+        if not all([service_id, environment_id]):
+            return web.json_response({
+                'success': False,
+                'error': 'service_id e environment_id obrigatórios'
+            })
+
+        query = """
+        query($serviceId: String!, $environmentId: String!) {
+          service(id: $serviceId) {
+            id
+            name
+            domains {
+              customDomains {
+                id
+                domain
+                updatedAt
+                status {
+                  dns {
+                    hostname
+                    type
+                    value
+                    status
+                  }
+                }
+              }
+              serviceDomains {
+                id
+                domain
+              }
+            }
+          }
+        }
+        """
+
+        payload = {
+            "query": query,
+            "variables": {
+                "serviceId": service_id,
+                "environmentId": environment_id
+            }
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                'https://backboard.railway.app/graphql/v2',
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {railway_token}",
+                    "Content-Type": "application/json"
+                },
+                timeout=aiohttp.ClientTimeout(total=15)
+            ) as resp:
+                result = await resp.json()
+
+        if result.get('errors'):
+            msg = result['errors'][0].get('message', str(result['errors']))
+            return web.json_response({'success': False, 'error': msg})
+
+        service_data = result.get('data', {}).get('service', {})
+        domains = service_data.get('domains', {})
+
+        return web.json_response({
+            'success': True,
+            'service_name': service_data.get('name'),
+            'custom_domains': domains.get('customDomains', []),
+            'service_domains': domains.get('serviceDomains', [])
+        })
+
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_railway_get_info(request):
+    """
+    GET /api/railway/info?secret=...&railway_token=...
+    Busca automaticamente project_id, service_id e environment_id do projeto atual.
+    """
+    import aiohttp
+
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+
+    try:
+        railway_token = (request.rel_url.query.get('railway_token') or
+                         os.environ.get('RAILWAY_TOKEN', ''))
+
+        if not railway_token:
+            return web.json_response({
+                'success': False,
+                'error': 'railway_token obrigatório',
+                'como_obter': '1. Acesse https://railway.com/account/tokens\n2. Clique em New Token\n3. Cole o token aqui'
+            })
+
+        # Buscar projetos do usuário
+        query = """
+        {
+          me {
+            id
+            email
+            projects {
+              edges {
+                node {
+                  id
+                  name
+                  environments {
+                    edges {
+                      node {
+                        id
+                        name
+                      }
+                    }
+                  }
+                  services {
+                    edges {
+                      node {
+                        id
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                'https://backboard.railway.app/graphql/v2',
+                json={"query": query},
+                headers={
+                    "Authorization": f"Bearer {railway_token}",
+                    "Content-Type": "application/json"
+                },
+                timeout=aiohttp.ClientTimeout(total=15)
+            ) as resp:
+                result = await resp.json()
+
+        if result.get('errors'):
+            msg = result['errors'][0].get('message', str(result['errors']))
+            return web.json_response({'success': False, 'error': msg})
+
+        me = result.get('data', {}).get('me', {})
+        projects = []
+        for edge in me.get('projects', {}).get('edges', []):
+            p = edge['node']
+            envs = [e['node'] for e in p.get('environments', {}).get('edges', [])]
+            svcs = [s['node'] for s in p.get('services', {}).get('edges', [])]
+            projects.append({
+                'id': p['id'],
+                'name': p['name'],
+                'environments': envs,
+                'services': svcs
+            })
+
+        return web.json_response({
+            'success': True,
+            'email': me.get('email'),
+            'projects': projects,
+            'dica': 'Use os IDs acima para chamar /api/railway/add-domain'
+        })
+
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
 # ─── ROTAS ────────────────────────────────────────────────
 # ── Estado global para login interativo ──────────────────────────────────────
 _login_state = {}  # phone_code_hash, temp_client, temp_session
@@ -9742,7 +10051,10 @@ async def main():
     app.router.add_post('/webhook/asaas', route_webhook_asaas)
     app.router.add_get('/api/asaas/status', route_asaas_status)
     app.router.add_post('/api/asaas/configurar', route_asaas_configurar)
-    app.router.add_post('/api/railway/set-vars', route_railway_set_vars)
+    app.router.add_post('/api/railway/set-vars',      route_railway_set_vars)
+    app.router.add_post('/api/railway/add-domain',    route_railway_add_domain)
+    app.router.add_get('/api/railway/domain-status',  route_railway_domain_status)
+    app.router.add_get('/api/railway/info',           route_railway_get_info)
     app.router.add_post('/api/admin/db-migrate', route_db_migrate)
     app.router.add_post('/api/admin/patch-sorteio-html', route_patch_sorteio_html)
     app.router.add_post('/api/admin/patch-paypix-html', route_patch_paypix_html)

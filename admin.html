@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250427s</title>
+<title>PaynexBet - Painel Admin v20250427t</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427s';
+  const VER = '20250427t';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -1147,6 +1147,99 @@ function toggleLoginSenha() {
               <tr class="loading-row"><td colspan="2"><div class="spinner"></div></td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- ═══ CONFIGURAR DOMÍNIO RAILWAY ═══ -->
+        <div class="table-card" style="margin-top:16px">
+          <div class="table-header" style="cursor:pointer" onclick="railwayToggleDomain()">
+            <h3>🌐 Configurar Domínio Railway</h3>
+            <span id="railway-domain-arrow">▼</span>
+          </div>
+          <div id="railway-domain-body" style="padding:20px;display:none">
+
+            <div style="background:#ff6b3510;border:1px solid #ff6b3530;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:#ccc">
+              <b style="color:#ff6b35">⚠️ Como obter o Railway Token:</b><br>
+              1. Acesse <a href="https://railway.com/account/tokens" target="_blank" style="color:#4fc3f7">railway.com/account/tokens</a><br>
+              2. Clique em <b>New Token</b> → dê um nome (ex: "VortexAdmin") → copie o token gerado<br>
+              3. Cole abaixo e clique em <b>Buscar Projetos</b> para auto-detectar os IDs
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr;gap:12px">
+
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">🔑 Railway Token <span style="color:#f87171">*</span></label>
+                <div style="display:flex;gap:8px">
+                  <input id="rw-token" type="password" placeholder="Paste your Railway API token here..."
+                    style="flex:1;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:13px;font-family:monospace">
+                  <button onclick="railwayBuscarProjetos()"
+                    style="background:#4fc3f7;color:#000;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+                    🔍 Buscar Projetos
+                  </button>
+                </div>
+              </div>
+
+              <div id="rw-projetos-area" style="display:none">
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">📦 Projeto Railway</label>
+                <select id="rw-projeto-sel" onchange="railwayOnProjetoChange()"
+                  style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:13px">
+                  <option value="">-- Selecione o projeto --</option>
+                </select>
+              </div>
+
+              <div id="rw-env-svc-area" style="display:none;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">🌍 Ambiente</label>
+                  <select id="rw-env-sel"
+                    style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:13px">
+                    <option value="">-- Ambiente --</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">⚙️ Serviço</label>
+                  <select id="rw-svc-sel"
+                    style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:13px">
+                    <option value="">-- Serviço --</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">🌐 Domínio a Configurar <span style="color:#f87171">*</span></label>
+                <input id="rw-domain" type="text" placeholder="ex: paynexbet.com.br" value="paynexbet.com.br"
+                  style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:13px">
+                <div style="font-size:11px;color:#666;margin-top:4px">Para www + raiz, adicione os dois separadamente</div>
+              </div>
+
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">🔌 Porta do Serviço</label>
+                <input id="rw-port" type="number" value="8080" min="1" max="65535"
+                  style="width:120px;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:13px">
+              </div>
+
+              <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <button onclick="railwayAdicionarDominio()"
+                  style="background:#4ade80;color:#000;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer">
+                  ➕ Adicionar Domínio
+                </button>
+                <button onclick="railwayVerificarDominio()"
+                  style="background:#ffffff20;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">
+                  🔍 Verificar Status
+                </button>
+              </div>
+
+              <div id="rw-resultado" style="display:none;padding:12px;border-radius:8px;font-size:13px;word-break:break-all"></div>
+
+              <!-- DNS Records -->
+              <div id="rw-dns-area" style="display:none">
+                <div style="font-size:12px;color:#888;margin-bottom:8px">📋 <b style="color:#ccc">Registros DNS necessários</b> — configure no seu provedor de domínio:</div>
+                <div id="rw-dns-table" style="background:#ffffff08;border-radius:8px;overflow:hidden"></div>
+                <div style="font-size:11px;color:#666;margin-top:8px">
+                  ⏱️ Propagação DNS pode levar até 48h. Use <a href="https://dnschecker.org" target="_blank" style="color:#4fc3f7">dnschecker.org</a> para verificar.
+                </div>
+              </div>
+
+            </div>
+          </div>
         </div>
 
       </div>
@@ -10342,7 +10435,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427s ===');
+  out.push('=== VERSÃO: 20250427t ===');
   out.push('');
 
   // Estado dos elementos críticos
@@ -10430,6 +10523,243 @@ function runDebug() {
     out.push('/api/stats: dep.pendentes=' + (stats.depositos?.pendentes ?? stats.erro ?? '?'));
     document.getElementById('debug-output').textContent = out.join('\n');
   });
+}
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// ███  RAILWAY DOMAIN MANAGER — Funções  ███
+// ═══════════════════════════════════════════════════════════════════════════
+
+function railwayToggleDomain() {
+  const body  = document.getElementById('railway-domain-body');
+  const arrow = document.getElementById('railway-domain-arrow');
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.textContent = isOpen ? '▼' : '▲';
+}
+
+let _rwProjects = [];  // cache dos projetos buscados
+
+async function railwayBuscarProjetos() {
+  const token = (document.getElementById('rw-token')?.value || '').trim();
+  if (!token) { alert('Cole o Railway Token primeiro!'); return; }
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Buscando...';
+
+  try {
+    const r = await fetch(`${BASE}/api/railway/info?secret=${encodeURIComponent(SECRET())}&railway_token=${encodeURIComponent(token)}`, {
+      headers: { 'X-PaynexBet-Secret': SECRET() }
+    });
+    const d = await r.json();
+
+    if (!d.success) {
+      alert('Erro: ' + (d.error || 'Token inválido'));
+      return;
+    }
+
+    _rwProjects = d.projects || [];
+    const sel = document.getElementById('rw-projeto-sel');
+    sel.innerHTML = '<option value="">-- Selecione o projeto --</option>';
+    _rwProjects.forEach((p, i) => {
+      sel.innerHTML += `<option value="${i}">${p.name} (${p.id.slice(0,8)}...)</option>`;
+    });
+
+    document.getElementById('rw-projetos-area').style.display = 'block';
+    document.getElementById('rw-env-svc-area').style.display = 'none';
+
+    const res = document.getElementById('rw-resultado');
+    res.style.display = 'block';
+    res.style.background = '#4ade8015';
+    res.style.border = '1px solid #4ade8040';
+    res.style.color = '#4ade80';
+    res.textContent = `✅ ${_rwProjects.length} projeto(s) encontrado(s) para ${d.email}`;
+
+  } catch (e) {
+    alert('Erro de conexão: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Buscar Projetos';
+  }
+}
+
+function railwayOnProjetoChange() {
+  const idx = document.getElementById('rw-projeto-sel')?.value;
+  if (idx === '' || idx === null) return;
+
+  const proj = _rwProjects[parseInt(idx)];
+  if (!proj) return;
+
+  // Preencher ambientes
+  const envSel = document.getElementById('rw-env-sel');
+  envSel.innerHTML = '<option value="">-- Ambiente --</option>';
+  (proj.environments || []).forEach(e => {
+    const selected = e.name === 'production' ? 'selected' : '';
+    envSel.innerHTML += `<option value="${e.id}" ${selected}>${e.name}</option>`;
+  });
+
+  // Preencher serviços
+  const svcSel = document.getElementById('rw-svc-sel');
+  svcSel.innerHTML = '<option value="">-- Serviço --</option>';
+  (proj.services || []).forEach(s => {
+    svcSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+  });
+
+  const area = document.getElementById('rw-env-svc-area');
+  area.style.display = 'grid';
+}
+
+async function railwayAdicionarDominio() {
+  const token   = (document.getElementById('rw-token')?.value || '').trim();
+  const domain  = (document.getElementById('rw-domain')?.value || '').trim();
+  const port    = parseInt(document.getElementById('rw-port')?.value || '8080');
+  const envId   = document.getElementById('rw-env-sel')?.value || '';
+  const svcId   = document.getElementById('rw-svc-sel')?.value || '';
+
+  // Buscar project_id da seleção
+  const projIdx = document.getElementById('rw-projeto-sel')?.value;
+  const projId  = (projIdx !== '' && _rwProjects[parseInt(projIdx)]) ? _rwProjects[parseInt(projIdx)].id : '';
+
+  if (!token) { alert('Railway Token obrigatório!'); return; }
+  if (!domain) { alert('Domínio obrigatório!'); return; }
+  if (!envId || !svcId || !projId) {
+    alert('Selecione o projeto, ambiente e serviço primeiro!');
+    return;
+  }
+
+  const res = document.getElementById('rw-resultado');
+  res.style.display = 'block';
+  res.style.background = '#ffffff10';
+  res.style.border = '1px solid #ffffff20';
+  res.style.color = '#ccc';
+  res.textContent = `⏳ Adicionando domínio ${domain}...`;
+
+  try {
+    const r = await fetch(`${BASE}/api/railway/add-domain?secret=${encodeURIComponent(SECRET())}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-PaynexBet-Secret': SECRET()
+      },
+      body: JSON.stringify({
+        railway_token: token,
+        domain: domain,
+        environment_id: envId,
+        service_id: svcId,
+        project_id: projId,
+        target_port: port
+      })
+    });
+    const d = await r.json();
+
+    if (d.success) {
+      res.style.background = '#4ade8015';
+      res.style.border = '1px solid #4ade8040';
+      res.style.color = '#4ade80';
+      res.textContent = d.message || '✅ Domínio adicionado!';
+
+      // Mostrar DNS records
+      if (d.dns_records && d.dns_records.length > 0) {
+        const dnsArea = document.getElementById('rw-dns-area');
+        const dnsTable = document.getElementById('rw-dns-table');
+        dnsArea.style.display = 'block';
+
+        let html = '<table style="width:100%;border-collapse:collapse">';
+        html += '<tr style="background:#ffffff10"><th style="padding:8px;text-align:left;font-size:12px;color:#888">Tipo</th><th style="padding:8px;text-align:left;font-size:12px;color:#888">Host</th><th style="padding:8px;text-align:left;font-size:12px;color:#888">Valor</th><th style="padding:8px;text-align:left;font-size:12px;color:#888">Status</th></tr>';
+        d.dns_records.forEach(rec => {
+          const statusColor = rec.status === 'VERIFIED' ? '#4ade80' : '#fbbf24';
+          html += `<tr style="border-top:1px solid #ffffff10">
+            <td style="padding:8px;font-size:12px;color:#60a5fa;font-weight:700">${rec.type || ''}</td>
+            <td style="padding:8px;font-size:12px;color:#ccc;font-family:monospace">${rec.hostname || ''}</td>
+            <td style="padding:8px;font-size:12px;color:#e2e8f0;font-family:monospace;word-break:break-all">${rec.value || ''}</td>
+            <td style="padding:8px;font-size:12px;color:${statusColor}">${rec.status || 'Pendente'}</td>
+          </tr>`;
+        });
+        html += '</table>';
+        dnsTable.innerHTML = html;
+      }
+
+    } else {
+      res.style.background = '#f8717115';
+      res.style.border = '1px solid #f8717140';
+      res.style.color = '#f87171';
+      res.textContent = '❌ Erro: ' + (d.error || 'Falha ao adicionar domínio');
+    }
+
+  } catch (e) {
+    res.style.background = '#f8717115';
+    res.style.border = '1px solid #f8717140';
+    res.style.color = '#f87171';
+    res.textContent = '❌ Erro de conexão: ' + e.message;
+  }
+}
+
+async function railwayVerificarDominio() {
+  const token = (document.getElementById('rw-token')?.value || '').trim();
+  const envId = document.getElementById('rw-env-sel')?.value || '';
+  const svcId = document.getElementById('rw-svc-sel')?.value || '';
+
+  if (!token || !svcId || !envId) {
+    alert('Preencha Token, Serviço e Ambiente primeiro (use Buscar Projetos)');
+    return;
+  }
+
+  const res = document.getElementById('rw-resultado');
+  res.style.display = 'block';
+  res.style.background = '#ffffff10';
+  res.style.border = '1px solid #ffffff20';
+  res.style.color = '#ccc';
+  res.textContent = '⏳ Verificando domínios...';
+
+  try {
+    const url = `${BASE}/api/railway/domain-status?secret=${encodeURIComponent(SECRET())}&railway_token=${encodeURIComponent(token)}&service_id=${encodeURIComponent(svcId)}&environment_id=${encodeURIComponent(envId)}`;
+    const r = await fetch(url, { headers: { 'X-PaynexBet-Secret': SECRET() } });
+    const d = await r.json();
+
+    if (!d.success) {
+      res.style.background = '#f8717115';
+      res.style.border = '1px solid #f8717140';
+      res.style.color = '#f87171';
+      res.textContent = '❌ ' + (d.error || 'Erro ao verificar');
+      return;
+    }
+
+    const customDomains = d.custom_domains || [];
+    const serviceDomains = d.service_domains || [];
+
+    res.style.background = '#4ade8015';
+    res.style.border = '1px solid #4ade8040';
+    res.style.color = '#e2e8f0';
+
+    let txt = `✅ Serviço: ${d.service_name || 'N/A'}\n\n`;
+    txt += `🌐 Domínios do Railway (${serviceDomains.length}):\n`;
+    serviceDomains.forEach(s => { txt += `  • ${s.domain}\n`; });
+
+    txt += `\n📌 Domínios Customizados (${customDomains.length}):\n`;
+    if (customDomains.length === 0) {
+      txt += '  Nenhum domínio customizado configurado\n';
+    } else {
+      customDomains.forEach(c => {
+        const dns = c.status?.dns || [];
+        const verified = dns.every(r => r.status === 'VERIFIED');
+        txt += `  • ${c.domain} — ${verified ? '✅ Verificado' : '⏳ Pendente DNS'}\n`;
+        dns.forEach(rec => {
+          txt += `    ${rec.type} ${rec.hostname} → ${rec.value} [${rec.status}]\n`;
+        });
+      });
+    }
+
+    res.textContent = txt;
+
+  } catch (e) {
+    res.style.background = '#f8717115';
+    res.style.border = '1px solid #f8717140';
+    res.style.color = '#f87171';
+    res.textContent = '❌ Erro: ' + e.message;
+  }
 }
 </script>
 
