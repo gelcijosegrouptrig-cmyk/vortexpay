@@ -670,7 +670,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427b';
+  const VER = '20250427d';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -4649,8 +4649,8 @@ function showTab(tab) {
   document.getElementById('page-title').textContent = titles[tab] || tab;
   fecharSidebar();
   if (tab === 'api') { initApiTab(); }
-  if (tab === 'depositos' && allDepositos.length === 0) loadDepositos();
-  if (tab === 'saques' && allSaques.length === 0) loadSaques();
+  if (tab === 'depositos') loadDepositos();          // Sempre recarrega ao abrir aba
+  if (tab === 'saques') loadSaques();                // Sempre recarrega ao abrir aba
   if (tab === 'sorteio') carregarSorteioAdmin();
   if (tab === 'paypix') carregarPaypixAdmin();
   if (tab === 'bot2') carregarBot2Admin();
@@ -6548,11 +6548,7 @@ async function carregarPaypixAdmin() {
   await ppCarregarComissoes();
 }
 
-// Checar status PayPix ao carregar e a cada 60s (só se logado)
-if (SECRET()) ppCheckStatus();
-setInterval(() => { if (SECRET()) ppCheckStatus(); }, 60000);
-
-
+// (setInterval ppCheckStatus já registrado acima — não duplicar)
 
 // ════════════════════════════════════════════════════════════════
 // BOT2 — Mercado Pago — JavaScript (clone do PayPix)
@@ -6569,7 +6565,8 @@ async function b2CheckStatus() {
     const amb   = d.ambiente || 'produção';
 
     // Badge no menu lateral
-    const badge = document.getElementById('badge-pp');
+    // Badge no menu lateral — usa badge-bot2 (não badge-pp)
+    const badge = document.getElementById('badge-bot2');
     if (badge) {
       badge.textContent = mpOk ? 'ON' : 'OFF';
       badge.style.background = mpOk ? '#2e7d32' : '#c62828';
@@ -7033,13 +7030,23 @@ function colToggle(id) {
 // ── Funções auxiliares PayPix (stubs para compatibilidade) ──
 async function b2CarregarChaves() {
   try {
-    const r = await fetch(`${BASE}/api/mp2/chaves?secret=${encodeURIComponent(SECRET())}`);
+    // Endpoint correto é /api/mp2/config (não /api/mp2/chaves)
+    const r = await fetch(`${BASE}/api/mp2/config?secret=${encodeURIComponent(SECRET())}`);
+    if (!r.ok) return;
     const d = await r.json();
     if (!d.success) return;
     // Preenche campos de chaves se existirem
-    if (d.access_token) { const el = document.getElementById('b2-access-token'); if (el) { el.placeholder = '✅ Configurado'; const b = document.getElementById('b2-token-badge'); if (b) b.style.display = 'inline'; } }
-    if (d.webhook_url) { const el = document.getElementById('b2-webhook-url'); if (el) el.textContent = d.webhook_url; }
-  } catch(e) {}
+    if (d.access_token) {
+      const el = document.getElementById('b2-access-token');
+      if (el) { el.placeholder = '✅ Configurado'; }
+      const b = document.getElementById('b2-token-badge');
+      if (b) b.style.display = 'inline';
+    }
+    if (d.webhook_url) {
+      const el = document.getElementById('b2-webhook-url');
+      if (el) el.textContent = d.webhook_url;
+    }
+  } catch(e) { console.warn('[b2CarregarChaves]', e); }
 }
 async function b2CarregarStats() {
   try {
@@ -7083,12 +7090,7 @@ async function carregarBot2Admin() {
   await b2CarregarComissoes();
 }
 
-// Checar status PayPix ao carregar e a cada 60s (só se logado)
-if (SECRET()) b2CheckStatus();
-setInterval(() => { if (SECRET()) b2CheckStatus(); }, 60000);
-
-
-
+// (setInterval b2CheckStatus já registrado acima — não duplicar)
 
 function colToggle(id) {
   const body   = document.getElementById('col-body-' + id);
@@ -7163,11 +7165,11 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427b ===');
+  out.push('=== VERSÃO: 20250427d ===');
   out.push('');
 
   // Estado dos elementos críticos
-  const ids = ['admin-screen','login-screen','tab-bot2','tab-paypix','tab-dashboard'];
+  const ids = ['admin-screen','login-screen','tab-bot2','tab-depositos','tab-saques','tab-dashboard'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (!el) { out.push(id + ': NAO EXISTE'); return; }
@@ -7190,6 +7192,28 @@ function runDebug() {
     out.push('');
   });
 
+  // Badges
+  out.push('=== BADGES MENU ===');
+  ['badge-dep','badge-saq','badge-bot2'].forEach(id => {
+    const el = document.getElementById(id);
+    out.push(id + ': ' + (el ? el.textContent : 'NAO EXISTE'));
+  });
+  out.push('');
+
+  // Dados em memória
+  out.push('=== DADOS CARREGADOS ===');
+  out.push('allDepositos.length=' + (typeof allDepositos !== 'undefined' ? allDepositos.length : 'undef'));
+  out.push('allSaques.length=' + (typeof allSaques !== 'undefined' ? allSaques.length : 'undef'));
+  out.push('');
+
+  // Cards resumo depósitos
+  out.push('=== RESUMO DEPOSITOS ===');
+  ['dep-res-total','dep-res-pendentes','dep-res-confirmados','dep-res-val-recebido','dep-res-val-pendente'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) out.push(id + ': ' + el.textContent);
+  });
+  out.push('');
+
   // sessionStorage
   out.push('=== SESSION ===');
   out.push('  vp_secret=' + (sessionStorage.getItem("vp_secret") ? "SET(***)" : "NULL"));
@@ -7210,7 +7234,25 @@ function runDebug() {
   out.push('');
   out.push('Window: ' + window.innerWidth + 'x' + window.innerHeight);
   
+  // Teste de fetch rápido
+  out.push('');
+  out.push('=== FETCH TEST ===');
+  out.push('Aguardando teste... (atualiza em 3s)');
   document.getElementById('debug-output').textContent = out.join('\n');
+  
+  // Fazer fetch de teste assíncrono
+  Promise.all([
+    fetch(BASE + '/api/mp2/depositos?secret=' + encodeURIComponent(SECRET())).then(r => r.json()).catch(e => ({erro: e.message})),
+    fetch(BASE + '/api/saques?secret=' + encodeURIComponent(SECRET())).then(r => r.json()).catch(e => ({erro: e.message})),
+    fetch(BASE + '/api/stats?secret=' + encodeURIComponent(SECRET())).then(r => r.json()).catch(e => ({erro: e.message})),
+  ]).then(([dep, saq, stats]) => {
+    out.pop(); out.pop();
+    out.push('=== FETCH TEST ===');
+    out.push('/api/mp2/depositos: total=' + (dep.resumo?.total ?? dep.erro ?? '?') + ' pendentes=' + (dep.resumo?.pendentes ?? '?'));
+    out.push('/api/saques: total=' + (saq.resumo?.total ?? saq.erro ?? '?') + ' pendentes=' + (saq.resumo?.pendentes ?? '?'));
+    out.push('/api/stats: dep.pendentes=' + (stats.depositos?.pendentes ?? stats.erro ?? '?'));
+    document.getElementById('debug-output').textContent = out.join('\n');
+  });
 }
 </script>
 
