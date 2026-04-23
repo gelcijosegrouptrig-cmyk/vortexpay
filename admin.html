@@ -700,7 +700,7 @@ function toggleLoginSenha() {
       </div>
       <div class="nav-item" onclick="showTab('paypix')">
         💸 <span>PayPix</span>
-        <span style="font-size:9px;background:#1a3a1a;color:#4ade80;padding:2px 5px;border-radius:4px;margin-left:2px">VORTEX</span>
+        
       </div>
       <div class="nav-section">Bots</div>
       <div class="nav-item" onclick="showTab('bot2')">
@@ -1250,14 +1250,14 @@ function toggleLoginSenha() {
       </div><!-- /tab-sorteio -->
 
       <!-- ═══════ PAYPIX ═══════ -->
-            <!-- ═══ PAYPIX VORTEX ═══ -->
+            <!-- ═══ PAYPIX — Mercado Pago ═══ -->
       <div id="tab-paypix" class="tab-content">
 
         <!-- Banner de identificação -->
         <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid #f59e0b44;border-radius:12px;padding:12px 16px;margin-bottom:16px">
           <div style="font-size:28px">🤖</div>
           <div>
-            <div style="font-weight:800;font-size:16px;color:#f59e0b">💸 PayPix VORTEX — @paypix_nexbot</div>
+            <div style="font-weight:800;font-size:16px;color:#f59e0b">💸 PayPix — Mercado Pago</div>
             <div style="font-size:12px;color:#666;margin-top:2px">Sistema PayPix com gateway Mercado Pago · Afiliados com % automática via PIX · <span style="color:#f59e0b">paynexbet.com/paypix</span></div>
           </div>
           <div style="margin-left:auto">
@@ -1298,7 +1298,7 @@ function toggleLoginSenha() {
         <!-- Card principal — Status Mercado Pago -->
         <div class="table-card" style="margin-bottom:16px">
           <div class="table-header collapsible" id="col-hdr-pp-status" onclick="colToggle('pp-status')">
-            <h3>💳 💸 PayPix VORTEX — Status <span id="col-arrow-pp-status" class="collapse-arrow">▼</span></h3>
+            <h3>💸 PayPix — Status <span id="col-arrow-pp-status" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <span id="pp-badge" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#1a2a1a;color:#4caf50">Verificando...</span>
               <button onclick="ppAtualizarSaldo()" style="padding:6px 14px;background:#1a3a5c;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔄 Saldo</button>
@@ -1347,7 +1347,7 @@ function toggleLoginSenha() {
         <!-- ══ MERCADO PAGO — Configuração de Chaves ══ -->
         <div class="table-card" style="margin-top:16px;border-color:#009ee3aa">
           <div class="table-header collapsible" id="col-hdr-pp-config" style="background:linear-gradient(135deg,#003087,#009ee3)20" onclick="colToggle('pp-config')">
-            <h3>💳 💸 PayPix VORTEX — Gateway Mercado Pago <span id="col-arrow-pp-config" class="collapse-arrow">▼</span></h3>
+            <h3>💸 PayPix — Credenciais Mercado Pago <span id="col-arrow-pp-config" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <span id="pp-badge-status" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#0a1a2a;color:#aaa">Verificando...</span>
               <button onclick="ppTestarConexao()" style="padding:6px 14px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔗 Testar</button>
@@ -5839,7 +5839,7 @@ _legacyCarregarPaypixAdmin_wrapper = async function() {
 };
 
 // ═══════════════════════════════════════════════
-// ══ PAYPIX VORTEX — Credenciais & Afiliados ══
+// ══ PAYPIX — Mercado Pago — Credenciais & Parceiros ══
 // ═══════════════════════════════════════════════
 
 // Atualizar texto "Afiliado X%" nas funções de slider
@@ -5855,7 +5855,7 @@ atualizarSliderPaypix = function(val) {
 
 
 // ════════════════════════════════════════════════════════════════
-// PAYPIX VORTEX — JavaScript (réplica do Bot Mercado Pago)
+// PAYPIX — Mercado Pago — JavaScript
 // ════════════════════════════════════════════════════════════════
 
 // Toggle visibilidade de campo senha
