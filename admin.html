@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427k';
+  const VER = '20250427l';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -2172,7 +2172,8 @@ function toggleLoginSenha() {
           </div>
         </div>
 
-      </div><!-- /tab-paypix -->
+      </div>
+    </div><!-- /tab-paypix -->
 
 
       <!-- ═══════ PAYPIX-COB ═══════ -->
