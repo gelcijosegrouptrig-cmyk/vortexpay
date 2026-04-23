@@ -6914,6 +6914,946 @@ async def route_mp2_comissoes_pagar_manual(request):
 
 
 # ══════════════════════════════════════════════════════════════════
+# ─── BOT3 / MP3 — Réplica do Bot2 (@paypix_nexbot2) ──────────────
+# ══════════════════════════════════════════════════════════════════
+
+async def route_bot3_webhook(request):
+    """POST /webhook/bot3 — Telegram envia updates aqui."""
+    try:
+        data = await request.json()
+        from bot3_handler import process_bot3_update
+        asyncio.create_task(process_bot3_update(data))
+        return web.Response(text='OK', status=200)
+    except Exception as e:
+        print(f'[bot3_wh] Erro: {e}', flush=True)
+        return web.Response(text='OK', status=200)
+
+
+async def route_bot3_set_webhook(request):
+    """POST /api/bot3/set-webhook — Registra webhook no Telegram."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        base_url = str(request.url).split('/api/')[0]
+        from bot3_handler import registrar_webhook
+        resultado = registrar_webhook(base_url)
+        return web.json_response(resultado)
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_bot3_webhook_info(request):
+    """GET /api/bot3/webhook-info — Retorna informações do webhook atual."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        from bot3_handler import get_webhook_info, get_bot_info
+        wh   = get_webhook_info()
+        info = get_bot_info()
+        return web.json_response({
+            'success': True,
+            'bot':     info,
+            'webhook': wh,
+            'token_configurado': bool(os.environ.get('BOT3_TOKEN', '')),
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_bot3_config_get(request):
+    """GET /api/bot3/config — Retorna configuração básica do bot3."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import psycopg2 as _pg3
+        conn = _pg3.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        try:
+            cur.execute("SELECT valor FROM mp3_config WHERE chave='bot3_token'")
+            row = cur.fetchone()
+            bot3_token_db = bool(row and row[0] and len((row[0] or '').strip()) > 10)
+        except Exception:
+            bot3_token_db = False
+        cur.close(); conn.close()
+
+        bot3_token_env = bool(os.environ.get('BOT3_TOKEN', '').strip())
+        token_configurado = bot3_token_env or bot3_token_db
+
+        base_url = str(request.url).split('/api/')[0]
+        return web.json_response({
+            'success': True,
+            'token_configurado': token_configurado,
+            'token_origem': 'env' if bot3_token_env else ('banco' if bot3_token_db else 'nenhum'),
+            'webhook_url': f'{base_url}/webhook/bot3',
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_bot3_salvar_token(request):
+    """POST /api/bot3/token — Salva BOT3_TOKEN no banco (mp3_config)."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        body  = await request.json()
+        token = (body.get('token') or '').strip()
+        if not token:
+            return web.json_response({'success': False, 'error': 'Token vazio'})
+
+        # Validar token antes de salvar
+        req_tg = urllib.request.Request(
+            f'https://api.telegram.org/bot{token}/getMe',
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(req_tg, timeout=8) as r:
+            resp = json.loads(r.read())
+        if not resp.get('ok'):
+            return web.json_response({'success': False, 'error': 'Token inválido no Telegram'})
+
+        # Garantir tabela mp3_config existe e salvar
+        import psycopg2 as _pg3b
+        conn = _pg3b.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("""CREATE TABLE IF NOT EXISTS mp3_config (
+            chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TIMESTAMP DEFAULT NOW()
+        )""")
+        cur.execute(
+            "INSERT INTO mp3_config (chave, valor) VALUES ('bot3_token', %s) "
+            "ON CONFLICT (chave) DO UPDATE SET valor=%s, atualizado_em=NOW()",
+            (token, token)
+        )
+        conn.commit(); cur.close(); conn.close()
+
+        bot_info = resp.get('result', {})
+        return web.json_response({
+            'success': True,
+            'username': bot_info.get('username', ''),
+            'nome': bot_info.get('first_name', ''),
+            'msg': f"Token do @{bot_info.get('username','?')} salvo com sucesso!"
+        })
+    except urllib.error.HTTPError as e:
+        return web.json_response({'success': False, 'error': f'Token inválido: {e.code}'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_status(request):
+    """GET /api/mp3/status — Status geral do Bot3."""
+    try:
+        import psycopg2 as _pg3s
+        conn = _pg3s.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        # Verificar token
+        try:
+            cur.execute("SELECT valor FROM mp3_config WHERE chave='bot3_token'")
+            row = cur.fetchone()
+            bot3_token_db = bool(row and row[0] and len((row[0] or '').strip()) > 10)
+        except Exception:
+            bot3_token_db = False
+        # Verificar MP token
+        try:
+            cur.execute("SELECT valor FROM mp3_config WHERE chave='mp3_access_token'")
+            row2 = cur.fetchone()
+            mp3_token_db = bool(row2 and row2[0])
+        except Exception:
+            mp3_token_db = False
+        cur.close(); conn.close()
+
+        bot3_token = bool(os.environ.get('BOT3_TOKEN', '')) or bot3_token_db
+        mp3_token  = bool(os.environ.get('MP3_ACCESS_TOKEN', '')) or mp3_token_db
+
+        # Verificar bot no Telegram se tiver token
+        bot_real = False
+        bot_real_info = {}
+        username = 'paypix_nexbot2'
+        if bot3_token:
+            from bot3_handler import get_bot_info
+            info = get_bot_info()
+            if info.get('ok'):
+                bot_real = True
+                bot_real_info = info.get('result', {})
+                username = bot_real_info.get('username', username)
+
+        return web.json_response({
+            'success': True,
+            'bot': 'bot3',
+            'username': username,
+            'online': bot3_token,
+            'bot_real': bot_real,
+            'bot_real_info': bot_real_info,
+            'mp3_configurado': mp3_token,
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_webhook(request):
+    """POST /webhook/mp3 — Webhook do Mercado Pago para Bot3."""
+    try:
+        body = await request.json()
+        action = body.get('action', '')
+        data   = body.get('data', {})
+
+        if action in ('payment.updated', 'payment.created'):
+            payment_id = str(data.get('id', ''))
+            if payment_id:
+                from mp2_api import mp2_verificar_pagamento
+                info = mp2_verificar_pagamento(payment_id, use_mp3=True)
+                if info.get('status') == 'approved':
+                    external_ref = info.get('external_ref', '')
+                    if external_ref and external_ref.startswith('mp3_'):
+                        # Confirmar pagamento na tabela mp3_transacoes
+                        try:
+                            import psycopg2 as _pg3w
+                            conn = _pg3w.connect(DATABASE_URL, connect_timeout=8)
+                            cur  = conn.cursor()
+                            cur.execute(
+                                "UPDATE mp3_transacoes SET status='confirmado', atualizado_em=NOW() "
+                                "WHERE mp_external_ref=%s AND status='pendente'",
+                                (external_ref,)
+                            )
+                            # Buscar telegram_id
+                            cur.execute("SELECT telegram_id, valor FROM mp3_transacoes WHERE mp_external_ref=%s", (external_ref,))
+                            tx_row = cur.fetchone()
+                            conn.commit(); cur.close(); conn.close()
+
+                            if tx_row and tx_row[0]:
+                                from bot3_handler import notificar_deposito_confirmado
+                                asyncio.create_task(notificar_deposito_confirmado(
+                                    int(tx_row[0]), float(tx_row[1] or 0), payment_id
+                                ))
+                        except Exception as _e3w:
+                            print(f'[mp3_wh] {_e3w}', flush=True)
+                        return web.json_response({'ok': True, 'processado': True})
+
+        return web.json_response({'ok': True, 'action': action})
+    except Exception as e:
+        print(f'[mp3_webhook] Erro: {e}', flush=True)
+        return web.json_response({'ok': False, 'error': str(e)}, status=200)
+
+
+async def route_mp3_config_get(request):
+    """GET /api/mp3/config — Retorna chaves MP3 mascaradas."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import psycopg2 as _pg3c
+        conn = _pg3c.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        chaves = ['mp3_access_token', 'mp3_public_key', 'mp3_client_id', 'mp3_client_secret']
+        result = {}
+        for c in chaves:
+            try:
+                cur.execute("SELECT valor FROM mp3_config WHERE chave=%s", (c,))
+                row = cur.fetchone()
+                v = (row[0] or '').strip() if row else ''
+                result[c] = ('__keep__' if len(v) > 6 else '') if v else ''
+                result[f'{c}_configurado'] = bool(v)
+                result[f'{c}_preview'] = (v[-6:] if len(v) > 6 else v) if v else ''
+            except Exception:
+                result[c] = ''
+                result[f'{c}_configurado'] = False
+        cur.close(); conn.close()
+        base_url = str(request.url).split('/api/')[0]
+        result['webhook_url'] = f'{base_url}/webhook/mp3'
+        result['configurado'] = result.get('mp3_access_token_configurado', False)
+        return web.json_response({'success': True, **result})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_config_save(request):
+    """POST /api/mp3/config — Salva chaves Mercado Pago do Bot3."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        body = await request.json()
+        import psycopg2 as _pg3cs
+        conn = _pg3cs.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("""CREATE TABLE IF NOT EXISTS mp3_config (
+            chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TIMESTAMP DEFAULT NOW()
+        )""")
+        chaves_map = {
+            'access_token': 'mp3_access_token',
+            'public_key':   'mp3_public_key',
+            'client_id':    'mp3_client_id',
+            'client_secret':'mp3_client_secret',
+        }
+        for body_key, db_key in chaves_map.items():
+            v = (body.get(body_key) or '').strip()
+            if v and v != '__keep__':
+                cur.execute(
+                    "INSERT INTO mp3_config (chave, valor) VALUES (%s, %s) "
+                    "ON CONFLICT (chave) DO UPDATE SET valor=%s, atualizado_em=NOW()",
+                    (db_key, v, v)
+                )
+        conn.commit(); cur.close(); conn.close()
+        return web.json_response({'success': True, 'msg': 'Chaves MP3 salvas com sucesso!'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_testar(request):
+    """GET /api/mp3/testar — Testa conexão com Mercado Pago do Bot3."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import psycopg2 as _pg3t
+        conn = _pg3t.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        try:
+            cur.execute("SELECT valor FROM mp3_config WHERE chave='mp3_access_token'")
+            row = cur.fetchone()
+            mp3_token = (row[0] or '').strip() if row else ''
+        except Exception:
+            mp3_token = ''
+        cur.close(); conn.close()
+
+        if not mp3_token:
+            mp3_token = os.environ.get('MP3_ACCESS_TOKEN', '').strip()
+
+        if not mp3_token:
+            return web.json_response({'success': False, 'error': 'MP3 Access Token não configurado'})
+
+        # Testar via API do MP
+        req_mp = urllib.request.Request(
+            'https://api.mercadopago.com/v1/account',
+            headers={'Authorization': f'Bearer {mp3_token}'}
+        )
+        with urllib.request.urlopen(req_mp, timeout=10) as r:
+            info = json.loads(r.read())
+
+        email = info.get('email', 'N/A')
+        site_id = info.get('site_id', 'N/A')
+        return web.json_response({
+            'success': True,
+            'email': email,
+            'site_id': site_id,
+            'ambiente': 'produção' if not mp3_token.startswith('TEST-') else 'teste',
+            'mensagem': f'Conta MP ativa: {email}',
+        })
+    except urllib.error.HTTPError as e:
+        return web.json_response({'success': False, 'error': f'Erro MP: {e.code}'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_stats(request):
+    """GET /api/mp3/stats — Estatísticas do Bot3."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import psycopg2 as _pg3st, decimal as _dec3
+        conn = _pg3st.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        stats = {}
+        queries = [
+            ('total_depositos', "SELECT COUNT(*) FROM mp3_transacoes WHERE tipo='deposito'"),
+            ('total_confirmados', "SELECT COUNT(*) FROM mp3_transacoes WHERE status='confirmado'"),
+            ('total_valor', "SELECT COALESCE(SUM(valor),0) FROM mp3_transacoes WHERE status='confirmado'"),
+            ('total_usuarios', "SELECT COUNT(*) FROM mp3_usuarios"),
+            ('saques_pendentes', "SELECT COUNT(*) FROM mp3_saques WHERE status='pendente'"),
+            ('saques_valor_pendente', "SELECT COALESCE(SUM(valor),0) FROM mp3_saques WHERE status='pendente'"),
+        ]
+        for key, sql in queries:
+            try:
+                cur.execute(sql)
+                row = cur.fetchone()
+                v = row[0] if row else 0
+                stats[key] = float(v) if isinstance(v, _dec3.Decimal) else (v or 0)
+            except Exception:
+                stats[key] = 0
+        cur.close(); conn.close()
+        return web.json_response({'success': True, 'stats': stats})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_saques_pendentes(request):
+    """GET /api/mp3/saques — Lista saques pendentes do Bot3."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import psycopg2 as _pg3sp, psycopg2.extras as _pge3sp, decimal as _dec3sp
+        conn = _pg3sp.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor(cursor_factory=_pge3sp.RealDictCursor)
+        try:
+            cur.execute("""
+                SELECT s.id, s.telegram_id, s.valor, s.chave_pix, s.tipo_chave, s.status,
+                       s.obs, s.criado_em,
+                       u.nome, u.username
+                FROM mp3_saques s
+                LEFT JOIN mp3_usuarios u ON u.telegram_id = s.telegram_id
+                WHERE s.status = 'pendente'
+                ORDER BY s.criado_em ASC
+            """)
+            rows = cur.fetchall()
+        except Exception:
+            rows = []
+        cur.close(); conn.close()
+        saques = []
+        for r in rows:
+            d = {}
+            for k, v in r.items():
+                if isinstance(v, _dec3sp.Decimal):
+                    d[k] = float(v)
+                elif v is None:
+                    d[k] = None
+                else:
+                    d[k] = str(v) if not isinstance(v, (int, float, bool, str)) else v
+            saques.append(d)
+        return web.json_response({'success': True, 'saques': saques, 'total': len(saques)})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_processar_saque(request):
+    """POST /api/mp3/saques/processar — Aprova ou rejeita saque do Bot3."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        body     = await request.json()
+        saque_id = int(body.get('saque_id', 0))
+        acao     = str(body.get('acao', 'aprovar')).lower()
+        obs      = str(body.get('obs', '')).strip()
+
+        if not saque_id:
+            return web.json_response({'success': False, 'error': 'saque_id obrigatório'})
+
+        import psycopg2 as _pg3proc
+        conn = _pg3proc.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("SELECT telegram_id, valor, chave_pix FROM mp3_saques WHERE id=%s", (saque_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return web.json_response({'success': False, 'error': 'Saque não encontrado'})
+
+        telegram_id, valor, chave = row[0], float(row[1] or 0), row[2]
+        novo_status = 'aprovado' if acao == 'aprovar' else 'rejeitado'
+
+        cur.execute(
+            "UPDATE mp3_saques SET status=%s, obs=%s, processado_em=NOW() WHERE id=%s",
+            (novo_status, obs, saque_id)
+        )
+        # Se rejeitado, devolver saldo
+        if acao != 'aprovar':
+            cur.execute(
+                "UPDATE mp3_usuarios SET saldo=saldo+%s WHERE telegram_id=%s",
+                (valor, telegram_id)
+            )
+        conn.commit(); cur.close(); conn.close()
+
+        # Notificar usuário via bot3
+        if telegram_id:
+            try:
+                from bot3_handler import notificar_saque_processado
+                asyncio.create_task(notificar_saque_processado(
+                    int(telegram_id), valor, acao == 'aprovar', saque_id
+                ))
+            except Exception as _ne3:
+                print(f'[mp3_proc_saque] notif: {_ne3}', flush=True)
+
+        return web.json_response({
+            'success': True,
+            'msg': f'Saque #{saque_id} {novo_status} com sucesso',
+            'saque_id': saque_id,
+            'novo_status': novo_status,
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_parceiros_listar(request):
+    """GET /api/mp3/parceiros — Lista parceiros do Bot3."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import psycopg2 as _pg3pl, psycopg2.extras as _pge3pl, decimal as _dec3pl, json as _j3pl
+        conn = _pg3pl.connect(DATABASE_URL)
+        cur  = conn.cursor(cursor_factory=_pge3pl.RealDictCursor)
+        try:
+            cur.execute("""
+                SELECT p.id, p.codigo, p.nome, p.chave_pix, p.tipo_chave,
+                       p.comissao_pct, p.ativo, p.link,
+                       COALESCE(p.total_gerado,0)   AS total_gerado,
+                       COALESCE(p.total_comissao,0) AS total_comissao,
+                       COALESCE(p.total_pago,0)     AS total_pago,
+                       TO_CHAR(p.criado_em, 'DD/MM/YYYY HH24:MI') AS criado_em,
+                       COUNT(t.id) FILTER (WHERE t.status = 'confirmado') AS qtd_pagamentos
+                FROM mp3_parceiros p
+                LEFT JOIN mp3_transacoes t ON t.parceiro_codigo = p.codigo
+                GROUP BY p.id ORDER BY p.criado_em DESC
+            """)
+            rows = cur.fetchall()
+        except Exception:
+            rows = []
+        cur.close(); conn.close()
+        parceiros = []
+        for r in rows:
+            d = {}
+            for k, v in r.items():
+                if isinstance(v, _dec3pl.Decimal): d[k] = float(v)
+                elif isinstance(v, bool): d[k] = v
+                elif v is None: d[k] = None
+                elif isinstance(v, (int, float, str)): d[k] = v
+                else: d[k] = str(v)
+            parceiros.append(d)
+        return web.Response(text=_j3pl.dumps({'success': True, 'parceiros': parceiros, 'total': len(parceiros)}), content_type='application/json')
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_parceiros_criar(request):
+    """POST /api/mp3/parceiros — Cria parceiro no Bot3."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        body         = await request.json()
+        nome         = str(body.get('nome', '')).strip()
+        chave_pix    = str(body.get('chave_pix', '')).strip()
+        tipo_chave   = str(body.get('tipo_chave', 'email')).strip()
+        comissao_pct = float(body.get('comissao_pct', 10))
+        codigo_req   = str(body.get('codigo', '')).strip()
+        if not nome: return web.json_response({'success': False, 'error': 'Nome obrigatório'})
+        if not chave_pix: return web.json_response({'success': False, 'error': 'Chave PIX obrigatória'})
+        import uuid, re, psycopg2 as _pg3pc
+        if not codigo_req:
+            base   = re.sub(r'[^a-z0-9]', '', nome.lower())[:12]
+            codigo = f"{base}-{str(uuid.uuid4())[:6]}"
+        else:
+            codigo = codigo_req
+        host = request.headers.get('X-Forwarded-Host') or request.host or 'paynexbet.com'
+        base_url = f"https://{host}"
+        link = f"{base_url}/paypix2?ref={codigo}"
+        conn = _pg3pc.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("""CREATE TABLE IF NOT EXISTS mp3_parceiros (
+            id SERIAL PRIMARY KEY, codigo VARCHAR(50) UNIQUE NOT NULL,
+            nome VARCHAR(200) NOT NULL, chave_pix VARCHAR(200) NOT NULL,
+            tipo_chave VARCHAR(20) DEFAULT 'email', comissao_pct NUMERIC(5,2) DEFAULT 10.0,
+            ativo BOOLEAN DEFAULT TRUE, total_gerado NUMERIC(12,2) DEFAULT 0,
+            total_comissao NUMERIC(12,2) DEFAULT 0, total_pago NUMERIC(12,2) DEFAULT 0,
+            criado_em TIMESTAMP DEFAULT NOW(), link TEXT
+        )""")
+        cur.execute("""
+            INSERT INTO mp3_parceiros (codigo, nome, chave_pix, tipo_chave, comissao_pct, ativo, link, criado_em)
+            VALUES (%s, %s, %s, %s, %s, TRUE, %s, NOW())
+            ON CONFLICT (codigo) DO UPDATE
+              SET nome=EXCLUDED.nome, chave_pix=EXCLUDED.chave_pix,
+                  tipo_chave=EXCLUDED.tipo_chave, comissao_pct=EXCLUDED.comissao_pct, link=EXCLUDED.link
+            RETURNING id, codigo, nome, chave_pix, tipo_chave, comissao_pct, link
+        """, (codigo, nome, chave_pix, tipo_chave, comissao_pct, link))
+        row = cur.fetchone()
+        conn.commit(); cur.close(); conn.close()
+        parceiro = {'id': row[0], 'codigo': row[1], 'nome': row[2], 'chave_pix': row[3],
+                    'tipo_chave': row[4], 'comissao_pct': float(row[5]), 'link': row[6], 'ativo': True}
+        return web.json_response({'success': True, 'parceiro': parceiro, 'link': link})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_parceiros_deletar(request):
+    """DELETE /api/mp3/parceiros/{codigo} — Desativa parceiro Bot3."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        codigo = request.match_info.get('codigo', '')
+        import psycopg2 as _pg3pd
+        conn = _pg3pd.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("UPDATE mp3_parceiros SET ativo=FALSE WHERE codigo=%s", (codigo,))
+        conn.commit(); cur.close(); conn.close()
+        return web.json_response({'success': True, 'msg': f'Parceiro {codigo} desativado'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_parceiros_editar(request):
+    """PATCH /api/mp3/parceiros/{codigo} — Edita parceiro Bot3."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        codigo = request.match_info.get('codigo', '')
+        body   = await request.json()
+        import psycopg2 as _pg3pe
+        conn = _pg3pe.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        fields = []
+        vals   = []
+        for f in ['nome', 'chave_pix', 'tipo_chave']:
+            if f in body:
+                fields.append(f'{f}=%s')
+                vals.append(str(body[f]).strip())
+        if 'comissao_pct' in body:
+            fields.append('comissao_pct=%s')
+            vals.append(float(body['comissao_pct']))
+        if 'ativo' in body:
+            fields.append('ativo=%s')
+            vals.append(bool(body['ativo']))
+        if fields:
+            vals.append(codigo)
+            cur.execute(f"UPDATE mp3_parceiros SET {', '.join(fields)} WHERE codigo=%s", vals)
+        conn.commit(); cur.close(); conn.close()
+        return web.json_response({'success': True, 'msg': f'Parceiro {codigo} atualizado'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_comissoes_listar(request):
+    """GET /api/mp3/comissoes — Lista comissões do Bot3."""
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import psycopg2 as _pg3cl, psycopg2.extras as _pge3cl, decimal as _dec3cl, json as _j3cl
+        conn = _pg3cl.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor(cursor_factory=_pge3cl.RealDictCursor)
+        try:
+            cur.execute("""
+                SELECT t.id, t.parceiro_codigo, t.valor AS valor_total,
+                       t.comissao_valor, t.comissao_status AS status, t.criado_em,
+                       p.nome AS parceiro_nome, p.chave_pix
+                FROM mp3_transacoes t
+                LEFT JOIN mp3_parceiros p ON p.codigo = t.parceiro_codigo
+                WHERE t.parceiro_codigo IS NOT NULL
+                ORDER BY t.criado_em DESC LIMIT 50
+            """)
+            rows = cur.fetchall()
+        except Exception:
+            rows = []
+        cur.close(); conn.close()
+        comissoes = []
+        for r in rows:
+            d = {}
+            for k, v in r.items():
+                if isinstance(v, _dec3cl.Decimal): d[k] = float(v)
+                elif v is None: d[k] = None
+                elif isinstance(v, (int, float, bool, str)): d[k] = v
+                else: d[k] = str(v)
+            comissoes.append(d)
+        return web.Response(text=_j3cl.dumps({'success': True, 'comissoes': comissoes, 'total': len(comissoes)}), content_type='application/json')
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+# ══════════════════════════════════════════════════════════════════
+# ─── MP3 — Rotas públicas /paypix2 (sem Telegram, só MP) ─────────
+# ══════════════════════════════════════════════════════════════════
+
+def _mp3_get_access_token() -> str:
+    """Retorna o Access Token do MP3 (env ou banco)."""
+    t = os.environ.get('MP3_ACCESS_TOKEN', '').strip()
+    if t:
+        return t
+    try:
+        import psycopg2 as _pg3tok
+        conn = _pg3tok.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("SELECT valor FROM mp3_config WHERE chave='mp3_access_token'")
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        return (row[0] or '').strip() if row else ''
+    except Exception:
+        return ''
+
+
+async def route_paypix2_page(request):
+    """GET /paypix2 — Página pública para gerar PIX via MP3 (sem Telegram)."""
+    try:
+        import psycopg2 as _pg3p2
+        conn = _pg3p2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        try:
+            cur.execute("SELECT valor FROM configuracoes WHERE chave='paypix2_html_patch'")
+            row = cur.fetchone()
+            if row and row[0] and len(row[0]) > 500:
+                cur.close(); conn.close()
+                return web.Response(text=row[0], content_type='text/html', charset='utf-8')
+        except Exception:
+            pass
+        cur.close(); conn.close()
+    except Exception:
+        pass
+    if os.path.exists('paypix2.html'):
+        html = open('paypix2.html', encoding='utf-8').read()
+        return web.Response(text=html, content_type='text/html', charset='utf-8')
+    return web.Response(text='<h1>PayPix2</h1>', content_type='text/html')
+
+
+async def route_mp3_config_publica(request):
+    """GET /api/mp3/config-publica — Retorna config pública do MP3 (sem autenticação)."""
+    try:
+        import psycopg2 as _pg3cp
+        conn = _pg3cp.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        config = {}
+        for chave in ['bot_titulo', 'bot_descricao', 'bot_min_valor', 'bot_max_valor',
+                      'bot_pct_parceiro', 'bot_ativo', 'deposito_minimo', 'deposito_maximo']:
+            try:
+                cur.execute("SELECT valor FROM mp3_config WHERE chave=%s", (chave,))
+                row = cur.fetchone()
+                config[chave] = (row[0] or '').strip() if row else ''
+            except Exception:
+                config[chave] = ''
+
+        # Verificar se parceiro existe (ref na URL)
+        ref = request.rel_url.query.get('ref', '').strip()
+        parceiro = None
+        if ref:
+            try:
+                cur.execute("SELECT nome, comissao_pct FROM mp3_parceiros WHERE codigo=%s AND ativo=TRUE", (ref,))
+                pr = cur.fetchone()
+                if pr:
+                    parceiro = {'codigo': ref, 'nome': pr[0], 'comissao_pct': float(pr[1] or 10)}
+            except Exception:
+                pass
+
+        cur.close(); conn.close()
+        host = request.headers.get('X-Forwarded-Host') or request.host or 'paynexbet.com'
+        return web.json_response({
+            'success': True,
+            'titulo': config.get('bot_titulo') or 'PayPix2 — Pague via PIX',
+            'descricao': config.get('bot_descricao') or 'Pagamento via PIX instantâneo',
+            'min_valor': float(config.get('deposito_minimo') or config.get('bot_min_valor') or '5'),
+            'max_valor': float(config.get('deposito_maximo') or config.get('bot_max_valor') or '10000'),
+            'ativo': config.get('bot_ativo', 'true') not in ('false', '0', 'False'),
+            'parceiro': parceiro,
+            'webhook_mp3': f'https://{host}/webhook/mp3',
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_gerar_pix(request):
+    """POST /api/mp3/gerar — Gera PIX Mercado Pago via MP3 (público, sem Telegram)."""
+    # CORS headers
+    headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+    }
+    try:
+        data       = await request.json()
+        valor      = float(data.get('valor', 0))
+        nome_pag   = str(data.get('nome', 'Cliente')).strip() or 'Cliente'
+        email_pag  = str(data.get('email', '')).strip()
+        ref        = str(data.get('ref', '')).strip()   # código parceiro (opcional)
+
+        # Validações básicas
+        if valor < 5:
+            return web.json_response({'success': False, 'error': 'Valor mínimo R$ 5,00'}, headers=headers)
+        if valor > 10000:
+            return web.json_response({'success': False, 'error': 'Valor máximo R$ 10.000,00'}, headers=headers)
+
+        mp3_token = _mp3_get_access_token()
+        if not mp3_token:
+            return web.json_response({'success': False, 'error': 'Mercado Pago não configurado'}, headers=headers)
+
+        import uuid, psycopg2 as _pg3g
+        ext_ref = f'mp3_pub_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}'
+
+        # Verificar parceiro e comissão
+        parceiro_codigo = None
+        comissao_pct    = 0.0
+        comissao_valor  = 0.0
+        if ref:
+            try:
+                conn_p = _pg3g.connect(DATABASE_URL, connect_timeout=8)
+                cur_p  = conn_p.cursor()
+                cur_p.execute("SELECT comissao_pct FROM mp3_parceiros WHERE codigo=%s AND ativo=TRUE", (ref,))
+                rp = cur_p.fetchone()
+                if rp:
+                    parceiro_codigo = ref
+                    comissao_pct    = float(rp[0] or 10)
+                    comissao_valor  = round(valor * comissao_pct / 100, 2)
+                cur_p.close(); conn_p.close()
+            except Exception:
+                pass
+
+        # Gerar PIX no Mercado Pago
+        host = request.headers.get('X-Forwarded-Host') or request.host or 'paynexbet.com'
+        notif_url = f'https://{host}/webhook/mp3'
+        email_real = email_pag or f'cliente_{int(datetime.now().timestamp())}@paynexbet.com'
+
+        payload_mp = {
+            'transaction_amount': valor,
+            'description': f'Pagamento via PayPix2 — {nome_pag}',
+            'payment_method_id': 'pix',
+            'payer': {
+                'email': email_real,
+                'first_name': nome_pag.split()[0][:20],
+            },
+            'external_reference': ext_ref,
+            'notification_url': notif_url,
+            'metadata': {'ref': ref, 'parceiro': parceiro_codigo or '', 'origem': 'paypix2'},
+        }
+        req_mp = urllib.request.Request(
+            'https://api.mercadopago.com/v1/payments',
+            data=json.dumps(payload_mp).encode(),
+            method='POST',
+            headers={
+                'Authorization': f'Bearer {mp3_token}',
+                'Content-Type': 'application/json',
+                'X-Idempotency-Key': ext_ref,
+            }
+        )
+        with urllib.request.urlopen(req_mp, timeout=15) as r:
+            resp_mp = json.loads(r.read())
+
+        mp_id    = resp_mp.get('id')
+        pix_data = resp_mp.get('point_of_interaction', {}).get('transaction_data', {})
+        qr_code  = pix_data.get('qr_code', '')
+        qr_b64   = pix_data.get('qr_code_base64', '')
+
+        if not mp_id or not qr_code:
+            msg_err = resp_mp.get('message') or resp_mp.get('error') or 'Erro ao gerar PIX'
+            return web.json_response({'success': False, 'error': msg_err}, headers=headers)
+
+        # Salvar transação na tabela mp3_transacoes
+        conn_t = _pg3g.connect(DATABASE_URL, connect_timeout=8)
+        cur_t  = conn_t.cursor()
+        # Garantir tabelas existem
+        cur_t.execute("""CREATE TABLE IF NOT EXISTS mp3_transacoes (
+            id SERIAL PRIMARY KEY, telegram_id BIGINT, tipo TEXT DEFAULT 'deposito',
+            valor NUMERIC(12,2), status TEXT DEFAULT 'pendente',
+            mp_payment_id TEXT, mp_external_ref TEXT, pix_copia_cola TEXT, pix_qr_base64 TEXT,
+            descricao TEXT, parceiro_codigo VARCHAR(50), comissao_valor NUMERIC(12,2) DEFAULT 0,
+            comissao_status VARCHAR(20) DEFAULT 'pendente',
+            criado_em TIMESTAMP DEFAULT NOW(), atualizado_em TIMESTAMP DEFAULT NOW()
+        )""")
+        cur_t.execute(
+            """INSERT INTO mp3_transacoes
+               (telegram_id, tipo, valor, status, mp_payment_id, mp_external_ref,
+                pix_copia_cola, pix_qr_base64, descricao, parceiro_codigo, comissao_valor)
+               VALUES (NULL,'deposito',%s,'pendente',%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
+            (valor, str(mp_id), ext_ref, qr_code, qr_b64,
+             f'Pagamento PayPix2 — {nome_pag}', parceiro_codigo, comissao_valor)
+        )
+        tx_db_id = cur_t.fetchone()[0]
+        conn_t.commit(); cur_t.close(); conn_t.close()
+
+        print(f'✅ [mp3_gerar] PIX gerado: {ext_ref} R${valor:.2f} mp_id={mp_id}', flush=True)
+        return web.json_response({
+            'success':  True,
+            'tx_id':    ext_ref,
+            'db_id':    tx_db_id,
+            'mp_id':    mp_id,
+            'pix_code': qr_code,
+            'qr_base64': qr_b64,
+            'valor':    valor,
+            'poll_url': f'/api/mp3/status/{ext_ref}',
+        }, headers=headers)
+
+    except urllib.error.HTTPError as e:
+        body_err = e.read().decode('utf-8', errors='replace')
+        print(f'[mp3_gerar] MP HTTP {e.code}: {body_err[:300]}', flush=True)
+        try:
+            err_json = json.loads(body_err)
+            msg = err_json.get('message') or err_json.get('error') or f'Erro MP {e.code}'
+        except Exception:
+            msg = f'Erro Mercado Pago: {e.code}'
+        return web.json_response({'success': False, 'error': msg}, headers=headers)
+    except Exception as e:
+        print(f'[mp3_gerar] Erro: {e}', flush=True)
+        return web.json_response({'success': False, 'error': str(e)}, headers=headers, status=500)
+
+
+async def route_mp3_status_tx(request):
+    """GET /api/mp3/status/{tx_id} — Status do PIX gerado via paypix2."""
+    headers = {'Access-Control-Allow-Origin': '*'}
+    tx_id = request.match_info.get('tx_id', '')
+    if not tx_id:
+        return web.json_response({'success': False, 'status': 'nao_encontrado'}, headers=headers)
+    try:
+        import psycopg2 as _pg3st2
+        conn = _pg3st2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute(
+            "SELECT id, valor, status, mp_payment_id, pix_copia_cola FROM mp3_transacoes WHERE mp_external_ref=%s",
+            (tx_id,)
+        )
+        row = cur.fetchone()
+        cur.close(); conn.close()
+
+        if not row:
+            return web.json_response({'success': False, 'status': 'nao_encontrado'}, headers=headers)
+
+        db_id, valor, status, mp_id, pix_code = row
+
+        # Se ainda pendente, consultar MP para checar se foi pago
+        if status == 'pendente' and mp_id:
+            mp3_token = _mp3_get_access_token()
+            if mp3_token:
+                try:
+                    req_chk = urllib.request.Request(
+                        f'https://api.mercadopago.com/v1/payments/{mp_id}',
+                        headers={'Authorization': f'Bearer {mp3_token}'}
+                    )
+                    with urllib.request.urlopen(req_chk, timeout=10) as r:
+                        info = json.loads(r.read())
+                    if info.get('status') == 'approved':
+                        # Confirmar no banco
+                        conn2 = _pg3st2.connect(DATABASE_URL, connect_timeout=8)
+                        cur2  = conn2.cursor()
+                        cur2.execute(
+                            "UPDATE mp3_transacoes SET status='confirmado', atualizado_em=NOW() "
+                            "WHERE mp_external_ref=%s AND status='pendente'",
+                            (tx_id,)
+                        )
+                        conn2.commit(); cur2.close(); conn2.close()
+                        status = 'confirmado'
+                        print(f'✅ [mp3_status] PIX confirmado via polling: {tx_id}', flush=True)
+                except Exception as _ep:
+                    pass  # Silencioso
+
+        resp = {
+            'success': True,
+            'tx_id':   tx_id,
+            'status':  status,
+            'valor':   float(valor or 0),
+        }
+        if pix_code:
+            resp['pix_code'] = pix_code
+        if status in ('confirmado', 'approved'):
+            resp['pago'] = True
+        return web.json_response(resp, headers=headers)
+
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, headers=headers, status=500)
+
+
+# ══════════════════════════════════════════════════════════════════
 # ─── BOT PIX - Página pública /bot - @paypix_nexbot ──────────────
 # ══════════════════════════════════════════════════════════════════
 
@@ -8475,6 +9415,31 @@ async def main():
     app.router.add_patch('/api/pp/parceiros/{codigo}',      route_mp2_parceiros_editar)
     app.router.add_get('/api/pp/comissoes',                 route_mp2_comissoes_listar)
     app.router.add_post('/api/pp/comissoes/pagar',          route_mp2_comissoes_pagar_manual)
+    # ── Bot3 / MP3 — Réplica do Bot2 (@paypix_nexbot2) ──────────────────────────────
+    app.router.add_post('/webhook/bot3',                    route_bot3_webhook)
+    app.router.add_post('/webhook/mp3',                     route_mp3_webhook)
+    app.router.add_post('/api/bot3/set-webhook',            route_bot3_set_webhook)
+    app.router.add_get('/api/bot3/webhook-info',            route_bot3_webhook_info)
+    app.router.add_post('/api/bot3/token',                  route_bot3_salvar_token)
+    app.router.add_get('/api/bot3/config',                  route_bot3_config_get)
+    app.router.add_get('/api/mp3/status',                   route_mp3_status)
+    app.router.add_get('/api/mp3/stats',                    route_mp3_stats)
+    app.router.add_get('/api/mp3/saques',                   route_mp3_saques_pendentes)
+    app.router.add_post('/api/mp3/saques/processar',        route_mp3_processar_saque)
+    app.router.add_get('/api/mp3/config',                   route_mp3_config_get)
+    app.router.add_post('/api/mp3/config',                  route_mp3_config_save)
+    app.router.add_get('/api/mp3/testar',                   route_mp3_testar)
+    app.router.add_get('/api/mp3/parceiros',                route_mp3_parceiros_listar)
+    app.router.add_post('/api/mp3/parceiros',               route_mp3_parceiros_criar)
+    app.router.add_delete('/api/mp3/parceiros/{codigo}',    route_mp3_parceiros_deletar)
+    app.router.add_patch('/api/mp3/parceiros/{codigo}',     route_mp3_parceiros_editar)
+    app.router.add_get('/api/mp3/comissoes',                route_mp3_comissoes_listar)
+    # ── MP3 — Rotas públicas (paypix2) ──────────────────────────────────────────────
+    app.router.add_get('/paypix2',                          route_paypix2_page)
+    app.router.add_post('/api/mp3/gerar',                   route_mp3_gerar_pix)
+    app.router.add_get('/api/mp3/status/{tx_id}',           route_mp3_status_tx)
+    app.router.add_get('/api/mp3/config-publica',           route_mp3_config_publica)
+    app.router.add_route('OPTIONS', '/api/mp3/gerar',       lambda r: web.Response(status=200, headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'}))
     # ── Bot PIX - página pública @paypix_nexbot ──
     app.router.add_get('/bot',                              route_bot_pix_page)
     app.router.add_get('/pix',                              route_pix_page)

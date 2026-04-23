@@ -621,12 +621,21 @@
   .badge-js     { background:#1e293b;color:#fbbf24;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:monospace;border:1px solid #fbbf2440; }
 
   /* FORÇA visibilidade do tab-bot2 quando ativo */
-  #tab-bot2 {
-    min-height: 100px;
-  }
+  #tab-bot2 { min-height: 100px; }
   #tab-bot2.active,
   #tab-bot2[style*="display: block"],
   #tab-bot2[style*="display:block"] {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-height: 400px !important;
+  }
+
+  /* FORÇA visibilidade do tab-bot3 quando ativo */
+  #tab-bot3 { min-height: 100px; }
+  #tab-bot3.active,
+  #tab-bot3[style*="display: block"],
+  #tab-bot3[style*="display:block"] {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -737,6 +746,10 @@ function toggleLoginSenha() {
       <div class="nav-item" onclick="showTab('bot2')">
         🤖 <span>Bot Mercado Pago</span>
         <span class="badge" id="badge-bot2" style="background:#555">OFF</span>
+      </div>
+      <div class="nav-item" onclick="showTab('bot3')">
+        🤖 <span>Bot MP2</span>
+        <span class="badge" id="badge-bot3" style="background:#555">OFF</span>
       </div>
       <div class="nav-section">Desenvolvedores</div>
       <div class="nav-item" onclick="showTab('api')">
@@ -3003,6 +3016,300 @@ function toggleLoginSenha() {
 
       </div><!-- /tab-bot2 -->
 
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <!-- ─── TAB BOT3 — Bot MP2 (@paypix_nexbot2) ──────────────────── -->
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <div id="tab-bot3" class="tab-content">
+
+        <!-- Banner de identificação -->
+        <div style="display:flex;align-items:center;gap:12px;background:#0a1a0a;border:1px solid #22c55e44;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+          <div style="font-size:28px">🤖</div>
+          <div>
+            <div style="font-weight:800;font-size:16px;color:#22c55e">🤖 Bot MP2 — Mercado Pago</div>
+            <div style="font-size:12px;color:#666;margin-top:2px">Segundo bot com Mercado Pago independente · Tabelas mp3_* · <span style="color:#22c55e">paynexbet.com/paypix2</span></div>
+          </div>
+          <div style="margin-left:auto">
+            <span style="font-size:11px;background:#22c55e22;color:#22c55e;border:1px solid #22c55e44;padding:4px 10px;border-radius:20px;font-weight:700">💳 MERCADO PAGO 2</span>
+          </div>
+        </div>
+
+        <!-- 4 métricas -->
+        <div class="metrics-grid" style="margin-bottom:20px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+          <div class="metric-card blue">
+            <div class="metric-icon">🤖</div>
+            <div class="metric-label">Mercado Pago API</div>
+            <div class="metric-value" id="b3-status-text" style="font-size:16px">—</div>
+            <div class="metric-sub" id="b3-sub">verificando...</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-icon">💳</div>
+            <div class="metric-label">Conta MP</div>
+            <div class="metric-value" id="b3-saldo" style="font-size:13px;word-break:break-all">—</div>
+            <div class="metric-sub"><span id="b3-saldo-hora" style="font-size:11px;color:#666">clique 🔄 para atualizar</span></div>
+          </div>
+          <div class="metric-card orange">
+            <div class="metric-icon">📊</div>
+            <div class="metric-label">Total Depositado</div>
+            <div class="metric-value" id="b3-total-gerado" style="font-size:16px">R$ —</div>
+            <div class="metric-sub">confirmados</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-icon">🏅</div>
+            <div class="metric-label">Saques Pendentes</div>
+            <div class="metric-value" id="b3-saques-pend" style="font-size:16px">—</div>
+            <div class="metric-sub" id="b3-saques-valor">R$ —</div>
+          </div>
+        </div>
+
+        <!-- Card Status -->
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header collapsible" id="col-hdr-b3-status" onclick="colToggle('b3-status')">
+            <h3>💳 Bot MP2 — Status <span id="col-arrow-b3-status" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
+              <span id="b3-badge" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#1a2a1a;color:#22c55e">Verificando...</span>
+              <button onclick="b3CheckStatus()" style="padding:6px 14px;background:#222;border:none;border-radius:8px;color:#aaa;font-size:13px;cursor:pointer">↻ Status</button>
+            </div>
+          </div>
+          <div class="collapse-body" id="col-body-b3-status">
+          <div style="padding:20px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+              <div style="background:#0a0a14;border-radius:10px;padding:14px">
+                <div style="color:#666;font-size:11px;margin-bottom:4px">BOT</div>
+                <div style="color:#22c55e;font-weight:700" id="b3-username">@paypix_nexbot2</div>
+                <div style="font-size:11px;color:#555;margin-top:3px">API Mercado Pago 2</div>
+              </div>
+              <div style="background:#0a0a14;border-radius:10px;padding:14px">
+                <div style="color:#666;font-size:11px;margin-bottom:4px">MERCADO PAGO</div>
+                <div id="b3-mp-status" style="color:#4ade80;font-size:13px;font-weight:700">Verificando...</div>
+                <div id="b3-mp-email" style="font-size:11px;color:#555;margin-top:4px;word-break:break-all"></div>
+              </div>
+            </div>
+          </div>
+        </div></div><!-- /col-body-b3-status -->
+
+        <!-- Token do Bot Telegram -->
+        <div class="table-card" style="margin-top:16px;border-color:#22c55e44">
+          <div class="table-header collapsible" id="col-hdr-b3-token" onclick="colToggle('b3-token')">
+            <h3>🔑 Token do Bot Telegram <span id="col-arrow-b3-token" class="collapse-arrow">▼</span></h3>
+            <span id="b3-token-badge" style="font-size:11px;background:#1a2a1a;color:#22c55e;border:1px solid #22c55e44;padding:3px 10px;border-radius:20px">Verificando...</span>
+          </div>
+          <div class="collapse-body" id="col-body-b3-token">
+          <div style="padding:20px">
+            <div style="background:#0a1400;border:1px solid #22c55e22;border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;color:#aaa">
+              ⚠️ Crie um novo bot no <b style="color:#22c55e">@BotFather</b> e cole o token abaixo.<br>
+              O bot deve ser <b>diferente</b> do Bot Mercado Pago 1.
+            </div>
+            <div style="margin-bottom:16px">
+              <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">🔑 Token do Bot (BotFather)</label>
+              <input type="password" id="b3-bot-token-input"
+                placeholder="Cole o token aqui (ex: 123456:ABC-DEF...)"
+                style="width:100%;background:#0a0a14;border:2px solid #22c55e44;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <button onclick="b3SalvarTokenBot()"
+                style="flex:1;min-width:160px;padding:13px;background:linear-gradient(135deg,#15803d,#22c55e);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">
+                💾 Salvar Token
+              </button>
+              <button onclick="b3RegistrarWebhook()"
+                style="padding:13px 18px;background:#0a1400;border:1px solid #22c55e44;border-radius:10px;color:#22c55e;font-size:13px;font-weight:600;cursor:pointer">
+                🔗 Registrar Webhook Bot
+              </button>
+            </div>
+            <div id="b3-token-msg" style="margin-top:12px;font-size:13px;text-align:center;min-height:20px"></div>
+          </div>
+        </div></div><!-- /col-body-b3-token -->
+
+        <!-- Mercado Pago — Config de Chaves -->
+        <div class="table-card" style="margin-top:16px;border-color:#22c55e44">
+          <div class="table-header collapsible" id="col-hdr-b3-config" style="background:linear-gradient(135deg,#003010,#22c55e)20" onclick="colToggle('b3-config')">
+            <h3>💳 Mercado Pago — Bot MP2 <span id="col-arrow-b3-config" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
+              <span id="b3-badge-status" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#0a1a0a;color:#aaa">Verificando...</span>
+              <button onclick="b3TestarConexao()" style="padding:6px 14px;background:#15803d;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔗 Testar</button>
+            </div>
+          </div>
+          <div class="collapse-body" id="col-body-b3-config">
+          <div style="padding:20px">
+
+            <div id="b3-status-bar" style="background:#0a1400;border:1px solid #22c55e44;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
+              <div style="font-size:28px">💳</div>
+              <div>
+                <div id="b3-status-txt" style="font-weight:700;color:#22c55e">Carregando status...</div>
+                <div id="b3-status-sub" style="font-size:12px;color:#666;margin-top:2px">Integração independente com Mercado Pago</div>
+              </div>
+            </div>
+
+            <div style="display:grid;gap:16px;margin-bottom:20px">
+
+              <!-- Access Token -->
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">
+                  🔑 Access Token <span style="color:#f44;font-weight:700">*</span>
+                </label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <div style="flex:1;position:relative">
+                    <input type="password" id="b3-access-token"
+                      placeholder="Cole o Access Token (APP_USR-...)"
+                      style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #22c55e44;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
+                    <span id="b3-token-badge2" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
+                  </div>
+                  <button onclick="toggleB3Field('b3-access-token','b3-token-badge2')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                </div>
+                <div style="font-size:11px;color:#555;margin-top:4px"><strong style="color:#4caf50">✅ deixe em branco para manter</strong></div>
+              </div>
+
+              <!-- Public Key -->
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">🔓 Public Key</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <div style="flex:1;position:relative">
+                    <input type="password" id="b3-public-key"
+                      placeholder="Cole a Public Key (APP_USR-...)"
+                      style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #22c55e22;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
+                    <span id="b3-pubkey-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
+                  </div>
+                  <button onclick="toggleB3Field('b3-public-key','b3-pubkey-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                </div>
+              </div>
+
+              <!-- Client ID + Secret -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Client ID</label>
+                  <input type="text" id="b3-client-id" placeholder="0000000000000000"
+                    style="width:100%;background:#0a0a14;border:2px solid #22c55e22;border-radius:10px;padding:11px 14px;color:#fff;font-size:13px;font-family:monospace">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Client Secret</label>
+                  <div style="display:flex;gap:6px">
+                    <input type="password" id="b3-client-secret" placeholder="xxxxxxxxxxxxxxxxxxx"
+                      style="flex:1;background:#0a0a14;border:2px solid #22c55e22;border-radius:10px;padding:11px 14px;color:#fff;font-size:13px;font-family:monospace">
+                    <button onclick="toggleB3Field('b3-client-secret')" style="padding:10px 12px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Webhook URL -->
+              <div style="background:#0a1400;border:1px solid #22c55e22;border-radius:10px;padding:14px">
+                <div style="font-size:12px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📡 Webhook URL — configurar no painel MP</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <code id="b3-webhook-url" style="flex:1;font-size:12px;color:#22c55e;word-break:break-all">Carregando...</code>
+                  <button onclick="copiarB3Webhook()" style="padding:8px 12px;background:#15803d;border:none;border-radius:8px;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap">📋 Copiar</button>
+                </div>
+                <div style="font-size:11px;color:#555;margin-top:6px">
+                  No painel Mercado Pago → <b style="color:#888">Suas integrações → Webhooks → Adicionar</b><br>
+                  Eventos: <code style="color:#22c55e">payment</code>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botões -->
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <button onclick="b3SalvarChaves()"
+                style="flex:1;min-width:180px;padding:14px;background:linear-gradient(135deg,#15803d,#22c55e);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">
+                💾 Salvar Chaves Mercado Pago 2
+              </button>
+              <button onclick="b3TestarConexao()"
+                style="padding:14px 20px;background:#0a1400;border:1px solid #22c55e44;border-radius:10px;color:#22c55e;font-size:13px;font-weight:600;cursor:pointer">
+                🔗 Testar Conexão
+              </button>
+            </div>
+            <div id="b3-msg" style="margin-top:12px;font-size:13px;text-align:center;min-height:20px"></div>
+            <div style="margin-top:16px;font-size:12px;color:#555;border-top:1px solid #1a2a1a;padding-top:12px">
+              💡 As chaves são armazenadas seguramente no PostgreSQL (tabela mp3_config) e carregadas automaticamente.
+            </div>
+          </div>
+        </div></div><!-- /col-body-b3-config -->
+
+        <!-- Saques Pendentes -->
+        <div class="table-card" style="margin-top:16px">
+          <div class="table-header collapsible" id="col-hdr-b3-saques" onclick="colToggle('b3-saques')">
+            <h3>💸 Saques Pendentes — Bot MP2 <span id="col-arrow-b3-saques" class="collapse-arrow">▼</span></h3>
+            <button onclick="b3CarregarSaques();event.stopPropagation()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+          <div class="collapse-body" id="col-body-b3-saques">
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead>
+                <tr style="border-bottom:1px solid #333">
+                  <th style="text-align:left;padding:10px;color:#888">ID</th>
+                  <th style="text-align:left;padding:10px;color:#888">Usuário</th>
+                  <th style="text-align:right;padding:10px;color:#888">Valor</th>
+                  <th style="text-align:left;padding:10px;color:#888">Chave PIX</th>
+                  <th style="text-align:left;padding:10px;color:#888">Data</th>
+                  <th style="text-align:center;padding:10px;color:#888">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="b3-saques-tbody">
+                <tr><td colspan="6" style="text-align:center;padding:30px;color:#555">Clique em 🔄 Atualizar para carregar</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div></div><!-- /col-body-b3-saques -->
+
+        <!-- Parceiros -->
+        <div class="table-card" style="margin-top:16px">
+          <div class="table-header collapsible" id="col-hdr-b3-parceiros" onclick="colToggle('b3-parceiros')">
+            <h3>🤝 Parceiros Afiliados — Bot MP2 <span id="col-arrow-b3-parceiros" class="collapse-arrow">▼</span></h3>
+            <button onclick="b3CarregarParceiros();event.stopPropagation()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+          <div class="collapse-body" id="col-body-b3-parceiros">
+          <!-- Criar Parceiro -->
+          <div style="padding:16px;border-bottom:1px solid #1a2a1a">
+            <h4 style="color:#22c55e;margin-bottom:12px">➕ Adicionar Parceiro</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+              <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Nome</label>
+                <input type="text" id="b3-p-nome" placeholder="Nome do parceiro"
+                  style="width:100%;background:#0a0a14;border:1px solid #333;border-radius:8px;padding:10px;color:#fff;font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Comissão %</label>
+                <input type="number" id="b3-p-comissao" value="10" min="1" max="99"
+                  style="width:100%;background:#0a0a14;border:1px solid #333;border-radius:8px;padding:10px;color:#fff;font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Chave PIX</label>
+                <input type="text" id="b3-p-chave" placeholder="ex: email@dominio.com"
+                  style="width:100%;background:#0a0a14;border:1px solid #333;border-radius:8px;padding:10px;color:#fff;font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Tipo da Chave</label>
+                <select id="b3-p-tipo" style="width:100%;background:#0a0a14;border:1px solid #333;border-radius:8px;padding:10px;color:#fff;font-size:13px">
+                  <option value="email">E-mail</option>
+                  <option value="cpf">CPF</option>
+                  <option value="telefone">Telefone</option>
+                  <option value="aleatoria">Aleatória</option>
+                </select>
+              </div>
+            </div>
+            <button onclick="b3CriarParceiro()" style="padding:12px 24px;background:linear-gradient(135deg,#15803d,#22c55e);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">
+              ➕ Criar Parceiro
+            </button>
+            <div id="b3-parceiro-msg" style="margin-top:8px;font-size:13px;color:#22c55e"></div>
+          </div>
+          <!-- Lista de parceiros -->
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead>
+                <tr style="border-bottom:1px solid #333">
+                  <th style="text-align:left;padding:10px;color:#888">Parceiro</th>
+                  <th style="text-align:left;padding:10px;color:#888">Chave PIX</th>
+                  <th style="text-align:right;padding:10px;color:#888">Comissão</th>
+                  <th style="text-align:right;padding:10px;color:#888">Total Gerado</th>
+                  <th style="text-align:left;padding:10px;color:#888">Link</th>
+                  <th style="text-align:center;padding:10px;color:#888">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="b3-parceiros-tbody">
+                <tr><td colspan="6" style="text-align:center;padding:30px;color:#555">Clique em 🔄 Atualizar para carregar</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div></div><!-- /col-body-b3-parceiros -->
+
+      </div><!-- /tab-bot3 -->
+
       <div id="tab-api" class="tab-content">
         <div style="max-width:960px;margin:0 auto;padding:12px 8px 40px">
 
@@ -4679,11 +4986,12 @@ function showTab(tab) {
   if (tab === 'sorteio') carregarSorteioAdmin();
   if (tab === 'paypix') carregarPaypixAdmin();
   if (tab === 'bot2') carregarBot2Admin();
+  if (tab === 'bot3') carregarBot3Admin();
   if (tab === 'sistema') loadHealth();
 }
 
 function tabName(tab) {
-  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api', bot2:'mercado pago', paypix:'paypix' };
+  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api', bot2:'mercado pago', bot3:'bot mp2', paypix:'paypix' };
   return map[tab] || tab;
 }
 
@@ -7309,6 +7617,354 @@ async function carregarBot2Admin() {
 }
 
 // (setInterval b2CheckStatus já registrado acima — não duplicar)
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── BOT3 / MP3 — JavaScript (réplica do bot2) ───────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+function toggleB3Field(inputId, badgeId) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+  if (badgeId) {
+    const b = document.getElementById(badgeId);
+    if (b) b.style.display = el.type === 'password' ? 'none' : 'block';
+  }
+}
+
+function copiarB3Webhook() {
+  const el = document.getElementById('b3-webhook-url');
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    toast('Webhook URL copiado!', 'success');
+  }).catch(() => {
+    toast('Erro ao copiar', 'error');
+  });
+}
+
+async function b3SalvarTokenBot() {
+  const token = (document.getElementById('b3-bot-token-input')?.value || '').trim();
+  const msg   = document.getElementById('b3-token-msg');
+  if (!token) { if(msg) msg.textContent = '❌ Cole o token do BotFather'; return; }
+  if(msg) msg.innerHTML = '<span style="color:#aaa">Validando token...</span>';
+  try {
+    const r = await fetch(`${BASE}/api/bot3/token?secret=${encodeURIComponent(SECRET())}`, {
+      method: 'POST', headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      body: JSON.stringify({token})
+    });
+    const d = await r.json();
+    if (d.success) {
+      if(msg) msg.innerHTML = `<span style="color:#22c55e">✅ ${d.msg}</span>`;
+      document.getElementById('b3-token-badge').textContent = `✅ @${d.username}`;
+      document.getElementById('b3-token-badge').style.color = '#22c55e';
+      setTimeout(b3CheckStatus, 1000);
+    } else {
+      if(msg) msg.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
+    }
+  } catch(e) {
+    if(msg) msg.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`;
+  }
+}
+
+async function b3RegistrarWebhook() {
+  const msg = document.getElementById('b3-token-msg');
+  if(msg) msg.innerHTML = '<span style="color:#aaa">Registrando webhook...</span>';
+  try {
+    const r = await fetch(`${BASE}/api/bot3/set-webhook?secret=${encodeURIComponent(SECRET())}`, {
+      method: 'POST', headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      body: JSON.stringify({ url: `${BASE}/webhook/bot3` })
+    });
+    const d = await r.json();
+    if (d.success) {
+      if(msg) msg.innerHTML = `<span style="color:#22c55e">✅ ${d.msg}</span>`;
+      setTimeout(b3CheckStatus, 2000);
+    } else {
+      if(msg) msg.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
+    }
+  } catch(e) {
+    if(msg) msg.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`;
+  }
+}
+
+async function b3SalvarChaves() {
+  const accessToken  = (document.getElementById('b3-access-token')?.value || '').trim();
+  const publicKey    = (document.getElementById('b3-public-key')?.value || '').trim();
+  const clientId     = (document.getElementById('b3-client-id')?.value || '').trim();
+  const clientSecret = (document.getElementById('b3-client-secret')?.value || '').trim();
+  const msg = document.getElementById('b3-msg');
+  if(msg) msg.innerHTML = '<span style="color:#aaa">Salvando...</span>';
+  try {
+    const r = await fetch(`${BASE}/api/mp3/config?secret=${encodeURIComponent(SECRET())}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      body: JSON.stringify({
+        access_token:  accessToken  || '__keep__',
+        public_key:    publicKey    || '__keep__',
+        client_id:     clientId,
+        client_secret: clientSecret || '__keep__',
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      if(msg) msg.innerHTML = '<span style="color:#22c55e">✅ Chaves salvas com sucesso!</span>';
+      setTimeout(b3CheckStatus, 1500);
+    } else {
+      if(msg) msg.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
+    }
+  } catch(e) {
+    if(msg) msg.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`;
+  }
+}
+
+async function b3TestarConexao() {
+  const msg = document.getElementById('b3-msg');
+  if(msg) msg.innerHTML = '<span style="color:#aaa">Testando conexão MP3...</span>';
+  try {
+    const r = await fetch(`${BASE}/api/mp3/testar?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (d.success) {
+      if(msg) msg.innerHTML = `<span style="color:#22c55e">✅ ${d.mensagem}</span>`;
+      document.getElementById('b3-badge-status').textContent = '✅ Conectado';
+      document.getElementById('b3-badge-status').style.color = '#22c55e';
+      document.getElementById('b3-mp-status').textContent = '✅ API ativa';
+      document.getElementById('b3-mp-email').textContent = d.email || '';
+    } else {
+      if(msg) msg.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
+      document.getElementById('b3-badge-status').textContent = '❌ Erro';
+      document.getElementById('b3-badge-status').style.color = '#f44';
+    }
+  } catch(e) {
+    if(msg) msg.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`;
+  }
+}
+
+async function b3CarregarChaves() {
+  try {
+    const r = await fetch(`${BASE}/api/mp3/config?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (d.mp3_access_token_configurado) {
+      const b = document.getElementById('b3-token-badge2');
+      if(b) { b.style.display = 'block'; }
+    }
+    const wh = document.getElementById('b3-webhook-url');
+    if (wh && d.webhook_url) wh.textContent = d.webhook_url;
+    const bs = document.getElementById('b3-badge-status');
+    if (bs) {
+      if (d.configurado) {
+        bs.textContent = '✅ Configurado';
+        bs.style.color = '#22c55e';
+        const st = document.getElementById('b3-status-txt');
+        if(st) { st.textContent = '✅ Mercado Pago 2 configurado'; st.style.color = '#22c55e'; }
+      } else {
+        bs.textContent = '⚠️ Não configurado';
+        bs.style.color = '#f59e0b';
+      }
+    }
+  } catch(e) { console.warn('[b3CarregarChaves]', e); }
+}
+
+async function b3CarregarStats() {
+  try {
+    const r = await fetch(`${BASE}/api/mp3/stats?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (d.success && d.stats) {
+      const s = d.stats;
+      const tg = document.getElementById('b3-total-gerado');
+      if (tg) tg.textContent = `R$ ${(s.total_valor||0).toFixed(2).replace('.',',')}`;
+      const sp = document.getElementById('b3-saques-pend');
+      if (sp) sp.textContent = s.saques_pendentes || '0';
+      const sv = document.getElementById('b3-saques-valor');
+      if (sv) sv.textContent = `R$ ${(s.saques_valor_pendente||0).toFixed(2).replace('.',',')}`;
+    }
+  } catch(e) { console.warn('[b3CarregarStats]', e); }
+}
+
+async function b3CarregarSaques() {
+  const tbody = document.getElementById('b3-saques-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#aaa">Carregando...</td></tr>';
+  try {
+    const r = await fetch(`${BASE}/api/mp3/saques?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success || !d.saques || d.saques.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#555">Nenhum saque pendente</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.saques.map(s => `
+      <tr style="border-bottom:1px solid #222">
+        <td style="padding:10px;color:#888">#${s.id}</td>
+        <td style="padding:10px">${s.nome||s.username||s.telegram_id||'—'}</td>
+        <td style="padding:10px;text-align:right;color:#4ade80;font-weight:700">R$ ${(s.valor||0).toFixed(2).replace('.',',')}</td>
+        <td style="padding:10px"><code style="font-size:11px">${s.chave_pix||'—'}</code> <span style="color:#666;font-size:11px">(${s.tipo_chave||''})</span></td>
+        <td style="padding:10px;color:#666;font-size:12px">${s.criado_em||''}</td>
+        <td style="padding:10px;text-align:center">
+          <button onclick="b3ProcessarSaque(${s.id},'aprovar')" style="padding:5px 10px;background:#15803d;border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:12px;margin-right:4px">✅ Aprovar</button>
+          <button onclick="b3ProcessarSaque(${s.id},'rejeitar')" style="padding:5px 10px;background:#7f1d1d;border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:12px">❌ Rejeitar</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:#f44">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+async function b3ProcessarSaque(saqueId, acao) {
+  if (!confirm(`${acao === 'aprovar' ? 'Aprovar' : 'Rejeitar'} saque #${saqueId}?`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/mp3/saques/processar?secret=${encodeURIComponent(SECRET())}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      body: JSON.stringify({saque_id: saqueId, acao})
+    });
+    const d = await r.json();
+    if (d.success) {
+      toast(d.msg || `Saque ${acao === 'aprovar' ? 'aprovado' : 'rejeitado'}!`, 'success');
+      await b3CarregarSaques();
+    } else {
+      toast(d.error || 'Erro ao processar saque', 'error');
+    }
+  } catch(e) {
+    toast(`Erro: ${e.message}`, 'error');
+  }
+}
+
+async function b3CarregarParceiros() {
+  const tbody = document.getElementById('b3-parceiros-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#aaa">Carregando...</td></tr>';
+  try {
+    const r = await fetch(`${BASE}/api/mp3/parceiros?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success || !d.parceiros || d.parceiros.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#555">Nenhum parceiro cadastrado</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.parceiros.map(p => `
+      <tr style="border-bottom:1px solid #222">
+        <td style="padding:10px">
+          <div style="font-weight:700">${p.nome}</div>
+          <div style="font-size:11px;color:#22c55e">${p.codigo}</div>
+          <div style="font-size:10px;color:#555">${p.ativo ? '✅ Ativo' : '❌ Inativo'}</div>
+        </td>
+        <td style="padding:10px"><code style="font-size:11px">${p.chave_pix}</code></td>
+        <td style="padding:10px;text-align:right;color:#22c55e;font-weight:700">${p.comissao_pct}%</td>
+        <td style="padding:10px;text-align:right;color:#4ade80">R$ ${(p.total_gerado||0).toFixed(2).replace('.',',')}</td>
+        <td style="padding:10px"><a href="${p.link}" target="_blank" style="color:#22c55e;font-size:11px;word-break:break-all">${p.link||'—'}</a></td>
+        <td style="padding:10px;text-align:center">
+          <button onclick="b3DeletarParceiro('${p.codigo}')" style="padding:5px 10px;background:#7f1d1d;border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:12px">🗑️</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:#f44">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+async function b3CriarParceiro() {
+  const nome     = (document.getElementById('b3-p-nome')?.value || '').trim();
+  const chave    = (document.getElementById('b3-p-chave')?.value || '').trim();
+  const tipo     = document.getElementById('b3-p-tipo')?.value || 'email';
+  const comissao = parseFloat(document.getElementById('b3-p-comissao')?.value) || 10;
+  const msg      = document.getElementById('b3-parceiro-msg');
+  if (!nome || !chave) { if(msg) msg.textContent = '❌ Nome e chave PIX obrigatórios'; return; }
+  if(msg) msg.textContent = 'Criando...';
+  try {
+    const r = await fetch(`${BASE}/api/mp3/parceiros?secret=${encodeURIComponent(SECRET())}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      body: JSON.stringify({nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: comissao})
+    });
+    const d = await r.json();
+    if (d.success) {
+      if(msg) msg.innerHTML = `<span style="color:#22c55e">✅ Parceiro criado! Link: <a href="${d.link}" target="_blank" style="color:#22c55e">${d.link}</a></span>`;
+      ['b3-p-nome','b3-p-chave'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+      await b3CarregarParceiros();
+    } else {
+      if(msg) msg.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
+    }
+  } catch(e) {
+    if(msg) msg.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`;
+  }
+}
+
+async function b3DeletarParceiro(codigo) {
+  if (!confirm(`Desativar parceiro ${codigo}?`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/mp3/parceiros/${codigo}?secret=${encodeURIComponent(SECRET())}`, {
+      method: 'DELETE', headers: {'X-PaynexBet-Secret': SECRET()}
+    });
+    const d = await r.json();
+    toast(d.success ? d.msg : (d.error||'Erro'), d.success ? 'success' : 'error');
+    if(d.success) await b3CarregarParceiros();
+  } catch(e) {
+    toast(`Erro: ${e.message}`, 'error');
+  }
+}
+
+async function b3CheckStatus() {
+  try {
+    // Verificar token do bot
+    const rc = await fetch(`${BASE}/api/bot3/config?secret=${encodeURIComponent(SECRET())}`);
+    const dc = await rc.json();
+
+    const badge = document.getElementById('badge-bot3');
+    const b3Badge = document.getElementById('b3-badge');
+    const b3Token = document.getElementById('b3-token-badge');
+
+    if (dc.token_configurado) {
+      if(b3Token) { b3Token.textContent = '✅ Configurado'; b3Token.style.color = '#22c55e'; }
+    } else {
+      if(b3Token) { b3Token.textContent = '⚠️ Sem token'; b3Token.style.color = '#f59e0b'; }
+    }
+
+    // Verificar MP3
+    try {
+      const rm = await fetch(`${BASE}/api/mp3/testar?secret=${encodeURIComponent(SECRET())}`);
+      const dm = await rm.json();
+      if (dm.success) {
+        if(badge) { badge.textContent = 'ON'; badge.style.background = '#15803d'; }
+        if(b3Badge) { b3Badge.textContent = '✅ MP Ativo'; b3Badge.style.color = '#22c55e'; }
+        const b3sText = document.getElementById('b3-status-text');
+        if(b3sText) b3sText.textContent = '✅ Ativo';
+        const b3sub = document.getElementById('b3-sub');
+        if(b3sub) b3sub.textContent = dm.email || 'MP ativo';
+        const mpStatus = document.getElementById('b3-mp-status');
+        if(mpStatus) { mpStatus.textContent = '✅ API ativa'; mpStatus.style.color = '#4ade80'; }
+        const mpEmail = document.getElementById('b3-mp-email');
+        if(mpEmail) mpEmail.textContent = dm.email || '';
+        const b3saldo = document.getElementById('b3-saldo');
+        if(b3saldo) b3saldo.textContent = dm.email || 'Ativo';
+      } else {
+        if(badge) { badge.textContent = 'OFF'; badge.style.background = '#555'; }
+        if(b3Badge) { b3Badge.textContent = '❌ MP não configurado'; b3Badge.style.color = '#f44'; }
+        const b3sText = document.getElementById('b3-status-text');
+        if(b3sText) b3sText.textContent = '❌ Inativo';
+      }
+    } catch(me) {
+      if(badge) { badge.textContent = 'OFF'; badge.style.background = '#555'; }
+    }
+
+    // Carregar webhook URL
+    await b3CarregarChaves();
+    await b3CarregarStats();
+
+  } catch(e) {
+    console.warn('[b3CheckStatus]', e);
+    const badge = document.getElementById('badge-bot3');
+    if(badge) { badge.textContent = 'ERR'; badge.style.background = '#7f1d1d'; }
+  }
+}
+
+async function carregarBot3Admin() {
+  await b3CheckStatus();
+  await b3CarregarChaves();
+  await b3CarregarStats();
+  await b3CarregarParceiros();
+  await b3CarregarSaques();
+}
+
+if (SECRET()) b3CheckStatus();
+setInterval(() => { if (SECRET()) b3CheckStatus(); }, 90000);
 
 function colToggle(id) {
   const body   = document.getElementById('col-body-' + id);
