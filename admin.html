@@ -163,8 +163,8 @@
   .content { padding: 28px; padding-bottom: 60px; min-height: calc(100vh - 70px); }
 
   /* ── TABS ───────────────────────────────────────── */
-  .tab-content { display: none; min-height: 300px; }
-  .tab-content.active { display: block; min-height: 300px; }
+  .tab-content { display: none !important; min-height: 300px; }
+  .tab-content.active { display: block !important; visibility: visible !important; opacity: 1 !important; min-height: 300px; }
 
   /* ── CARDS MÉTRICAS ─────────────────────────────── */
   .metrics-grid {
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427i';
+  const VER = '20250427j';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -5794,20 +5794,18 @@ async function fazerLogin() {
 function showTab(tab) {
   // Volta ao topo da página ao trocar de aba
   window.scrollTo(0, 0);
-  // Esconde todos os tabs
+  // Esconde todos os tabs — só via classe, SEM style inline
   document.querySelectorAll('.tab-content').forEach(t => {
     t.classList.remove('active');
-    t.style.display = 'none';
+    t.removeAttribute('style');   // limpa qualquer style inline residual
   });
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   // Mostra o tab ativo
   const activeTab = document.getElementById('tab-' + tab);
   if (activeTab) {
-    activeTab.classList.add('active');
-    activeTab.style.cssText += '; display:block !important; visibility:visible !important; opacity:1 !important; min-height:400px !important;';
+    activeTab.classList.add('active');   // CSS .tab-content.active { display:block }
     // Forçar re-render
     void activeTab.offsetHeight;
-    console.log('[showTab] ativando', tab, 'display:', activeTab.style.display, 'offsetHeight:', activeTab.offsetHeight);
     if (tab === 'bot2') {
       console.log('[bot2] tab ativado, display:', activeTab.style.display, 'height:', activeTab.offsetHeight);
       // Toast de debug
