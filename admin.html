@@ -1253,24 +1253,24 @@ function toggleLoginSenha() {
       <div id="tab-paypix" class="tab-content">
 
         <!-- Banner de identificação -->
-        <div style="display:flex;align-items:center;gap:12px;background:#0a1a0a;border:1px solid #22c55e44;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#0a1a0a,#091409);border:1px solid #22c55e55;border-radius:12px;padding:12px 16px;margin-bottom:16px">
           <div style="font-size:28px">💸</div>
           <div>
-            <div style="font-weight:800;font-size:16px;color:#4ade80">PayPix — Vortex Wallet</div>
-            <div style="font-size:12px;color:#666;margin-top:2px">Integração via Telegram · Chave PIX do parceiro gera e recebe direto · <span style="color:#4ade80">paynexbet.com/paypix</span></div>
+            <div style="font-weight:800;font-size:16px;color:#4ade80">PayPix VORTEX — @paypix_nexbot</div>
+            <div style="font-size:12px;color:#666;margin-top:2px">Gateway PIX próprio · Parceiro manda cliente → recebe % automático via Pix · <span style="color:#4ade80">paynexbet.com/paypix</span></div>
           </div>
           <div style="margin-left:auto">
-            <span style="font-size:11px;background:#22c55e22;color:#4ade80;border:1px solid #22c55e44;padding:4px 10px;border-radius:20px;font-weight:700">🔗 VORTEX</span>
+            <span id="pp-badge-global" style="font-size:11px;background:#22222222;color:#aaa;border:1px solid #33333344;padding:4px 10px;border-radius:20px;font-weight:700">Verificando...</span>
           </div>
         </div>
 
         <!-- Métricas PayPix -->
-        <div class="metrics-grid" style="margin-bottom:20px">
+        <div class="metrics-grid" style="margin-bottom:20px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
           <div class="metric-card green">
             <div class="metric-icon">💸</div>
             <div class="metric-label">Repasse ao Parceiro</div>
             <div class="metric-value" id="pp-pct-display">—</div>
-            <div class="metric-sub">do valor gerado</div>
+            <div class="metric-sub">do valor cobrado</div>
           </div>
           <div class="metric-card orange">
             <div class="metric-icon">🏦</div>
@@ -1279,12 +1279,10 @@ function toggleLoginSenha() {
             <div class="metric-sub">retido pela plataforma</div>
           </div>
           <div class="metric-card blue">
-            <div class="metric-icon">🔗</div>
-            <div class="metric-label">Link PayPix</div>
-            <div class="metric-value" style="font-size:13px;word-break:break-all">
-              <a href="/paypix" target="_blank" style="color:#60a5fa;text-decoration:none">/paypix</a>
-            </div>
-            <div class="metric-sub">link público para parceiros</div>
+            <div class="metric-icon">🔑</div>
+            <div class="metric-label">Gateway PIX</div>
+            <div class="metric-value" id="pp-gateway-status" style="font-size:14px">—</div>
+            <div class="metric-sub" id="pp-gateway-sub">sem credenciais</div>
           </div>
           <div class="metric-card" id="pp-status-card" style="border-color:#22c55e44">
             <div class="metric-icon">⚡</div>
@@ -1294,73 +1292,178 @@ function toggleLoginSenha() {
           </div>
         </div>
 
-        <!-- Botão rápido manutenção -->
-        <div id="pp-manutencao-bar" style="display:none;background:#1a1000;border:1px solid #6a4400;border-radius:12px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <!-- Barra de manutenção -->
+        <div id="pp-manutencao-bar" style="display:none;background:#1a1000;border:1px solid #6a4400;border-radius:12px;padding:14px 20px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px">
           <div>
             <span style="font-size:15px;font-weight:700;color:#FFD700">🔧 PayPix está em MANUTENÇÃO</span>
             <div style="font-size:12px;color:#888;margin-top:2px">Parceiros veem a tela de manutenção em /paypix</div>
           </div>
-          <button onclick="ativarPaypixRapido()" style="background:linear-gradient(135deg,#22c55e,#4ade80);border:none;border-radius:8px;padding:10px 18px;color:#000;font-weight:700;font-size:13px;cursor:pointer">
-            ✅ Reativar agora
-          </button>
+          <button onclick="ativarPaypixRapido()" style="background:linear-gradient(135deg,#22c55e,#4ade80);border:none;border-radius:8px;padding:10px 18px;color:#000;font-weight:700;font-size:13px;cursor:pointer">✅ Reativar agora</button>
         </div>
         <div id="pp-ativo-bar" style="background:#0a2a0a;border:1px solid #2d6a2d;border-radius:12px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div>
             <span style="font-size:15px;font-weight:700;color:#4ade80">✅ PayPix está ATIVO</span>
             <div style="font-size:12px;color:#888;margin-top:2px">Parceiros podem gerar Pix normalmente</div>
           </div>
-          <button onclick="desativarPaypixRapido()" style="background:linear-gradient(135deg,#dc2626,#f87171);border:none;border-radius:8px;padding:10px 18px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">
-            🔧 Colocar em manutenção
-          </button>
+          <button onclick="desativarPaypixRapido()" style="background:linear-gradient(135deg,#dc2626,#f87171);border:none;border-radius:8px;padding:10px 18px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">🔧 Colocar em manutenção</button>
         </div>
 
-        <!-- Configuração do % -->
-        <div class="table-card" style="margin-bottom:20px">
+        <!-- ══ GATEWAY PIX — Credenciais ══ -->
+        <div class="table-card" style="margin-bottom:16px;border-color:#22c55e66">
+          <div class="table-header collapsible" id="col-hdr-pp-cred" style="background:linear-gradient(135deg,#0a2a0a,#0d3a0d)20" onclick="colToggle('pp-cred')">
+            <h3>🔑 Credenciais do Gateway PIX <span id="col-arrow-pp-cred" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
+              <span id="pp-cred-badge" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#0a2a0a;color:#aaa">Verificando...</span>
+              <button onclick="ppTestarGateway()" style="padding:6px 14px;background:#0a2a0a;border:1px solid #22c55e44;border-radius:8px;color:#4ade80;font-size:13px;cursor:pointer">🔗 Testar</button>
+            </div>
+          </div>
+          <div class="collapse-body" id="col-body-pp-cred">
+          <div style="padding:20px">
+
+            <!-- Seletor de Gateway -->
+            <div style="margin-bottom:20px">
+              <label style="font-size:12px;color:#888;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">🏦 Selecionar Gateway PIX</label>
+              <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:8px;background:#0a1a0a;border:2px solid #22c55e44;border-radius:10px;padding:10px 16px;cursor:pointer;transition:border-color .2s" id="pp-gw-mp-label">
+                  <input type="radio" name="pp-gateway" value="mercadopago" id="pp-gw-mp" onchange="ppSelecionarGateway('mercadopago')" style="accent-color:#22c55e">
+                  <span style="font-size:14px;font-weight:700;color:#009ee3">💳 Mercado Pago</span>
+                  <span style="font-size:11px;color:#555">(mesmo do Bot MP)</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;background:#0a1a0a;border:2px solid #22222244;border-radius:10px;padding:10px 16px;cursor:pointer;transition:border-color .2s" id="pp-gw-asaas-label">
+                  <input type="radio" name="pp-gateway" value="asaas" id="pp-gw-asaas" onchange="ppSelecionarGateway('asaas')" style="accent-color:#22c55e">
+                  <span style="font-size:14px;font-weight:700;color:#a855f7">🟣 Asaas</span>
+                  <span style="font-size:11px;color:#555">(gateway alternativo)</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;background:#0a1a0a;border:2px solid #22222244;border-radius:10px;padding:10px 16px;cursor:pointer;transition:border-color .2s" id="pp-gw-propria-label">
+                  <input type="radio" name="pp-gateway" value="propria" id="pp-gw-propria" onchange="ppSelecionarGateway('propria')" style="accent-color:#22c55e">
+                  <span style="font-size:14px;font-weight:700;color:#f59e0b">🔑 Chave PIX Própria</span>
+                  <span style="font-size:11px;color:#555">(recebe tudo e paga %)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Campos Mercado Pago (padrão visível) -->
+            <div id="pp-fields-mercadopago" style="display:block">
+              <div style="background:#0a1020;border:1px solid #009ee322;border-radius:10px;padding:14px;margin-bottom:16px">
+                <div style="font-size:12px;color:#009ee3;font-weight:700;margin-bottom:6px">💳 Usa as mesmas credenciais do Bot Mercado Pago</div>
+                <div style="font-size:12px;color:#666">O PayPix VORTEX usará o <strong style="color:#888">Access Token</strong> configurado na aba <strong style="color:#f59e0b">Bot Mercado Pago</strong>. Não é preciso inserir novamente.</div>
+              </div>
+              <div style="display:grid;gap:14px">
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">🔑 Access Token <span style="color:#f44">*</span> <span style="color:#555;font-weight:400;text-transform:none;letter-spacing:0">— (APP_USR-... do Mercado Pago)</span></label>
+                  <div style="display:flex;gap:8px">
+                    <div style="flex:1;position:relative">
+                      <input type="password" id="pp-mp-token" placeholder="Cole o Access Token do Mercado Pago (APP_USR-...)" autocomplete="new-password" style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #009ee344;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
+                      <span id="pp-mp-token-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
+                    </div>
+                    <button onclick="ppToggleField('pp-mp-token','pp-mp-token-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                  </div>
+                  <div style="font-size:11px;color:#555;margin-top:4px">Deixe em branco para reusar o token do Bot MP. Preencha aqui para usar um token <strong style="color:#4ade80">dedicado ao PayPix</strong></div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📡 Webhook URL — configurar no Mercado Pago</label>
+                  <div style="display:flex;align-items:center;gap:8px;background:#0a1020;border:1px solid #009ee322;border-radius:10px;padding:12px">
+                    <code id="pp-mp-webhook-url" style="flex:1;font-size:12px;color:#009ee3;word-break:break-all">Carregando...</code>
+                    <button onclick="ppCopiarWebhook()" style="padding:8px 12px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap">📋 Copiar</button>
+                  </div>
+                  <div style="font-size:11px;color:#555;margin-top:6px">Painel Mercado Pago → <b style="color:#888">Integrações → Webhooks → Adicionar</b> · Evento: <code style="color:#009ee3">payment</code></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Campos Asaas -->
+            <div id="pp-fields-asaas" style="display:none">
+              <div style="display:grid;gap:14px">
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">🔑 API Key Asaas <span style="color:#f44">*</span></label>
+                  <div style="display:flex;gap:8px">
+                    <input type="password" id="pp-asaas-key" placeholder="$aact_..." autocomplete="new-password" style="flex:1;background:#0a0a14;border:2px solid #a855f744;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
+                    <button onclick="ppToggleField('pp-asaas-key')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                  </div>
+                  <div style="font-size:11px;color:#555;margin-top:4px">Painel Asaas → Configurações → API</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Campos Chave PIX Própria -->
+            <div id="pp-fields-propria" style="display:none">
+              <div style="background:#1a1000;border:1px solid #f59e0b44;border-radius:10px;padding:14px;margin-bottom:14px">
+                <div style="font-size:12px;color:#f59e0b;font-weight:700;margin-bottom:4px">💡 Como funciona: Chave PIX Própria</div>
+                <div style="font-size:12px;color:#888">O cliente paga para sua chave PIX. Após confirmação, o sistema envia automaticamente a % do afiliado direto para o PIX dele.</div>
+              </div>
+              <div style="display:grid;gap:14px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                  <div>
+                    <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Tipo da Chave</label>
+                    <select id="pp-propria-tipo" style="width:100%;background:#0a0a14;border:2px solid #f59e0b44;border-radius:10px;padding:11px 14px;color:#fff;font-size:13px;cursor:pointer">
+                      <option value="cpf">CPF</option>
+                      <option value="cnpj">CNPJ</option>
+                      <option value="email">E-mail</option>
+                      <option value="telefone">Telefone</option>
+                      <option value="aleatoria">Chave Aleatória</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Chave PIX <span style="color:#f44">*</span></label>
+                    <input type="text" id="pp-propria-chave" placeholder="Digite a chave PIX" style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #f59e0b44;border-radius:10px;padding:11px 14px;color:#fff;font-size:13px;font-family:monospace">
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Nome do Titular</label>
+                  <input type="text" id="pp-propria-nome" placeholder="Ex: Vortex Pagamentos LTDA" style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #f59e0b22;border-radius:10px;padding:11px 14px;color:#fff;font-size:13px">
+                </div>
+              </div>
+            </div>
+
+            <!-- Botões de ação -->
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:20px">
+              <button onclick="ppSalvarCredenciais()" id="pp-btn-salvar-cred" style="flex:1;min-width:180px;padding:14px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">💾 Salvar Credenciais</button>
+              <button onclick="ppTestarGateway()" style="padding:14px 20px;background:#0a2a0a;border:1px solid #22c55e44;border-radius:10px;color:#4ade80;font-size:13px;font-weight:600;cursor:pointer">🔗 Testar Gateway</button>
+            </div>
+            <div id="pp-cred-msg" style="margin-top:12px;font-size:13px;text-align:center;min-height:20px"></div>
+
+          </div>
+          </div>
+        </div><!-- /col-pp-cred -->
+
+        <!-- ══ CONFIGURAÇÃO DO % ══ -->
+        <div class="table-card" style="margin-bottom:16px">
           <div class="table-header">
-            <h3>⚙️ Configurar PayPix</h3>
-            <span style="font-size:12px;color:#888">Somente admin pode alterar</span>
+            <h3>⚙️ Configurar Repasse PayPix</h3>
+            <span style="font-size:12px;color:#888">Admin · Afeta todos os parceiros sem % individual</span>
           </div>
           <div style="padding:20px">
 
-            <!-- Slider visual do % -->
+            <!-- Slider visual -->
             <div style="margin-bottom:24px">
-              <label style="font-size:12px;color:#888;display:block;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">
-                💸 Percentual de repasse ao parceiro
-              </label>
+              <label style="font-size:12px;color:#888;display:block;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">💸 Percentual de repasse ao afiliado (padrão global)</label>
               <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
-                <input type="range" id="pp-slider" min="10" max="90" value="60" step="1"
-                  oninput="atualizarSliderPaypix(this.value)"
-                  style="flex:1;height:6px;accent-color:#22c55e;cursor:pointer">
+                <input type="range" id="pp-slider" min="10" max="90" value="60" step="1" oninput="atualizarSliderPaypix(this.value)" style="flex:1;height:6px;accent-color:#22c55e;cursor:pointer">
                 <div style="background:#22c55e22;border:2px solid #22c55e44;border-radius:12px;padding:8px 16px;min-width:70px;text-align:center">
                   <span id="pp-slider-val" style="font-size:24px;font-weight:900;color:#22c55e;font-family:monospace">60%</span>
                 </div>
               </div>
-              <!-- Barra visual split -->
               <div style="border-radius:8px;overflow:hidden;height:28px;display:flex;font-size:12px;font-weight:700">
                 <div id="pp-bar-parceiro" style="background:linear-gradient(90deg,#22c55e,#4ade80);width:60%;display:flex;align-items:center;justify-content:center;color:#000;transition:width .3s">
-                  <span id="pp-bar-parc-txt">Parceiro 60%</span>
+                  <span id="pp-bar-parc-txt">Afiliado 60%</span>
                 </div>
                 <div id="pp-bar-plat" style="background:linear-gradient(90deg,#f97316,#fb923c);flex:1;display:flex;align-items:center;justify-content:center;color:#000;transition:width .3s">
                   <span id="pp-bar-plat-txt">Plataforma 40%</span>
                 </div>
               </div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-top:6px">
-                <span>10%</span><span>50%</span><span>90%</span>
-              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-top:6px"><span>10%</span><span>50%</span><span>90%</span></div>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
               <div>
-                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">% Exato (digite direto)</label>
-                <input id="pp-pct-input" type="number" min="10" max="90" value="60" step="1"
-                  oninput="atualizarInputPaypix(this.value)"
-                  style="width:100%;background:#ffffff10;border:1px solid #22c55e44;border-radius:8px;padding:10px;color:#22c55e;font-size:18px;font-weight:700;font-family:monospace">
-                <div style="font-size:11px;color:#555;margin-top:4px">Entre 10% e 90%</div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">% Exato (padrão global)</label>
+                <input id="pp-pct-input" type="number" min="10" max="90" value="60" step="1" oninput="atualizarInputPaypix(this.value)" style="width:100%;background:#ffffff10;border:1px solid #22c55e44;border-radius:8px;padding:10px;color:#22c55e;font-size:18px;font-weight:700;font-family:monospace">
+                <div style="font-size:11px;color:#555;margin-top:4px">Parceiros sem % individual usam este valor</div>
               </div>
               <div>
                 <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Status do PayPix</label>
                 <select id="pp-ativo" style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px;cursor:pointer">
-                  <option value="1" style="background:#1a1a2e">✅ Ativo — parceiros podem gerar Pix</option>
+                  <option value="1" style="background:#1a1a2e">✅ Ativo — afiliados podem gerar Pix</option>
                   <option value="0" style="background:#1a1a2e">🔴 Desativado — página indisponível</option>
                 </select>
               </div>
@@ -1371,37 +1474,128 @@ function toggleLoginSenha() {
               <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">💰 Valor mínimo a cobrar (R$)</label>
               <div style="display:flex;align-items:center;gap:10px">
                 <span style="color:#888;font-size:14px">R$</span>
-                <input id="pp-min-input" type="number" min="1" max="10000" value="5" step="0.5"
-                  style="flex:1;background:#ffffff10;border:1px solid #FFD70044;border-radius:8px;padding:10px;color:#FFD700;font-size:18px;font-weight:700;font-family:monospace">
+                <input id="pp-min-input" type="number" min="1" max="10000" value="5" step="0.5" style="flex:1;background:#ffffff10;border:1px solid #FFD70044;border-radius:8px;padding:10px;color:#FFD700;font-size:18px;font-weight:700;font-family:monospace">
               </div>
-              <div style="font-size:11px;color:#555;margin-top:4px">Valor mínimo que o parceiro pode cobrar — exibido na página /paypix</div>
+              <div style="font-size:11px;color:#555;margin-top:4px">Valor mínimo exibido na página /paypix</div>
             </div>
 
             <div style="margin-bottom:20px">
               <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Descrição exibida na página /paypix</label>
-              <input id="pp-descricao" type="text" maxlength="100" placeholder="Ex: Gere seu Pix e receba 60% do valor"
-                style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px">
-              <div style="font-size:11px;color:#555;margin-top:4px">Este texto aparece como subtítulo na página do parceiro</div>
+              <input id="pp-descricao" type="text" maxlength="100" placeholder="Ex: Gere seu Pix e receba 60% do valor" style="width:100%;background:#ffffff10;border:1px solid #ffffff20;border-radius:8px;padding:10px;color:#fff;font-size:14px">
             </div>
 
             <!-- Preview -->
             <div style="background:#ffffff08;border:1px solid #ffffff15;border-radius:12px;padding:16px;margin-bottom:20px">
-              <div style="font-size:11px;color:#666;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">Preview — como o parceiro vê</div>
+              <div style="font-size:11px;color:#666;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">Preview — como o afiliado vê</div>
               <div style="text-align:center">
-                <div style="font-size:20px;font-weight:800;color:#FFD700">💰 PayPix</div>
+                <div style="font-size:20px;font-weight:800;color:#FFD700">💰 PayPix VORTEX</div>
                 <div id="pp-preview-desc" style="font-size:13px;color:#888;margin-top:4px">Gere seu Pix e receba 60% do valor</div>
                 <div style="margin-top:10px;background:#22c55e22;border:1px solid #22c55e44;border-radius:8px;padding:8px;font-size:13px;color:#22c55e;display:inline-block">
-                  ● Sistema ativo · Parceiro recebe <span id="pp-preview-pct" style="font-weight:900">60%</span>
+                  ● Sistema ativo · Afiliado recebe <span id="pp-preview-pct" style="font-weight:900">60%</span>
                 </div>
               </div>
             </div>
 
-            <button onclick="salvarConfigPaypix()" class="action-btn confirm-btn" style="width:100%;font-size:15px;padding:14px">
-              💾 Salvar Configuração PayPix
-            </button>
+            <button onclick="salvarConfigPaypix()" class="action-btn confirm-btn" style="width:100%;font-size:15px;padding:14px">💾 Salvar Configuração</button>
             <div id="pp-msg" style="margin-top:12px"></div>
           </div>
         </div>
+
+        <!-- ══ AFILIADOS / PARCEIROS ══ -->
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header collapsible" id="col-hdr-pp-parceiros" onclick="colToggle('pp-parceiros')">
+            <h3>🏅 Afiliados PayPix <span id="col-arrow-pp-parceiros" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
+              <button onclick="ppCarregarAfiliados()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+              <button onclick="ppMostrarFormAfiliado()" style="padding:6px 14px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer;font-weight:600">+ Novo Afiliado</button>
+            </div>
+          </div>
+          <div class="collapse-body" id="col-body-pp-parceiros">
+          <div style="padding:20px">
+
+            <!-- Explicação -->
+            <div style="background:#0a1a0a;border:1px solid #22c55e22;border-radius:10px;padding:14px;margin-bottom:16px">
+              <div style="font-size:13px;font-weight:700;color:#4ade80;margin-bottom:6px">💡 Como funciona o sistema de afiliados:</div>
+              <div style="font-size:12px;color:#888;line-height:1.7">
+                1. Crie um afiliado com a chave PIX dele e a % de comissão<br>
+                2. O sistema gera um link único: <code style="color:#4ade80">paynexbet.com/paypix?ref=CODIGO</code><br>
+                3. O cliente acessa o link, gera o Pix e paga<br>
+                4. Após confirmação, o sistema envia automaticamente a % para o PIX do afiliado ✅
+              </div>
+            </div>
+
+            <!-- Formulário novo afiliado -->
+            <div id="pp-form-afiliado" style="display:none;background:#0a1a0a;border:1px solid #22c55e44;border-radius:12px;padding:20px;margin-bottom:20px">
+              <div style="font-size:14px;font-weight:700;color:#4ade80;margin-bottom:16px">➕ Novo Afiliado PayPix</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;text-transform:uppercase">Nome</label>
+                  <input type="text" id="pp-af-nome" placeholder="Nome do afiliado" style="width:100%;box-sizing:border-box;background:#0a0a14;border:1px solid #22c55e33;border-radius:8px;padding:10px;color:#fff;font-size:13px">
+                </div>
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;text-transform:uppercase">Código (URL)</label>
+                  <input type="text" id="pp-af-codigo" placeholder="ex: joao123" style="width:100%;box-sizing:border-box;background:#0a0a14;border:1px solid #22c55e33;border-radius:8px;padding:10px;color:#22c55e;font-size:13px;font-family:monospace" oninput="this.value=this.value.replace(/[^a-z0-9_-]/gi,'').toLowerCase()">
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;text-transform:uppercase">Tipo Chave PIX</label>
+                  <select id="pp-af-tipo-pix" style="width:100%;background:#0a0a14;border:1px solid #22c55e33;border-radius:8px;padding:10px;color:#fff;font-size:13px;cursor:pointer">
+                    <option value="cpf">CPF</option>
+                    <option value="cnpj">CNPJ</option>
+                    <option value="email">E-mail</option>
+                    <option value="telefone">Telefone</option>
+                    <option value="aleatoria">Chave Aleatória</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;text-transform:uppercase">Chave PIX <span style="color:#f44">*</span></label>
+                  <input type="text" id="pp-af-chave-pix" placeholder="Chave PIX do afiliado" style="width:100%;box-sizing:border-box;background:#0a0a14;border:1px solid #22c55e44;border-radius:8px;padding:10px;color:#4ade80;font-size:13px;font-family:monospace">
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:16px">
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;text-transform:uppercase">% de Comissão individual</label>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <input type="number" id="pp-af-comissao" min="10" max="90" value="60" step="1" oninput="ppPreviewComissaoAfiliado()" style="flex:1;background:#0a0a14;border:1px solid #22c55e44;border-radius:8px;padding:10px;color:#22c55e;font-size:16px;font-weight:700;font-family:monospace">
+                    <span style="font-size:18px;font-weight:700;color:#22c55e">%</span>
+                  </div>
+                  <div style="font-size:11px;color:#555;margin-top:4px">Deixe 0 para usar o % global</div>
+                </div>
+                <div style="background:#0a1a0a;border:1px solid #22c55e22;border-radius:8px;padding:12px;text-align:center">
+                  <div style="font-size:11px;color:#666;margin-bottom:4px">Preview divisão</div>
+                  <div id="pp-af-preview" style="font-size:13px;font-weight:700;color:#4ade80">60% → afiliado</div>
+                  <div id="pp-af-preview2" style="font-size:11px;color:#888">40% → plataforma</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <button onclick="ppCriarAfiliado()" style="flex:1;min-width:140px;padding:12px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✅ Criar Afiliado</button>
+                <button onclick="document.getElementById('pp-form-afiliado').style.display='none'" style="padding:12px 18px;background:#1a1a2a;border:1px solid #333;border-radius:8px;color:#888;font-size:13px;cursor:pointer">Cancelar</button>
+              </div>
+              <div id="pp-form-msg" style="margin-top:10px;font-size:13px;text-align:center;min-height:18px"></div>
+            </div>
+
+            <!-- Link do novo afiliado criado -->
+            <div id="pp-link-novo" style="display:none;background:#0a2010;border:2px solid #22c55e;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">
+              <div style="font-size:13px;color:#4ade80;font-weight:700;margin-bottom:8px">✅ Afiliado criado! Link para compartilhar:</div>
+              <code id="pp-link-novo-url" style="color:#4ade80;font-size:13px;word-break:break-all;display:block;margin-bottom:8px"></code>
+              <button onclick="ppCopiarLinkNovo()" style="background:#22c55e;border:none;border-radius:8px;padding:8px 18px;color:#000;font-size:13px;font-weight:700;cursor:pointer">📋 Copiar Link</button>
+            </div>
+
+            <!-- Tabela de afiliados -->
+            <div style="overflow-x:auto">
+              <table class="data-table">
+                <thead><tr>
+                  <th>Código</th><th>Nome</th><th>Chave PIX</th><th>Tipo</th><th>% Comissão</th><th>Status</th><th>Link</th><th>Ações</th>
+                </tr></thead>
+                <tbody id="pp-afiliados-tbody">
+                  <tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Clique em Atualizar para carregar</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          </div>
+        </div><!-- /col-pp-parceiros -->
 
         <!-- Transações PayPix recentes -->
         <div class="table-card">
@@ -1412,7 +1606,7 @@ function toggleLoginSenha() {
           <div style="overflow-x:auto">
             <table class="data-table">
               <thead><tr>
-                <th>ID</th><th>Valor</th><th>Parceiro Recebe</th><th>Chave Pix</th><th>Status</th><th>Data</th>
+                <th>ID</th><th>Valor</th><th>Afiliado Recebe</th><th>Chave Pix</th><th>Status</th><th>Data</th>
               </tr></thead>
               <tbody id="paypix-tbody">
                 <tr><td colspan="6" style="text-align:center;color:#666;padding:20px">Carregando...</td></tr>
@@ -1431,7 +1625,7 @@ function toggleLoginSenha() {
             </div>
           </div>
           <div style="padding:14px 20px;font-size:12px;color:#888;background:#ffffff05;border-bottom:1px solid #ffffff10">
-            ⏳ Splits que falharam nas tentativas rápidas são enfileirados aqui. O sistema tenta automaticamente a cada <strong style="color:#FFD700">5 minutos</strong> até finalizar o Pix.
+            ⏳ Splits que falharam nas tentativas rápidas são enfileirados. O sistema tenta automaticamente a cada <strong style="color:#FFD700">5 minutos</strong>.
           </div>
           <div style="overflow-x:auto">
             <table class="data-table">
@@ -3929,7 +4123,7 @@ function showTab(tab) {
   if (tab === 'depositos' && allDepositos.length === 0) loadDepositos();
   if (tab === 'saques' && allSaques.length === 0) loadSaques();
   if (tab === 'sorteio') carregarSorteioAdmin();
-  if (tab === 'paypix') carregarPaypixAdmin();
+  if (tab === 'paypix') { carregarPaypixAdmin(); ppCarregarCredenciais(); ppCarregarAfiliados(); }
   if (tab === 'sistema') loadHealth();
 }
 
@@ -5191,7 +5385,343 @@ carregarPaypixAdmin = async function() {
   await _origCarregarPaypixAdmin();
   const ativo = (_ppCfg && _ppCfg.paypix_ativo !== false);
   _atualizarBarraManutencao(ativo);
+  // Carregar status do gateway
+  ppAtualizarStatusGateway();
 };
+
+// ═══════════════════════════════════════════════
+// ══ PAYPIX VORTEX — Credenciais & Afiliados ══
+// ═══════════════════════════════════════════════
+
+// Atualizar texto "Afiliado X%" nas funções de slider
+const _origAtualizarSlider = atualizarSliderPaypix;
+atualizarSliderPaypix = function(val) {
+  _origAtualizarSlider(val);
+  // Substituir "Parceiro" por "Afiliado" nos textos da barra
+  const parcTxt = document.getElementById('pp-bar-parc-txt');
+  if (parcTxt && parcTxt.textContent.startsWith('Parceiro')) {
+    parcTxt.textContent = 'Afiliado ' + val + '%';
+  }
+};
+
+// Selecionar gateway e mostrar campos correspondentes
+function ppSelecionarGateway(gw) {
+  ['mercadopago', 'asaas', 'propria'].forEach(g => {
+    const fields = document.getElementById('pp-fields-' + g);
+    const label  = document.getElementById('pp-gw-' + (g === 'propria' ? 'propria' : g === 'asaas' ? 'asaas' : 'mp') + '-label');
+    if (fields) fields.style.display = (g === gw) ? 'block' : 'none';
+    if (label) label.style.borderColor = (g === gw) ? '#22c55e88' : '#22222244';
+  });
+  // Salvar seleção
+  sessionStorage.setItem('pp_gateway_selecionado', gw);
+}
+
+// Toggle visibilidade de campo senha
+function ppToggleField(fieldId, badgeId) {
+  const f = document.getElementById(fieldId);
+  if (!f) return;
+  f.type = f.type === 'password' ? 'text' : 'password';
+  if (badgeId) {
+    const b = document.getElementById(badgeId);
+    if (b) b.style.display = f.type === 'password' ? 'block' : 'none';
+  }
+}
+
+// Copiar webhook URL
+function ppCopiarWebhook() {
+  const el = document.getElementById('pp-mp-webhook-url');
+  if (el) {
+    navigator.clipboard.writeText(el.textContent.trim())
+      .then(() => showToast('📋 URL copiada!'))
+      .catch(() => {
+        const tmp = document.createElement('textarea');
+        tmp.value = el.textContent.trim();
+        document.body.appendChild(tmp);
+        tmp.select(); document.execCommand('copy');
+        document.body.removeChild(tmp);
+        showToast('📋 URL copiada!');
+      });
+  }
+}
+
+// Copiar link do afiliado criado
+function ppCopiarLinkNovo() {
+  const el = document.getElementById('pp-link-novo-url');
+  if (el) {
+    navigator.clipboard.writeText(el.textContent.trim())
+      .then(() => showToast('📋 Link copiado!'))
+      .catch(() => showToast('Copie manualmente: ' + el.textContent.trim()));
+  }
+}
+
+// Preview de comissão ao criar afiliado
+function ppPreviewComissaoAfiliado() {
+  const pct = parseInt(document.getElementById('pp-af-comissao').value) || 60;
+  const prev = document.getElementById('pp-af-preview');
+  const prev2 = document.getElementById('pp-af-preview2');
+  if (prev) prev.textContent = pct + '% → afiliado';
+  if (prev2) prev2.textContent = (100 - pct) + '% → plataforma';
+}
+
+// Mostrar formulário de novo afiliado
+function ppMostrarFormAfiliado() {
+  const form = document.getElementById('pp-form-afiliado');
+  if (form) {
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    document.getElementById('pp-link-novo').style.display = 'none';
+  }
+}
+
+// Carregar credenciais salvas do PayPix
+async function ppCarregarCredenciais() {
+  try {
+    const r = await fetch(`${BASE}/api/paypix/vortex/config?secret=${encodeURIComponent(SECRET())}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d.success) return;
+    
+    // Preencher gateway selecionado
+    const gw = d.gateway || 'mercadopago';
+    const radio = document.getElementById('pp-gw-' + (gw === 'mercadopago' ? 'mp' : gw === 'asaas' ? 'asaas' : 'propria'));
+    if (radio) { radio.checked = true; ppSelecionarGateway(gw); }
+    
+    // Preencher campos se configurados
+    if (d.mp_token_configurado) {
+      const badge = document.getElementById('pp-mp-token-badge');
+      if (badge) badge.style.display = 'block';
+    }
+    
+    // Preencher webhook URL
+    const webhookEl = document.getElementById('pp-mp-webhook-url');
+    if (webhookEl) webhookEl.textContent = `${BASE}/webhook/confirmar`;
+    
+    // Atualizar badge de credenciais
+    const badge = document.getElementById('pp-cred-badge');
+    if (badge) {
+      if (d.configurado) {
+        badge.textContent = '✅ Configurado';
+        badge.style.background = '#22c55e22';
+        badge.style.color = '#4ade80';
+        badge.style.borderColor = '#22c55e44';
+      } else {
+        badge.textContent = '⚠️ Sem credenciais';
+        badge.style.background = '#f59e0b22';
+        badge.style.color = '#f59e0b';
+      }
+    }
+  } catch(e) { 
+    // Fallback — preencher webhook
+    const webhookEl = document.getElementById('pp-mp-webhook-url');
+    if (webhookEl) webhookEl.textContent = `${BASE}/webhook/confirmar`;
+  }
+}
+
+// Salvar credenciais do gateway
+async function ppSalvarCredenciais() {
+  const btn = document.getElementById('pp-btn-salvar-cred');
+  const msgEl = document.getElementById('pp-cred-msg');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+  
+  // Descobrir gateway selecionado
+  const gwEl = document.querySelector('input[name="pp-gateway"]:checked');
+  const gateway = gwEl ? gwEl.value : 'mercadopago';
+  
+  const body = { gateway };
+  
+  if (gateway === 'mercadopago') {
+    const token = document.getElementById('pp-mp-token');
+    body.mp_token = token ? token.value.trim() : '';
+  } else if (gateway === 'asaas') {
+    const key = document.getElementById('pp-asaas-key');
+    body.asaas_key = key ? key.value.trim() : '';
+  } else if (gateway === 'propria') {
+    const tipo  = document.getElementById('pp-propria-tipo');
+    const chave = document.getElementById('pp-propria-chave');
+    const nome  = document.getElementById('pp-propria-nome');
+    body.propria_tipo  = tipo  ? tipo.value  : 'aleatoria';
+    body.propria_chave = chave ? chave.value.trim() : '';
+    body.propria_nome  = nome  ? nome.value.trim() : '';
+    if (!body.propria_chave) {
+      if (msgEl) msgEl.innerHTML = '<div class="msg error">❌ Informe a chave PIX própria!</div>';
+      if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Credenciais'; }
+      return;
+    }
+  }
+  
+  try {
+    const r = await fetch(`${BASE}/api/paypix/vortex/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (d.success) {
+      if (msgEl) msgEl.innerHTML = '<div class="msg success">✅ Credenciais salvas com sucesso!</div>';
+      await ppCarregarCredenciais();
+      await ppTestarGateway();
+    } else {
+      if (msgEl) msgEl.innerHTML = `<div class="msg error">❌ ${d.error || 'Erro ao salvar'}</div>`;
+    }
+  } catch(e) {
+    if (msgEl) msgEl.innerHTML = `<div class="msg error">❌ Erro: ${e.message}</div>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Credenciais'; }
+    setTimeout(() => { if (msgEl) msgEl.innerHTML = ''; }, 5000);
+  }
+}
+
+// Testar gateway PIX
+async function ppTestarGateway() {
+  const badge = document.getElementById('pp-cred-badge');
+  if (badge) { badge.textContent = '⏳ Testando...'; badge.style.color = '#aaa'; }
+  try {
+    const r = await fetch(`${BASE}/api/paypix/vortex/testar?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (badge) {
+      if (d.success) {
+        badge.textContent = '✅ Conectado';
+        badge.style.background = '#22c55e22';
+        badge.style.color = '#4ade80';
+        badge.style.borderColor = '#22c55e44';
+      } else {
+        badge.textContent = '❌ Falhou';
+        badge.style.background = '#ef444422';
+        badge.style.color = '#f87171';
+      }
+    }
+    ppAtualizarStatusGateway(d);
+  } catch(e) {
+    if (badge) { badge.textContent = '❌ Erro'; badge.style.color = '#f87171'; }
+  }
+}
+
+// Atualizar cards de status do gateway
+function ppAtualizarStatusGateway(d) {
+  const gwStatus = document.getElementById('pp-gateway-status');
+  const gwSub    = document.getElementById('pp-gateway-sub');
+  const badge    = document.getElementById('pp-badge-global');
+  if (!d) return;
+  if (d.success && gwStatus) {
+    gwStatus.textContent = '✅ Ativo';
+    gwStatus.style.color = '#22c55e';
+    if (gwSub) gwSub.textContent = d.gateway || 'Mercado Pago';
+    if (badge) {
+      badge.textContent = '💳 Gateway OK';
+      badge.style.background = '#22c55e22';
+      badge.style.color = '#4ade80';
+      badge.style.borderColor = '#22c55e44';
+    }
+  } else if (gwStatus) {
+    gwStatus.textContent = '⚠️ Não configurado';
+    gwStatus.style.color = '#f59e0b';
+    if (badge) {
+      badge.textContent = '⚠️ Configure';
+      badge.style.color = '#f59e0b';
+    }
+  }
+}
+
+// Carregar afiliados PayPix
+async function ppCarregarAfiliados() {
+  const tbody = document.getElementById('pp-afiliados-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:16px"><span class="loader"></span> Carregando...</td></tr>';
+  try {
+    const r = await fetch(`${BASE}/api/paypix/afiliados?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success || !d.afiliados || !d.afiliados.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">📭 Nenhum afiliado cadastrado. Clique em "+ Novo Afiliado" para começar.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.afiliados.map(af => {
+      const link = `${BASE}/paypix?ref=${af.codigo}`;
+      const pctDisplay = af.comissao_pct > 0 ? `<strong style="color:#22c55e">${Math.round(af.comissao_pct * 100)}%</strong>` : `<span style="color:#888">Global</span>`;
+      const ativoEl = af.ativo
+        ? '<span style="background:#22c55e22;color:#4ade80;border-radius:20px;padding:2px 10px;font-size:11px">✅ Ativo</span>'
+        : '<span style="background:#ef444422;color:#f87171;border-radius:20px;padding:2px 10px;font-size:11px">❌ Inativo</span>';
+      const chaveShort = (af.chave_pix || '').length > 20 ? af.chave_pix.substring(0,18) + '…' : (af.chave_pix || '—');
+      return `<tr>
+        <td class="mono" style="color:#22c55e;font-weight:700">${af.codigo}</td>
+        <td style="font-weight:600">${af.nome || '—'}</td>
+        <td class="mono" style="font-size:11px;color:#aaa" title="${af.chave_pix}">${chaveShort}</td>
+        <td style="font-size:11px;color:#888">${af.tipo_chave || '—'}</td>
+        <td style="text-align:center">${pctDisplay}</td>
+        <td>${ativoEl}</td>
+        <td><code style="font-size:10px;color:#60a5fa;word-break:break-all">/paypix?ref=${af.codigo}</code></td>
+        <td>
+          <button onclick="ppCopiarLink('${link}')" style="padding:4px 10px;background:#0a1a0a;border:1px solid #22c55e33;border-radius:6px;color:#4ade80;font-size:11px;cursor:pointer">📋</button>
+          <button onclick="ppDesativarAfiliado('${af.codigo}',${!af.ativo})" style="padding:4px 10px;background:#1a1a2a;border:1px solid #333;border-radius:6px;color:#888;font-size:11px;cursor:pointer">${af.ativo ? '🔴' : '✅'}</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#f87171;padding:16px">❌ Erro: ${e.message}</td></tr>`;
+  }
+}
+
+// Copiar link do afiliado
+function ppCopiarLink(link) {
+  navigator.clipboard.writeText(link)
+    .then(() => showToast('📋 Link copiado!'))
+    .catch(() => showToast('Link: ' + link));
+}
+
+// Desativar/Ativar afiliado
+async function ppDesativarAfiliado(codigo, novoAtivo) {
+  try {
+    const r = await fetch(`${BASE}/api/paypix/afiliados/${codigo}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ ativo: novoAtivo })
+    });
+    const d = await r.json();
+    if (d.success) { await ppCarregarAfiliados(); }
+    else { showToast('❌ ' + (d.error || 'Erro')); }
+  } catch(e) { showToast('❌ ' + e.message); }
+}
+
+// Criar novo afiliado
+async function ppCriarAfiliado() {
+  const msgEl = document.getElementById('pp-form-msg');
+  const nome     = document.getElementById('pp-af-nome').value.trim();
+  const codigo   = document.getElementById('pp-af-codigo').value.trim();
+  const tipoPix  = document.getElementById('pp-af-tipo-pix').value;
+  const chavePix = document.getElementById('pp-af-chave-pix').value.trim();
+  const comissao = parseInt(document.getElementById('pp-af-comissao').value) || 60;
+  
+  if (!codigo) { if (msgEl) msgEl.innerHTML = '<div class="msg error">❌ Código é obrigatório!</div>'; return; }
+  if (!chavePix) { if (msgEl) msgEl.innerHTML = '<div class="msg error">❌ Chave PIX é obrigatória!</div>'; return; }
+  
+  try {
+    if (msgEl) msgEl.innerHTML = '<div style="color:#aaa">⏳ Criando afiliado...</div>';
+    const r = await fetch(`${BASE}/api/paypix/afiliados`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ nome, codigo, tipo_chave: tipoPix, chave_pix: chavePix, comissao_pct: comissao / 100 })
+    });
+    const d = await r.json();
+    if (d.success) {
+      if (msgEl) msgEl.innerHTML = '<div class="msg success">✅ Afiliado criado!</div>';
+      // Mostrar link
+      const linkEl = document.getElementById('pp-link-novo-url');
+      const linkBox = document.getElementById('pp-link-novo');
+      if (linkEl) linkEl.textContent = `${BASE}/paypix?ref=${codigo}`;
+      if (linkBox) linkBox.style.display = 'block';
+      // Limpar formulário
+      document.getElementById('pp-af-nome').value = '';
+      document.getElementById('pp-af-codigo').value = '';
+      document.getElementById('pp-af-chave-pix').value = '';
+      document.getElementById('pp-af-comissao').value = '60';
+      document.getElementById('pp-form-afiliado').style.display = 'none';
+      // Recarregar tabela
+      await ppCarregarAfiliados();
+    } else {
+      if (msgEl) msgEl.innerHTML = `<div class="msg error">❌ ${d.error || 'Falha ao criar'}</div>`;
+    }
+  } catch(e) {
+    if (msgEl) msgEl.innerHTML = `<div class="msg error">❌ Erro: ${e.message}</div>`;
+  }
+}
 
 // ═══════════════════════════════════════════════
 //  PAINEL TELEGRAM - RECONEXÃO AUTOMÁTICA
