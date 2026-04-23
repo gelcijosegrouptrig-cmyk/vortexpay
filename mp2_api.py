@@ -495,6 +495,7 @@ def mp2_listar_depositos_admin(limit=500) -> dict:
                LIMIT %s""",
             (limit,)
         )
+        from decimal import Decimal
         rows = cur.fetchall()
         depositos = []
         for r in rows:
@@ -502,24 +503,26 @@ def mp2_listar_depositos_admin(limit=500) -> dict:
             for k, v in row.items():
                 if hasattr(v, 'isoformat'):
                     row[k] = v.isoformat()
+                elif isinstance(v, Decimal):
+                    row[k] = float(v)
                 elif v is None:
                     row[k] = ''
             depositos.append(row)
         cur.close(); conn.close()
 
-        pendentes  = [d for d in depositos if d['status'] == 'pendente']
+        pendentes   = [d for d in depositos if d['status'] == 'pendente']
         confirmados = [d for d in depositos if d['status'] == 'confirmado']
-        cancelados = [d for d in depositos if d['status'] == 'cancelado']
+        cancelados  = [d for d in depositos if d['status'] == 'cancelado']
 
         return {
             'depositos': depositos,
             'resumo': {
-                'total':           len(depositos),
-                'pendentes':       len(pendentes),
-                'confirmados':     len(confirmados),
-                'cancelados':      len(cancelados),
-                'valor_pendente':  float(sum(float(d['valor']) for d in pendentes if d['valor'])),
-                'valor_recebido':  float(sum(float(d['valor']) for d in confirmados if d['valor'])),
+                'total':          len(depositos),
+                'pendentes':      len(pendentes),
+                'confirmados':    len(confirmados),
+                'cancelados':     len(cancelados),
+                'valor_pendente': round(sum(d['valor'] for d in pendentes  if d['valor'] != ''), 2),
+                'valor_recebido': round(sum(d['valor'] for d in confirmados if d['valor'] != ''), 2),
             }
         }
     except Exception as e:

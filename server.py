@@ -4842,6 +4842,7 @@ async def route_saques_admin(request):
             ORDER BY s.criado_em DESC
             LIMIT 500
         """)
+        from decimal import Decimal as _Dec
         rows = cur.fetchall()
         saques = []
         for r in rows:
@@ -4849,6 +4850,8 @@ async def route_saques_admin(request):
             for k, v in row.items():
                 if hasattr(v, 'isoformat'):
                     row[k] = v.isoformat()
+                elif isinstance(v, _Dec):
+                    row[k] = float(v)
                 elif v is None:
                     row[k] = ''
             saques.append(row)
@@ -4859,12 +4862,12 @@ async def route_saques_admin(request):
         return web.json_response({
             'saques': saques,
             'resumo': {
-                'total':         len(saques),
-                'pendentes':     len(pendentes),
-                'aprovados':     len(aprovados),
-                'rejeitados':    len(rejeitados),
-                'valor_pendente': float(sum(float(s['valor']) for s in pendentes)),
-                'valor_pago':     float(sum(float(s['valor']) for s in aprovados)),
+                'total':          len(saques),
+                'pendentes':      len(pendentes),
+                'aprovados':      len(aprovados),
+                'rejeitados':     len(rejeitados),
+                'valor_pendente': round(sum(s['valor'] for s in pendentes if isinstance(s['valor'], float)), 2),
+                'valor_pago':     round(sum(s['valor'] for s in aprovados  if isinstance(s['valor'], float)), 2),
             }
         })
     except Exception as e:
@@ -4955,15 +4958,19 @@ async def route_stats(request):
             WHERE t.tipo = 'deposito'
             ORDER BY t.criado_em DESC LIMIT 10
         """)
-        ult_dep = []
-        for r in cur.fetchall():
+        from decimal import Decimal as _Dec
+        def _clean_row(r):
             row = dict(r)
             for k, v in row.items():
                 if hasattr(v, 'isoformat'):
                     row[k] = v.isoformat()
+                elif isinstance(v, _Dec):
+                    row[k] = float(v)
                 elif v is None:
                     row[k] = ''
-            ult_dep.append(row)
+            return row
+
+        ult_dep = [_clean_row(r) for r in cur.fetchall()]
 
         cur.execute("""
             SELECT s.id, s.telegram_id, s.valor, s.chave_pix, s.tipo_chave,
@@ -4972,15 +4979,7 @@ async def route_stats(request):
             LEFT JOIN mp2_usuarios u ON u.telegram_id = s.telegram_id
             ORDER BY s.criado_em DESC LIMIT 10
         """)
-        ult_saq = []
-        for r in cur.fetchall():
-            row = dict(r)
-            for k, v in row.items():
-                if hasattr(v, 'isoformat'):
-                    row[k] = v.isoformat()
-                elif v is None:
-                    row[k] = ''
-            ult_saq.append(row)
+        ult_saq = [_clean_row(r) for r in cur.fetchall()]
 
         cur.close(); conn.close()
 
