@@ -4440,7 +4440,16 @@ async def route_saque_page(request):
     return web.Response(text=load_saque_html(), content_type='text/html', charset='utf-8')
 
 async def route_admin_page(request):
-    return web.Response(text=load_admin_html(), content_type='text/html', charset='utf-8')
+    return web.Response(
+        text=load_admin_html(),
+        content_type='text/html',
+        charset='utf-8',
+        headers={
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+    )
 
 async def route_saldo_bot(request):
     """Consulta saldo do bot Telegram - retorna cache/banco imediato, atualiza Telegram em background."""
