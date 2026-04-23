@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250427n</title>
+<title>PaynexBet - Painel Admin v20250427o</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427n';
+  const VER = '20250427o';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -7320,12 +7320,12 @@ async function ppCarregarTotaisParcerios() {
     });
     const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
     const el = id => document.getElementById(id);
-    if (el('b2-total-gerado'))  el('b2-total-gerado').textContent  = fmt(totalGerado);
-    if (el('b2-total-pago'))    el('b2-total-pago').textContent    = fmt(totalPago);
+    if (el('pp-total-gerado'))  el('pp-total-gerado').textContent  = fmt(totalGerado);
+    if (el('pp-total-pago'))    el('pp-total-pago').textContent    = fmt(totalPago);
     const pendente = totalComissao - totalPago;
-    if (el('b2-comissao-pend')) el('b2-comissao-pend').textContent = `pendente: ${fmt(pendente > 0 ? pendente : 0)}`;
+    if (el('pp-comissao-pend')) el('pp-comissao-pend').textContent = `pendente: ${fmt(pendente > 0 ? pendente : 0)}`;
   } catch(e) {
-    console.warn('[bot2Totais] Erro:', e);
+    console.warn('[ppTotais] Erro:', e);
   }
 }
 
@@ -8228,12 +8228,12 @@ async function pcCarregarTotaisParcerios() {
     });
     const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
     const el = id => document.getElementById(id);
-    if (el('b2-total-gerado'))  el('b2-total-gerado').textContent  = fmt(totalGerado);
-    if (el('b2-total-pago'))    el('b2-total-pago').textContent    = fmt(totalPago);
+    if (el('pc-total-gerado'))  el('pc-total-gerado').textContent  = fmt(totalGerado);
+    if (el('pc-total-pago'))    el('pc-total-pago').textContent    = fmt(totalPago);
     const pendente = totalComissao - totalPago;
-    if (el('b2-comissao-pend')) el('b2-comissao-pend').textContent = `pendente: ${fmt(pendente > 0 ? pendente : 0)}`;
+    if (el('pc-comissao-pend')) el('pc-comissao-pend').textContent = `pendente: ${fmt(pendente > 0 ? pendente : 0)}`;
   } catch(e) {
-    console.warn('[bot2Totais] Erro:', e);
+    console.warn('[pcTotais] Erro:', e);
   }
 }
 
@@ -9833,7 +9833,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427n ===');
+  out.push('=== VERSÃO: 20250427o ===');
   out.push('');
 
   // Estado dos elementos críticos
