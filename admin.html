@@ -654,13 +654,12 @@
 </div>
 
 <script>
-// Anti-cache: adiciona parâmetro de versão sem redirect invasivo
+// Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250423c';
-  // Só adiciona na URL se necessário, sem redirect (preserva sessionStorage)
-  if (!location.search.includes('v=20250423c')) {
-    const url = location.pathname + '?v=20250423c' + (location.hash || '');
-    history.replaceState(null, '', url);
+  const VER = '20250425';
+  if (sessionStorage.getItem('adminVer') !== VER) {
+    sessionStorage.setItem('adminVer', VER);
+    location.replace(location.pathname + '?v=' + VER + '&t=' + Date.now());
   }
 })();
 
@@ -2045,7 +2044,7 @@ function toggleLoginSenha() {
         <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid #f59e0b44;border-radius:12px;padding:12px 16px;margin-bottom:16px">
           <div style="font-size:28px">🤖</div>
           <div>
-            <div style="font-weight:800;font-size:16px;color:#f59e0b">Bot Mercado Pago — @paypix_nexbot</div>
+            <div style="font-weight:800;font-size:16px;color:#f59e0b">🤖 Bot Mercado Pago — @paypix_nexbot</div>
             <div style="font-size:12px;color:#666;margin-top:2px">Bot separado do PayPix Vortex · Usa Mercado Pago para processar PIX · <span style="color:#f59e0b">paynexbet.com/pix</span></div>
           </div>
           <div style="margin-left:auto">
