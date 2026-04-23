@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250427v</title>
+<title>PaynexBet - Painel Admin v20250427w</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427v';
+  const VER = '20250427w';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -7770,22 +7770,7 @@ async function ppDesativarParceiro(codigo, nome) {
 // ═══════════════════════════════════════════════════════════
 // ACORDEÃO — collapse/expand dos cards do bot2
 // ═══════════════════════════════════════════════════════════
-function colToggle(id) {
-  const body   = document.getElementById('col-body-' + id);
-  const header = document.getElementById('col-hdr-' + id);
-  const arrow  = document.getElementById('col-arrow-' + id);
-  if (!body) return;
-  const isOpen = !body.classList.contains('collapsed');
-  if (isOpen) {
-    body.classList.add('collapsed');
-    if (arrow)  arrow.classList.add('rotated');
-    if (header) header.classList.add('is-collapsed');
-  } else {
-    body.classList.remove('collapsed');
-    if (arrow)  arrow.classList.remove('rotated');
-    if (header) header.classList.remove('is-collapsed');
-  }
-}
+// colToggle — definição final está abaixo (evita duplicação)
 
 // ── Funções auxiliares PayPix (stubs para compatibilidade) ──
 async function ppCarregarChaves() {
@@ -7847,34 +7832,7 @@ async function carregarPaypixAdmin() {
 // ════════════════════════════════════════════════════════════════
 // BOT2 — FUNÇÕES UTILITÁRIAS (toggleField, copiar, salvar token, webhook)
 // ════════════════════════════════════════════════════════════════
-
-function b2ToggleField(fieldId) {
-  const el = document.getElementById(fieldId);
-  if (!el) return;
-  el.type = el.type === 'password' ? 'text' : 'password';
-}
-
-// Compatibilidade: toggleMp2Field usada por campos do PayPix e Bot2
-function toggleMp2Field(fieldId, badgeId) {
-  b2ToggleField(fieldId);
-}
-
-function copiarMp2Webhook() {
-  const el = document.getElementById('b2-webhook-url') || document.getElementById('pp-webhook-url');
-  const txt = el ? el.textContent.trim() : '';
-  if (!txt || txt === 'Carregando...') { b2Msg('⚠️ URL ainda carregando...', '#f59e0b'); return; }
-  navigator.clipboard.writeText(txt).then(() => b2Msg('📋 URL copiada!', '#4caf50')).catch(() => {
-    const ta = document.createElement('textarea');
-    ta.value = txt; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
-    b2Msg('📋 URL copiada!', '#4caf50');
-  });
-}
-
-function b2Msg(txt, cor) {
-  const el = document.getElementById('b2-msg');
-  if (el) { el.innerHTML = `<span style="color:${cor||'#aaa'}">${txt}</span>`; }
-}
+// (funções definidas abaixo na seção de PayPix-Cob para evitar duplicação)
 
 // Salvar token do Bot Telegram via /api/bot2/token
 async function b2SalvarTokenBot() {
@@ -8044,7 +8002,7 @@ function atualizarInputPaypixCob(val) {
   atualizarSliderPaypixCob(val);
 }
 
-async function _legacyCarregarPaypixAdmin() {
+async function _legacyCarregarPaypixCobAdmin() {
   try {
     const r = await fetch(`${BASE}/api/pc/config`);
     const d = await r.json();
@@ -8075,7 +8033,7 @@ async function _legacyCarregarPaypixAdmin() {
     // Carregar transações PayPix
     await carregarTxPaypixCob();
     await carregarFilaPaypixCob();
-  } catch(e) { console.error('carregarPaypixAdmin:', e); }
+  } catch(e) { console.error('_legacyCarregarPaypixCobAdmin:', e); }
 }
 
 async function carregarTxPaypixCob() {
@@ -8187,7 +8145,7 @@ async function carregarFilaPaypixCob() {
 }
 
 // ─── ATIVAR/DESATIVAR PAYPIX RÁPIDO (botões de manutenção) ───
-async function _togglePaypixAtivo(ativo) {
+async function _togglePaypixCobAtivo(ativo) {
   try {
     const cfg = _pcCfg || {};
     const pct  = Math.round((cfg.paypix_pct || 0.6) * 100);
@@ -8201,20 +8159,20 @@ async function _togglePaypixAtivo(ativo) {
     if (d.success) {
       await carregarPaypixCobAdmin();
       // Atualizar barras de status
-      _atualizarBarraManutencao(ativo);
+      _atualizarBarraManutencaoCob(ativo);
     }
   } catch(e) { alert('Erro: ' + e.message); }
 }
 
-function _atualizarBarraManutencao(ativo) {
+function _atualizarBarraManutencaoCob(ativo) {
   const barManut = document.getElementById('pc-manutencao-bar');
   const barAtivo = document.getElementById('pc-ativo-bar');
   if (barManut) barManut.style.display = ativo ? 'none' : 'flex';
   if (barAtivo) barAtivo.style.display = ativo ? 'flex' : 'none';
 }
 
-async function ativarPaypixRapido()   { await _togglePaypixAtivo(true);  }
-async function desativarPaypixRapido(){ await _togglePaypixAtivo(false); }
+async function ativarPaypixCobRapido()   { await _togglePaypixCobAtivo(true);  }
+async function desativarPaypixCobRapido(){ await _togglePaypixCobAtivo(false); }
 
 // ══ PAYPIX — Mercado Pago ══
 
@@ -8678,22 +8636,7 @@ async function pcDesativarParceiro(codigo, nome) {
 // ═══════════════════════════════════════════════════════════
 // ACORDEÃO — collapse/expand dos cards do bot2
 // ═══════════════════════════════════════════════════════════
-function colToggle(id) {
-  const body   = document.getElementById('col-body-' + id);
-  const header = document.getElementById('col-hdr-' + id);
-  const arrow  = document.getElementById('col-arrow-' + id);
-  if (!body) return;
-  const isOpen = !body.classList.contains('collapsed');
-  if (isOpen) {
-    body.classList.add('collapsed');
-    if (arrow)  arrow.classList.add('rotated');
-    if (header) header.classList.add('is-collapsed');
-  } else {
-    body.classList.remove('collapsed');
-    if (arrow)  arrow.classList.remove('rotated');
-    if (header) header.classList.remove('is-collapsed');
-  }
-}
+// colToggle — definição final está abaixo (evita duplicação)
 
 // ── Funções auxiliares PayPix (stubs para compatibilidade) ──
 async function pcCarregarChaves() {
@@ -9420,22 +9363,7 @@ async function b2DesativarParceiro(codigo, nome) {
 // ═══════════════════════════════════════════════════════════
 // ACORDEÃO — collapse/expand dos cards do bot2
 // ═══════════════════════════════════════════════════════════
-function colToggle(id) {
-  const body   = document.getElementById('col-body-' + id);
-  const header = document.getElementById('col-hdr-' + id);
-  const arrow  = document.getElementById('col-arrow-' + id);
-  if (!body) return;
-  const isOpen = !body.classList.contains('collapsed');
-  if (isOpen) {
-    body.classList.add('collapsed');
-    if (arrow)  arrow.classList.add('rotated');
-    if (header) header.classList.add('is-collapsed');
-  } else {
-    body.classList.remove('collapsed');
-    if (arrow)  arrow.classList.remove('rotated');
-    if (header) header.classList.remove('is-collapsed');
-  }
-}
+// colToggle — definição final está abaixo (evita duplicação)
 
 // ── Funções auxiliares PayPix (stubs para compatibilidade) ──
 async function b2CarregarChaves() {
@@ -9925,6 +9853,12 @@ function colInitState() {
     'b2-cfg-pagamento':   false,
     'b2-stats':           false,
     'b2-saques':          false,
+    // ── Bot3 (b3) ────────────────────────
+    'b3-status':          false,
+    'b3-token':           false,
+    'b3-config':          false,
+    'b3-saques':          false,
+    'b3-parceiros':       false,
   };
 
   // Padrão 2 — IDs com prefixo invertido: {prefix}-col-body-{suffix}
@@ -10439,7 +10373,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427v ===');
+  out.push('=== VERSÃO: 20250427w ===');
   out.push('');
 
   // Estado dos elementos críticos
