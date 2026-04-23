@@ -9452,6 +9452,24 @@ async def main():
     app.router.add_patch('/api/pp/parceiros/{codigo}',      route_mp2_parceiros_editar)
     app.router.add_get('/api/pp/comissoes',                 route_mp2_comissoes_listar)
     app.router.add_post('/api/pp/comissoes/pagar',          route_mp2_comissoes_pagar_manual)
+
+    # ── PC (PayPix-Cob) — segundo canal PayPix, mesma infra MP2 ──────────
+    app.router.add_get('/api/pc/status',                    route_mp2_status)
+    app.router.add_get('/api/pc/stats',                     route_mp2_stats)
+    app.router.add_get('/api/pc/config',                    route_mp2_config_get)
+    app.router.add_post('/api/pc/config',                   route_mp2_config_save)
+    app.router.add_get('/api/pc/testar',                    route_mp2_testar)
+    app.router.add_get('/api/pc/parceiros',                 route_mp2_parceiros_listar)
+    app.router.add_post('/api/pc/parceiros',                route_mp2_parceiros_criar)
+    app.router.add_delete('/api/pc/parceiros/{codigo}',     route_mp2_parceiros_deletar)
+    app.router.add_patch('/api/pc/parceiros/{codigo}',      route_mp2_parceiros_editar)
+    app.router.add_get('/api/pc/comissoes',                 route_mp2_comissoes_listar)
+    app.router.add_post('/api/pc/comissoes/pagar',          route_mp2_comissoes_pagar_manual)
+    app.router.add_get('/api/pc/fila',                      route_paypix_fila)
+    app.router.add_get('/api/pc/chaves',                    route_mp2_config_get)
+    app.router.add_post('/api/pc/solicitar-codigo',         route_bot2_solicitar_codigo)
+    app.router.add_post('/api/pc/confirmar-codigo',         route_bot2_confirmar_codigo)
+
     # ── Bot3 / MP3 — Réplica do Bot2 (@paypix_nexbot2) ──────────────────────────────
     app.router.add_post('/webhook/bot3',                    route_bot3_webhook)
     app.router.add_post('/webhook/mp3',                     route_mp3_webhook)

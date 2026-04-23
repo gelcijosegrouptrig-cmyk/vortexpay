@@ -740,9 +740,12 @@ function toggleLoginSenha() {
       </div>
       <div class="nav-item" onclick="showTab('paypix')">
         💸 <span>PayPix</span>
-        
       </div>
-      <div class="nav-section">Bots</div>
+      <div class="nav-item" onclick="showTab('paypixcob')">
+        💳 <span>PayPix-Cob</span>
+      </div>
+      <!-- Bots ocultos (mantidos para uso interno) -->
+      <!-- <div class="nav-section">Bots</div>
       <div class="nav-item" onclick="showTab('bot2')">
         🤖 <span>Bot Mercado Pago</span>
         <span class="badge" id="badge-bot2" style="background:#555">OFF</span>
@@ -750,7 +753,7 @@ function toggleLoginSenha() {
       <div class="nav-item" onclick="showTab('bot3')">
         🤖 <span>Bot MP2</span>
         <span class="badge" id="badge-bot3" style="background:#555">OFF</span>
-      </div>
+      </div> -->
       <div class="nav-section">Desenvolvedores</div>
       <div class="nav-item" onclick="showTab('api')">
         🔌 <span>API & Webhooks</span>
@@ -2150,6 +2153,849 @@ function toggleLoginSenha() {
 
       </div><!-- /tab-paypix -->
 
+
+      <!-- ═══════ PAYPIX-COB ═══════ -->
+      <div id="tab-paypixcob" class="tab-content">
+
+        <!-- Banner de identificação -->
+        <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid #f59e0b44;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+          <div style="font-size:28px">🤖</div>
+          <div>
+            <div style="font-weight:800;font-size:16px;color:#f59e0b">💳 PayPix-Cob — Mercado Pago</div>
+            <div style="font-size:12px;color:#666;margin-top:2px">PayPix-Cob com Mercado Pago · Afiliados com % automática via PIX · <span style="color:#f59e0b">paynexbet.com/paypixcob</span></div>
+          </div>
+          <div style="margin-left:auto">
+            <span style="font-size:11px;background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44;padding:4px 10px;border-radius:20px;font-weight:700">💳 MERCADO PAGO</span>
+          </div>
+        </div>
+
+        <!-- Status do Bot2 — 4 métricas MP -->
+        <div class="metrics-grid" style="margin-bottom:20px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+          <div class="metric-card blue">
+            <div class="metric-icon">🤖</div>
+            <div class="metric-label">Mercado Pago API</div>
+            <div class="metric-value" id="pc-status-text" style="font-size:16px">—</div>
+            <div class="metric-sub" id="pc-sub">verificando...</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-icon">💳</div>
+            <div class="metric-label">Conta MP</div>
+            <div class="metric-value" id="pc-saldo" style="font-size:13px;word-break:break-all">—</div>
+            <div class="metric-sub">
+              <span id="pc-saldo-hora" style="font-size:11px;color:#666">clique 🔄 para atualizar</span>
+            </div>
+          </div>
+          <div class="metric-card orange">
+            <div class="metric-icon">📊</div>
+            <div class="metric-label">Total Gerado</div>
+            <div class="metric-value" id="pc-total-gerado" style="font-size:16px">R$ —</div>
+            <div class="metric-sub">via links de parceiros</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-icon">🏅</div>
+            <div class="metric-label">Comissões Pagas</div>
+            <div class="metric-value" id="pc-total-pago" style="font-size:16px">R$ —</div>
+            <div class="metric-sub" id="pc-comissao-pend">pendentes: R$ —</div>
+          </div>
+        </div>
+
+        <!-- Card principal — Status Mercado Pago -->
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header collapsible" id="col-hdr-pp-status" onclick="colToggle('pp-status')">
+            <h3>💳 @paypix_nexbot — Status <span id="col-arrow-pp-status" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
+              <span id="pc-badge" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#1a2a1a;color:#4caf50">Verificando...</span>
+              <button onclick="pcAtualizarSaldo()" style="padding:6px 14px;background:#1a3a5c;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔄 Saldo</button>
+              <button onclick="pcCheckStatus()" style="padding:6px 14px;background:#222;border:none;border-radius:8px;color:#aaa;font-size:13px;cursor:pointer">↻ Status</button>
+            </div>
+          </div>
+          <div class="collapse-body" id="col-body-pp-status">
+          <div style="padding:20px">
+
+            <!-- Info resumida — só Mercado Pago (sem Telegram) -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+              <div style="background:#0a0a14;border-radius:10px;padding:14px">
+                <div style="color:#666;font-size:11px;margin-bottom:4px">BOT</div>
+                <div style="color:#f59e0b;font-weight:700">@paypix_nexbot</div>
+                <div style="font-size:11px;color:#555;margin-top:3px">API Mercado Pago</div>
+              </div>
+              <div style="background:#0a0a14;border-radius:10px;padding:14px">
+                <div style="color:#666;font-size:11px;margin-bottom:4px">MERCADO PAGO</div>
+                <div id="pc-mp-status" style="color:#4ade80;font-size:13px;font-weight:700">Verificando...</div>
+                <div id="pc-mp-email" style="font-size:11px;color:#555;margin-top:4px;word-break:break-all"></div>
+              </div>
+            </div>
+
+            <!-- Campos ocultos para compatibilidade com JS existente -->
+            <span id="pc-sessao-info" style="display:none"></span>
+            <span id="pc-conn-info" style="display:none"></span>
+            <div id="pc-alert" style="display:none"></div>
+
+          </div>
+        </div></div><!-- /col-body-pp-status -->
+
+        <!-- Seção Telegram OCULTA — não usamos Telegram no bot MP -->
+        <div style="display:none" id="pc-telegram-section">
+          <span id="pc-step1"></span>
+          <span id="pc-step2"></span>
+          <span id="pc-msg-solicitar"></span>
+          <span id="pc-msg-confirmar"></span>
+          <span id="pc-btn-solicitar"></span>
+          <span id="pc-btn-confirmar"></span>
+          <span id="pc-phone-input"></span>
+          <span id="pc-codigo-input"></span>
+          <span id="pc-2fa-box"></span>
+          <span id="pc-2fa-input"></span>
+        </div>
+
+        <!-- ══ MERCADO PAGO — Configuração de Chaves ══ -->
+        <div class="table-card" style="margin-top:16px;border-color:#009ee3aa">
+          <div class="table-header collapsible" id="col-hdr-pp-config" style="background:linear-gradient(135deg,#003087,#009ee3)20" onclick="colToggle('pp-config')">
+            <h3>💳 Mercado Pago — @paypix_nexbot <span id="col-arrow-pp-config" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
+              <span id="pc-badge-status" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#0a1a2a;color:#aaa">Verificando...</span>
+              <button onclick="pcTestarConexao()" style="padding:6px 14px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔗 Testar</button>
+            </div>
+          </div>
+          <div class="collapse-body" id="col-body-pp-config">
+          <div style="padding:20px">
+
+            <!-- Status da integração -->
+            <div id="pc-status-bar" style="background:#0a1020;border:1px solid #009ee344;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
+              <div style="font-size:28px">💳</div>
+              <div>
+                <div id="pc-status-txt" style="font-weight:700;color:#009ee3">Carregando status...</div>
+                <div id="pc-status-sub" style="font-size:12px;color:#666;margin-top:2px">Integração com Mercado Pago PIX</div>
+              </div>
+            </div>
+
+            <!-- Campos de chaves -->
+            <div style="display:grid;gap:16px;margin-bottom:20px">
+
+              <!-- Access Token -->
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">
+                  🔑 Access Token <span style="color:#f44;font-weight:700">*</span>
+                  <span style="color:#555;font-weight:400;text-transform:none;letter-spacing:0"> — principal (APP_USR-...)</span>
+                </label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <div style="flex:1;position:relative">
+                    <input type="password" id="pc-access-token"
+                      placeholder="Cole o Access Token aqui (APP_USR-...)"
+                      autocomplete="new-password"
+                      style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #009ee344;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
+                    <span id="pc-token-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
+                  </div>
+                  <button onclick="toggleMp2Field('mp2-access-token','mp2-token-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                </div>
+                <div style="font-size:11px;color:#555;margin-top:4px">Painel MP → Credenciais → Access Token de produção — <strong style="color:#4caf50">✅ já configurado: deixe em branco para manter</strong></div>
+              </div>
+
+              <!-- Public Key -->
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">
+                  🔓 Public Key
+                  <span style="color:#555;font-weight:400;text-transform:none;letter-spacing:0"> — (APP_USR-...)</span>
+                </label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <div style="flex:1;position:relative">
+                    <input type="password" id="pc-public-key"
+                      placeholder="Cole a Public Key aqui (APP_USR-...)"
+                      autocomplete="new-password"
+                      style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
+                    <span id="pc-pubkey-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
+                  </div>
+                  <button onclick="toggleMp2Field('mp2-public-key','mp2-pubkey-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                </div>
+                <div style="font-size:11px;color:#555;margin-top:4px">Necessária para integrações front-end (opcional no backend) — <strong style="color:#888">deixe em branco para manter a atual</strong></div>
+              </div>
+
+              <!-- Client ID + Secret -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Client ID</label>
+                  <input type="text" id="pc-client-id" placeholder="0000000000000000"
+                    style="width:100%;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:11px 14px;color:#fff;font-size:13px;font-family:monospace">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Client Secret</label>
+                  <div style="display:flex;gap:6px">
+                    <input type="password" id="pc-client-secret" placeholder="xxxxxxxxxxxxxxxxxxx"
+                      style="flex:1;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:11px 14px;color:#fff;font-size:13px;font-family:monospace">
+                    <button onclick="toggleMp2Field('mp2-client-secret')" style="padding:10px 12px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer;font-size:12px">👁</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Webhook URL -->
+              <div style="background:#0a1020;border:1px solid #009ee322;border-radius:10px;padding:14px">
+                <div style="font-size:12px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📡 Webhook URL — configurar no painel MP</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <code id="pc-webhook-url" style="flex:1;font-size:12px;color:#009ee3;word-break:break-all">Carregando...</code>
+                  <button onclick="copiarMp2Webhook()" style="padding:8px 12px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap">📋 Copiar</button>
+                </div>
+                <div style="font-size:11px;color:#555;margin-top:6px">
+                  No painel Mercado Pago → <b style="color:#888">Suas integrações → Webhooks → Adicionar</b><br>
+                  Eventos: <code style="color:#009ee3">payment</code>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botões -->
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <button onclick="pcSalvarChaves()" id="pc-btn-salvar"
+                style="flex:1;min-width:180px;padding:14px;background:linear-gradient(135deg,#003087,#009ee3);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">
+                💾 Salvar Chaves Mercado Pago
+              </button>
+              <button onclick="pcTestarConexao()"
+                style="padding:14px 20px;background:#0a1020;border:1px solid #009ee344;border-radius:10px;color:#009ee3;font-size:13px;font-weight:600;cursor:pointer">
+                🔗 Testar Conexão
+              </button>
+            </div>
+            <div id="pc-msg" style="margin-top:12px;font-size:13px;text-align:center;min-height:20px"></div>
+
+            <!-- Info -->
+            <div style="margin-top:16px;padding:12px;background:#0a0a14;border-radius:8px;font-size:12px;color:#666;line-height:1.6">
+              💡 <b style="color:#888">As chaves são salvas com segurança no banco PostgreSQL</b> e carregadas automaticamente na inicialização do servidor — sem precisar reiniciar o Railway para ativar.<br>
+              ⚡ Troque as chaves aqui e clique em <b style="color:#009ee3">Salvar</b> — integração ativa imediatamente.
+            </div>
+
+          </div>
+          </div><!-- /col-body-pp-config -->
+        </div>
+
+        <!-- ══ PARCEIROS AFILIADOS ══ -->
+        <div class="table-card" style="margin-top:16px;border-color:#a855f7aa">
+          <div class="table-header collapsible" id="col-hdr-pp-parceiros" style="background:linear-gradient(135deg,#4c1d9520,#7c3aed20)" onclick="colToggle('pp-parceiros')">
+            <h3>🤝 Parceiros Afiliados <span id="col-arrow-pp-parceiros" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px" onclick="event.stopPropagation()">
+              <button onclick="pcCarregarParceiros()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+              <button onclick="pcMostrarFormParceiro()" style="padding:6px 14px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer;font-weight:600">+ Novo Parceiro</button>
+            </div>
+          </div>
+          <div class="collapse-body" id="col-body-pp-parceiros">
+          <div style="padding:16px 20px">
+
+            <!-- Explicação -->
+            <div style="background:#0a0a14;border:1px solid #7c3aed44;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:#aaa;line-height:1.6">
+              🔗 Cada parceiro recebe um <b style="color:#a855f7">link único</b>:
+              <code style="color:#a855f7;font-size:12px"> /paypix?ref=CODIGO</code><br>
+              Quando alguém paga via esse link, a <b style="color:#4ade80">% de comissão</b> é automaticamente enviada via PIX para a chave do parceiro.
+            </div>
+
+            <!-- Formulário novo parceiro (oculto por padrão) -->
+            <div id="pc-form-parceiro" style="display:none;background:#0a1020;border:1px solid #7c3aed44;border-radius:12px;padding:20px;margin-bottom:20px">
+              <div style="font-size:14px;font-weight:700;color:#a855f7;margin-bottom:16px">➕ Cadastrar Novo Parceiro</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Nome do Parceiro *</label>
+                  <input type="text" id="pc-p-nome" placeholder="Ex: João Silva"
+                    style="width:100%;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
+                </div>
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Código (opcional)</label>
+                  <input type="text" id="pc-p-codigo" placeholder="joao-silva (gerado automaticamente)"
+                    style="width:100%;background:#0a0a14;border:2px solid #7c3aed22;border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;font-family:monospace">
+                </div>
+                <div>
+                  <label style="font-size:11px;color:#22c55e;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">
+                    🏦 Chave PIX para Saque Automático *
+                  </label>
+                  <input type="text" id="pc-p-chave-pix" placeholder="email@exemplo.com ou CPF (11 dígitos)"
+                    oninput="pcPreviewComissao()"
+                    style="width:100%;background:#0a0a14;border:2px solid #22c55e55;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
+                  <div style="font-size:11px;color:#555;margin-top:4px">💡 Quando o pagamento for confirmado, a comissão é enviada automaticamente para esta chave</div>
+                </div>
+                <div>
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Tipo da Chave *</label>
+                  <select id="pc-p-tipo-chave"
+                    style="width:100%;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
+                    <option value="email">E-mail</option>
+                    <option value="cpf">CPF</option>
+                    <option value="cnpj">CNPJ</option>
+                    <option value="telefone">Telefone</option>
+                    <option value="aleatoria">Chave Aleatória</option>
+                  </select>
+                </div>
+                <div style="grid-column:1/-1">
+                  <label style="font-size:11px;color:#888;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">% Comissão por Pagamento *</label>
+                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+                    <input type="number" id="pc-p-comissao" min="1" max="50" value="10"
+                      oninput="pcPreviewComissao()"
+                      style="width:90px;background:#0a0a14;border:2px solid #a855f7;border-radius:8px;padding:10px 12px;color:#a855f7;font-size:22px;font-weight:900;text-align:center;font-family:monospace">
+                    <span style="color:#a855f7;font-weight:700;font-size:22px">%</span>
+                    <span style="font-size:12px;color:#666">do valor pago pelo cliente</span>
+                  </div>
+                  <!-- Preview visual da comissão -->
+                  <div id="pc-p-comissao-preview" style="background:#0a0a1a;border:1px solid #a855f733;border-radius:10px;padding:12px 16px">
+                    <div style="font-size:11px;color:#666;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">📊 Simulação de comissão</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+                      <div>
+                        <div style="font-size:11px;color:#666">Cliente paga</div>
+                        <div style="font-size:15px;font-weight:700;color:#fff">R$ 50,00</div>
+                        <div id="pc-p-sim-50" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 5,00</div>
+                      </div>
+                      <div>
+                        <div style="font-size:11px;color:#666">Cliente paga</div>
+                        <div style="font-size:15px;font-weight:700;color:#fff">R$ 100,00</div>
+                        <div id="pc-p-sim-100" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 10,00</div>
+                      </div>
+                      <div>
+                        <div style="font-size:11px;color:#666">Cliente paga</div>
+                        <div style="font-size:15px;font-weight:700;color:#fff">R$ 500,00</div>
+                        <div id="pc-p-sim-500" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 50,00</div>
+                      </div>
+                    </div>
+                    <div style="margin-top:10px;padding:8px;background:#22c55e11;border-radius:8px;text-align:center;font-size:12px;color:#4ade80">
+                      ✅ Valor enviado automaticamente via PIX para: <span id="pc-p-sim-chave" style="font-family:monospace;color:#a855f7">—</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:16px;display:flex;gap:10px">
+                <button onclick="pcCriarParceiro()"
+                  style="flex:1;padding:12px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:14px;cursor:pointer">
+                  ✅ Criar Parceiro
+                </button>
+                <button onclick="document.getElementById('pc-form-parceiro').style.display='none'"
+                  style="padding:12px 20px;background:#0a0a14;border:1px solid #333;border-radius:10px;color:#aaa;font-size:14px;cursor:pointer">
+                  Cancelar
+                </button>
+              </div>
+              <div id="pc-form-msg" style="margin-top:10px;font-size:13px;text-align:center;min-height:18px"></div>
+            </div>
+
+            <!-- Link gerado após criar parceiro -->
+            <div id="pc-link-novo" style="display:none;background:#0a2010;border:2px solid #22c55e;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">
+              <div style="font-size:13px;color:#aaa;margin-bottom:8px">🎉 Parceiro criado! Link de afiliado:</div>
+              <div style="display:flex;align-items:center;gap:8px;justify-content:center">
+                <code id="pc-link-novo-url" style="color:#4ade80;font-size:13px;word-break:break-all"></code>
+                <button onclick="pcCopiarLinkNovo()"
+                  style="padding:8px 14px;background:#22c55e;border:none;border-radius:8px;color:#000;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap">
+                  📋 Copiar
+                </button>
+              </div>
+            </div>
+
+            <!-- Tabela de parceiros -->
+            <div style="overflow-x:auto">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Parceiro</th>
+                    <th>Chave PIX</th>
+                    <th>% Comissão</th>
+                    <th>Total Gerado</th>
+                    <th>Comissão Paga</th>
+                    <th>Pagamentos</th>
+                    <th>Link</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="pc-parceiros-tbody">
+                  <tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          </div><!-- /col-body-pp-parceiros -->
+        </div>
+
+        <!-- ══ CONFIG PÁGINA /bot E /pix ══ -->
+        <div class="table-card" style="margin-top:16px;border-color:#f59e0b44">
+          <div class="table-header collapsible" id="col-hdr-pp-cfg-pagamento" style="background:linear-gradient(135deg,#1a0e0033,#f59e0b11)" onclick="colToggle('pp-cfg-pagamento')">
+            <h3>⚙️ Configurar Página de Pagamento <span id="col-arrow-pp-cfg-pagamento" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
+              <span style="font-size:11px;color:#888">paynexbet.com/bot &amp; /pix</span>
+              <button onclick="botConfigSalvar()" style="padding:6px 16px;background:#f59e0b;border:none;border-radius:8px;color:#000;font-size:13px;font-weight:700;cursor:pointer">💾 Salvar</button>
+            </div>
+          </div>
+          <div class="collapse-body" id="col-body-pp-cfg-pagamento">
+          <div style="padding:20px;display:grid;gap:16px">
+
+            <!-- Modo: fixo ou livre -->
+            <div style="background:#0a0a14;border:1px solid #f59e0b33;border-radius:12px;padding:16px">
+              <div style="font-size:13px;font-weight:700;color:#f59e0b;margin-bottom:12px">🎯 Modo de Cobrança</div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#0a1500;border:2px solid #22c55e44;border-radius:10px;padding:10px 14px;flex:1;min-width:140px" id="pc-lbl-modo-fixo">
+                  <input type="radio" name="bot-modo" id="pc-radio-fixo" value="fixo" onchange="botModoChange()" style="accent-color:#22c55e">
+                  <div>
+                    <div style="font-weight:700;color:#4ade80;font-size:13px">💰 Valor Fixo</div>
+                    <div style="font-size:11px;color:#666">Você define o valor. QR gerado automaticamente.</div>
+                  </div>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#0a0a1a;border:2px solid #ffffff11;border-radius:10px;padding:10px 14px;flex:1;min-width:140px" id="pc-lbl-modo-livre">
+                  <input type="radio" name="bot-modo" id="pc-radio-livre" value="livre" onchange="botModoChange()">
+                  <div>
+                    <div style="font-weight:700;color:#aaa;font-size:13px">✏️ Valor Livre</div>
+                    <div style="font-size:11px;color:#666">Cliente digita o valor que desejar.</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Valor fixo -->
+            <div id="pc-cfg-valor-fixo-wrap">
+              <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">💵 Valor Fixo (R$)</label>
+              <div style="display:flex;align-items:center;gap:8px;background:#0a0a14;border:2px solid #f59e0b55;border-radius:10px;padding:10px 14px">
+                <span style="font-size:20px;font-weight:800;color:#666">R$</span>
+                <input type="number" id="pc-cfg-valor-fixo" min="1" max="10000" step="0.01" placeholder="10.00"
+                  style="flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:24px;font-weight:800">
+              </div>
+              <div style="font-size:11px;color:#555;margin-top:4px">Ex: 10.00 — cada cliente que abrir /bot ou /pix verá esse valor e terá um QR exclusivo gerado.</div>
+            </div>
+
+            <!-- Min/Max (modo livre) -->
+            <div id="pc-cfg-minmax-wrap" style="display:none">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Mínimo (R$)</label>
+                  <input type="number" id="pc-cfg-min-valor" min="1" max="9999" placeholder="5"
+                    style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:16px;font-weight:700">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Máximo (R$)</label>
+                  <input type="number" id="pc-cfg-max-valor" min="1" max="100000" placeholder="10000"
+                    style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:16px;font-weight:700">
+                </div>
+              </div>
+            </div>
+
+            <!-- Título e Descrição -->
+            <div style="display:grid;gap:12px">
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📝 Título da Página</label>
+                <input type="text" id="pc-cfg-titulo" placeholder="PayPixNex — Pague via PIX" maxlength="60"
+                  style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:14px">
+              </div>
+              <div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📄 Descrição / Subtítulo</label>
+                <input type="text" id="pc-cfg-descricao" placeholder="Pagamento seguro via Mercado Pago" maxlength="100"
+                  style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:14px">
+              </div>
+            </div>
+
+            <!-- Preview do link -->
+            <div style="background:#0a1520;border:1px solid #009ee333;border-radius:10px;padding:12px 16px;font-size:12px">
+              <div style="color:#888;margin-bottom:6px">🔗 Links de acesso:</div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div><span style="color:#009ee3">paynexbet.com/bot</span> <span style="color:#555">— link público principal</span></div>
+                <div><span style="color:#009ee3">paynexbet.com/paypixcob</span> <span style="color:#555">— alias do /bot</span></div>
+                <div><span style="color:#f59e0b">paynexbet.com/paypixcob?ref=<i>codigo</i></span> <span style="color:#555">— link de afiliado (comissão automática)</span></div>
+              </div>
+            </div>
+
+            <div id="pc-cfg-bot-msg" style="font-size:13px;text-align:center;min-height:20px"></div>
+          </div>
+          </div><!-- /col-body-pp-cfg-pagamento -->
+        </div>
+
+        <!-- ══ STATS BOT2 ══ -->
+        <div class="table-card" style="margin-top:16px">
+          <div class="table-header collapsible" id="col-hdr-pp-stats" onclick="colToggle('pp-stats')">
+            <h3>📊 Estatísticas @paypix_nexbot <span id="col-arrow-pp-stats" class="collapse-arrow">▼</span></h3>
+            <button onclick="event.stopPropagation();mp2CarregarStats()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+          <div class="collapse-body" id="col-body-pp-stats">
+          <div style="padding:16px 20px">
+            <div class="metrics-grid" style="margin:0">
+              <div class="metric-card blue">
+                <div class="metric-icon">👥</div>
+                <div class="metric-label">Usuários</div>
+                <div class="metric-value" id="pc-total-users">—</div>
+              </div>
+              <div class="metric-card green">
+                <div class="metric-icon">📥</div>
+                <div class="metric-label">Dep. Confirmados</div>
+                <div class="metric-value" id="pc-dep-confirmados">—</div>
+              </div>
+              <div class="metric-card orange">
+                <div class="metric-icon">💰</div>
+                <div class="metric-label">Total Depositado</div>
+                <div class="metric-value" id="pc-total-dep">—</div>
+              </div>
+              <div class="metric-card" style="border-color:#f4433644">
+                <div class="metric-icon">📤</div>
+                <div class="metric-label">Saques Pendentes</div>
+                <div class="metric-value" id="pc-saques-pend">—</div>
+              </div>
+            </div>
+            <!-- Totais de Parceiros/Afiliados -->
+            <div style="margin-top:16px;border-top:1px solid #ffffff11;padding-top:16px">
+              <div style="font-size:12px;color:#888;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">📊 Parceiros / Afiliados</div>
+              <div class="metrics-grid" style="margin:0;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+                <div class="metric-card" style="border-color:#009ee344">
+                  <div class="metric-icon">🤝</div>
+                  <div class="metric-label">Parceiros Ativos</div>
+                  <div class="metric-value" id="pc-parceiros-ativos" style="color:#009ee3">—</div>
+                  <div class="metric-sub" id="pc-parceiros-total">de — total</div>
+                </div>
+                <div class="metric-card" style="border-color:#f59e0b44">
+                  <div class="metric-icon">💸</div>
+                  <div class="metric-label">Total Gerado</div>
+                  <div class="metric-value" id="pc-stats-total-gerado" style="color:#f59e0b;font-size:15px">R$ —</div>
+                  <div class="metric-sub">via links afiliados</div>
+                </div>
+                <div class="metric-card" style="border-color:#22c55e44">
+                  <div class="metric-icon">✅</div>
+                  <div class="metric-label">Comissões Pagas</div>
+                  <div class="metric-value" id="pc-stats-total-pago" style="color:#4ade80;font-size:15px">R$ —</div>
+                  <div class="metric-sub" id="pc-stats-pend-comissao">pendente: R$ —</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          </div><!-- /col-body-pp-stats -->
+        </div>
+
+        <!-- ══ SAQUES PENDENTES BOT2 ══ -->
+        <div class="table-card" style="margin-top:16px">
+          <div class="table-header collapsible" id="col-hdr-pp-saques" onclick="colToggle('pp-saques')">
+            <h3>📤 Saques Pendentes — @paypix_nexbot <span id="col-arrow-pp-saques" class="collapse-arrow">▼</span></h3>
+            <button onclick="event.stopPropagation();mp2CarregarSaques()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+          <div class="collapse-body" id="col-body-pp-saques">
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead><tr>
+                <th>ID</th><th>Usuário</th><th>Valor</th><th>Chave PIX</th><th>Tipo</th><th>Data</th><th>Ação</th>
+              </tr></thead>
+              <tbody id="pc-saques-tbody">
+                <tr><td colspan="7" style="text-align:center;color:#666;padding:20px">Clique em Atualizar para carregar</td></tr>
+              </tbody>
+            </table>
+          </div>
+          </div><!-- /col-body-pp-saques -->
+        </div>
+
+        <!-- ═══ Comissões de Parceiros ═══ -->
+        <div class="table-card" style="margin-bottom:16px">
+
+        <!-- ═══ QR CODE DE AUTOCADASTRO ═══ -->
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header collapsible" id="pc-col-hdr-qr-auto" onclick="colToggle('qr-auto')">
+            <h3>📲 QR Code de Autocadastro <span id="pc-col-arrow-qr-auto" class="collapse-arrow">▼</span></h3>
+            <button onclick="event.stopPropagation();qrAtualizarPreview()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+          <div class="collapse-body" id="pc-col-body-qr-auto">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
+
+            <!-- Coluna esquerda: config do plano -->
+            <div style="padding:16px;border-right:1px solid var(--border)">
+              <div style="font-size:12px;font-weight:700;color:#ce93d8;margin-bottom:12px">⚙️ Configurar Plano</div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div>
+                  <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Título da página</div>
+                  <input id="pc-qr-titulo" type="text" placeholder="Assine e pague todo mês via PIX" value="Assine e pague todo mês via PIX"
+                    style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Descrição</div>
+                  <input id="pc-qr-desc" type="text" placeholder="Mensalidade — acesso completo"
+                    style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <div>
+                    <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Valor R$</div>
+                    <input id="pc-qr-valor" type="number" placeholder="10.00" min="1" step="0.01" value="10"
+                      style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Dia padrão</div>
+                    <input id="pc-qr-dia" type="number" placeholder="1" min="1" max="28" value="1"
+                      style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Benefícios (1 por linha)</div>
+                  <textarea id="pc-qr-beneficios" rows="3" placeholder="🎯 Acesso VIP ao conteúdo&#10;💬 Suporte prioritário&#10;🎁 Bônus exclusivos"
+                    style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px;resize:vertical"></textarea>
+                </div>
+                <!-- Seletor de Afiliado -->
+                <div>
+                  <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Afiliado / Parceiro (opcional)</div>
+                  <div style="display:flex;gap:6px;align-items:center">
+                    <select id="pc-qr-ref-select"
+                      onchange="qrOnAfiliadoChange()"
+                      style="flex:1;padding:7px 10px;background:#1a1a2e;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px;cursor:pointer">
+                      <option value="">🌐 Sem afiliado (link geral)</option>
+                    </select>
+                    <button onclick="qrCarregarAfiliados()" title="Recarregar afiliados"
+                      style="padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#aaa;font-size:13px;cursor:pointer;white-space:nowrap">🔄</button>
+                  </div>
+                  <!-- Campo manual fallback -->
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+                    <input id="pc-qr-ref" type="text" placeholder="ou digite o código manualmente"
+                      oninput="qrOnRefManualChange()"
+                      style="flex:1;padding:6px 10px;background:#ffffff08;border:1px solid #ffffff15;border-radius:8px;color:#aaa;font-size:11px"/>
+                    <span id="pc-qr-ref-badge" style="display:none;font-size:10px;background:#9c27b030;color:#ce93d8;padding:3px 8px;border-radius:20px;white-space:nowrap">✅ afiliado</span>
+                  </div>
+                  <div style="font-size:10px;color:#555;margin-top:3px">O link e QR gerados incluirão o código do afiliado automaticamente</div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:4px">
+                  <button onclick="qrSalvarConfig()" class="action-btn" style="flex:1;background:#9c27b0;color:#fff;border-color:#9c27b0;padding:9px;font-size:12px">💾 Salvar config</button>
+                  <button onclick="qrCopiarLink()" class="action-btn" style="flex:1;padding:9px;font-size:12px">🔗 Copiar link</button>
+                </div>
+                <div id="pc-qr-cfg-msg" style="font-size:11px;display:none"></div>
+              </div>
+            </div>
+
+            <!-- Coluna direita: QR Code preview -->
+            <div style="padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
+              <div style="font-size:12px;font-weight:700;color:#ce93d8;margin-bottom:2px">📲 QR para imprimir / compartilhar</div>
+              <!-- Label do afiliado selecionado -->
+              <div id="pc-qr-afiliado-label" style="font-size:11px;background:#9c27b020;border:1px solid #9c27b040;border-radius:20px;padding:3px 12px;color:#ce93d8;display:none">👤 —</div>
+              <!-- QR via API externa (não precisa lib Python) -->
+              <div style="background:#fff;padding:10px;border-radius:14px;border:3px solid #9c27b0">
+                <img id="pc-qr-preview-img" src="" width="180" height="180" alt="QR Code" style="display:block;border-radius:6px"/>
+              </div>
+              <div style="font-size:11px;color:#666;text-align:center;word-break:break-all;max-width:220px" id="pc-qr-link-txt">—</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+                <button onclick="qrDownload()" class="action-btn" style="font-size:11px;padding:6px 12px">⬇️ Baixar QR</button>
+                <button onclick="qrCopiarLinkAtual()" class="action-btn" style="font-size:11px;padding:6px 12px">📋 Copiar link</button>
+                <button onclick="qrAbrirLink()" class="action-btn" style="font-size:11px;padding:6px 12px;background:#009ee3;color:#fff;border-color:#009ee3">🌐 Abrir página</button>
+              </div>
+
+              <!-- Instruções -->
+              <div style="background:#0a0a1a;border:1px solid #9c27b020;border-radius:10px;padding:12px;font-size:11px;color:#666;line-height:1.7;width:100%;max-width:210px;text-align:left">
+                <div style="color:#ce93d8;font-weight:700;margin-bottom:4px">Como usar:</div>
+                1️⃣ Escolha o afiliado<br>
+                2️⃣ Salve a config<br>
+                3️⃣ Imprima ou compartilhe o QR<br>
+                4️⃣ Cliente assina e paga ✅<br>
+                5️⃣ Comissão vai pro afiliado 💰
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── TABELA QR POR AFILIADO ─── -->
+          <div style="padding:14px 16px;border-top:1px solid var(--border)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:12px;font-weight:700;color:#a855f7">👥 QR Code por Afiliado — link individual por parceiro</div>
+              <button onclick="qrCarregarAfiliados()" class="action-btn" style="font-size:11px;padding:5px 11px">🔄 Atualizar</button>
+            </div>
+            <div id="pc-qr-afiliados-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+              <div style="font-size:12px;color:#555;padding:20px;text-align:center;grid-column:1/-1">Carregando afiliados...</div>
+            </div>
+          </div>
+          </div><!-- /col-body-qr-auto -->
+
+        </div><!-- /qr autocadastro -->
+
+        <!-- ═══ ASSINATURAS RECORRENTES ═══ -->
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header collapsible" id="pc-col-hdr-debito-auto" onclick="colToggle('debito-auto')">
+            <h3>💙 Débito Automático — Assinaturas Mensais <span id="pc-col-arrow-debito-auto" class="collapse-arrow">▼</span></h3>
+            <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
+              <button onclick="recCarregarLista()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+            </div>
+          </div>
+          <div class="collapse-body" id="pc-col-body-debito-auto">
+
+          <!-- Stats recorrentes -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)">
+            <div class="metric-card" style="background:#9c27b015;border-color:#9c27b040">
+              <div class="metric-label">Assinantes Ativos</div>
+              <div class="metric-value" id="pc-rec-ativos" style="color:#ce93d8">—</div>
+            </div>
+            <div class="metric-card" style="background:#009ee315;border-color:#009ee340">
+              <div class="metric-label">MRR (Receita/mês)</div>
+              <div class="metric-value" id="pc-rec-mrr" style="color:#009ee3">—</div>
+            </div>
+            <div class="metric-card" style="background:#00c85315;border-color:#00c85340">
+              <div class="metric-label">Total Arrecadado</div>
+              <div class="metric-value" id="pc-rec-total" style="color:#00c853">—</div>
+            </div>
+            <div class="metric-card" style="background:#f4433615;border-color:#f4433640">
+              <div class="metric-label">Pausados/Cancelados</div>
+              <div class="metric-value" id="pc-rec-pausados" style="color:#f44336">—</div>
+            </div>
+          </div>
+
+          <!-- ▸ CONFIGURAR PLANO DE DÉBITO AUTOMÁTICO ─────────────────────── -->
+          <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:#060612">
+
+            <!-- Header do sub-painel -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <div style="font-size:12px;font-weight:700;color:#009ee3">⚙️ Configurar Plano de Débito Automático</div>
+              <button onclick="recCriarPlanoMP()" id="pc-rec-btn-criar-plano" class="action-btn"
+                style="font-size:12px;padding:7px 16px;background:#009ee3;color:#fff;border-color:#009ee3;font-weight:700">
+                ⚡ Criar / Atualizar Plano no MP
+              </button>
+            </div>
+
+            <!-- Grid do formulário -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+
+              <!-- Nome do plano -->
+              <div style="grid-column:1/-1">
+                <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">📝 Nome do plano (aparece no MP)</label>
+                <input id="pc-rec-plano-titulo" type="text" placeholder="Ex: Mensalidade, Plano Ouro…"
+                  style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
+              </div>
+
+              <!-- Valor -->
+              <div>
+                <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">💰 Valor mensal (R$)</label>
+                <input id="pc-rec-plano-valor" type="number" min="1" step="0.01" placeholder="10.00"
+                  style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
+              </div>
+
+              <!-- Dia de cobrança -->
+              <div>
+                <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">📅 Dia de cobrança (1-28)</label>
+                <input id="pc-rec-plano-dia" type="number" min="1" max="28" placeholder="1"
+                  style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
+              </div>
+
+              <!-- Benefícios -->
+              <div style="grid-column:1/-1">
+                <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">🎁 Benefícios (mostrados na página /assinar)</label>
+                <input id="pc-rec-plano-beneficios" type="text" placeholder="Ex: Acesso premium, Suporte prioritário…"
+                  style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
+              </div>
+
+            </div><!-- /grid -->
+
+            <!-- Badges de métodos aceitos -->
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+              <span style="background:#009ee320;border:1px solid #009ee350;border-radius:20px;padding:4px 12px;font-size:11px;color:#29b6f6;font-weight:700">🔵 PIX automático — qualquer banco</span>
+              <span style="background:#9c27b020;border:1px solid #9c27b050;border-radius:20px;padding:4px 12px;font-size:11px;color:#ce93d8;font-weight:700">💙 Saldo Mercado Pago</span>
+            </div>
+            <div style="font-size:10px;color:#555;margin-bottom:10px;background:#ffffff05;border-radius:6px;padding:6px 10px">
+              ⚡ <strong style="color:#29b6f6">Como funciona:</strong> o cliente acessa o link /assinar, autoriza <strong>1 única vez</strong> via PIX no próprio banco —
+              a partir daí o Mercado Pago cobra <strong>automaticamente todo mês</strong>, sem precisar que o cliente faça nada.
+            </div>
+
+            <!-- Status do plano ativo -->
+            <div id="pc-rec-plano-status" style="font-size:12px;color:#aaa;background:#009ee310;border:1px solid #009ee330;border-radius:8px;padding:10px;margin-bottom:8px;display:none">
+              Carregando status do plano...
+            </div>
+            <div id="pc-rec-criar-plano-msg" style="font-size:12px;margin-top:6px;display:none"></div>
+          </div><!-- /configurar plano -->
+
+          <!-- ▸ LINK DE ASSINATURA + SELETOR DE AFILIADO ───────────────────── -->
+          <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:#0a0a1a">
+            <div style="font-size:12px;font-weight:700;color:#009ee3;margin-bottom:12px">📤 Link de Assinatura — por Afiliado</div>
+
+            <!-- Seletor de afiliado -->
+            <div style="margin-bottom:10px">
+              <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">🤝 Selecionar afiliado (opcional)</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <select id="pc-rec-link-afiliado" onchange="recAtualizarLinkAfiliado()"
+                  style="flex:1;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
+                  <option value="">— Sem afiliado (link genérico) —</option>
+                </select>
+                <button onclick="recCarregarAfiliados()" class="action-btn" style="font-size:12px;padding:8px 12px;white-space:nowrap">🔄</button>
+              </div>
+              <div style="font-size:10px;color:#555;margin-top:4px">Ao selecionar um afiliado, o link gerado inclui <code style="color:#888">?ref=CODIGO</code> — as assinaturas ficam vinculadas a ele.</div>
+            </div>
+
+            <!-- Link gerado -->
+            <div style="font-size:11px;color:#666;margin-bottom:4px">🔗 Link gerado:</div>
+            <div style="display:flex;align-items:center;gap:8px;background:#ffffff08;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px">
+              <code id="pc-rec-link-assinar" style="color:#ce93d8;font-size:12px;flex:1;word-break:break-all">https://paynexbet.com/assinar</code>
+              <button onclick="copiar(document.getElementById('rec-link-assinar').textContent)" class="action-btn" style="font-size:11px;padding:5px 10px;white-space:nowrap">📋 Copiar</button>
+            </div>
+
+            <!-- Botões de ação -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <button onclick="window.open(document.getElementById('rec-link-assinar').textContent,'_blank')" class="action-btn"
+                style="font-size:12px;padding:7px 14px;background:#009ee310;border-color:#009ee350;color:#29b6f6">🔗 Abrir página</button>
+              <button onclick="recGerarQRAssinar()" class="action-btn" style="font-size:12px;padding:7px 14px">📷 QR Code</button>
+            </div>
+
+            <!-- QR Code inline -->
+            <div id="pc-rec-qr-inline" style="display:none;text-align:center;margin-top:8px">
+              <img id="pc-rec-qr-img" src="" style="width:180px;height:180px;border-radius:10px;border:2px solid #9c27b0"/>
+              <div style="font-size:11px;color:#555;margin-top:6px">Escaneie ou compartilhe este QR</div>
+              <button onclick="copiar(document.getElementById('rec-link-assinar').textContent)" class="action-btn"
+                style="font-size:11px;margin-top:6px;padding:5px 12px">📋 Copiar link</button>
+            </div>
+
+            <div id="pc-rec-cadastro-msg" style="font-size:12px;margin-top:8px;display:none"></div>
+          </div><!-- /link afiliado -->
+
+          <!-- Tabela assinantes -->
+          <div style="overflow-x:auto;padding:0 16px 16px">
+            <table class="data-table">
+              <thead><tr>
+                <th>ID</th><th>Nome</th><th>Tipo</th><th>Valor</th><th>Próx. Venc.</th>
+                <th>Total Pago</th><th>Status</th><th>Ações</th>
+              </tr></thead>
+              <tbody id="pc-rec-tbody">
+                <tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Clique em 🔄 Atualizar para carregar</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="padding:14px 16px;background:#060612;border-top:1px solid var(--border);border-radius:0 0 12px 12px">
+            <div style="font-size:12px;font-weight:700;color:#29b6f6;margin-bottom:10px">💙 Como funciona o Débito Automático</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11px">
+              <div style="background:#009ee315;border:1px solid #009ee340;border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:20px;margin-bottom:6px">1️⃣</div>
+                <strong style="color:#29b6f6">Cliente acessa /assinar</strong><br>
+                <span style="color:#666">Preenche nome e e-mail</span>
+              </div>
+              <div style="background:#9c27b015;border:1px solid #9c27b040;border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:20px;margin-bottom:6px">2️⃣</div>
+                <strong style="color:#ce93d8">Autoriza 1× via PIX</strong><br>
+                <span style="color:#666">No próprio banco, pelo app</span>
+              </div>
+              <div style="background:#00c85315;border:1px solid #00c85340;border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:20px;margin-bottom:6px">3️⃣</div>
+                <strong style="color:#00c853">Automático para sempre</strong><br>
+                <span style="color:#666">MP cobra todo mês sozinho</span>
+              </div>
+            </div>
+            <div style="margin-top:10px;background:#f4433610;border:1px solid #f4433330;border-radius:8px;padding:10px;font-size:11px;color:#ef9a9a">
+              🚫 <strong>Não há envio de QR Code mensal.</strong> O Mercado Pago cobra automaticamente todo mês no mesmo método que o cliente escolheu ao autorizar (cartão, PIX ou saldo MP). O cliente cancela pelo próprio app do Mercado Pago.
+            </div>
+          </div>
+          </div><!-- /col-body-debito-auto -->
+        </div><!-- /assinaturas recorrentes -->
+
+        <!-- ═══ Comissões de Parceiros ═══ -->
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header">
+            <h3>💰 Comissões de Parceiros — Histórico de Repasses</h3>
+            <button onclick="pcCarregarComissoes()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+
+          <!-- Info sobre como funciona o pagamento -->
+          <div style="margin:0 16px 12px;padding:12px;background:#0a0a1a;border:1px solid #f59e0b33;border-radius:10px">
+            <div style="font-size:12px;color:#f59e0b;font-weight:700;margin-bottom:8px">ℹ️ Como funciona o pagamento de comissão</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:#888">
+              <div style="background:#0a1500;border:1px solid #22c55e33;border-radius:8px;padding:8px">
+                <div style="color:#4ade80;font-weight:700;margin-bottom:4px">✅ Automático via API Mercado Pago</div>
+                <div>Quando o token MP está configurado, o sistema usa <code style="color:#60a5fa">/v1/account/bank_transfers</code> para enviar o PIX direto para a chave do parceiro após cada pagamento confirmado.</div>
+              </div>
+              <div style="background:#150a00;border:1px solid #f59e0b33;border-radius:8px;padding:8px">
+                <div style="color:#f59e0b;font-weight:700;margin-bottom:4px">⏳ Manual (fallback)</div>
+                <div>Se a API recusar (sem saldo MP, limite, conta não verificada), o saque fica como <b>pendente_manual</b> — o admin paga manualmente via app Mercado Pago e clica em ✅ Confirmar aqui.</div>
+              </div>
+            </div>
+            <div style="margin-top:8px;font-size:11px;color:#555">
+              ⚠️ A API do Mercado Pago <b>não permite transferir para contas externas sem verificação prévia da conta</b>. Para pagamentos automáticos funcionarem 100%, a conta MP precisa ser verificada e ter saldo suficiente.
+            </div>
+          </div>
+
+          <div style="overflow-x:auto;padding:0 16px 16px">
+            <table class="data-table">
+              <thead><tr>
+                <th>ID</th><th>Parceiro</th><th>Valor</th><th>Chave PIX</th><th>Status</th><th>Obs</th><th>Data</th><th>Ação</th>
+              </tr></thead>
+              <tbody id="pc-comissoes-tbody">
+                <tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Clique em 🔄 Atualizar para carregar</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /tab-paypixcob -->
+
+
+      
 
       <!-- ═══ BOT 2 — @paypix_nexbot ═══ -->
       <div id="tab-bot2" class="tab-content">
@@ -4985,13 +5831,14 @@ function showTab(tab) {
   if (tab === 'saques') loadSaques();                // Sempre recarrega ao abrir aba
   if (tab === 'sorteio') carregarSorteioAdmin();
   if (tab === 'paypix') carregarPaypixAdmin();
+  if (tab === 'paypixcob') carregarPaypixCobAdmin();
   if (tab === 'bot2') carregarBot2Admin();
   if (tab === 'bot3') carregarBot3Admin();
   if (tab === 'sistema') loadHealth();
 }
 
 function tabName(tab) {
-  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api', bot2:'mercado pago', bot3:'bot mp2', paypix:'paypix' };
+  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api', bot2:'mercado pago', bot3:'bot mp2', paypix:'paypix', paypixcob:'paypix-cob' };
   return map[tab] || tab;
 }
 
@@ -7051,6 +7898,914 @@ async function ppTestarConexao() {
     else setMsg('❌ '+(d.error||'Token inválido'),'#f44');
   } catch(e) { setMsg('❌ '+e.message,'#f44'); }
 }
+
+
+// ════════════════════════════════════════════════════════════════
+// PAYPIXCOB — PayPix Cobrança — JavaScript (clone do PayPix)
+// ════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════
+// PAYPIXCOB — Mercado Pago — JavaScript (clone do PayPix)
+// ════════════════════════════════════════════════════════════════
+
+//  PAYPIX ADMIN
+// ═══════════════════════════════════════════════
+let _pcCfg = { paypix_pct: 0.6, paypix_ativo: true, paypix_descricao: '' };
+
+function atualizarSliderPaypixCob(val) {
+  val = Math.min(90, Math.max(10, parseInt(val)));
+  document.getElementById('pc-slider').value = val;
+  document.getElementById('pc-pct-input').value = val;
+  document.getElementById('pc-slider-val').textContent = val + '%';
+  document.getElementById('pc-bar-parceiro').style.width = val + '%';
+  document.getElementById('pc-bar-parc-txt').textContent = 'Parceiro ' + val + '%';
+  document.getElementById('pc-bar-plat-txt').textContent = 'Plataforma ' + (100 - val) + '%';
+  document.getElementById('pc-preview-pct').textContent = val + '%';
+  const desc = document.getElementById('pc-descricao').value || 'Gere seu Pix e receba sua % do valor';
+  document.getElementById('pc-preview-desc').textContent = desc.replace(/\d+%/, val + '%');
+}
+
+function atualizarInputPaypixCob(val) {
+  val = Math.min(90, Math.max(10, parseInt(val) || 60));
+  atualizarSliderPaypixCob(val);
+}
+
+async function _legacyCarregarPaypixAdmin() {
+  try {
+    const r = await fetch(`${BASE}/api/pc/config`);
+    const d = await r.json();
+    _pcCfg = d;
+    const pct = Math.round((d.paypix_pct || 0.6) * 100);
+    const platPct = 100 - pct;
+
+    // Métricas
+    document.getElementById('pc-pct-display').textContent = pct + '%';
+    document.getElementById('pc-plat-display').textContent = platPct + '%';
+    const ativo = d.paypix_ativo !== false;
+    const statusEl = document.getElementById('pc-status-display');
+    statusEl.textContent = ativo ? '✅ Ativo' : '🔴 Inativo';
+    statusEl.style.color = ativo ? '#22c55e' : '#ef4444';
+    document.getElementById('pc-status-sub').textContent = ativo ? 'parceiros podem gerar Pix' : 'página desativada';
+    document.getElementById('pc-status-card').style.borderColor = ativo ? '#22c55e44' : '#ef444444';
+
+    // Formulário
+    atualizarSliderPaypixCob(pct);
+    document.getElementById('pc-ativo').value = ativo ? '1' : '0';
+    document.getElementById('pc-descricao').value = d.paypix_descricao || '';
+    document.getElementById('pc-preview-desc').textContent = d.paypix_descricao || 'Gere seu Pix e receba ' + pct + '% do valor';
+    document.getElementById('pc-preview-pct').textContent = pct + '%';
+    // Valor mínimo
+    const minEl = document.getElementById('pc-min-input');
+    if (minEl) minEl.value = typeof d.paypix_min === 'number' ? d.paypix_min : 5;
+
+    // Carregar transações PayPix
+    await carregarTxPaypixCob();
+    await carregarFilaPaypixCob();
+  } catch(e) { console.error('carregarPaypixAdmin:', e); }
+}
+
+async function carregarTxPaypixCob() {
+  try {
+    const r = await fetch(`${BASE}/api/transacoes?secret=${encodeURIComponent(SECRET())}&limit=100`);
+    const d = await r.json();
+    const all = (d.transacoes || []).filter(tx =>
+      tx.extra && tx.extra.includes('"tipo": "paypix"') ||
+      tx.extra && tx.extra.includes('"tipo":"paypix"') ||
+      (tx.cliente_id && tx.cliente_id.startsWith('paypix_'))
+    );
+    const tbody = document.getElementById('pc-parceiros-tbody');
+    if (!all.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;padding:20px">📭 Nenhuma transação PayPix ainda</td></tr>';
+      return;
+    }
+    const pct = _pcCfg.paypix_pct || 0.6;
+    tbody.innerHTML = all.slice(0, 30).map(tx => {
+      let chave = '—';
+      try { const ex = JSON.parse(tx.extra || '{}'); chave = ex.parceiro_chave || '—'; } catch(e){}
+      const valParceiro = tx.status === 'pago' ? `<strong style="color:#22c55e">R$ ${(tx.valor * pct).toFixed(2).replace('.',',')}</strong>` : `<span style="color:#555">R$ ${(tx.valor * pct).toFixed(2).replace('.',',')} (aguardando)</span>`;
+      return `<tr>
+        <td class="mono" style="font-size:11px">${(tx.tx_id||'').substring(0,14)}…</td>
+        <td><strong>R$ ${(tx.valor||0).toFixed(2).replace('.',',')}</strong></td>
+        <td>${valParceiro}</td>
+        <td style="font-size:11px;color:#888">${chave}</td>
+        <td>${badgeStatus(tx.status)}</td>
+        <td style="color:#555;font-size:11px">${formatDate(tx.created_at)}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function salvarConfigPaypixCob() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Salvando...';
+  const msgEl = document.getElementById('pc-msg');
+  try {
+    const pct = parseInt(document.getElementById('pc-pct-input').value) || 60;
+    const ativo = document.getElementById('pc-ativo').value === '1';
+    const desc = document.getElementById('pc-descricao').value.trim();
+    const minEl = document.getElementById('pc-min-input');
+    const paypix_min = parseFloat(minEl ? minEl.value : 5) || 5;
+    const r = await fetch(`${BASE}/api/pc/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ paypix_pct: pct, paypix_ativo: ativo, paypix_descricao: desc, paypix_min: paypix_min })
+    });
+    const d = await r.json();
+    if (d.success) {
+      msgEl.innerHTML = `<div class="msg success">✅ Configuração salva! Parceiros receberão <strong>${d.paypix_pct_display}</strong> a partir de agora.</div>`;
+      await carregarPaypixCobAdmin();
+    } else {
+      msgEl.innerHTML = `<div class="msg error">❌ Erro: ${d.error || 'Falha ao salvar'}</div>`;
+    }
+  } catch(e) {
+    msgEl.innerHTML = `<div class="msg error">❌ Erro de conexão: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Salvar Configuração PayPix';
+    setTimeout(() => { msgEl.innerHTML = ''; }, 5000);
+  }
+}
+
+// ─── FILA PAYPIX ───
+async function carregarFilaPaypixCob() {
+  const tbody = document.getElementById('pc-saques-tbody');
+  const badge = document.getElementById('pc-fila-badge');
+  try {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;padding:16px"><span class="loader"></span> Carregando...</td></tr>';
+    const r = await fetch(`${BASE}/api/pc/fila?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#f87171;padding:16px">Erro: ${d.error}</td></tr>`;
+      return;
+    }
+    if (badge) badge.textContent = `${d.pendentes} pendente(s) · ${d.finalizados} finalizado(s)`;
+    if (badge) badge.style.background = d.pendentes > 0 ? '#FFD70022' : '#22c55e22';
+    if (badge) badge.style.borderColor = d.pendentes > 0 ? '#FFD70044' : '#22c55e44';
+    if (badge) badge.style.color = d.pendentes > 0 ? '#FFD700' : '#4ade80';
+
+    if (!d.itens || !d.itens.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;padding:20px">✅ Fila vazia — nenhum split pendente</td></tr>';
+      return;
+    }
+    const fmt = v => 'R$ ' + (v||0).toFixed(2).replace('.',',');
+    const fmtData = s => s ? s.substring(0,16).replace('T',' ') : '—';
+    tbody.innerHTML = d.itens.map(it => {
+      const stBadge = it.status === 'finalizado'
+        ? '<span style="background:#22c55e22;color:#4ade80;border-radius:20px;padding:2px 10px;font-size:11px">✅ Finalizado</span>'
+        : '<span style="background:#FFD70022;color:#FFD700;border-radius:20px;padding:2px 10px;font-size:11px;animation:pulse 1.5s infinite">⏳ Pendente</span>';
+      const proxima = it.proxima_tentativa ? fmtData(it.proxima_tentativa) : '—';
+      return `<tr>
+        <td style="color:#555;font-size:11px">#${it.id}</td>
+        <td class="mono" style="font-size:10px">${(it.tx_id||'').substring(0,12)}…</td>
+        <td><strong style="color:#4ade80">${fmt(it.valor)}</strong></td>
+        <td style="font-size:11px;color:#aaa">${it.chave_pix||'—'}</td>
+        <td style="color:#FFD700;font-weight:700">${Math.round((it.pct||0.6)*100)}%</td>
+        <td style="text-align:center;color:${it.tentativas>=6?'#f87171':'#aaa'}">${it.tentativas||0}</td>
+        <td>${stBadge}</td>
+        <td style="font-size:11px;color:#888">${proxima}</td>
+        <td style="font-size:10px;color:#666;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${it.observacao||'—'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#f87171;padding:16px">❌ Erro: ${e.message}</td></tr>`;
+  }
+}
+
+// ─── ATIVAR/DESATIVAR PAYPIX RÁPIDO (botões de manutenção) ───
+async function _togglePaypixAtivo(ativo) {
+  try {
+    const cfg = _pcCfg || {};
+    const pct  = Math.round((cfg.paypix_pct || 0.6) * 100);
+    const desc = cfg.paypix_descricao || ('Gere seu Pix e receba ' + pct + '% do valor');
+    const r = await fetch(`${BASE}/api/pc/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ paypix_pct: pct, paypix_ativo: ativo, paypix_descricao: desc })
+    });
+    const d = await r.json();
+    if (d.success) {
+      await carregarPaypixCobAdmin();
+      // Atualizar barras de status
+      _atualizarBarraManutencao(ativo);
+    }
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+function _atualizarBarraManutencao(ativo) {
+  const barManut = document.getElementById('pc-manutencao-bar');
+  const barAtivo = document.getElementById('pc-ativo-bar');
+  if (barManut) barManut.style.display = ativo ? 'none' : 'flex';
+  if (barAtivo) barAtivo.style.display = ativo ? 'flex' : 'none';
+}
+
+async function ativarPaypixRapido()   { await _togglePaypixAtivo(true);  }
+async function desativarPaypixRapido(){ await _togglePaypixAtivo(false); }
+
+// ══ PAYPIX — Mercado Pago ══
+
+
+// ════════════════════════════════════════════════════════════════
+// PAYPIX — Mercado Pago — JavaScript (réplica)
+// ════════════════════════════════════════════════════════════════
+
+// pcCheckStatus — usa API do Mercado Pago (não Telegram)
+async function pcCheckStatus() {
+  try {
+    // Testa conexão com MP via /api/pc/testar
+    const r = await fetch(`${BASE}/api/pc/testar?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    const mpOk  = d.success === true;
+    const email = d.email || '';
+    const amb   = d.ambiente || 'produção';
+
+    // Badge no menu lateral
+    const badge = document.getElementById('pc-badge');
+    if (badge) {
+      badge.textContent = mpOk ? 'ON' : 'OFF';
+      badge.style.background = mpOk ? '#2e7d32' : '#c62828';
+    }
+
+    // Card métrica status
+    const st = document.getElementById('pc-status-text');
+    if (st) st.textContent = mpOk ? '✅ Online' : '❌ Sem token';
+    const sub = document.getElementById('pc-sub');
+    if (sub) sub.textContent = mpOk ? `MP ativo · ${amb}` : 'Configure o Access Token MP';
+
+    // Badge no header do card
+    const bd = document.getElementById('pc-badge');
+    if (bd) {
+      bd.textContent = mpOk ? '🟢 MP Ativo' : '🔴 Offline';
+      bd.style.color = mpOk ? '#4caf50' : '#f44336';
+      bd.style.background = mpOk ? '#0a2a0a' : '#2d1010';
+    }
+
+    // Status no card interno
+    const mpSt = document.getElementById('pc-mp-status');
+    if (mpSt) {
+      mpSt.textContent = mpOk ? '✅ Ativo' : '❌ Token inválido ou não configurado';
+      mpSt.style.color = mpOk ? '#4ade80' : '#f44336';
+    }
+    const mpEmail = document.getElementById('pc-mp-email');
+    if (mpEmail && email) mpEmail.textContent = email;
+
+    // Saldo: mostra email da conta (não há endpoint de saldo MP sem userbot)
+    const saldoEl = document.getElementById('pc-saldo');
+    const saldoHr = document.getElementById('pc-saldo-hora');
+    if (saldoEl && mpOk) {
+      saldoEl.textContent = email || 'Conta ativa';
+      if (saldoHr) saldoHr.textContent = `ambiente: ${amb}`;
+    } else if (saldoEl && !mpOk) {
+      saldoEl.textContent = '— Token ausente';
+    }
+
+    // Carrega stats de parceiros/comissões também
+    await pcCarregarTotaisParcerios();
+  } catch(e) {
+    const st = document.getElementById('pc-status-text');
+    if (st) st.textContent = '❓ Erro';
+    console.warn('[Bot2-MP] Erro ao checar status:', e);
+  }
+}
+
+// pcAtualizarSaldo — usa MP2/testar para mostrar conta ativa
+async function pcAtualizarSaldo() {
+  const el = document.getElementById('pc-saldo');
+  const hr = document.getElementById('pc-saldo-hora');
+  if (el) el.textContent = 'Consultando...';
+  try {
+    const r = await fetch(`${BASE}/api/pc/testar?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    const agora = new Date().toLocaleTimeString('pt-BR');
+    if (d.success) {
+      if (el) el.textContent = d.email || 'Conta ativa';
+      if (hr) hr.textContent = `${d.ambiente || 'produção'} · ${agora}`;
+    } else {
+      if (el) el.textContent = '— Sem token';
+      if (hr) hr.textContent = d.error || 'Configure o Access Token';
+    }
+  } catch(e) {
+    if (el) el.textContent = '— Erro';
+    if (hr) hr.textContent = 'Falha de conexão';
+  }
+  // Atualiza totais de parceiros junto
+  await pcCarregarTotaisParcerios();
+}
+
+// Carrega totais de parceiros/comissões para os cards de métricas
+async function pcCarregarTotaisParcerios() {
+  try {
+    const r = await fetch(`${BASE}/api/pc/parceiros?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) return;
+    const parceiros = d.parceiros || [];
+    let totalGerado = 0, totalComissao = 0, totalPago = 0;
+    parceiros.forEach(p => {
+      totalGerado   += parseFloat(p.total_gerado  || 0);
+      totalComissao += parseFloat(p.total_comissao|| 0);
+      totalPago     += parseFloat(p.total_pago    || 0);
+    });
+    const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+    const el = id => document.getElementById(id);
+    if (el('b2-total-gerado'))  el('b2-total-gerado').textContent  = fmt(totalGerado);
+    if (el('b2-total-pago'))    el('b2-total-pago').textContent    = fmt(totalPago);
+    const pendente = totalComissao - totalPago;
+    if (el('b2-comissao-pend')) el('b2-comissao-pend').textContent = `pendente: ${fmt(pendente > 0 ? pendente : 0)}`;
+  } catch(e) {
+    console.warn('[bot2Totais] Erro:', e);
+  }
+}
+
+async function pcSolicitarCodigo() {
+  const phone = document.getElementById('pc-phone-input').value.trim();
+  const btn   = document.getElementById('pc-btn-solicitar');
+  const msg   = document.getElementById('pc-msg-solicitar');
+  if (!phone || phone.length < 8) {
+    msg.innerHTML = '<span style="color:#f44">❌ Digite o número com DDD (ex: 11999887766)</span>';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+  msg.innerHTML = '';
+  try {
+    const r = await fetch(`${BASE}/api/pc/solicitar-codigo`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      body: JSON.stringify({ phone }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ Código enviado para ${d.phone}! Verifique o Telegram.</span>`;
+      document.getElementById('pc-step2').style.display = 'block';
+      document.getElementById('pc-codigo-input').focus();
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao solicitar'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+  btn.disabled = false;
+  btn.textContent = '📱 Enviar código para o Telegram';
+}
+
+async function pcConfirmarCodigo() {
+  const code = document.getElementById('pc-codigo-input').value.trim();
+  const btn  = document.getElementById('pc-btn-confirmar');
+  const msg  = document.getElementById('pc-msg-confirmar');
+  if (!code) { msg.innerHTML = '<span style="color:#f44">❌ Digite o código</span>'; return; }
+  btn.disabled = true;
+  btn.textContent = '⏳ Confirmando...';
+  msg.innerHTML = '';
+  try {
+    const r = await fetch(`${BASE}/api/pc/confirmar-codigo`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      body: JSON.stringify({ code }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message}</span>`;
+      document.getElementById('pc-step2').style.display = 'none';
+      document.getElementById('pc-alert').style.display = 'none';
+      setTimeout(pcCheckStatus, 2000);
+    } else if (d.needs_2fa) {
+      msg.innerHTML = '<span style="color:#ff9800">🔐 2FA necessário — preencha a senha abaixo</span>';
+      document.getElementById('pc-2fa-box').style.display = 'block';
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao confirmar'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+  btn.disabled = false;
+  btn.textContent = '✅ Confirmar';
+}
+
+async function pcConfirmar2FA() {
+  const senha = document.getElementById('pc-2fa-input').value.trim();
+  const code  = document.getElementById('pc-codigo-input').value.trim();
+  const msg   = document.getElementById('pc-msg-confirmar');
+  if (!senha) { msg.innerHTML = '<span style="color:#f44">❌ Digite a senha 2FA</span>'; return; }
+  try {
+    const r = await fetch(`${BASE}/api/pc/confirmar-codigo`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      body: JSON.stringify({ code, password: senha }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message}</span>`;
+      document.getElementById('pc-2fa-box').style.display = 'none';
+      document.getElementById('pc-step2').style.display = 'none';
+      setTimeout(pcCheckStatus, 2000);
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`;
+  }
+}
+
+// Checar status do Bot2 ao carregar e a cada 60s (só se logado)
+if (SECRET()) pcCheckStatus();
+setInterval(() => { if (SECRET()) pcCheckStatus(); }, 60000);
+
+// ─── PARCEIROS AFILIADOS PAYPIX ───────────────────────────────────────────────────────
+
+function pcMostrarFormParceiro() {
+  const f = document.getElementById('pc-form-parceiro');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('pc-link-novo').style.display = 'none';
+}
+
+async function pcCriarParceiro() {
+  const nome       = document.getElementById('pc-p-nome').value.trim();
+  const codigo     = document.getElementById('pc-p-codigo').value.trim();
+  const chavePix   = document.getElementById('pc-p-chave-pix').value.trim();
+  const tipoChave  = document.getElementById('pc-p-tipo-chave').value;
+  const comissao   = parseFloat(document.getElementById('pc-p-comissao').value) || 10;
+  const msg        = document.getElementById('pc-form-msg');
+
+  if (!nome) { msg.innerHTML = '<span style="color:#f44">Nome obrigatório</span>'; return; }
+  if (!chavePix) { msg.innerHTML = '<span style="color:#f44">Chave PIX obrigatória</span>'; return; }
+
+  msg.innerHTML = '⏳ Criando parceiro...';
+  try {
+    const r = await fetch(`${BASE}/api/pc/parceiros`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ nome, codigo: codigo || undefined, chave_pix: chavePix, tipo_chave: tipoChave, comissao_pct: comissao })
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = '<span style="color:#4ade80">✅ Parceiro criado!</span>';
+      // Mostrar link gerado
+      const linkEl = document.getElementById('pc-link-novo-url');
+      linkEl.textContent = d.link || d.parceiro?.link || '';
+      document.getElementById('pc-link-novo').style.display = 'block';
+      // Limpar form
+      document.getElementById('pc-p-nome').value = '';
+      document.getElementById('pc-p-codigo').value = '';
+      document.getElementById('pc-p-chave-pix').value = '';
+      document.getElementById('pc-p-comissao').value = '10';
+      document.getElementById('pc-form-parceiro').style.display = 'none';
+      // Recarregar lista
+      await pcCarregarParceiros();
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao criar'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+}
+
+function pcCopiarLinkNovo() {
+  const url = document.getElementById('pc-link-novo-url').textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  });
+}
+
+async function pcCarregarParceiros() {
+  const tbody = document.getElementById('pc-parceiros-tbody');
+  if (!tbody) return;
+  try {
+    const r = await fetch(`${BASE}/api/pc/parceiros?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success || !d.parceiros || d.parceiros.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Nenhum parceiro cadastrado ainda — clique em "+ Novo Parceiro"</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.parceiros.map(p => {
+      const link = p.link || `https://web-production-9f54e.up.railway.app/paypix?ref=${p.codigo}`;
+      const isAtivo = p.ativo;
+      const statusBadge = isAtivo
+        ? '<span style="color:#4ade80;font-size:11px;font-weight:700">● ativo</span>'
+        : '<span style="color:#f87171;font-size:11px;font-weight:700">● inativo</span>';
+      return `<tr id="row-${p.codigo}" style="opacity:${isAtivo?1:0.6}">
+        <td>
+          <div style="font-weight:700;font-size:14px">${p.nome}</div>
+          <div style="font-size:10px;color:#555;font-family:monospace">${p.codigo}</div>
+          <div style="margin-top:3px">${statusBadge}</div>
+        </td>
+        <td>
+          <div style="font-family:monospace;font-size:13px;color:#60a5fa">${p.chave_pix}</div>
+          <div style="font-size:11px;color:#666">${p.tipo_chave}</div>
+        </td>
+        <td style="text-align:center">
+          <span style="color:#a855f7;font-weight:800;font-size:18px">${p.comissao_pct}%</span>
+        </td>
+        <td style="text-align:center">
+          <div style="color:#4ade80;font-weight:600">R$ ${(p.total_gerado||0).toFixed(2).replace('.',',')}</div>
+          <div style="font-size:11px;color:#666">${p.qtd_pagamentos||0} pag.</div>
+        </td>
+        <td style="text-align:center">
+          <div style="color:#fbbf24;font-weight:600">R$ ${(p.total_comissao||0).toFixed(2).replace('.',',')}</div>
+          <div style="font-size:11px;color:#666">pago: R$ ${(p.total_pago||0).toFixed(2).replace('.',',')}</div>
+        </td>
+        <td>
+          <div style="display:flex;align-items:center;gap:4px;max-width:200px">
+            <code style="font-size:10px;color:#a855f7;word-break:break-all;flex:1">${link}</code>
+            <button onclick="pcCopiarLink('${link}')" title="Copiar link"
+              style="padding:3px 7px;background:#7c3aed22;border:1px solid #7c3aed44;border-radius:5px;color:#a855f7;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0">📋</button>
+          </div>
+        </td>
+        <td>
+          <div style="display:flex;flex-direction:column;gap:5px;min-width:120px">
+            <!-- Ativar/Desativar -->
+            ${isAtivo
+              ? `<button onclick="pcToggleParceiro('${p.codigo}','${p.nome.replace(/'/g,'')}',false)"
+                  style="padding:5px 10px;background:#2a0a0a;border:1px solid #ef444466;border-radius:7px;color:#f87171;font-size:11px;cursor:pointer;font-weight:600">
+                  ⏸ Desativar
+                </button>`
+              : `<button onclick="pcToggleParceiro('${p.codigo}','${p.nome.replace(/'/g,'')}',true)"
+                  style="padding:5px 10px;background:#0a2a0a;border:1px solid #22c55e66;border-radius:7px;color:#4ade80;font-size:11px;cursor:pointer;font-weight:600">
+                  ▶ Ativar
+                </button>`
+            }
+            <!-- Editar -->
+            <button onclick="pcAbrirEdicao('${p.codigo}','${p.nome.replace(/'/g,'')}','${p.chave_pix}','${p.tipo_chave}',${p.comissao_pct})"
+              style="padding:5px 10px;background:#0a1a2a;border:1px solid #3b82f666;border-radius:7px;color:#60a5fa;font-size:11px;cursor:pointer;font-weight:600">
+              ✏️ Editar
+            </button>
+          </div>
+        </td>
+      </tr>
+      <!-- Linha de edição inline (oculta por padrão) -->
+      <tr id="edit-${p.codigo}" style="display:none;background:#0a0a18">
+        <td colspan="8" style="padding:16px">
+          <div style="background:#0d0d20;border:1px solid #3b82f644;border-radius:12px;padding:16px">
+            <div style="font-size:12px;color:#60a5fa;font-weight:700;margin-bottom:12px">✏️ Editar parceiro: ${p.nome}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:12px;align-items:end">
+              <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">Nome</label>
+                <input id="edit-nome-${p.codigo}" value="${p.nome.replace(/"/g,'')}"
+                  style="width:100%;background:#0a0a14;border:1px solid #3b82f644;border-radius:7px;padding:8px 10px;color:#fff;font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">Chave PIX</label>
+                <div style="display:flex;gap:6px">
+                  <select id="edit-tipo-${p.codigo}"
+                    style="background:#0a0a14;border:1px solid #3b82f644;border-radius:7px;padding:8px;color:#fff;font-size:12px;width:120px">
+                    <option value="cpf" ${p.tipo_chave==='cpf'?'selected':''}>CPF</option>
+                    <option value="email" ${p.tipo_chave==='email'?'selected':''}>E-mail</option>
+                    <option value="telefone" ${p.tipo_chave==='telefone'?'selected':''}>Telefone</option>
+                    <option value="cnpj" ${p.tipo_chave==='cnpj'?'selected':''}>CNPJ</option>
+                    <option value="aleatoria" ${p.tipo_chave==='aleatoria'?'selected':''}>Aleatória</option>
+                  </select>
+                  <input id="edit-chave-${p.codigo}" value="${p.chave_pix.replace(/"/g,'')}"
+                    style="flex:1;background:#0a0a14;border:1px solid #3b82f644;border-radius:7px;padding:8px 10px;color:#60a5fa;font-size:13px;font-family:monospace">
+                </div>
+              </div>
+              <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">% Comissão</label>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input id="edit-pct-${p.codigo}" type="number" min="1" max="90" value="${p.comissao_pct}"
+                    style="width:70px;background:#0a0a14;border:1px solid #a855f7;border-radius:7px;padding:8px;color:#a855f7;font-size:16px;font-weight:800;text-align:center">
+                  <span style="color:#a855f7;font-weight:700;font-size:16px">%</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button onclick="pcSalvarEdicao('${p.codigo}')"
+                style="padding:8px 20px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">
+                💾 Salvar
+              </button>
+              <button onclick="document.getElementById('edit-${p.codigo}').style.display='none'"
+                style="padding:8px 16px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#888;font-size:13px;cursor:pointer">
+                Cancelar
+              </button>
+              <span id="edit-msg-${p.codigo}" style="font-size:12px;align-self:center"></span>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#f44;padding:20px">Erro ao carregar: ${e.message}</td></tr>`;
+  }
+}
+
+function pcCopiarLink(url) {
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
+}
+
+function pcAbrirEdicao(codigo, nome, chave, tipo, pct) {
+  // Fechar todas outras edições abertas
+  document.querySelectorAll('[id^="edit-"]').forEach(el => {
+    if (el.id.startsWith('edit-') && !el.id.startsWith('edit-nome-') && !el.id.startsWith('edit-tipo-') && !el.id.startsWith('edit-chave-') && !el.id.startsWith('edit-pct-') && !el.id.startsWith('edit-msg-')) {
+      el.style.display = 'none';
+    }
+  });
+  const editRow = document.getElementById(`edit-${codigo}`);
+  if (editRow) editRow.style.display = editRow.style.display === 'none' ? '' : 'none';
+}
+
+async function pcSalvarEdicao(codigo) {
+  const nome    = document.getElementById(`edit-nome-${codigo}`).value.trim();
+  const chave   = document.getElementById(`edit-chave-${codigo}`).value.trim();
+  const tipo    = document.getElementById(`edit-tipo-${codigo}`).value;
+  const pct     = parseFloat(document.getElementById(`edit-pct-${codigo}`).value) || 10;
+  const msgEl   = document.getElementById(`edit-msg-${codigo}`);
+
+  if (!nome || !chave) { msgEl.innerHTML = '<span style="color:#f44">Nome e chave PIX obrigatórios</span>'; return; }
+  msgEl.innerHTML = '<span style="color:#888">⏳ Salvando...</span>';
+  try {
+    const r = await fetch(`${BASE}/api/pc/parceiros/${encodeURIComponent(codigo)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct })
+    });
+    const d = await r.json();
+    if (d.success) {
+      msgEl.innerHTML = '<span style="color:#4ade80">✅ Salvo!</span>';
+      setTimeout(async () => {
+        document.getElementById(`edit-${codigo}`).style.display = 'none';
+        await pcCarregarParceiros();
+      }, 800);
+    } else {
+      msgEl.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
+    }
+  } catch(e) { msgEl.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`; }
+}
+
+async function pcToggleParceiro(codigo, nome, ativar) {
+  const acao = ativar ? 'ativar' : 'desativar';
+  if (!confirm(`${ativar ? '▶ Ativar' : '⏸ Desativar'} parceiro "${nome}" (${codigo})?${!ativar ? '\nO link deixará de funcionar.' : '\nO link voltará a funcionar.'}`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/pc/parceiros/${encodeURIComponent(codigo)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ ativo: ativar })
+    });
+    const d = await r.json();
+    if (d.success) {
+      await pcCarregarParceiros();
+    } else {
+      alert(`❌ Erro: ${d.error || 'desconhecido'}`);
+    }
+  } catch(e) {
+    alert('❌ Erro: ' + e.message);
+  }
+}
+
+async function pcDesativarParceiro(codigo, nome) {
+  await pcToggleParceiro(codigo, nome, false);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACORDEÃO — collapse/expand dos cards do bot2
+// ═══════════════════════════════════════════════════════════
+function colToggle(id) {
+  const body   = document.getElementById('col-body-' + id);
+  const header = document.getElementById('col-hdr-' + id);
+  const arrow  = document.getElementById('col-arrow-' + id);
+  if (!body) return;
+  const isOpen = !body.classList.contains('collapsed');
+  if (isOpen) {
+    body.classList.add('collapsed');
+    if (arrow)  arrow.classList.add('rotated');
+    if (header) header.classList.add('is-collapsed');
+  } else {
+    body.classList.remove('collapsed');
+    if (arrow)  arrow.classList.remove('rotated');
+    if (header) header.classList.remove('is-collapsed');
+  }
+}
+
+// ── Funções auxiliares PayPix (stubs para compatibilidade) ──
+async function pcCarregarChaves() {
+  try {
+    const r = await fetch(`${BASE}/api/pc/chaves?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) return;
+    // Preenche campos de chaves se existirem
+    if (d.access_token) { const el = document.getElementById('pc-access-token'); if (el) { el.placeholder = '✅ Configurado'; const b = document.getElementById('pc-token-badge'); if (b) b.style.display = 'inline'; } }
+    if (d.webhook_url) { const el = document.getElementById('pc-webhook-url'); if (el) el.textContent = d.webhook_url; }
+  } catch(e) {}
+}
+async function pcCarregarStats() {
+  try {
+    const r = await fetch(`${BASE}/api/pc/stats?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) return;
+    const tg = document.getElementById('pc-total-gerado'); if (tg) tg.textContent = 'R$ ' + (d.total_gerado || '0,00');
+    const tp = document.getElementById('pc-total-pago');   if (tp) tp.textContent = 'R$ ' + (d.total_pago   || '0,00');
+    const cp = document.getElementById('pc-comissao-pend'); if (cp) cp.textContent = 'pendentes: R$ ' + (d.pendente || '0,00');
+  } catch(e) {}
+}
+async function pcCarregarComissoes() {
+  try {
+    const tbody = document.getElementById('pc-comissoes-tbody');
+    if (!tbody) return;
+    const r = await fetch(`${BASE}/api/pc/comissoes?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success || !d.comissoes || d.comissoes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Nenhuma comissão ainda</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.comissoes.map(c => `<tr>
+      <td style="padding:10px 14px;font-size:12px;color:#aaa">${c.id||''}</td>
+      <td style="padding:10px 14px">${c.parceiro||''}</td>
+      <td style="padding:10px 14px;color:#4ade80">R$ ${c.valor||'0'}</td>
+      <td style="padding:10px 14px;font-size:11px;color:#888">${c.chave_pix||''}</td>
+      <td style="padding:10px 14px"><span style="background:${c.status==='pago'?'#1a2a1a':'#2a1a0a'};color:${c.status==='pago'?'#4caf50':'#f59e0b'};padding:2px 8px;border-radius:10px;font-size:11px">${c.status||''}</span></td>
+      <td style="padding:10px 14px;font-size:11px;color:#666">${c.obs||''}</td>
+      <td style="padding:10px 14px;font-size:11px;color:#555">${c.data||''}</td>
+      <td style="padding:10px 14px"></td>
+    </tr>`).join('');
+  } catch(e) {}
+}
+
+// Carrega aba PayPix (chamado pelo showTab)
+async function carregarPaypixCobAdmin() {
+  await pcCheckStatus();
+  await pcCarregarChaves();
+  await pcCarregarStats();
+  await pcCarregarParceiros();
+  await pcCarregarComissoes();
+}
+
+// (setInterval pcCheckStatus já registrado acima — não duplicar)
+
+// ════════════════════════════════════════════════════════════════
+// BOT2 — FUNÇÕES UTILITÁRIAS (toggleField, copiar, salvar token, webhook)
+// ════════════════════════════════════════════════════════════════
+
+function b2ToggleField(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+// Compatibilidade: toggleMp2Field usada por campos do PayPix e Bot2
+function toggleMp2Field(fieldId, badgeId) {
+  b2ToggleField(fieldId);
+}
+
+function copiarMp2Webhook() {
+  const el = document.getElementById('pc-webhook-url') || document.getElementById('pc-webhook-url');
+  const txt = el ? el.textContent.trim() : '';
+  if (!txt || txt === 'Carregando...') { b2Msg('⚠️ URL ainda carregando...', '#f59e0b'); return; }
+  navigator.clipboard.writeText(txt).then(() => b2Msg('📋 URL copiada!', '#4caf50')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    b2Msg('📋 URL copiada!', '#4caf50');
+  });
+}
+
+function b2Msg(txt, cor) {
+  const el = document.getElementById('pc-msg');
+  if (el) { el.innerHTML = `<span style="color:${cor||'#aaa'}">${txt}</span>`; }
+}
+
+// Salvar token do Bot Telegram via /api/bot2/token
+async function b2SalvarTokenBot() {
+  const inp  = document.getElementById('b2-bot-token');
+  const msg  = document.getElementById('b2-bot-token-msg');
+  const token = (inp ? inp.value.trim() : '');
+  if (!token) { if (msg) msg.innerHTML = '<span style="color:#f44">❌ Digite o token do bot</span>'; return; }
+  if (msg) msg.innerHTML = '<span style="color:#888">⏳ Validando token com Telegram...</span>';
+  try {
+    const r = await fetch(`${BASE}/api/bot2/token?secret=${encodeURIComponent(SECRET())}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ token })
+    });
+    const d = await r.json();
+    if (d.success) {
+      if (msg) msg.innerHTML = `<span style="color:#4caf50">✅ ${d.msg || 'Token salvo!'} · @${d.username}</span>`;
+      const badge = document.getElementById('b2-bot-token-badge');
+      if (badge) badge.style.display = 'inline';
+      if (inp) inp.value = '';
+      setTimeout(b2CheckStatus, 1000);
+    } else {
+      if (msg) msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao salvar token'}</span>`;
+    }
+  } catch(e) {
+    if (msg) msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+}
+
+// Salvar chaves Mercado Pago via /api/mp2/config
+async function b2SalvarChaves() {
+  const btn = document.getElementById('pc-btn-salvar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+  b2Msg('⏳ Salvando chaves...', '#888');
+  try {
+    const token  = (document.getElementById('pc-access-token')  || {}).value || '';
+    const pubkey = (document.getElementById('pc-public-key')     || {}).value || '';
+    const cid    = (document.getElementById('pc-client-id')      || {}).value || '';
+    const csec   = (document.getElementById('pc-client-secret')  || {}).value || '';
+    const r = await fetch(`${BASE}/api/mp2/config`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      body: JSON.stringify({
+        access_token:  token  || '__keep__',
+        public_key:    pubkey || '__keep__',
+        client_id:     cid   || '__keep__',
+        client_secret: csec  || '__keep__',
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      b2Msg('✅ Chaves Mercado Pago salvas com sucesso!', '#4caf50');
+      setTimeout(b2CheckStatus, 1500);
+    } else {
+      b2Msg('❌ ' + (d.error || 'Erro ao salvar'), '#f44');
+    }
+  } catch(e) {
+    b2Msg('❌ Erro: ' + e.message, '#f44');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Chaves MP'; }
+}
+
+// Testar conexão MP via /api/mp2/testar
+async function b2TestarConexao() {
+  b2Msg('⏳ Testando conexão...', '#888');
+  try {
+    const r = await fetch(`${BASE}/api/mp2/testar?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (d.success) {
+      b2Msg(`✅ Conectado! Conta: ${d.email} · ${d.ambiente}`, '#4caf50');
+    } else {
+      b2Msg('❌ ' + (d.error || 'Token MP inválido'), '#f44');
+    }
+  } catch(e) {
+    b2Msg('❌ Erro: ' + e.message, '#f44');
+  }
+}
+
+// Registrar webhook do bot no Telegram
+async function b2RegistrarWebhook() {
+  b2Msg('⏳ Registrando webhook no Telegram...', '#888');
+  try {
+    const r = await fetch(`${BASE}/api/bot2/set-webhook?secret=${encodeURIComponent(SECRET())}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url: `${BASE}/webhook/bot2` })
+    });
+    const d = await r.json();
+    if (d.success) {
+      b2Msg('✅ ' + (d.msg || 'Webhook registrado! Bot ativo.'), '#4caf50');
+      setTimeout(b2CheckStatus, 2000);
+    } else {
+      b2Msg('❌ ' + (d.error || 'Falha ao registrar webhook'), '#f44');
+    }
+  } catch(e) {
+    b2Msg('❌ Erro: ' + e.message, '#f44');
+  }
+}
+
+// pcSalvarChaves e pcTestarConexao (PayPix — tab-paypix)
+async function pcSalvarChaves() {
+  const btn = document.getElementById('pc-btn-salvar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+  const pcMsg = id => document.getElementById(id);
+  const setMsg = (t,c) => { const el=pcMsg('pc-msg'); if(el) el.innerHTML=`<span style="color:${c}">${t}</span>`; };
+  setMsg('⏳ Salvando chaves PayPix...','#888');
+  try {
+    const token  = (document.getElementById('pc-access-token')  || {}).value || '';
+    const pubkey = (document.getElementById('pc-public-key')     || {}).value || '';
+    const cid    = (document.getElementById('pc-client-id')      || {}).value || '';
+    const csec   = (document.getElementById('pc-client-secret')  || {}).value || '';
+    const r = await fetch(`${BASE}/api/pc/config`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      body: JSON.stringify({
+        access_token:  token  || '__keep__',
+        public_key:    pubkey || '__keep__',
+        client_id:     cid   || '__keep__',
+        client_secret: csec  || '__keep__',
+      })
+    });
+    const d = await r.json();
+    if (d.success) setMsg('✅ Chaves PayPix salvas!','#4caf50');
+    else setMsg('❌ '+(d.error||'Erro'),'#f44');
+  } catch(e) { setMsg('❌ '+e.message,'#f44'); }
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Chaves PayPix'; }
+}
+async function pcTestarConexao() {
+  const setMsg = (t,c) => { const el=document.getElementById('pc-msg'); if(el) el.innerHTML=`<span style="color:${c}">${t}</span>`; };
+  setMsg('⏳ Testando...','#888');
+  try {
+    const r = await fetch(`${BASE}/api/mp2/testar?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (d.success) setMsg(`✅ ${d.email} · ${d.ambiente}`,'#4caf50');
+    else setMsg('❌ '+(d.error||'Token inválido'),'#f44');
+  } catch(e) { setMsg('❌ '+e.message,'#f44'); }
+}
+
+// ════════════════════════════════════════════════════════════════
 
 // ════════════════════════════════════════════════════════════════
 // BOT2 — Mercado Pago — JavaScript (clone do PayPix)
