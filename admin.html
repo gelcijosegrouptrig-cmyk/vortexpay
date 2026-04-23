@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427l';
+  const VER = '20250427m';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -7343,7 +7343,7 @@ async function ppSolicitarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/pp/solicitar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
       body: JSON.stringify({ phone }),
     });
     const d = await r.json();
@@ -7372,7 +7372,7 @@ async function ppConfirmarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/pp/confirmar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
       body: JSON.stringify({ code }),
     });
     const d = await r.json();
@@ -7402,7 +7402,7 @@ async function ppConfirmar2FA() {
   try {
     const r = await fetch(`${BASE}/api/pp/confirmar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
       body: JSON.stringify({ code, password: senha }),
     });
     const d = await r.json();
@@ -7702,7 +7702,9 @@ async function ppCarregarChaves() {
     if (!d.success) return;
     // Preenche campos de chaves se existirem
     if (d.access_token) { const el = document.getElementById('pp-access-token'); if (el) { el.placeholder = '✅ Configurado'; const b = document.getElementById('pp-token-badge'); if (b) b.style.display = 'inline'; } }
-    if (d.webhook_url) { const el = document.getElementById('pp-webhook-url'); if (el) el.textContent = d.webhook_url; }
+    // Webhook URL dinâmica
+    const wh = document.getElementById('pp-webhook-url');
+    if (wh) wh.textContent = d.webhook_url || `${window.location.origin}/webhook/pp`;
   } catch(e) {}
 }
 async function ppCarregarStats() {
@@ -7887,10 +7889,10 @@ async function ppSalvarChaves() {
   const setMsg = (t,c) => { const el=ppMsg('pp-msg'); if(el) el.innerHTML=`<span style="color:${c}">${t}</span>`; };
   setMsg('⏳ Salvando chaves PayPix...','#888');
   try {
-    const token  = (document.getElementById('mp2-access-token')  || {}).value || '';
-    const pubkey = (document.getElementById('mp2-public-key')     || {}).value || '';
-    const cid    = (document.getElementById('mp2-client-id')      || {}).value || '';
-    const csec   = (document.getElementById('mp2-client-secret')  || {}).value || '';
+    const token  = (document.getElementById('pp-access-token')  || {}).value || '';
+    const pubkey = (document.getElementById('pp-public-key')     || {}).value || '';
+    const cid    = (document.getElementById('pp-client-id')      || {}).value || '';
+    const csec   = (document.getElementById('pp-client-secret')  || {}).value || '';
     const r = await fetch(`${BASE}/api/pp/config`, {
       method: 'POST',
       headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
@@ -8249,7 +8251,7 @@ async function pcSolicitarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/pc/solicitar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
       body: JSON.stringify({ phone }),
     });
     const d = await r.json();
@@ -8278,7 +8280,7 @@ async function pcConfirmarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/pc/confirmar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
       body: JSON.stringify({ code }),
     });
     const d = await r.json();
@@ -8308,7 +8310,7 @@ async function pcConfirmar2FA() {
   try {
     const r = await fetch(`${BASE}/api/pc/confirmar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
       body: JSON.stringify({ code, password: senha }),
     });
     const d = await r.json();
@@ -8952,7 +8954,7 @@ async function b2SolicitarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/mp2/solicitar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
       body: JSON.stringify({ phone }),
     });
     const d = await r.json();
@@ -8981,7 +8983,7 @@ async function b2ConfirmarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/mp2/confirmar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
       body: JSON.stringify({ code }),
     });
     const d = await r.json();
@@ -9011,7 +9013,7 @@ async function b2Confirmar2FA() {
   try {
     const r = await fetch(`${BASE}/api/mp2/confirmar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
       body: JSON.stringify({ code, password: senha }),
     });
     const d = await r.json();

@@ -9452,6 +9452,9 @@ async def main():
     app.router.add_patch('/api/pp/parceiros/{codigo}',      route_mp2_parceiros_editar)
     app.router.add_get('/api/pp/comissoes',                 route_mp2_comissoes_listar)
     app.router.add_post('/api/pp/comissoes/pagar',          route_mp2_comissoes_pagar_manual)
+    app.router.add_get('/api/pp/chaves',                    route_mp2_config_get)        # ← alias faltando
+    app.router.add_post('/api/pp/solicitar-codigo',         route_bot2_solicitar_codigo) # ← alias faltando
+    app.router.add_post('/api/pp/confirmar-codigo',         route_bot2_confirmar_codigo) # ← alias faltando
 
     # ── PC (PayPix-Cob) — segundo canal PayPix, mesma infra MP2 ──────────
     app.router.add_get('/api/pc/status',                    route_mp2_status)
