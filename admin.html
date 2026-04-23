@@ -4573,6 +4573,7 @@ function showTab(tab) {
   if (tab === 'saques' && allSaques.length === 0) loadSaques();
   if (tab === 'sorteio') carregarSorteioAdmin();
   if (tab === 'paypix') carregarPaypixAdmin();
+  if (tab === 'bot2') { bot2CheckStatus(); mp2CarregarChaves(); mp2CarregarStats(); mp2CarregarParceiros(); }
   if (tab === 'sistema') loadHealth();
 }
 
@@ -5828,30 +5829,7 @@ function _atualizarBarraManutencao(ativo) {
 async function ativarPaypixRapido()   { await _togglePaypixAtivo(true);  }
 async function desativarPaypixRapido(){ await _togglePaypixAtivo(false); }
 
-// Chamar ao carregar a aba para sincronizar barras
-const _origCarregarPaypixAdmin = _legacyCarregarPaypixAdmin;
-_legacyCarregarPaypixAdmin_wrapper = async function() {
-  await _origCarregarPaypixAdmin();
-  const ativo = (_ppCfg && _ppCfg.paypix_ativo !== false);
-  _atualizarBarraManutencao(ativo);
-  // Carregar status do gateway
-  ppAtualizarStatusGateway();
-};
-
-// ═══════════════════════════════════════════════
-// ══ PAYPIX — Mercado Pago — Credenciais & Parceiros ══
-// ═══════════════════════════════════════════════
-
-// Atualizar texto "Afiliado X%" nas funções de slider
-const _origAtualizarSlider = atualizarSliderPaypix;
-atualizarSliderPaypix = function(val) {
-  _origAtualizarSlider(val);
-  // Substituir "Parceiro" por "Afiliado" nos textos da barra
-  const parcTxt = document.getElementById('pp-bar-parc-txt');
-  if (parcTxt && parcTxt.textContent.startsWith('Parceiro')) {
-    parcTxt.textContent = 'Afiliado ' + val + '%';
-  }
-};
+// ══ PAYPIX — Mercado Pago ══
 
 
 // ════════════════════════════════════════════════════════════════
