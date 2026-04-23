@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250423</title>
+<title>PaynexBet - Painel Admin v20250427n</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427m';
+  const VER = '20250427n';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -8673,19 +8673,28 @@ function toggleMp2Field(fieldId, badgeId) {
 }
 
 function copiarMp2Webhook() {
-  const el = document.getElementById('pc-webhook-url') || document.getElementById('pc-webhook-url');
+  const el = document.getElementById('b2-webhook-url') || document.getElementById('pp-webhook-url') || document.getElementById('pc-webhook-url');
   const txt = el ? el.textContent.trim() : '';
-  if (!txt || txt === 'Carregando...') { b2Msg('⚠️ URL ainda carregando...', '#f59e0b'); return; }
-  navigator.clipboard.writeText(txt).then(() => b2Msg('📋 URL copiada!', '#4caf50')).catch(() => {
+  if (!txt || txt === 'Carregando...') {
+    // Tentar mostrar mensagem no elemento correto
+    const msgEl = document.getElementById('b2-msg') || document.getElementById('pp-msg') || document.getElementById('pc-msg');
+    if (msgEl) msgEl.innerHTML = '<span style="color:#f59e0b">⚠️ URL ainda carregando...</span>';
+    return;
+  }
+  navigator.clipboard.writeText(txt).then(() => {
+    const msgEl = document.getElementById('b2-msg') || document.getElementById('pp-msg') || document.getElementById('pc-msg');
+    if (msgEl) msgEl.innerHTML = '<span style="color:#4caf50">📋 URL copiada!</span>';
+  }).catch(() => {
     const ta = document.createElement('textarea');
     ta.value = txt; document.body.appendChild(ta); ta.select();
     document.execCommand('copy'); document.body.removeChild(ta);
-    b2Msg('📋 URL copiada!', '#4caf50');
+    const msgEl = document.getElementById('b2-msg') || document.getElementById('pp-msg') || document.getElementById('pc-msg');
+    if (msgEl) msgEl.innerHTML = '<span style="color:#4caf50">📋 URL copiada!</span>';
   });
 }
 
 function b2Msg(txt, cor) {
-  const el = document.getElementById('pc-msg');
+  const el = document.getElementById('b2-msg');
   if (el) { el.innerHTML = `<span style="color:${cor||'#aaa'}">${txt}</span>`; }
 }
 
@@ -8719,14 +8728,14 @@ async function b2SalvarTokenBot() {
 
 // Salvar chaves Mercado Pago via /api/mp2/config
 async function b2SalvarChaves() {
-  const btn = document.getElementById('pc-btn-salvar');
+  const btn = document.getElementById('b2-btn-salvar');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
   b2Msg('⏳ Salvando chaves...', '#888');
   try {
-    const token  = (document.getElementById('pc-access-token')  || {}).value || '';
-    const pubkey = (document.getElementById('pc-public-key')     || {}).value || '';
-    const cid    = (document.getElementById('pc-client-id')      || {}).value || '';
-    const csec   = (document.getElementById('pc-client-secret')  || {}).value || '';
+    const token  = (document.getElementById('b2-access-token')  || {}).value || '';
+    const pubkey = (document.getElementById('b2-public-key')     || {}).value || '';
+    const cid    = (document.getElementById('b2-client-id')      || {}).value || '';
+    const csec   = (document.getElementById('b2-client-secret')  || {}).value || '';
     const r = await fetch(`${BASE}/api/mp2/config`, {
       method: 'POST',
       headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
@@ -8819,7 +8828,7 @@ async function pcTestarConexao() {
   const setMsg = (t,c) => { const el=document.getElementById('pc-msg'); if(el) el.innerHTML=`<span style="color:${c}">${t}</span>`; };
   setMsg('⏳ Testando...','#888');
   try {
-    const r = await fetch(`${BASE}/api/mp2/testar?secret=${encodeURIComponent(SECRET())}`);
+    const r = await fetch(`${BASE}/api/pc/testar?secret=${encodeURIComponent(SECRET())}`);
     const d = await r.json();
     if (d.success) setMsg(`✅ ${d.email} · ${d.ambiente}`,'#4caf50');
     else setMsg('❌ '+(d.error||'Token inválido'),'#f44');
@@ -9824,7 +9833,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427g ===');
+  out.push('=== VERSÃO: 20250427n ===');
   out.push('');
 
   // Estado dos elementos críticos
