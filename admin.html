@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250427o</title>
+<title>PaynexBet - Painel Admin v20250427p</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427o';
+  const VER = '20250427p';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -9818,6 +9818,461 @@ function colInitState() {
 }
 document.addEventListener('DOMContentLoaded', () => { setTimeout(colInitState, 50); });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ███  QR CODE DE AUTOCADASTRO — Funções  ███
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Detecta qual aba está ativa para usar o prefixo correto (pp / pc / b2)
+function _qrPrefix() {
+  const tabs = ['pp','pc','b2'];
+  for (const p of tabs) {
+    const el = document.getElementById(`${p}-qr-titulo`);
+    if (el && el.closest('.collapse-body') && el.offsetParent !== null) return p;
+    // fallback: checa se o select de afiliado existe e está visível
+    const sel = document.getElementById(`${p}-qr-ref-select`);
+    if (sel && sel.offsetParent !== null) return p;
+  }
+  // Se não conseguir detectar, tenta via aba ativa
+  const activeTab = document.querySelector('.tab-btn.active');
+  if (activeTab) {
+    const tid = activeTab.dataset.tab || '';
+    if (tid.includes('paypix-cob') || tid.includes('pc')) return 'pc';
+    if (tid.includes('bot2') || tid.includes('b2')) return 'b2';
+  }
+  return 'pp'; // default
+}
+
+// Retorna o link de assinatura atual exibido no QR (aba ativa)
+function _qrGetLink() {
+  const p = _qrPrefix();
+  const txt = document.getElementById(`${p}-qr-link-txt`);
+  return (txt && txt.textContent && txt.textContent !== '—') ? txt.textContent.trim() : null;
+}
+
+// Atualiza o preview do QR Code com base nos campos da aba
+function qrAtualizarPreview() {
+  const p = _qrPrefix();
+  const refSel  = document.getElementById(`${p}-qr-ref-select`);
+  const refMann = document.getElementById(`${p}-qr-ref`);
+  const refCode = (refSel && refSel.value) ? refSel.value : (refMann ? refMann.value.trim() : '');
+  const base    = window.location.origin || 'https://paynexbet.com';
+  const link    = refCode ? `${base}/assinar?ref=${encodeURIComponent(refCode)}` : `${base}/assinar`;
+
+  const img  = document.getElementById(`${p}-qr-preview-img`);
+  const txt  = document.getElementById(`${p}-qr-link-txt`);
+  const lbl  = document.getElementById(`${p}-qr-afiliado-label`);
+
+  if (img) img.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(link)}`;
+  if (txt) txt.textContent = link;
+  if (lbl) { lbl.style.display = refCode ? 'block' : 'none'; lbl.textContent = refCode ? `👤 ${refCode}` : ''; }
+}
+
+// Carrega afiliados/parceiros nos selects da aba ativa
+async function qrCarregarAfiliados() {
+  const p = _qrPrefix();
+  const sel = document.getElementById(`${p}-qr-ref-select`);
+  const lista = document.getElementById(`${p}-qr-afiliados-lista`);
+
+  // Determina endpoint correto por prefixo
+  const ep = p === 'b2' ? 'mp2' : p;
+  try {
+    const r = await fetch(`${BASE}/api/${ep}/parceiros?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    const parceiros = d.parceiros || d.items || [];
+
+    // Atualiza o select
+    if (sel) {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">🌐 Sem afiliado (link geral)</option>';
+      parceiros.forEach(par => {
+        const opt = document.createElement('option');
+        opt.value  = par.codigo || par.id || par.username || '';
+        opt.textContent = `${par.nome || par.username || par.id} (${par.codigo || ''})`;
+        sel.appendChild(opt);
+      });
+      if (cur) sel.value = cur;
+    }
+
+    // Atualiza a lista de QR por afiliado
+    if (lista) {
+      if (!parceiros.length) {
+        lista.innerHTML = '<div style="font-size:12px;color:#555;padding:20px;text-align:center;grid-column:1/-1">Nenhum afiliado cadastrado</div>';
+      } else {
+        const base = window.location.origin || 'https://paynexbet.com';
+        lista.innerHTML = parceiros.map(par => {
+          const cod  = par.codigo || par.id || par.username || '';
+          const nome = par.nome || par.username || cod;
+          const link = `${base}/assinar?ref=${encodeURIComponent(cod)}`;
+          const qr   = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(link)}`;
+          return `<div style="background:#0a0a1a;border:1px solid #9c27b030;border-radius:12px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="font-size:12px;font-weight:700;color:#ce93d8">${nome}</div>
+            <div style="background:#fff;padding:6px;border-radius:8px"><img src="${qr}" width="120" height="120"/></div>
+            <div style="font-size:10px;color:#555;word-break:break-all;text-align:center;max-width:200px">${link}</div>
+            <button onclick="copiar('${link}')" class="action-btn" style="font-size:11px;padding:4px 10px">📋 Copiar</button>
+          </div>`;
+        }).join('');
+      }
+    }
+    qrAtualizarPreview();
+  } catch(e) {
+    if (lista) lista.innerHTML = `<div style="font-size:12px;color:#f44336;padding:20px;grid-column:1/-1">Erro: ${e.message}</div>`;
+  }
+}
+
+// Chamado quando muda o select de afiliado
+function qrOnAfiliadoChange() {
+  const p = _qrPrefix();
+  const sel = document.getElementById(`${p}-qr-ref-select`);
+  const inp = document.getElementById(`${p}-qr-ref`);
+  if (sel && inp) inp.value = sel.value;
+  qrAtualizarPreview();
+}
+
+// Chamado quando o campo manual de código muda
+function qrOnRefManualChange() {
+  const p = _qrPrefix();
+  const inp = document.getElementById(`${p}-qr-ref`);
+  const badge = document.getElementById(`${p}-qr-ref-badge`);
+  if (badge) badge.style.display = (inp && inp.value.trim()) ? 'inline-block' : 'none';
+  qrAtualizarPreview();
+}
+
+// Salva configuração do QR / plano de assinatura
+async function qrSalvarConfig() {
+  const p = _qrPrefix();
+  const msg = document.getElementById(`${p}-qr-cfg-msg`);
+  const titulo    = (document.getElementById(`${p}-qr-titulo`)     || {}).value || '';
+  const desc      = (document.getElementById(`${p}-qr-desc`)       || {}).value || '';
+  const valor     = parseFloat((document.getElementById(`${p}-qr-valor`) || {}).value || '10') || 10;
+  const dia       = parseInt((document.getElementById(`${p}-qr-dia`)    || {}).value || '1')   || 1;
+  const beneficios= (document.getElementById(`${p}-qr-beneficios`) || {}).value || '';
+
+  if (msg) { msg.style.display='block'; msg.style.color='#aaa'; msg.textContent='💾 Salvando...'; }
+  try {
+    const r = await fetch(`${BASE}/api/assinar/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ titulo, descricao: desc, valor, dia_cobranca: dia, beneficios: beneficios.split('\n').filter(Boolean) })
+    });
+    const d = await r.json();
+    if (msg) { msg.style.color = d.success ? '#4caf50' : '#f44336'; msg.textContent = d.success ? '✅ Configuração salva!' : ('❌ ' + (d.error || 'Erro ao salvar')); }
+    qrAtualizarPreview();
+  } catch(e) {
+    if (msg) { msg.style.color='#f44336'; msg.textContent='❌ Erro: ' + e.message; }
+  }
+}
+
+// Copia o link do QR para a área de transferência
+function qrCopiarLink() {
+  qrAtualizarPreview();
+  setTimeout(() => {
+    const link = _qrGetLink();
+    if (link) copiar(link);
+    else { const p = _qrPrefix(); const txt = document.getElementById(`${p}-qr-link-txt`); copiar(txt ? txt.textContent : window.location.origin + '/assinar'); }
+  }, 200);
+}
+
+// Copia o link atualmente exibido no QR preview
+function qrCopiarLinkAtual() { qrCopiarLink(); }
+
+// Abre a página de assinatura em nova aba
+function qrAbrirLink() {
+  qrAtualizarPreview();
+  setTimeout(() => {
+    const link = _qrGetLink() || (window.location.origin + '/assinar');
+    window.open(link, '_blank');
+  }, 200);
+}
+
+// Baixa o QR Code como PNG
+function qrDownload() {
+  const p = _qrPrefix();
+  const link = _qrGetLink() || (window.location.origin + '/assinar');
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(link)}&format=png`;
+  const a = document.createElement('a');
+  a.href = qrUrl;
+  a.download = `qrcode-assinar-${p}.png`;
+  a.target = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ███  DÉBITO AUTOMÁTICO — ASSINATURAS MENSAIS  ███
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Detecta prefixo da aba de recorrente (pp / pc / b2)
+function _recPrefix() {
+  const tabs = ['pp','pc','b2'];
+  for (const p of tabs) {
+    const el = document.getElementById(`${p}-rec-tbody`);
+    if (el && el.offsetParent !== null) return p;
+    const el2 = document.getElementById(`${p}-rec-plano-titulo`);
+    if (el2 && el2.offsetParent !== null) return p;
+  }
+  const activeTab = document.querySelector('.tab-btn.active');
+  if (activeTab) {
+    const tid = activeTab.dataset.tab || '';
+    if (tid.includes('paypix-cob') || tid.includes('pc')) return 'pc';
+    if (tid.includes('bot2') || tid.includes('b2')) return 'b2';
+  }
+  return 'pp';
+}
+
+// Carrega lista de assinantes recorrentes
+async function recCarregarLista() {
+  const p = _recPrefix();
+  const tbody = document.getElementById(`${p}-rec-tbody`);
+  const elAtivos    = document.getElementById(`${p}-rec-ativos`);
+  const elMrr       = document.getElementById(`${p}-rec-mrr`);
+  const elTotal     = document.getElementById(`${p}-rec-total`);
+  const elPausados  = document.getElementById(`${p}-rec-pausados`);
+
+  if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">⏳ Carregando...</td></tr>';
+
+  try {
+    const r  = await fetch(`${BASE}/api/recorrente/listar?secret=${encodeURIComponent(SECRET())}`);
+    const d  = await r.json();
+    const lista = d.assinantes || d.items || d.data || [];
+
+    // Atualiza métricas
+    let ativos = 0, mrr = 0, total = 0, pausados = 0;
+    lista.forEach(a => {
+      const st = (a.status || '').toLowerCase();
+      if (st === 'ativo' || st === 'active' || st === 'authorized') { ativos++; mrr += parseFloat(a.valor || a.amount || 0); }
+      else if (st === 'pausado' || st === 'paused' || st === 'cancelled' || st === 'cancelado') pausados++;
+      total += parseFloat(a.total_pago || a.total_paid || 0);
+    });
+
+    if (elAtivos)   elAtivos.textContent   = ativos;
+    if (elMrr)      elMrr.textContent      = `R$ ${mrr.toFixed(2)}`;
+    if (elTotal)    elTotal.textContent    = `R$ ${total.toFixed(2)}`;
+    if (elPausados) elPausados.textContent = pausados;
+
+    // Renderiza tabela
+    if (!tbody) return;
+    if (!lista.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Nenhuma assinatura encontrada</td></tr>';
+      return;
+    }
+    tbody.innerHTML = lista.map(a => {
+      const st = a.status || 'desconhecido';
+      const cor = (st==='ativo'||st==='authorized'||st==='active') ? '#4caf50' : (st==='pausado'||st==='paused') ? '#ff9800' : '#f44336';
+      const prox = a.proxima_cobranca || a.next_payment_date || '—';
+      const totPago = a.total_pago != null ? `R$ ${parseFloat(a.total_pago).toFixed(2)}` : '—';
+      return `<tr>
+        <td style="font-size:11px;color:#888">${a.id || '—'}</td>
+        <td>${a.nome || a.name || a.payer_name || '—'}</td>
+        <td>${a.tipo || a.reason || '—'}</td>
+        <td>R$ ${parseFloat(a.valor || a.amount || 0).toFixed(2)}</td>
+        <td style="font-size:11px">${prox}</td>
+        <td>${totPago}</td>
+        <td><span style="background:${cor}20;color:${cor};border:1px solid ${cor}50;border-radius:20px;padding:2px 10px;font-size:11px">${st}</span></td>
+        <td>
+          <button onclick="recCancelarAssinatura('${a.id}')" style="padding:3px 8px;background:#f4433620;color:#f44336;border:1px solid #f4433650;border-radius:6px;font-size:11px;cursor:pointer">❌ Cancelar</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    // Carrega também o status do plano
+    recCarregarStatusPlano(p);
+
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#f44336;padding:20px">❌ Erro: ${e.message}</td></tr>`;
+  }
+}
+
+// Cancela assinatura individual
+async function recCancelarAssinatura(id) {
+  if (!confirm('Cancelar esta assinatura?')) return;
+  try {
+    const r = await fetch(`${BASE}/api/recorrente/cancelar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ id })
+    });
+    const d = await r.json();
+    if (d.success) recCarregarLista();
+    else alert('Erro ao cancelar: ' + (d.error || 'Desconhecido'));
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+// Carrega status do plano de débito automático ativo
+async function recCarregarStatusPlano(p) {
+  const el = document.getElementById(`${p || _recPrefix()}-rec-plano-status`);
+  if (!el) return;
+  try {
+    const r = await fetch(`${BASE}/api/assinar/plano?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (d.success && d.plano) {
+      const pl = d.plano;
+      el.style.display = 'block';
+      el.innerHTML = `<strong style="color:#009ee3">✅ Plano ativo:</strong> ${pl.reason || pl.nome || pl.name || '—'} — R$ ${parseFloat(pl.auto_recurring?.transaction_amount || pl.valor || 0).toFixed(2)}/mês (dia ${pl.auto_recurring?.frequency || pl.dia || '—'})`;
+      // Preenche os inputs
+      const prfx = p || _recPrefix();
+      const setVal = (id, v) => { const el2 = document.getElementById(id); if (el2) el2.value = v || ''; };
+      setVal(`${prfx}-rec-plano-titulo`, pl.reason || pl.nome || '');
+      setVal(`${prfx}-rec-plano-valor`, pl.auto_recurring?.transaction_amount || pl.valor || '');
+      setVal(`${prfx}-rec-plano-dia`,   pl.auto_recurring?.frequency || pl.dia || '');
+    } else {
+      el.style.display = 'none';
+    }
+  } catch(e) { el.style.display = 'none'; }
+}
+
+// Cria / atualiza plano de débito automático no Mercado Pago
+async function recCriarPlanoMP() {
+  const p   = _recPrefix();
+  const msg = document.getElementById(`${p}-rec-criar-plano-msg`);
+  const btn = document.getElementById(`${p}-rec-btn-criar-plano`);
+  const titulo   = (document.getElementById(`${p}-rec-plano-titulo`)    || {}).value || '';
+  const valor    = parseFloat((document.getElementById(`${p}-rec-plano-valor`) || {}).value || '0');
+  const dia      = parseInt((document.getElementById(`${p}-rec-plano-dia`)    || {}).value || '1');
+  const bens     = (document.getElementById(`${p}-rec-plano-beneficios`) || {}).value || '';
+
+  if (!titulo) { if(msg){msg.style.display='block';msg.style.color='#f44336';msg.textContent='❌ Informe o nome do plano';} return; }
+  if (!valor || valor < 1) { if(msg){msg.style.display='block';msg.style.color='#f44336';msg.textContent='❌ Informe um valor válido (mínimo R$ 1,00)';} return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Criando...'; }
+  if (msg) { msg.style.display='block'; msg.style.color='#aaa'; msg.textContent='⏳ Criando plano no Mercado Pago...'; }
+
+  try {
+    const r = await fetch(`${BASE}/api/assinar/criar-plano`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ titulo, valor, dia_cobranca: dia, beneficios: bens.split(/[\n,]/).map(b=>b.trim()).filter(Boolean) })
+    });
+    const d = await r.json();
+    if (d.success) {
+      if (msg) { msg.style.color='#4caf50'; msg.textContent=`✅ Plano criado! ID: ${d.plan_id || d.id || '—'}`; }
+      recCarregarLista();
+    } else {
+      if (msg) { msg.style.color='#f44336'; msg.textContent='❌ Erro: ' + (d.error || 'Falha ao criar plano'); }
+    }
+  } catch(e) {
+    if (msg) { msg.style.color='#f44336'; msg.textContent='❌ Erro: ' + e.message; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⚡ Criar / Atualizar Plano no MP'; }
+  }
+}
+
+// Carrega afiliados no seletor de link de assinatura
+async function recCarregarAfiliados() {
+  const p   = _recPrefix();
+  const sel = document.getElementById(`${p}-rec-link-afiliado`);
+  if (!sel) return;
+  const ep = p === 'b2' ? 'mp2' : p;
+  try {
+    const r = await fetch(`${BASE}/api/${ep}/parceiros?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    const parceiros = d.parceiros || d.items || [];
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— Sem afiliado (link genérico) —</option>';
+    parceiros.forEach(par => {
+      const opt = document.createElement('option');
+      opt.value = par.codigo || par.id || par.username || '';
+      opt.textContent = `${par.nome || par.username || par.id} (${par.codigo || ''})`;
+      sel.appendChild(opt);
+    });
+    if (cur) sel.value = cur;
+    recAtualizarLinkAfiliado();
+  } catch(e) { /* silencioso */ }
+}
+
+// Atualiza o link de assinatura com o afiliado selecionado
+function recAtualizarLinkAfiliado() {
+  const p   = _recPrefix();
+  const sel = document.getElementById(`${p}-rec-link-afiliado`);
+  const cod = sel ? sel.value : '';
+  const base = window.location.origin || 'https://paynexbet.com';
+  const link = cod ? `${base}/assinar?ref=${encodeURIComponent(cod)}` : `${base}/assinar`;
+
+  const elLink = document.getElementById(`${p}-rec-link-assinar`);
+  if (elLink) elLink.textContent = link;
+}
+
+// Gera QR Code do link de assinatura (inline)
+function recGerarQRAssinar() {
+  const p    = _recPrefix();
+  const wrap = document.getElementById(`${p}-rec-qr-inline`);
+  const img  = document.getElementById(`${p}-rec-qr-img`);
+  const elLink = document.getElementById(`${p}-rec-link-assinar`);
+  const link = elLink ? elLink.textContent.trim() : (window.location.origin + '/assinar');
+
+  if (img) img.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(link)}`;
+  if (wrap) wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ███  CONFIGURAR PÁGINA /bot e /pix  ███
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Detecta prefixo da aba de configuração de pagamento
+function _cfgPrefix() {
+  const tabs = ['pp','pc','b2'];
+  for (const p of tabs) {
+    const el = document.getElementById(`${p}-cfg-titulo`);
+    if (el && el.offsetParent !== null) return p;
+  }
+  return 'pp';
+}
+
+// Salva configuração da página de pagamento (/bot, /pix)
+async function botConfigSalvar() {
+  const p   = _cfgPrefix();
+  const msg = document.getElementById(`${p}-cfg-bot-msg`);
+
+  // Lê modo (fixo ou livre)
+  const radioFixo = document.getElementById(`${p}-radio-fixo`);
+  const radioLivre = document.getElementById(`${p}-radio-livre`);
+  const modo = (radioFixo && radioFixo.checked) ? 'fixo' : 'livre';
+
+  const valor    = parseFloat((document.getElementById(`${p}-cfg-valor-fixo`) || {}).value || '0') || 0;
+  const minValor = parseFloat((document.getElementById(`${p}-cfg-min-valor`)  || {}).value || '1') || 1;
+  const maxValor = parseFloat((document.getElementById(`${p}-cfg-max-valor`)  || {}).value || '10000') || 10000;
+  const titulo   = (document.getElementById(`${p}-cfg-titulo`)   || {}).value || '';
+  const descricao= (document.getElementById(`${p}-cfg-descricao`)|| {}).value || '';
+
+  if (msg) { msg.style.color='#aaa'; msg.textContent='💾 Salvando...'; }
+
+  try {
+    const body = { modo, titulo, descricao };
+    if (modo === 'fixo') body.valor = valor;
+    else { body.min_valor = minValor; body.max_valor = maxValor; }
+
+    const r = await fetch(`${BASE}/api/paypix/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (msg) {
+      msg.style.color = d.success ? '#4caf50' : '#f44336';
+      msg.textContent = d.success ? '✅ Configuração salva com sucesso!' : ('❌ Erro: ' + (d.error || 'Falha ao salvar'));
+    }
+  } catch(e) {
+    if (msg) { msg.style.color='#f44336'; msg.textContent='❌ Erro: ' + e.message; }
+  }
+}
+
+// Atualiza exibição do campo de valor fixo vs livre
+function botModoChange() {
+  const p = _cfgPrefix();
+  const radioFixo = document.getElementById(`${p}-radio-fixo`);
+  const modoFixo  = radioFixo && radioFixo.checked;
+
+  const wrapFixo   = document.getElementById(`${p}-cfg-valor-fixo-wrap`);
+  const wrapMinMax = document.getElementById(`${p}-cfg-minmax-wrap`);
+  const lblFixo    = document.getElementById(`${p}-lbl-modo-fixo`);
+  const lblLivre   = document.getElementById(`${p}-lbl-modo-livre`);
+
+  if (wrapFixo)   wrapFixo.style.display   = modoFixo ? 'block' : 'none';
+  if (wrapMinMax) wrapMinMax.style.display  = modoFixo ? 'none'  : 'block';
+  if (lblFixo)  { lblFixo.style.background  = modoFixo ? '#0a1500' : '#0a0a1a'; lblFixo.style.borderColor  = modoFixo ? '#22c55e44' : '#ffffff11'; }
+  if (lblLivre) { lblLivre.style.background = modoFixo ? '#0a0a1a' : '#0a1500'; lblLivre.style.borderColor = modoFixo ? '#ffffff11' : '#22c55e44'; }
+}
+
 </script>
 
 <!-- DEBUG PANEL - REMOVER APÓS DIAGNÓSTICO -->
@@ -9833,7 +10288,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427o ===');
+  out.push('=== VERSÃO: 20250427p ===');
   out.push('');
 
   // Estado dos elementos críticos
