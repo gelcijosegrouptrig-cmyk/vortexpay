@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250427r</title>
+<title>PaynexBet - Painel Admin v20250427s</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427r';
+  const VER = '20250427s';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -8138,7 +8138,7 @@ async function pcCheckStatus() {
     const d = await r.json();
     const mpOk  = d.success === true;
     const email = d.email || '';
-    const amb   = d.ambiente || 'produção';
+    const amb   = d.ambiente || d.site_id || 'produção';
 
     // Badge no menu lateral
     const badge = document.getElementById('pc-badge');
@@ -8200,7 +8200,7 @@ async function pcAtualizarSaldo() {
     const agora = new Date().toLocaleTimeString('pt-BR');
     if (d.success) {
       if (el) el.textContent = d.email || 'Conta ativa';
-      if (hr) hr.textContent = `${d.ambiente || 'produção'} · ${agora}`;
+      if (hr) hr.textContent = `${d.ambiente || d.site_id || 'produção'} · ${agora}`;
     } else {
       if (el) el.textContent = '— Sem token';
       if (hr) hr.textContent = d.error || 'Configure o Access Token';
@@ -8849,13 +8849,20 @@ async function pcSalvarChaves() {
 }
 async function pcTestarConexao() {
   const setMsg = (t,c) => { const el=document.getElementById('pc-msg'); if(el) el.innerHTML=`<span style="color:${c}">${t}</span>`; };
-  setMsg('⏳ Testando...','#888');
+  setMsg('⏳ Testando conexão PayPix-Cob...','#888');
   try {
     const r = await fetch(`${BASE}/api/pc/testar?secret=${encodeURIComponent(SECRET())}`);
     const d = await r.json();
-    if (d.success) setMsg(`✅ ${d.email} · ${d.ambiente}`,'#4caf50');
-    else setMsg('❌ '+(d.error||'Token inválido'),'#f44');
-  } catch(e) { setMsg('❌ '+e.message,'#f44'); }
+    if (d.success) {
+      const amb = d.ambiente || d.site_id || 'produção';
+      setMsg(`✅ ${d.email} · ${amb}`,'#4caf50');
+      // Atualiza badge de status
+      const mpBadge = document.getElementById('pc-mp-badge');
+      if (mpBadge) { mpBadge.textContent='✅ Ativo'; mpBadge.style.color='#4caf50'; mpBadge.style.background='#4caf5020'; }
+    } else {
+      setMsg('❌ '+(d.error||'Token inválido ou não configurado'),'#f44336');
+    }
+  } catch(e) { setMsg('❌ Erro: '+e.message,'#f44336'); }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -10335,7 +10342,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427r ===');
+  out.push('=== VERSÃO: 20250427s ===');
   out.push('');
 
   // Estado dos elementos críticos

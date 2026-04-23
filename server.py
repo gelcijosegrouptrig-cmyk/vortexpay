@@ -6724,12 +6724,18 @@ async def route_pc_testar(request):
         )
         if resp.status_code == 200:
             d = resp.json()
+            email   = d.get('email', '')
+            site_id = d.get('site_id', 'MLB')
+            # Determina ambiente pelo prefixo do token (TEST = sandbox, APP_USR = produção)
+            pc_token_prefix = token[:4] if token else ''
+            ambiente = 'sandbox' if pc_token_prefix == 'TEST' else 'produção'
             return web.json_response({
-                'success': True,
-                'email':   d.get('email', ''),
-                'site_id': d.get('site_id', ''),
-                'conta':   'PayPix-Cob (pc)',
-                'mensagem': f'✅ Conectado: {d.get("email","")} — conta ISOLADA PayPix-Cob'
+                'success':  True,
+                'email':    email,
+                'site_id':  site_id,
+                'ambiente': ambiente,
+                'conta':    'PayPix-Cob (pc)',
+                'mensagem': f'✅ Conectado: {email} · {ambiente}'
             })
         else:
             return web.json_response({'success': False, 'error': f'MP retornou {resp.status_code}: {resp.text[:200]}'})
