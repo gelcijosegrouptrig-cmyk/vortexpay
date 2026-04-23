@@ -4503,7 +4503,7 @@ function showTab(tab) {
   };
   document.getElementById('page-title').textContent = titles[tab] || tab;
   fecharSidebar();
-  if (tab === 'api') { /* conteúdo estático, nada a carregar */ }
+  if (tab === 'api') { initApiTab(); }
   if (tab === 'depositos' && allDepositos.length === 0) loadDepositos();
   if (tab === 'saques' && allSaques.length === 0) loadSaques();
   if (tab === 'sorteio') carregarSorteioAdmin();
@@ -4513,7 +4513,7 @@ function showTab(tab) {
 }
 
 function tabName(tab) {
-  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api' };
+  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api', bot2:'mercado pago', paypix:'paypix' };
   return map[tab] || tab;
 }
 
@@ -7751,14 +7751,14 @@ function colToggle(id) {
 
 // Estado inicial: salva no sessionStorage qual está aberto
 function colInitState() {
-  // Por padrão: MP (mp) aberto, demais fechados
+  // Por padrão: cards do Bot Mercado Pago abertos, PayPix fechados
   const defaults = {
-    // Bot Mercado Pago (tab-bot2)
-    'bot2-status':    false,
-    'mp-config':      true,   // Mercado Pago aberto por padrão
-    'parceiros':      false,
+    // Bot Mercado Pago (tab-bot2) — TODOS ABERTOS por padrão
+    'bot2-status':    true,
+    'mp-config':      true,
+    'parceiros':      true,
     'cfg-pagamento':  false,
-    'stats':          false,
+    'stats':          true,
     'saques':         false,
     'qr-auto':        false,
     'debito-auto':    false,
