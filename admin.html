@@ -679,7 +679,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427g';
+  const VER = '20250427h';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -2201,15 +2201,15 @@ function toggleLoginSenha() {
 
         <!-- Card principal — Status Mercado Pago -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header collapsible" id="col-hdr-pp-status" onclick="colToggle('pp-status')">
-            <h3>💳 @paypix_nexbot — Status <span id="col-arrow-pp-status" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="col-hdr-pc-status" onclick="colToggle('pc-status')">
+            <h3>💳 @paypix_nexbot — Status <span id="col-arrow-pc-status" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <span id="pc-badge" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#1a2a1a;color:#4caf50">Verificando...</span>
               <button onclick="pcAtualizarSaldo()" style="padding:6px 14px;background:#1a3a5c;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔄 Saldo</button>
               <button onclick="pcCheckStatus()" style="padding:6px 14px;background:#222;border:none;border-radius:8px;color:#aaa;font-size:13px;cursor:pointer">↻ Status</button>
             </div>
           </div>
-          <div class="collapse-body" id="col-body-pp-status">
+          <div class="collapse-body" id="col-body-pc-status">
           <div style="padding:20px">
 
             <!-- Info resumida — só Mercado Pago (sem Telegram) -->
@@ -2232,7 +2232,7 @@ function toggleLoginSenha() {
             <div id="pc-alert" style="display:none"></div>
 
           </div>
-        </div></div><!-- /col-body-pp-status -->
+        </div></div><!-- /col-body-pc-status -->
 
         <!-- Seção Telegram OCULTA — não usamos Telegram no bot MP -->
         <div style="display:none" id="pc-telegram-section">
@@ -2250,14 +2250,14 @@ function toggleLoginSenha() {
 
         <!-- ══ MERCADO PAGO — Configuração de Chaves ══ -->
         <div class="table-card" style="margin-top:16px;border-color:#009ee3aa">
-          <div class="table-header collapsible" id="col-hdr-pp-config" style="background:linear-gradient(135deg,#003087,#009ee3)20" onclick="colToggle('pp-config')">
-            <h3>💳 Mercado Pago — @paypix_nexbot <span id="col-arrow-pp-config" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="col-hdr-pc-config" style="background:linear-gradient(135deg,#003087,#009ee3)20" onclick="colToggle('pc-config')">
+            <h3>💳 Mercado Pago — @paypix_nexbot <span id="col-arrow-pc-config" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <span id="pc-badge-status" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#0a1a2a;color:#aaa">Verificando...</span>
               <button onclick="pcTestarConexao()" style="padding:6px 14px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔗 Testar</button>
             </div>
           </div>
-          <div class="collapse-body" id="col-body-pp-config">
+          <div class="collapse-body" id="col-body-pc-config">
           <div style="padding:20px">
 
             <!-- Status da integração -->
@@ -2361,19 +2361,19 @@ function toggleLoginSenha() {
             </div>
 
           </div>
-          </div><!-- /col-body-pp-config -->
+          </div><!-- /col-body-pc-config -->
         </div>
 
         <!-- ══ PARCEIROS AFILIADOS ══ -->
         <div class="table-card" style="margin-top:16px;border-color:#a855f7aa">
-          <div class="table-header collapsible" id="col-hdr-pp-parceiros" style="background:linear-gradient(135deg,#4c1d9520,#7c3aed20)" onclick="colToggle('pp-parceiros')">
-            <h3>🤝 Parceiros Afiliados <span id="col-arrow-pp-parceiros" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="col-hdr-pc-parceiros" style="background:linear-gradient(135deg,#4c1d9520,#7c3aed20)" onclick="colToggle('pc-parceiros')">
+            <h3>🤝 Parceiros Afiliados <span id="col-arrow-pc-parceiros" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px" onclick="event.stopPropagation()">
               <button onclick="pcCarregarParceiros()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
               <button onclick="pcMostrarFormParceiro()" style="padding:6px 14px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer;font-weight:600">+ Novo Parceiro</button>
             </div>
           </div>
-          <div class="collapse-body" id="col-body-pp-parceiros">
+          <div class="collapse-body" id="col-body-pc-parceiros">
           <div style="padding:16px 20px">
 
             <!-- Explicação -->
@@ -2498,19 +2498,19 @@ function toggleLoginSenha() {
               </table>
             </div>
           </div>
-          </div><!-- /col-body-pp-parceiros -->
+          </div><!-- /col-body-pc-parceiros -->
         </div>
 
         <!-- ══ CONFIG PÁGINA /bot E /pix ══ -->
         <div class="table-card" style="margin-top:16px;border-color:#f59e0b44">
-          <div class="table-header collapsible" id="col-hdr-pp-cfg-pagamento" style="background:linear-gradient(135deg,#1a0e0033,#f59e0b11)" onclick="colToggle('pp-cfg-pagamento')">
-            <h3>⚙️ Configurar Página de Pagamento <span id="col-arrow-pp-cfg-pagamento" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="col-hdr-pc-cfg-pagamento" style="background:linear-gradient(135deg,#1a0e0033,#f59e0b11)" onclick="colToggle('pc-cfg-pagamento')">
+            <h3>⚙️ Configurar Página de Pagamento <span id="col-arrow-pc-cfg-pagamento" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <span style="font-size:11px;color:#888">paynexbet.com/bot &amp; /pix</span>
               <button onclick="botConfigSalvar()" style="padding:6px 16px;background:#f59e0b;border:none;border-radius:8px;color:#000;font-size:13px;font-weight:700;cursor:pointer">💾 Salvar</button>
             </div>
           </div>
-          <div class="collapse-body" id="col-body-pp-cfg-pagamento">
+          <div class="collapse-body" id="col-body-pc-cfg-pagamento">
           <div style="padding:20px;display:grid;gap:16px">
 
             <!-- Modo: fixo ou livre -->
@@ -2587,16 +2587,16 @@ function toggleLoginSenha() {
 
             <div id="pc-cfg-bot-msg" style="font-size:13px;text-align:center;min-height:20px"></div>
           </div>
-          </div><!-- /col-body-pp-cfg-pagamento -->
+          </div><!-- /col-body-pc-cfg-pagamento -->
         </div>
 
         <!-- ══ STATS BOT2 ══ -->
         <div class="table-card" style="margin-top:16px">
-          <div class="table-header collapsible" id="col-hdr-pp-stats" onclick="colToggle('pp-stats')">
-            <h3>📊 Estatísticas @paypix_nexbot <span id="col-arrow-pp-stats" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="col-hdr-pc-stats" onclick="colToggle('pc-stats')">
+            <h3>📊 Estatísticas @paypix_nexbot <span id="col-arrow-pc-stats" class="collapse-arrow">▼</span></h3>
             <button onclick="event.stopPropagation();mp2CarregarStats()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
-          <div class="collapse-body" id="col-body-pp-stats">
+          <div class="collapse-body" id="col-body-pc-stats">
           <div style="padding:16px 20px">
             <div class="metrics-grid" style="margin:0">
               <div class="metric-card blue">
@@ -2645,16 +2645,16 @@ function toggleLoginSenha() {
               </div>
             </div>
           </div>
-          </div><!-- /col-body-pp-stats -->
+          </div><!-- /col-body-pc-stats -->
         </div>
 
         <!-- ══ SAQUES PENDENTES BOT2 ══ -->
         <div class="table-card" style="margin-top:16px">
-          <div class="table-header collapsible" id="col-hdr-pp-saques" onclick="colToggle('pp-saques')">
-            <h3>📤 Saques Pendentes — @paypix_nexbot <span id="col-arrow-pp-saques" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="col-hdr-pc-saques" onclick="colToggle('pc-saques')">
+            <h3>📤 Saques Pendentes — @paypix_nexbot <span id="col-arrow-pc-saques" class="collapse-arrow">▼</span></h3>
             <button onclick="event.stopPropagation();mp2CarregarSaques()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
-          <div class="collapse-body" id="col-body-pp-saques">
+          <div class="collapse-body" id="col-body-pc-saques">
           <div style="overflow-x:auto">
             <table class="data-table">
               <thead><tr>
@@ -2665,7 +2665,7 @@ function toggleLoginSenha() {
               </tbody>
             </table>
           </div>
-          </div><!-- /col-body-pp-saques -->
+          </div><!-- /col-body-pc-saques -->
         </div>
 
         <!-- ═══ Comissões de Parceiros ═══ -->
@@ -5821,6 +5821,7 @@ function showTab(tab) {
     sorteio: '🎲 Sorteio',
     sistema: '🖥️ Sistema',
     paypix: '💸 PayPix',
+    paypixcob: '💳 PayPix-Cob',
     api: '🔌 API & Webhooks',
     bot2: '🤖 Bot Mercado Pago — @paypix_nexbot',
   };
@@ -9760,6 +9761,15 @@ function colInitState() {
     'pp-saques':          false,
     'pp-qr-auto':         false,
     'pp-debito-auto':     false,
+    // PayPix-Cob (tab-paypixcob) — prefixo pc-
+    'pc-status':          true,
+    'pc-config':          true,
+    'pc-parceiros':       true,
+    'pc-cfg-pagamento':   false,
+    'pc-stats':           true,
+    'pc-saques':          false,
+    'pc-qr-auto':         false,
+    'pc-debito-auto':     false,
   };
   Object.entries(defaults).forEach(([id, open]) => {
     const body   = document.getElementById('col-body-' + id);
