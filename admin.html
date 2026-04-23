@@ -1485,26 +1485,26 @@ function toggleLoginSenha() {
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
                 <div>
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Nome do Parceiro *</label>
-                  <input type="text" id="p-nome" placeholder="Ex: João Silva"
+                  <input type="text" id="pp-p-nome" placeholder="Ex: João Silva"
                     style="width:100%;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
                 </div>
                 <div>
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Código (opcional)</label>
-                  <input type="text" id="p-codigo" placeholder="joao-silva (gerado automaticamente)"
+                  <input type="text" id="pp-p-codigo" placeholder="joao-silva (gerado automaticamente)"
                     style="width:100%;background:#0a0a14;border:2px solid #7c3aed22;border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;font-family:monospace">
                 </div>
                 <div>
                   <label style="font-size:11px;color:#22c55e;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">
                     🏦 Chave PIX para Saque Automático *
                   </label>
-                  <input type="text" id="p-chave-pix" placeholder="email@exemplo.com ou CPF (11 dígitos)"
+                  <input type="text" id="pp-p-chave-pix" placeholder="email@exemplo.com ou CPF (11 dígitos)"
                     oninput="ppPreviewComissao()"
                     style="width:100%;background:#0a0a14;border:2px solid #22c55e55;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
                   <div style="font-size:11px;color:#555;margin-top:4px">💡 Quando o pagamento for confirmado, a comissão é enviada automaticamente para esta chave</div>
                 </div>
                 <div>
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Tipo da Chave *</label>
-                  <select id="p-tipo-chave"
+                  <select id="pp-p-tipo-chave"
                     style="width:100%;background:#0a0a14;border:2px solid #7c3aed44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px">
                     <option value="email">E-mail</option>
                     <option value="cpf">CPF</option>
@@ -1516,34 +1516,34 @@ function toggleLoginSenha() {
                 <div style="grid-column:1/-1">
                   <label style="font-size:11px;color:#888;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">% Comissão por Pagamento *</label>
                   <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-                    <input type="number" id="p-comissao" min="1" max="50" value="10"
+                    <input type="number" id="pp-p-comissao" min="1" max="50" value="10"
                       oninput="ppPreviewComissao()"
                       style="width:90px;background:#0a0a14;border:2px solid #a855f7;border-radius:8px;padding:10px 12px;color:#a855f7;font-size:22px;font-weight:900;text-align:center;font-family:monospace">
                     <span style="color:#a855f7;font-weight:700;font-size:22px">%</span>
                     <span style="font-size:12px;color:#666">do valor pago pelo cliente</span>
                   </div>
                   <!-- Preview visual da comissão -->
-                  <div id="p-comissao-preview" style="background:#0a0a1a;border:1px solid #a855f733;border-radius:10px;padding:12px 16px">
+                  <div id="pp-p-comissao-preview" style="background:#0a0a1a;border:1px solid #a855f733;border-radius:10px;padding:12px 16px">
                     <div style="font-size:11px;color:#666;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">📊 Simulação de comissão</div>
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
                       <div>
                         <div style="font-size:11px;color:#666">Cliente paga</div>
                         <div style="font-size:15px;font-weight:700;color:#fff">R$ 50,00</div>
-                        <div id="p-sim-50" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 5,00</div>
+                        <div id="pp-p-sim-50" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 5,00</div>
                       </div>
                       <div>
                         <div style="font-size:11px;color:#666">Cliente paga</div>
                         <div style="font-size:15px;font-weight:700;color:#fff">R$ 100,00</div>
-                        <div id="p-sim-100" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 10,00</div>
+                        <div id="pp-p-sim-100" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 10,00</div>
                       </div>
                       <div>
                         <div style="font-size:11px;color:#666">Cliente paga</div>
                         <div style="font-size:15px;font-weight:700;color:#fff">R$ 500,00</div>
-                        <div id="p-sim-500" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 50,00</div>
+                        <div id="pp-p-sim-500" style="font-size:13px;color:#4ade80;font-weight:700">→ R$ 50,00</div>
                       </div>
                     </div>
                     <div style="margin-top:10px;padding:8px;background:#22c55e11;border-radius:8px;text-align:center;font-size:12px;color:#4ade80">
-                      ✅ Valor enviado automaticamente via PIX para: <span id="p-sim-chave" style="font-family:monospace;color:#a855f7">—</span>
+                      ✅ Valor enviado automaticamente via PIX para: <span id="pp-p-sim-chave" style="font-family:monospace;color:#a855f7">—</span>
                     </div>
                   </div>
                 </div>
@@ -1613,15 +1613,15 @@ function toggleLoginSenha() {
             <div style="background:#0a0a14;border:1px solid #f59e0b33;border-radius:12px;padding:16px">
               <div style="font-size:13px;font-weight:700;color:#f59e0b;margin-bottom:12px">🎯 Modo de Cobrança</div>
               <div style="display:flex;gap:12px;flex-wrap:wrap">
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#0a1500;border:2px solid #22c55e44;border-radius:10px;padding:10px 14px;flex:1;min-width:140px" id="lbl-modo-fixo">
-                  <input type="radio" name="bot-modo" id="radio-fixo" value="fixo" onchange="botModoChange()" style="accent-color:#22c55e">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#0a1500;border:2px solid #22c55e44;border-radius:10px;padding:10px 14px;flex:1;min-width:140px" id="pp-lbl-modo-fixo">
+                  <input type="radio" name="bot-modo" id="pp-radio-fixo" value="fixo" onchange="botModoChange()" style="accent-color:#22c55e">
                   <div>
                     <div style="font-weight:700;color:#4ade80;font-size:13px">💰 Valor Fixo</div>
                     <div style="font-size:11px;color:#666">Você define o valor. QR gerado automaticamente.</div>
                   </div>
                 </label>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#0a0a1a;border:2px solid #ffffff11;border-radius:10px;padding:10px 14px;flex:1;min-width:140px" id="lbl-modo-livre">
-                  <input type="radio" name="bot-modo" id="radio-livre" value="livre" onchange="botModoChange()">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#0a0a1a;border:2px solid #ffffff11;border-radius:10px;padding:10px 14px;flex:1;min-width:140px" id="pp-lbl-modo-livre">
+                  <input type="radio" name="bot-modo" id="pp-radio-livre" value="livre" onchange="botModoChange()">
                   <div>
                     <div style="font-weight:700;color:#aaa;font-size:13px">✏️ Valor Livre</div>
                     <div style="font-size:11px;color:#666">Cliente digita o valor que desejar.</div>
@@ -1631,27 +1631,27 @@ function toggleLoginSenha() {
             </div>
 
             <!-- Valor fixo -->
-            <div id="cfg-valor-fixo-wrap">
+            <div id="pp-cfg-valor-fixo-wrap">
               <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">💵 Valor Fixo (R$)</label>
               <div style="display:flex;align-items:center;gap:8px;background:#0a0a14;border:2px solid #f59e0b55;border-radius:10px;padding:10px 14px">
                 <span style="font-size:20px;font-weight:800;color:#666">R$</span>
-                <input type="number" id="cfg-valor-fixo" min="1" max="10000" step="0.01" placeholder="10.00"
+                <input type="number" id="pp-cfg-valor-fixo" min="1" max="10000" step="0.01" placeholder="10.00"
                   style="flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:24px;font-weight:800">
               </div>
               <div style="font-size:11px;color:#555;margin-top:4px">Ex: 10.00 — cada cliente que abrir /bot ou /pix verá esse valor e terá um QR exclusivo gerado.</div>
             </div>
 
             <!-- Min/Max (modo livre) -->
-            <div id="cfg-minmax-wrap" style="display:none">
+            <div id="pp-cfg-minmax-wrap" style="display:none">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div>
                   <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Mínimo (R$)</label>
-                  <input type="number" id="cfg-min-valor" min="1" max="9999" placeholder="5"
+                  <input type="number" id="pp-cfg-min-valor" min="1" max="9999" placeholder="5"
                     style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:16px;font-weight:700">
                 </div>
                 <div>
                   <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Máximo (R$)</label>
-                  <input type="number" id="cfg-max-valor" min="1" max="100000" placeholder="10000"
+                  <input type="number" id="pp-cfg-max-valor" min="1" max="100000" placeholder="10000"
                     style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:16px;font-weight:700">
                 </div>
               </div>
@@ -1661,12 +1661,12 @@ function toggleLoginSenha() {
             <div style="display:grid;gap:12px">
               <div>
                 <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📝 Título da Página</label>
-                <input type="text" id="cfg-titulo" placeholder="PayPixNex — Pague via PIX" maxlength="60"
+                <input type="text" id="pp-cfg-titulo" placeholder="PayPixNex — Pague via PIX" maxlength="60"
                   style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:14px">
               </div>
               <div>
                 <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📄 Descrição / Subtítulo</label>
-                <input type="text" id="cfg-descricao" placeholder="Pagamento seguro via Mercado Pago" maxlength="100"
+                <input type="text" id="pp-cfg-descricao" placeholder="Pagamento seguro via Mercado Pago" maxlength="100"
                   style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:14px">
               </div>
             </div>
@@ -1681,7 +1681,7 @@ function toggleLoginSenha() {
               </div>
             </div>
 
-            <div id="cfg-bot-msg" style="font-size:13px;text-align:center;min-height:20px"></div>
+            <div id="pp-cfg-bot-msg" style="font-size:13px;text-align:center;min-height:20px"></div>
           </div>
           </div><!-- /col-body-pp-cfg-pagamento -->
         </div>
@@ -1769,11 +1769,11 @@ function toggleLoginSenha() {
 
         <!-- ═══ QR CODE DE AUTOCADASTRO ═══ -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header collapsible" id="col-hdr-qr-auto" onclick="colToggle('qr-auto')">
-            <h3>📲 QR Code de Autocadastro <span id="col-arrow-qr-auto" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="pp-col-hdr-qr-auto" onclick="colToggle('qr-auto')">
+            <h3>📲 QR Code de Autocadastro <span id="pp-col-arrow-qr-auto" class="collapse-arrow">▼</span></h3>
             <button onclick="event.stopPropagation();qrAtualizarPreview()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
-          <div class="collapse-body" id="col-body-qr-auto">
+          <div class="collapse-body" id="pp-col-body-qr-auto">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
 
             <!-- Coluna esquerda: config do plano -->
@@ -1782,36 +1782,36 @@ function toggleLoginSenha() {
               <div style="display:flex;flex-direction:column;gap:10px">
                 <div>
                   <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Título da página</div>
-                  <input id="qr-titulo" type="text" placeholder="Assine e pague todo mês via PIX" value="Assine e pague todo mês via PIX"
+                  <input id="pp-qr-titulo" type="text" placeholder="Assine e pague todo mês via PIX" value="Assine e pague todo mês via PIX"
                     style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
                 </div>
                 <div>
                   <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Descrição</div>
-                  <input id="qr-desc" type="text" placeholder="Mensalidade — acesso completo"
+                  <input id="pp-qr-desc" type="text" placeholder="Mensalidade — acesso completo"
                     style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                   <div>
                     <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Valor R$</div>
-                    <input id="qr-valor" type="number" placeholder="10.00" min="1" step="0.01" value="10"
+                    <input id="pp-qr-valor" type="number" placeholder="10.00" min="1" step="0.01" value="10"
                       style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
                   </div>
                   <div>
                     <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Dia padrão</div>
-                    <input id="qr-dia" type="number" placeholder="1" min="1" max="28" value="1"
+                    <input id="pp-qr-dia" type="number" placeholder="1" min="1" max="28" value="1"
                       style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px"/>
                   </div>
                 </div>
                 <div>
                   <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Benefícios (1 por linha)</div>
-                  <textarea id="qr-beneficios" rows="3" placeholder="🎯 Acesso VIP ao conteúdo&#10;💬 Suporte prioritário&#10;🎁 Bônus exclusivos"
+                  <textarea id="pp-qr-beneficios" rows="3" placeholder="🎯 Acesso VIP ao conteúdo&#10;💬 Suporte prioritário&#10;🎁 Bônus exclusivos"
                     style="width:100%;padding:7px 10px;background:#ffffff0d;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px;resize:vertical"></textarea>
                 </div>
                 <!-- Seletor de Afiliado -->
                 <div>
                   <div style="font-size:10px;color:#666;margin-bottom:4px;text-transform:uppercase">Afiliado / Parceiro (opcional)</div>
                   <div style="display:flex;gap:6px;align-items:center">
-                    <select id="qr-ref-select"
+                    <select id="pp-qr-ref-select"
                       onchange="qrOnAfiliadoChange()"
                       style="flex:1;padding:7px 10px;background:#1a1a2e;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px;cursor:pointer">
                       <option value="">🌐 Sem afiliado (link geral)</option>
@@ -1821,10 +1821,10 @@ function toggleLoginSenha() {
                   </div>
                   <!-- Campo manual fallback -->
                   <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
-                    <input id="qr-ref" type="text" placeholder="ou digite o código manualmente"
+                    <input id="pp-qr-ref" type="text" placeholder="ou digite o código manualmente"
                       oninput="qrOnRefManualChange()"
                       style="flex:1;padding:6px 10px;background:#ffffff08;border:1px solid #ffffff15;border-radius:8px;color:#aaa;font-size:11px"/>
-                    <span id="qr-ref-badge" style="display:none;font-size:10px;background:#9c27b030;color:#ce93d8;padding:3px 8px;border-radius:20px;white-space:nowrap">✅ afiliado</span>
+                    <span id="pp-qr-ref-badge" style="display:none;font-size:10px;background:#9c27b030;color:#ce93d8;padding:3px 8px;border-radius:20px;white-space:nowrap">✅ afiliado</span>
                   </div>
                   <div style="font-size:10px;color:#555;margin-top:3px">O link e QR gerados incluirão o código do afiliado automaticamente</div>
                 </div>
@@ -1832,7 +1832,7 @@ function toggleLoginSenha() {
                   <button onclick="qrSalvarConfig()" class="action-btn" style="flex:1;background:#9c27b0;color:#fff;border-color:#9c27b0;padding:9px;font-size:12px">💾 Salvar config</button>
                   <button onclick="qrCopiarLink()" class="action-btn" style="flex:1;padding:9px;font-size:12px">🔗 Copiar link</button>
                 </div>
-                <div id="qr-cfg-msg" style="font-size:11px;display:none"></div>
+                <div id="pp-qr-cfg-msg" style="font-size:11px;display:none"></div>
               </div>
             </div>
 
@@ -1840,12 +1840,12 @@ function toggleLoginSenha() {
             <div style="padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
               <div style="font-size:12px;font-weight:700;color:#ce93d8;margin-bottom:2px">📲 QR para imprimir / compartilhar</div>
               <!-- Label do afiliado selecionado -->
-              <div id="qr-afiliado-label" style="font-size:11px;background:#9c27b020;border:1px solid #9c27b040;border-radius:20px;padding:3px 12px;color:#ce93d8;display:none">👤 —</div>
+              <div id="pp-qr-afiliado-label" style="font-size:11px;background:#9c27b020;border:1px solid #9c27b040;border-radius:20px;padding:3px 12px;color:#ce93d8;display:none">👤 —</div>
               <!-- QR via API externa (não precisa lib Python) -->
               <div style="background:#fff;padding:10px;border-radius:14px;border:3px solid #9c27b0">
-                <img id="qr-preview-img" src="" width="180" height="180" alt="QR Code" style="display:block;border-radius:6px"/>
+                <img id="pp-qr-preview-img" src="" width="180" height="180" alt="QR Code" style="display:block;border-radius:6px"/>
               </div>
-              <div style="font-size:11px;color:#666;text-align:center;word-break:break-all;max-width:220px" id="qr-link-txt">—</div>
+              <div style="font-size:11px;color:#666;text-align:center;word-break:break-all;max-width:220px" id="pp-qr-link-txt">—</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
                 <button onclick="qrDownload()" class="action-btn" style="font-size:11px;padding:6px 12px">⬇️ Baixar QR</button>
                 <button onclick="qrCopiarLinkAtual()" class="action-btn" style="font-size:11px;padding:6px 12px">📋 Copiar link</button>
@@ -1870,7 +1870,7 @@ function toggleLoginSenha() {
               <div style="font-size:12px;font-weight:700;color:#a855f7">👥 QR Code por Afiliado — link individual por parceiro</div>
               <button onclick="qrCarregarAfiliados()" class="action-btn" style="font-size:11px;padding:5px 11px">🔄 Atualizar</button>
             </div>
-            <div id="qr-afiliados-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+            <div id="pp-qr-afiliados-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
               <div style="font-size:12px;color:#555;padding:20px;text-align:center;grid-column:1/-1">Carregando afiliados...</div>
             </div>
           </div>
@@ -1880,31 +1880,31 @@ function toggleLoginSenha() {
 
         <!-- ═══ ASSINATURAS RECORRENTES ═══ -->
         <div class="table-card" style="margin-bottom:16px">
-          <div class="table-header collapsible" id="col-hdr-debito-auto" onclick="colToggle('debito-auto')">
-            <h3>💙 Débito Automático — Assinaturas Mensais <span id="col-arrow-debito-auto" class="collapse-arrow">▼</span></h3>
+          <div class="table-header collapsible" id="pp-col-hdr-debito-auto" onclick="colToggle('debito-auto')">
+            <h3>💙 Débito Automático — Assinaturas Mensais <span id="pp-col-arrow-debito-auto" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <button onclick="recCarregarLista()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
             </div>
           </div>
-          <div class="collapse-body" id="col-body-debito-auto">
+          <div class="collapse-body" id="pp-col-body-debito-auto">
 
           <!-- Stats recorrentes -->
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)">
             <div class="metric-card" style="background:#9c27b015;border-color:#9c27b040">
               <div class="metric-label">Assinantes Ativos</div>
-              <div class="metric-value" id="rec-ativos" style="color:#ce93d8">—</div>
+              <div class="metric-value" id="pp-rec-ativos" style="color:#ce93d8">—</div>
             </div>
             <div class="metric-card" style="background:#009ee315;border-color:#009ee340">
               <div class="metric-label">MRR (Receita/mês)</div>
-              <div class="metric-value" id="rec-mrr" style="color:#009ee3">—</div>
+              <div class="metric-value" id="pp-rec-mrr" style="color:#009ee3">—</div>
             </div>
             <div class="metric-card" style="background:#00c85315;border-color:#00c85340">
               <div class="metric-label">Total Arrecadado</div>
-              <div class="metric-value" id="rec-total" style="color:#00c853">—</div>
+              <div class="metric-value" id="pp-rec-total" style="color:#00c853">—</div>
             </div>
             <div class="metric-card" style="background:#f4433615;border-color:#f4433640">
               <div class="metric-label">Pausados/Cancelados</div>
-              <div class="metric-value" id="rec-pausados" style="color:#f44336">—</div>
+              <div class="metric-value" id="pp-rec-pausados" style="color:#f44336">—</div>
             </div>
           </div>
 
@@ -1914,7 +1914,7 @@ function toggleLoginSenha() {
             <!-- Header do sub-painel -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
               <div style="font-size:12px;font-weight:700;color:#009ee3">⚙️ Configurar Plano de Débito Automático</div>
-              <button onclick="recCriarPlanoMP()" id="rec-btn-criar-plano" class="action-btn"
+              <button onclick="recCriarPlanoMP()" id="pp-rec-btn-criar-plano" class="action-btn"
                 style="font-size:12px;padding:7px 16px;background:#009ee3;color:#fff;border-color:#009ee3;font-weight:700">
                 ⚡ Criar / Atualizar Plano no MP
               </button>
@@ -1926,28 +1926,28 @@ function toggleLoginSenha() {
               <!-- Nome do plano -->
               <div style="grid-column:1/-1">
                 <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">📝 Nome do plano (aparece no MP)</label>
-                <input id="rec-plano-titulo" type="text" placeholder="Ex: Mensalidade, Plano Ouro…"
+                <input id="pp-rec-plano-titulo" type="text" placeholder="Ex: Mensalidade, Plano Ouro…"
                   style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
               </div>
 
               <!-- Valor -->
               <div>
                 <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">💰 Valor mensal (R$)</label>
-                <input id="rec-plano-valor" type="number" min="1" step="0.01" placeholder="10.00"
+                <input id="pp-rec-plano-valor" type="number" min="1" step="0.01" placeholder="10.00"
                   style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
               </div>
 
               <!-- Dia de cobrança -->
               <div>
                 <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">📅 Dia de cobrança (1-28)</label>
-                <input id="rec-plano-dia" type="number" min="1" max="28" placeholder="1"
+                <input id="pp-rec-plano-dia" type="number" min="1" max="28" placeholder="1"
                   style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
               </div>
 
               <!-- Benefícios -->
               <div style="grid-column:1/-1">
                 <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">🎁 Benefícios (mostrados na página /assinar)</label>
-                <input id="rec-plano-beneficios" type="text" placeholder="Ex: Acesso premium, Suporte prioritário…"
+                <input id="pp-rec-plano-beneficios" type="text" placeholder="Ex: Acesso premium, Suporte prioritário…"
                   style="width:100%;box-sizing:border-box;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
               </div>
 
@@ -1964,10 +1964,10 @@ function toggleLoginSenha() {
             </div>
 
             <!-- Status do plano ativo -->
-            <div id="rec-plano-status" style="font-size:12px;color:#aaa;background:#009ee310;border:1px solid #009ee330;border-radius:8px;padding:10px;margin-bottom:8px;display:none">
+            <div id="pp-rec-plano-status" style="font-size:12px;color:#aaa;background:#009ee310;border:1px solid #009ee330;border-radius:8px;padding:10px;margin-bottom:8px;display:none">
               Carregando status do plano...
             </div>
-            <div id="rec-criar-plano-msg" style="font-size:12px;margin-top:6px;display:none"></div>
+            <div id="pp-rec-criar-plano-msg" style="font-size:12px;margin-top:6px;display:none"></div>
           </div><!-- /configurar plano -->
 
           <!-- ▸ LINK DE ASSINATURA + SELETOR DE AFILIADO ───────────────────── -->
@@ -1978,7 +1978,7 @@ function toggleLoginSenha() {
             <div style="margin-bottom:10px">
               <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">🤝 Selecionar afiliado (opcional)</label>
               <div style="display:flex;gap:8px;align-items:center">
-                <select id="rec-link-afiliado" onchange="recAtualizarLinkAfiliado()"
+                <select id="pp-rec-link-afiliado" onchange="recAtualizarLinkAfiliado()"
                   style="flex:1;background:#0a0a18;border:1px solid #333;border-radius:8px;padding:9px 12px;color:#fff;font-size:13px">
                   <option value="">— Sem afiliado (link genérico) —</option>
                 </select>
@@ -1990,7 +1990,7 @@ function toggleLoginSenha() {
             <!-- Link gerado -->
             <div style="font-size:11px;color:#666;margin-bottom:4px">🔗 Link gerado:</div>
             <div style="display:flex;align-items:center;gap:8px;background:#ffffff08;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px">
-              <code id="rec-link-assinar" style="color:#ce93d8;font-size:12px;flex:1;word-break:break-all">https://paynexbet.com/assinar</code>
+              <code id="pp-rec-link-assinar" style="color:#ce93d8;font-size:12px;flex:1;word-break:break-all">https://paynexbet.com/assinar</code>
               <button onclick="copiar(document.getElementById('rec-link-assinar').textContent)" class="action-btn" style="font-size:11px;padding:5px 10px;white-space:nowrap">📋 Copiar</button>
             </div>
 
@@ -2002,14 +2002,14 @@ function toggleLoginSenha() {
             </div>
 
             <!-- QR Code inline -->
-            <div id="rec-qr-inline" style="display:none;text-align:center;margin-top:8px">
-              <img id="rec-qr-img" src="" style="width:180px;height:180px;border-radius:10px;border:2px solid #9c27b0"/>
+            <div id="pp-rec-qr-inline" style="display:none;text-align:center;margin-top:8px">
+              <img id="pp-rec-qr-img" src="" style="width:180px;height:180px;border-radius:10px;border:2px solid #9c27b0"/>
               <div style="font-size:11px;color:#555;margin-top:6px">Escaneie ou compartilhe este QR</div>
               <button onclick="copiar(document.getElementById('rec-link-assinar').textContent)" class="action-btn"
                 style="font-size:11px;margin-top:6px;padding:5px 12px">📋 Copiar link</button>
             </div>
 
-            <div id="rec-cadastro-msg" style="font-size:12px;margin-top:8px;display:none"></div>
+            <div id="pp-rec-cadastro-msg" style="font-size:12px;margin-top:8px;display:none"></div>
           </div><!-- /link afiliado -->
 
           <!-- Tabela assinantes -->
@@ -2019,7 +2019,7 @@ function toggleLoginSenha() {
                 <th>ID</th><th>Nome</th><th>Tipo</th><th>Valor</th><th>Próx. Venc.</th>
                 <th>Total Pago</th><th>Status</th><th>Ações</th>
               </tr></thead>
-              <tbody id="rec-tbody">
+              <tbody id="pp-rec-tbody">
                 <tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Clique em 🔄 Atualizar para carregar</td></tr>
               </tbody>
             </table>
@@ -6046,11 +6046,11 @@ function ppMostrarFormParceiro() {
 }
 
 async function ppCriarParceiro() {
-  const nome       = document.getElementById('p-nome').value.trim();
-  const codigo     = document.getElementById('p-codigo').value.trim();
-  const chavePix   = document.getElementById('p-chave-pix').value.trim();
-  const tipoChave  = document.getElementById('p-tipo-chave').value;
-  const comissao   = parseFloat(document.getElementById('p-comissao').value) || 10;
+  const nome       = document.getElementById('pp-p-nome').value.trim();
+  const codigo     = document.getElementById('pp-p-codigo').value.trim();
+  const chavePix   = document.getElementById('pp-p-chave-pix').value.trim();
+  const tipoChave  = document.getElementById('pp-p-tipo-chave').value;
+  const comissao   = parseFloat(document.getElementById('pp-p-comissao').value) || 10;
   const msg        = document.getElementById('pp-form-msg');
 
   if (!nome) { msg.innerHTML = '<span style="color:#f44">Nome obrigatório</span>'; return; }
@@ -6071,10 +6071,10 @@ async function ppCriarParceiro() {
       linkEl.textContent = d.link || d.parceiro?.link || '';
       document.getElementById('pp-link-novo').style.display = 'block';
       // Limpar form
-      document.getElementById('p-nome').value = '';
-      document.getElementById('p-codigo').value = '';
-      document.getElementById('p-chave-pix').value = '';
-      document.getElementById('p-comissao').value = '10';
+      document.getElementById('pp-p-nome').value = '';
+      document.getElementById('pp-p-codigo').value = '';
+      document.getElementById('pp-p-chave-pix').value = '';
+      document.getElementById('pp-p-comissao').value = '10';
       document.getElementById('pp-form-parceiro').style.display = 'none';
       // Recarregar lista
       await ppCarregarParceiros();
