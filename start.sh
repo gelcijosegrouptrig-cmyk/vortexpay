@@ -6,7 +6,7 @@ echo "=== VortexPay Deploy - UI-v31 ==="
 pip install aiohttp telethon aiofiles psycopg2-binary requests 2>/dev/null | tail -1
 
 # Baixar arquivos do GitHub
-for f in server.py admin.html paypix.html sorteio.html home.html mp2_api.py bot2_handler.py bot_pix.html; do
+for f in server.py admin.html paypix.html paypix2.html sorteio.html home.html mp2_api.py bot2_handler.py bot3_handler.py bot_pix.html update.py; do
   curl -fsSL "$REPO_RAW/$f" -o "$f" 2>/dev/null || echo "usando $f local"
 done
 
