@@ -1,848 +1,802 @@
 """
-bot2_handler.py — @paypix_nexbot
-Bot Telegram 100% independente do Bot 1.
-• python-telegram-bot v20
-• Mercado Pago PIX (depósito + saque manual)
-• Cria canal próprio no Telegram (notificações + histórico)
-• Banco: tabelas mp2_* no PostgreSQL
+bot2_handler.py — @paypix_nexbot  (VERSÃO 2 — Simples e Robusta)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Arquitetura: webhook puro (sem polling, sem thread)
+  POST /webhook/bot2  →  process_bot2_update(data)
+
+Como ativar:
+  1. Crie um bot no @BotFather e copie o token
+  2. No painel admin → Bot Mercado Pago → Cole o token → Salvar Token
+  3. Clique "Registrar Webhook Bot"
+  4. Pronto — o bot responde imediatamente
+
+Comandos do bot:
+  /start    — Bem-vindo + menu principal
+  /carteira — Ver saldo
+  /depositar — Gerar PIX para depositar
+  /sacar    — Solicitar saque
+  /historico — Ver transações
+  /indicar  — Link de indicação
+  /ajuda    — Ajuda
+
+Tabelas: mp2_* (PostgreSQL compartilhado com server.py)
+Token:   banco mp2_config.chave='bot2_token'  ou env BOT2_TOKEN
+MP:      banco mp2_config.chave='mp2_access_token' ou env MP2_ACCESS_TOKEN
 """
+
 import os
+import json
 import asyncio
 import logging
+import urllib.request
+import urllib.parse
+import urllib.error
 from datetime import datetime
-from telegram import (
-    Update, InlineKeyboardButton, InlineKeyboardMarkup,
-    ReplyKeyboardMarkup, KeyboardButton, ChatPermissions
-)
-from telegram.ext import (
-    Application, CommandHandler, MessageHandler,
-    CallbackQueryHandler, ConversationHandler, filters,
-    ContextTypes
-)
-from telegram.error import TelegramError, BadRequest, Forbidden
-from mp2_api import (
-    mp2_get_ou_criar_usuario, mp2_get_saldo, mp2_gerar_pix,
-    mp2_solicitar_saque, mp2_historico, mp2_get_config,
-    mp2_stats_admin as mp2_stats, init_mp2_db,
-    mp2_salvar_canal, mp2_get_canal
+
+import psycopg2
+import psycopg2.extras
+
+logger = logging.getLogger('bot2')
+
+DATABASE_URL = os.environ.get(
+    'DATABASE_URL',
+    'postgresql://postgres:EfJgSbrAkQbFlQJWdxIpIZftseKsDVKs@metro.proxy.rlwy.net:53914/railway'
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [Bot2] %(levelname)s: %(message)s'
-)
-logger = logging.getLogger(__name__)
 
-BOT2_TOKEN    = os.environ.get('BOT2_TOKEN', '')
-BOT2_ADMIN_ID = int(os.environ.get('BOT2_ADMIN_ID', '0'))  # Telegram ID do dono
+# ─── BANCO ───────────────────────────────────────────────────────────────────
 
-# ─── ESTADOS ConversationHandler ─────────────────────────────────────────────
-(
-    AGUARDANDO_VALOR_DEP,
-    AGUARDANDO_CHAVE_PIX,
-    AGUARDANDO_VALOR_SAQUE,
-    AGUARDANDO_TIPO_CHAVE,
-    AGUARDANDO_CONFIRMACAO_SAQUE,
-) = range(5)
+def _conn():
+    return psycopg2.connect(DATABASE_URL, connect_timeout=8)
 
-# ─── TECLADO PRINCIPAL ────────────────────────────────────────────────────────
-def teclado_principal():
-    return ReplyKeyboardMarkup(
-        [
-            [KeyboardButton("💰 Depositar"),  KeyboardButton("💼 Carteira")],
-            [KeyboardButton("📤 Sacar"),      KeyboardButton("📊 Histórico")],
-            [KeyboardButton("👥 Indicar"),    KeyboardButton("ℹ️ Ajuda")],
-        ],
-        resize_keyboard=True
+
+def _cfg(chave: str) -> str:
+    """Lê valor de mp2_config."""
+    try:
+        conn = _conn()
+        cur = conn.cursor()
+        cur.execute("SELECT valor FROM mp2_config WHERE chave=%s", (chave,))
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        return (row[0] or '').strip() if row else ''
+    except Exception as e:
+        logger.warning(f'[bot2._cfg] {chave}: {e}')
+        return ''
+
+
+def _cfg_set(chave: str, valor: str):
+    """Salva valor em mp2_config (upsert)."""
+    conn = _conn()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO mp2_config (chave, valor) VALUES (%s, %s) "
+        "ON CONFLICT (chave) DO UPDATE SET valor=%s, atualizado_em=NOW()",
+        (chave, valor, valor)
     )
+    conn.commit(); cur.close(); conn.close()
 
-def teclado_cancelar():
-    return ReplyKeyboardMarkup(
-        [[KeyboardButton("❌ Cancelar")]],
-        resize_keyboard=True
+
+# ─── TOKEN ───────────────────────────────────────────────────────────────────
+
+def get_token() -> str:
+    t = os.environ.get('BOT2_TOKEN', '').strip()
+    return t or _cfg('bot2_token')
+
+
+def get_mp_token() -> str:
+    t = os.environ.get('MP2_ACCESS_TOKEN', '').strip()
+    return t or _cfg('mp2_access_token')
+
+
+# ─── TELEGRAM API ────────────────────────────────────────────────────────────
+
+def _tg_call(method: str, payload: dict, token: str = None) -> dict:
+    """Chamada síncrona à API do Telegram (para uso em run_in_executor)."""
+    tok = token or get_token()
+    if not tok:
+        return {'ok': False, 'error': 'sem token'}
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(
+        f'https://api.telegram.org/bot{tok}/{method}',
+        data=data,
+        headers={'Content-Type': 'application/json'}
     )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode('utf-8', errors='replace')
+        logger.warning(f'[bot2] tg {method} HTTP {e.code}: {body[:200]}')
+        return {'ok': False, 'error': body}
+    except Exception as e:
+        logger.warning(f'[bot2] tg {method}: {e}')
+        return {'ok': False, 'error': str(e)}
 
-# ─── FORMATAR VALOR ──────────────────────────────────────────────────────────
-def fmt(v):
-    return f"R$ {float(v):.2f}".replace('.', ',')
 
-# ─── /start ──────────────────────────────────────────────────────────────────
-async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    args = context.args
+async def tg(method: str, **kwargs) -> dict:
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _tg_call, method, kwargs)
 
-    referido_por = None
-    if args and args[0].startswith('ref_'):
+
+async def send(chat_id: int, text: str, markup=None, parse_mode='Markdown') -> dict:
+    payload = {
+        'chat_id': chat_id,
+        'text': text,
+        'parse_mode': parse_mode,
+        'disable_web_page_preview': True,
+    }
+    if markup:
+        payload['reply_markup'] = json.dumps(markup)
+    return await tg('sendMessage', **payload)
+
+
+async def edit_msg(chat_id: int, msg_id: int, text: str, markup=None) -> dict:
+    payload = {
+        'chat_id': chat_id,
+        'message_id': msg_id,
+        'text': text,
+        'parse_mode': 'Markdown',
+        'disable_web_page_preview': True,
+    }
+    if markup:
+        payload['reply_markup'] = json.dumps(markup)
+    return await tg('editMessageText', **payload)
+
+
+async def answer_cb(callback_id: str, text: str = '', alert: bool = False):
+    await tg('answerCallbackQuery',
+             callback_query_id=callback_id, text=text, show_alert=alert)
+
+
+# ─── TECLADOS ────────────────────────────────────────────────────────────────
+
+def kb_main():
+    return {
+        'inline_keyboard': [
+            [
+                {'text': '💰 Depositar', 'callback_data': 'depositar'},
+                {'text': '💸 Sacar',     'callback_data': 'sacar'},
+            ],
+            [
+                {'text': '👛 Carteira',  'callback_data': 'carteira'},
+                {'text': '📋 Histórico', 'callback_data': 'historico'},
+            ],
+            [
+                {'text': '🔗 Indicar',   'callback_data': 'indicar'},
+                {'text': '❓ Ajuda',     'callback_data': 'ajuda'},
+            ],
+        ]
+    }
+
+
+def kb_cancelar():
+    return {'inline_keyboard': [[{'text': '❌ Cancelar', 'callback_data': 'cancelar'}]]}
+
+
+def kb_tipo_chave():
+    return {
+        'inline_keyboard': [
+            [
+                {'text': '📱 CPF',     'callback_data': 'chave_cpf'},
+                {'text': '📧 E-mail',  'callback_data': 'chave_email'},
+            ],
+            [
+                {'text': '📞 Telefone', 'callback_data': 'chave_telefone'},
+                {'text': '🔑 Aleatória','callback_data': 'chave_aleatoria'},
+            ],
+            [{'text': '❌ Cancelar', 'callback_data': 'cancelar'}],
+        ]
+    }
+
+
+def kb_confirmar_saque(valor: float):
+    return {
+        'inline_keyboard': [
+            [
+                {'text': f'✅ Confirmar R$ {valor:.2f}'.replace('.', ','),
+                 'callback_data': 'confirmar_saque'},
+                {'text': '❌ Cancelar', 'callback_data': 'cancelar'},
+            ]
+        ]
+    }
+
+
+# ─── ESTADO ──────────────────────────────────────────────────────────────────
+
+_estado: dict = {}  # {telegram_id: {'step': ..., ...}}
+
+
+def st_get(tid: int) -> dict:
+    return _estado.get(tid, {})
+
+
+def st_set(tid: int, step: str, **kw):
+    _estado[tid] = {'step': step, **kw}
+
+
+def st_clear(tid: int):
+    _estado.pop(tid, None)
+
+
+# ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+def fmt(v) -> str:
+    return f'R$ {float(v or 0):.2f}'.replace('.', ',')
+
+
+def _get_ou_criar_usuario(tid: int, nome: str, username: str) -> int:
+    """Garante que o usuário exista na mp2_usuarios. Retorna user_id."""
+    conn = _conn()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM mp2_usuarios WHERE telegram_id=%s", (tid,))
+    row = cur.fetchone()
+    if row:
+        uid = row[0]
+        cur.execute(
+            "UPDATE mp2_usuarios SET nome=%s, username=%s WHERE id=%s",
+            (nome, username, uid)
+        )
+    else:
+        cur.execute(
+            "INSERT INTO mp2_usuarios (telegram_id, nome, username, saldo) VALUES (%s,%s,%s,0) RETURNING id",
+            (tid, nome, username)
+        )
+        uid = cur.fetchone()[0]
+    conn.commit(); cur.close(); conn.close()
+    return uid
+
+
+def _get_saldo(tid: int) -> float:
+    conn = _conn()
+    cur = conn.cursor()
+    cur.execute("SELECT saldo FROM mp2_usuarios WHERE telegram_id=%s", (tid,))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    return float(row[0] or 0) if row else 0.0
+
+
+# ─── GERAR PIX (Mercado Pago) ────────────────────────────────────────────────
+
+def _mp_request(method: str, path: str, body: dict = None, mp_token: str = None) -> dict:
+    """Chamada à API do Mercado Pago."""
+    tok = mp_token or get_mp_token()
+    if not tok:
+        return {'error': 'MP token não configurado'}
+    url = f'https://api.mercadopago.com{path}'
+    data = json.dumps(body).encode() if body else None
+    req = urllib.request.Request(
+        url,
+        data=data,
+        method=method.upper(),
+        headers={
+            'Authorization': f'Bearer {tok}',
+            'Content-Type': 'application/json',
+            'X-Idempotency-Key': f'bot2_{datetime.now().timestamp()}'
+        }
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        body_err = e.read().decode('utf-8', errors='replace')
+        logger.warning(f'[bot2] MP {method} {path} HTTP {e.code}: {body_err[:300]}')
         try:
-            referido_por = int(args[0].replace('ref_', ''))
-        except:
+            return json.loads(body_err)
+        except Exception:
+            return {'error': f'HTTP {e.code}', 'detail': body_err[:200]}
+    except Exception as e:
+        return {'error': str(e)}
+
+
+def _gerar_pix(tid: int, valor: float, nome: str, username: str) -> dict:
+    """Cria cobrança PIX no MP e salva na tabela mp2_transacoes."""
+    import uuid
+    ext_ref = f'mp2_{tid}_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}'
+    cfg_min = float(_cfg('deposito_minimo') or '5')
+    cfg_max = float(_cfg('deposito_maximo') or '10000')
+    if valor < cfg_min:
+        return {'error': f'Valor mínimo: {fmt(cfg_min)}'}
+    if valor > cfg_max:
+        return {'error': f'Valor máximo: {fmt(cfg_max)}'}
+
+    payload = {
+        'transaction_amount': valor,
+        'description': f'Depósito @{username or "usuario"} — VortexPay',
+        'payment_method_id': 'pix',
+        'payer': {
+            'email': f'user_{tid}@paynexbet.com',
+            'first_name': (nome or 'Usuario').split()[0][:20],
+        },
+        'external_reference': ext_ref,
+        'notification_url': 'https://paynexbet.com/webhook/mp2',
+        'metadata': {'telegram_id': str(tid), 'username': username or ''},
+    }
+    resp = _mp_request('POST', '/v1/payments', payload)
+
+    if 'id' not in resp:
+        return {'error': resp.get('message') or resp.get('error') or 'Erro MP'}
+
+    mp_id = resp['id']
+    pix_data = resp.get('point_of_interaction', {}).get('transaction_data', {})
+    qr_code  = pix_data.get('qr_code', '')
+    qr_b64   = pix_data.get('qr_code_base64', '')
+
+    # Salvar no banco — usando colunas reais da tabela mp2_transacoes
+    conn = _conn()
+    cur = conn.cursor()
+    cur.execute(
+        """INSERT INTO mp2_transacoes
+           (telegram_id, tipo, valor, status, mp_payment_id, mp_external_ref, pix_copia_cola, pix_qr_base64, descricao)
+           VALUES (%s,'deposito',%s,'pendente',%s,%s,%s,%s,%s) RETURNING id""",
+        (tid, valor, str(mp_id), ext_ref, qr_code, qr_b64,
+         f'Depósito @{username or "usuario"} — VortexPay')
+    )
+    tx_id = cur.fetchone()[0]
+    conn.commit(); cur.close(); conn.close()
+    return {'ok': True, 'tx_id': tx_id, 'mp_id': mp_id, 'qr_code': qr_code, 'qr_b64': qr_b64, 'ext_ref': ext_ref}
+
+
+# ─── HANDLERS ────────────────────────────────────────────────────────────────
+
+async def cmd_start(tid: int, nome: str, username: str, args: str = ''):
+    st_clear(tid)
+    try:
+        _get_ou_criar_usuario(tid, nome, username)
+    except Exception as e:
+        logger.warning(f'[bot2] criar usuario: {e}')
+
+    # Processar referral
+    if args:
+        try:
+            _processar_referral(tid, args)
+        except Exception:
             pass
 
-    usuario = mp2_get_ou_criar_usuario(
-        telegram_id=user.id,
-        username=user.username or '',
-        nome=user.full_name or '',
-        referido_por=referido_por
+    saldo = _get_saldo(tid)
+    txt = (
+        f'👋 Olá, *{nome}*! Bem-vindo ao *VortexPay Bot* 🚀\n\n'
+        f'💳 Seu saldo: *{fmt(saldo)}*\n\n'
+        '═══════════════════\n'
+        '📥 *Deposite* via PIX em segundos\n'
+        '📤 *Saque* direto na sua chave PIX\n'
+        '🔗 *Indique* e ganhe comissões\n'
+        '═══════════════════\n\n'
+        'Escolha uma opção:'
     )
+    await send(tid, txt, kb_main())
 
-    saldo = float(usuario.get('saldo', 0))
-    nome  = usuario.get('nome', user.first_name or 'usuário')
 
-    cfg         = mp2_get_config()
-    dep_min     = cfg.get('deposito_minimo', '5')
-    saque_min   = cfg.get('saque_minimo', '20')
-    comissao    = cfg.get('comissao_pct', '5')
-
-    # Link do canal
-    canal = mp2_get_canal('notificacoes')
-    canal_link = f"\n📣 [Acompanhe no canal]({canal['invite_link']})" if canal else ""
-
-    texto = (
-        f"🏦 *Bem-vindo ao PayPixNex!*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"Olá *{nome}*! 👋\n\n"
-        f"💰 *Seu saldo:* {fmt(saldo)}\n\n"
-        f"📋 *Como funciona:*\n"
-        f"• Deposite via PIX instantâneo\n"
-        f"• Saque para qualquer chave PIX\n"
-        f"• Indique amigos e ganhe *{comissao}%* de comissão\n\n"
-        f"📌 *Limites:*\n"
-        f"• Depósito mínimo: R$ {dep_min}\n"
-        f"• Saque mínimo: R$ {saque_min}\n"
-        f"{canal_link}\n\n"
-        f"_Use os botões abaixo para começar:_"
+async def cmd_carteira(tid: int):
+    st_clear(tid)
+    saldo = _get_saldo(tid)
+    txt = (
+        f'👛 *Sua Carteira*\n\n'
+        f'💰 Saldo disponível: *{fmt(saldo)}*\n\n'
+        '📥 Deposite para adicionar saldo\n'
+        '📤 Saque para transferir para sua chave PIX'
     )
+    await send(tid, txt, kb_main())
 
-    await update.message.reply_text(
-        texto,
-        parse_mode='Markdown',
-        reply_markup=teclado_principal()
+
+async def cmd_depositar(tid: int):
+    st_clear(tid)
+    cfg_min = float(_cfg('deposito_minimo') or '5')
+    cfg_max = float(_cfg('deposito_maximo') or '10000')
+    st_set(tid, 'aguardando_valor_dep')
+    txt = (
+        f'💰 *Depositar via PIX*\n\n'
+        f'📊 Mínimo: *{fmt(cfg_min)}*  |  Máximo: *{fmt(cfg_max)}*\n\n'
+        'Digite o *valor* que deseja depositar:\n'
+        '_(ex: 50 ou 50,00)_'
     )
+    await send(tid, txt, kb_cancelar())
 
-# ─── CARTEIRA ────────────────────────────────────────────────────────────────
-async def cmd_carteira(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user    = update.effective_user
-    usuario = mp2_get_ou_criar_usuario(user.id, user.username or '', user.full_name or '')
 
-    saldo       = float(usuario.get('saldo', 0))
-    total_dep   = float(usuario.get('total_depositado', 0))
-    total_saq   = float(usuario.get('total_sacado', 0))
-    criado_em   = usuario.get('criado_em', '')
-    if criado_em:
-        try:
-            criado_em = datetime.fromisoformat(str(criado_em)).strftime('%d/%m/%Y')
-        except:
-            criado_em = str(criado_em)[:10]
-
-    cfg       = mp2_get_config()
-    saque_min = cfg.get('saque_minimo', '20')
-
-    texto = (
-        f"💼 *Sua Carteira*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"💰 *Saldo disponível:* {fmt(saldo)}\n\n"
-        f"📥 Total depositado: {fmt(total_dep)}\n"
-        f"📤 Total sacado:     {fmt(total_saq)}\n\n"
-        f"📌 Saque mínimo: R$ {saque_min}\n"
-        f"🗓 Conta criada em: {criado_em}\n\n"
-        f"_Para sacar, use o botão_ 📤 *Sacar*"
-    )
-
-    btn = InlineKeyboardMarkup([[
-        InlineKeyboardButton("💰 Depositar agora", callback_data="dep_novo"),
-        InlineKeyboardButton("📤 Sacar",           callback_data="saq_novo"),
-    ]])
-
-    await update.message.reply_text(texto, parse_mode='Markdown', reply_markup=btn)
-
-# ─── DEPOSITAR ───────────────────────────────────────────────────────────────
-async def cmd_depositar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    cfg     = mp2_get_config()
-    dep_min = cfg.get('deposito_minimo', '5')
-    dep_max = cfg.get('deposito_maximo', '10000')
-
-    await update.message.reply_text(
-        f"💰 *Novo Depósito via PIX*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"Digite o valor que deseja depositar:\n"
-        f"• Mínimo: R$ {dep_min}\n"
-        f"• Máximo: R$ {dep_max}\n\n"
-        f"_Ex: 50 ou 150.00_",
-        parse_mode='Markdown',
-        reply_markup=teclado_cancelar()
-    )
-    return AGUARDANDO_VALOR_DEP
-
-async def receber_valor_dep(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    texto = update.message.text.strip()
-
-    if texto == "❌ Cancelar":
-        return await cmd_cancelar(update, context)
-
+async def handle_valor_dep(tid: int, texto: str, nome: str, username: str):
+    texto = texto.strip().replace(',', '.').replace('R$', '').replace(' ', '')
     try:
-        valor = float(texto.replace(',', '.').replace('R$', '').strip())
-    except:
-        await update.message.reply_text(
-            "❌ Valor inválido. Digite um número válido.\n_Ex: 50 ou 150.00_",
-            parse_mode='Markdown'
-        )
-        return AGUARDANDO_VALOR_DEP
+        valor = float(texto)
+    except ValueError:
+        await send(tid, '❌ Valor inválido. Digite apenas números (ex: *50* ou *50,00*)', kb_cancelar())
+        return
 
-    cfg     = mp2_get_config()
-    dep_min = float(cfg.get('deposito_minimo', '5'))
-    dep_max = float(cfg.get('deposito_maximo', '10000'))
+    st_set(tid, 'gerando_pix', valor=valor)
+    await send(tid, f'⏳ Gerando QR Code PIX de *{fmt(valor)}*...')
 
-    if valor < dep_min:
-        await update.message.reply_text(
-            f"❌ Valor mínimo é R$ {dep_min:.2f}".replace('.', ',')
-        )
-        return AGUARDANDO_VALOR_DEP
+    loop = asyncio.get_event_loop()
+    resultado = await loop.run_in_executor(None, _gerar_pix, tid, valor, nome, username)
 
-    if valor > dep_max:
-        await update.message.reply_text(
-            f"❌ Valor máximo é R$ {dep_max:.2f}".replace('.', ',')
-        )
-        return AGUARDANDO_VALOR_DEP
+    if not resultado.get('ok'):
+        st_clear(tid)
+        await send(tid, f'❌ {resultado.get("error", "Erro ao gerar PIX")}', kb_main())
+        return
 
-    # Gera PIX via Mercado Pago
-    msg_aguarde = await update.message.reply_text(
-        "⏳ Gerando PIX... aguarde alguns segundos.",
-        reply_markup=teclado_cancelar()
+    qr = resultado['qr_code']
+    st_clear(tid)
+    txt = (
+        f'✅ *PIX gerado!* {fmt(valor)}\n\n'
+        f'📋 *Copia e Cola:*\n`{qr}`\n\n'
+        '⏱ Válido por *30 minutos*\n'
+        '✅ Confirmação automática após pagamento'
     )
+    await send(tid, txt, kb_main())
 
-    resultado = mp2_gerar_pix(
-        telegram_id=user.id,
-        valor=valor,
-        descricao=f"Depósito PayPixNex @{user.username or user.id}"
-    )
 
-    if not resultado.get('success'):
-        await msg_aguarde.edit_text(
-            f"❌ Erro ao gerar PIX: {resultado.get('error', 'tente novamente')}\n\n"
-            f"_Verifique se o token MP2_ACCESS_TOKEN está configurado._",
-            parse_mode='Markdown'
+async def cmd_sacar(tid: int, nome: str, username: str):
+    saldo = _get_saldo(tid)
+    cfg_min = float(_cfg('saque_minimo') or '20')
+    if saldo < cfg_min:
+        await send(
+            tid,
+            f'❌ Saldo insuficiente para saque.\n\n'
+            f'💰 Saldo atual: *{fmt(saldo)}*\n'
+            f'📊 Mínimo para saque: *{fmt(cfg_min)}*',
+            kb_main()
         )
-        return ConversationHandler.END
-
-    pix_code = resultado.get('pix_copia_cola', '')
-    qr_b64   = resultado.get('pix_qr_base64', '')
-    ext_ref  = resultado.get('external_ref', '')
-    expires  = resultado.get('expiracao', '30 minutos')
-
-    context.user_data['ultimo_dep'] = {'valor': valor, 'ext_ref': ext_ref}
-
-    btn = InlineKeyboardMarkup([[
-        InlineKeyboardButton("📋 Copiei o código!", callback_data=f"dep_copiado_{ext_ref[:20]}"),
-        InlineKeyboardButton("✅ Já paguei",        callback_data=f"dep_pago_{ext_ref[:20]}"),
-    ]])
-
-    # Envia QR code se disponível
-    if qr_b64:
-        try:
-            import base64
-            from io import BytesIO
-            img_bytes = base64.b64decode(qr_b64)
-            await update.message.reply_photo(
-                photo=BytesIO(img_bytes),
-                caption=f"📱 *QR Code — {fmt(valor)}*\nEscaneie com seu app de banco",
-                parse_mode='Markdown'
-            )
-        except Exception as e:
-            logger.warning(f"Erro ao enviar QR: {e}")
-
-    await msg_aguarde.edit_text(
-        f"✅ *PIX Gerado!*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"💰 *Valor:* {fmt(valor)}\n"
-        f"⏰ *Expira em:* {expires}\n\n"
-        f"📋 *Código PIX (Copia e Cola):*\n"
-        f"`{pix_code}`\n\n"
-        f"_Após pagar, seu saldo é atualizado automaticamente!_",
-        parse_mode='Markdown',
-        reply_markup=btn
+        return
+    st_set(tid, 'aguardando_valor_saque', saldo=saldo, min_saque=cfg_min)
+    txt = (
+        f'💸 *Solicitar Saque*\n\n'
+        f'💰 Seu saldo: *{fmt(saldo)}*\n'
+        f'📊 Mínimo: *{fmt(cfg_min)}*\n\n'
+        'Digite o *valor* que deseja sacar:'
     )
+    await send(tid, txt, kb_cancelar())
 
-    await update.message.reply_text(
-        "🏠 Menu principal:",
-        reply_markup=teclado_principal()
-    )
-    return ConversationHandler.END
 
-# ─── SACAR ───────────────────────────────────────────────────────────────────
-async def cmd_sacar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user    = update.effective_user
-    usuario = mp2_get_ou_criar_usuario(user.id, user.username or '', user.full_name or '')
-    saldo   = float(usuario.get('saldo', 0))
-    cfg     = mp2_get_config()
-    saque_min = float(cfg.get('saque_minimo', '20'))
-
-    if saldo < saque_min:
-        await update.message.reply_text(
-            f"❌ *Saldo insuficiente*\n\n"
-            f"💰 Seu saldo: {fmt(saldo)}\n"
-            f"📌 Mínimo para saque: {fmt(saque_min)}\n\n"
-            f"_Deposite mais para poder sacar._",
-            parse_mode='Markdown',
-            reply_markup=teclado_principal()
-        )
-        return ConversationHandler.END
-
-    await update.message.reply_text(
-        f"📤 *Solicitar Saque*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"💰 Saldo disponível: {fmt(saldo)}\n"
-        f"📌 Mínimo: {fmt(saque_min)}\n\n"
-        f"Digite o valor que deseja sacar:",
-        parse_mode='Markdown',
-        reply_markup=teclado_cancelar()
-    )
-    return AGUARDANDO_VALOR_SAQUE
-
-async def receber_valor_saque(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user  = update.effective_user
-    texto = update.message.text.strip()
-
-    if texto == "❌ Cancelar":
-        return await cmd_cancelar(update, context)
-
+async def handle_valor_saque(tid: int, texto: str):
+    st = st_get(tid)
+    texto = texto.strip().replace(',', '.').replace('R$', '').replace(' ', '')
     try:
-        valor = float(texto.replace(',', '.').replace('R$', '').strip())
-    except:
-        await update.message.reply_text("❌ Valor inválido. Digite um número.")
-        return AGUARDANDO_VALOR_SAQUE
+        valor = float(texto)
+    except ValueError:
+        await send(tid, '❌ Valor inválido.', kb_cancelar())
+        return
 
-    usuario  = mp2_get_ou_criar_usuario(user.id, user.username or '', user.full_name or '')
-    saldo    = float(usuario.get('saldo', 0))
-    cfg      = mp2_get_config()
-    saque_min = float(cfg.get('saque_minimo', '20'))
-
-    if valor < saque_min:
-        await update.message.reply_text(f"❌ Mínimo para saque: {fmt(saque_min)}")
-        return AGUARDANDO_VALOR_SAQUE
-
+    saldo   = st.get('saldo', _get_saldo(tid))
+    min_saq = st.get('min_saque', 20)
     if valor > saldo:
-        await update.message.reply_text(
-            f"❌ Saldo insuficiente.\n💰 Seu saldo: {fmt(saldo)}"
-        )
-        return AGUARDANDO_VALOR_SAQUE
+        await send(tid, f'❌ Saldo insuficiente. Saldo: *{fmt(saldo)}*', kb_cancelar())
+        return
+    if valor < min_saq:
+        await send(tid, f'❌ Valor mínimo para saque: *{fmt(min_saq)}*', kb_cancelar())
+        return
 
-    context.user_data['saque_valor'] = valor
+    st_set(tid, 'aguardando_tipo_chave', valor_saque=valor)
+    await send(tid, f'🔑 *Tipo da sua chave PIX?*\nValor: *{fmt(valor)}*', kb_tipo_chave())
 
-    btn = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("📱 CPF",      callback_data="tipo_cpf"),
-            InlineKeyboardButton("✉️ E-mail",   callback_data="tipo_email"),
-        ],
-        [
-            InlineKeyboardButton("📞 Telefone", callback_data="tipo_telefone"),
-            InlineKeyboardButton("🔑 Aleatória",callback_data="tipo_aleatoria"),
-        ],
-    ])
 
-    await update.message.reply_text(
-        f"📤 *Saque de {fmt(valor)}*\n\n"
-        f"Selecione o tipo da sua chave PIX:",
-        parse_mode='Markdown',
-        reply_markup=btn
+async def handle_tipo_chave(tid: int, tipo: str, msg_id: int):
+    st = st_get(tid)
+    label = {'chave_cpf': 'CPF', 'chave_email': 'E-mail',
+             'chave_telefone': 'Telefone', 'chave_aleatoria': 'Chave Aleatória'}.get(tipo, tipo)
+    st_set(tid, 'aguardando_chave', tipo=label, valor_saque=st.get('valor_saque', 0))
+    await edit_msg(tid, msg_id, f'📝 Digite sua chave PIX _{label}_:', kb_cancelar())
+
+
+async def handle_chave_pix(tid: int, chave: str, nome: str, username: str):
+    st = st_get(tid)
+    valor = st.get('valor_saque', 0)
+    tipo  = st.get('tipo', 'PIX')
+    st_set(tid, 'confirmando_saque', valor_saque=valor, tipo=tipo, chave=chave)
+    txt = (
+        f'📤 *Confirmar Saque*\n\n'
+        f'💸 Valor: *{fmt(valor)}*\n'
+        f'🔑 Tipo: *{tipo}*\n'
+        f'📝 Chave: `{chave}`\n\n'
+        '⚠️ Verifique os dados antes de confirmar.'
     )
-    return AGUARDANDO_TIPO_CHAVE
+    await send(tid, txt, kb_confirmar_saque(valor))
 
-async def receber_tipo_chave(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
 
-    tipo_map = {
-        'tipo_cpf':       ('CPF',       'cpf'),
-        'tipo_email':     ('E-mail',    'email'),
-        'tipo_telefone':  ('Telefone',  'telefone'),
-        'tipo_aleatoria': ('Aleatória', 'aleatoria'),
-    }
-
-    data = query.data
-    if data not in tipo_map:
-        return AGUARDANDO_TIPO_CHAVE
-
-    label, tipo = tipo_map[data]
-    context.user_data['saque_tipo_chave'] = tipo
-
-    exemplos = {
-        'cpf':       '_Ex: 123.456.789-00_',
-        'email':     '_Ex: seuemail@gmail.com_',
-        'telefone':  '_Ex: +5511999887766_',
-        'aleatoria': '_Ex: 123e4567-e89b-..._',
-    }
-
-    await query.edit_message_text(
-        f"🔑 *Chave PIX ({label})*\n\n"
-        f"Digite sua chave PIX:\n{exemplos.get(tipo, '')}",
-        parse_mode='Markdown'
-    )
-    return AGUARDANDO_CHAVE_PIX
-
-async def receber_chave_pix(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user  = update.effective_user
-    chave = update.message.text.strip()
-
-    if chave == "❌ Cancelar":
-        return await cmd_cancelar(update, context)
-
-    valor      = context.user_data.get('saque_valor', 0)
-    tipo_chave = context.user_data.get('saque_tipo_chave', 'aleatoria')
-    context.user_data['saque_chave'] = chave
-
-    btn = InlineKeyboardMarkup([[
-        InlineKeyboardButton("✅ Confirmar Saque", callback_data="saque_confirmar"),
-        InlineKeyboardButton("❌ Cancelar",        callback_data="saque_cancelar"),
-    ]])
-
-    await update.message.reply_text(
-        f"📤 *Confirmar Saque*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"💰 Valor: *{fmt(valor)}*\n"
-        f"🔑 Chave: `{chave}`\n"
-        f"📌 Tipo: {tipo_chave.upper()}\n\n"
-        f"⚠️ _Saques são processados manualmente em até 24h._\n\n"
-        f"Confirma?",
-        parse_mode='Markdown',
-        reply_markup=btn
-    )
-    return AGUARDANDO_CONFIRMACAO_SAQUE
-
-async def confirmar_saque(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    user  = update.effective_user
-
-    if query.data == 'saque_cancelar':
-        await query.edit_message_text("❌ Saque cancelado.")
-        await context.bot.send_message(
-            user.id, "🏠 Operação cancelada.",
-            reply_markup=teclado_principal()
-        )
-        return ConversationHandler.END
-
-    valor      = context.user_data.get('saque_valor', 0)
-    chave      = context.user_data.get('saque_chave', '')
-    tipo_chave = context.user_data.get('saque_tipo_chave', 'aleatoria')
-
-    resultado = mp2_solicitar_saque(
-        telegram_id=user.id,
-        valor=valor,
-        chave_pix=chave,
-        tipo_chave=tipo_chave
-    )
-
-    if resultado.get('success'):
-        saque_id = resultado.get('saque_id', '?')
-
-        await query.edit_message_text(
-            f"✅ *Saque Solicitado!*\n"
-            f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🆔 Protocolo: `#{saque_id}`\n"
-            f"💰 Valor: *{fmt(valor)}*\n"
-            f"🔑 Chave: `{chave}`\n\n"
-            f"⏳ *Prazo:* até 24 horas úteis\n"
-            f"📬 Você receberá uma notificação aqui quando for processado.",
-            parse_mode='Markdown'
-        )
-
-        # Notifica o canal sobre o novo saque
-        asyncio.create_task(
-            _notificar_canal_saque(context.bot, user, valor, saque_id)
-        )
-    else:
-        await query.edit_message_text(
-            f"❌ Erro: {resultado.get('error', 'tente novamente')}"
-        )
-
-    await context.bot.send_message(
-        user.id, "🏠 Menu principal:",
-        reply_markup=teclado_principal()
-    )
-    return ConversationHandler.END
-
-async def _notificar_canal_saque(bot, user, valor, saque_id):
-    """Notifica o canal sobre saque solicitado."""
+async def handle_confirmar_saque(tid: int, nome: str, username: str):
+    st = st_get(tid)
+    valor = st.get('valor_saque', 0)
+    chave = st.get('chave', '')
+    tipo  = st.get('tipo', 'PIX')
+    st_clear(tid)
     try:
-        canal = mp2_get_canal('notificacoes')
-        if not canal:
+        # Inserir saque direto na tabela (mp2_saques)
+        conn = _conn()
+        cur = conn.cursor()
+        # Verificar saldo
+        cur.execute("SELECT saldo FROM mp2_usuarios WHERE telegram_id=%s", (tid,))
+        row = cur.fetchone()
+        saldo_atual = float(row[0] or 0) if row else 0.0
+        if saldo_atual < valor:
+            cur.close(); conn.close()
+            await send(tid, f'❌ Saldo insuficiente. Saldo atual: *{fmt(saldo_atual)}*', kb_main())
             return
-        canal_id = canal['canal_id']
-        username = f"@{user.username}" if user.username else user.full_name
-        msg = (
-            f"📤 *Saque Solicitado*\n"
-            f"👤 {username}\n"
-            f"💰 Valor: *{fmt(valor)}*\n"
-            f"🆔 #{saque_id}\n"
-            f"⏳ Aguardando processamento"
+        # Debitar saldo e inserir saque
+        cur.execute("UPDATE mp2_usuarios SET saldo=saldo-%s WHERE telegram_id=%s", (valor, tid))
+        cur.execute(
+            "INSERT INTO mp2_saques (telegram_id, valor, chave_pix, tipo_chave, status) VALUES (%s,%s,%s,%s,'pendente') RETURNING id",
+            (tid, valor, chave, tipo)
         )
-        await bot.send_message(canal_id, msg, parse_mode='Markdown')
+        saque_id = cur.fetchone()[0]
+        conn.commit(); cur.close(); conn.close()
+        result = {'ok': True, 'saque_id': saque_id}
+        if result.get('ok'):
+            await send(
+                tid,
+                f'✅ *Saque solicitado com sucesso!*\n\n'
+                f'💸 Valor: *{fmt(valor)}*\n'
+                f'🔑 Chave: `{chave}`\n\n'
+                '⏱ Prazo: até 24h úteis\n'
+                '📩 Você receberá confirmação aqui.',
+                kb_main()
+            )
+        else:
+            await send(tid, f'❌ {result.get("error", "Erro ao solicitar saque")}', kb_main())
+    except psycopg2.Error as e:
+        logger.error(f'[bot2] solicitar_saque DB: {e}')
+        await send(tid, '❌ Erro ao processar saque. Tente novamente.', kb_main())
     except Exception as e:
-        logger.warning(f"Erro notificar canal saque: {e}")
+        logger.error(f'[bot2] solicitar_saque: {e}')
+        await send(tid, '❌ Erro interno. Tente novamente mais tarde.', kb_main())
 
-# ─── HISTÓRICO ───────────────────────────────────────────────────────────────
-async def cmd_historico(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user      = update.effective_user
-    historico = mp2_historico(user.id, limite=10)
 
-    if not historico:
-        await update.message.reply_text(
-            "📊 *Histórico vazio*\n\nVocê ainda não tem transações.",
-            parse_mode='Markdown',
-            reply_markup=teclado_principal()
+async def cmd_historico(tid: int):
+    st_clear(tid)
+    try:
+        conn = _conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            "SELECT valor, status, criado_em FROM mp2_transacoes "
+            "WHERE telegram_id=%s AND tipo='deposito' ORDER BY criado_em DESC LIMIT 10",
+            (tid,)
         )
+        deps = cur.fetchall()
+        cur.execute(
+            "SELECT valor, status, criado_em FROM mp2_saques "
+            "WHERE telegram_id=%s ORDER BY criado_em DESC LIMIT 5",
+            (tid,)
+        )
+        saqs = cur.fetchall()
+        cur.close(); conn.close()
+
+        lines = ['📋 *Histórico de Transações*\n']
+        if deps:
+            lines.append('*Depósitos:*')
+            for d in deps:
+                icon = '✅' if d[2] and d[1] in ('confirmado','approved') else '⏳' if d[1] == 'pendente' else '❌'
+                dt = d[2].strftime('%d/%m %H:%M') if d[2] else ''
+                lines.append(f'{icon} {fmt(d[0])} — {dt}')
+        else:
+            lines.append('_Nenhum depósito ainda_')
+
+        if saqs:
+            lines.append('\n*Saques:*')
+            for s in saqs:
+                icon = '✅' if s[1] == 'aprovado' else '⏳' if s[1] == 'pendente' else '❌'
+                dt = s[2].strftime('%d/%m %H:%M') if s[2] else ''
+                lines.append(f'{icon} {fmt(s[0])} — {dt}')
+
+        await send(tid, '\n'.join(lines), kb_main())
+    except Exception as e:
+        logger.error(f'[bot2] historico: {e}')
+        await send(tid, '❌ Erro ao carregar histórico.', kb_main())
+
+
+async def cmd_indicar(tid: int, username: str):
+    st_clear(tid)
+    base = 'https://t.me/paypix_nexbot'
+    link = f'{base}?start=ref_{tid}'
+    comissao = int(_cfg('comissao_pct') or '5')
+    txt = (
+        f'🔗 *Seu Link de Indicação*\n\n'
+        f'`{link}`\n\n'
+        f'💰 Ganhe *{comissao}%* de cada depósito feito pelos seus indicados!\n\n'
+        '📤 Compartilhe com amigos e parceiros.'
+    )
+    await send(tid, txt, kb_main())
+
+
+async def cmd_ajuda(tid: int):
+    st_clear(tid)
+    txt = (
+        '❓ *Ajuda — VortexPay Bot*\n\n'
+        '*/start* — Menu principal\n'
+        '*/carteira* — Ver saldo\n'
+        '*/depositar* — Depositar via PIX\n'
+        '*/sacar* — Solicitar saque\n'
+        '*/historico* — Ver transações\n'
+        '*/indicar* — Link de afiliado\n\n'
+        '📞 Suporte: @VortexPay\\_Suporte\n'
+        '🌐 Site: paynexbet.com'
+    )
+    await send(tid, txt, kb_main())
+
+
+def _processar_referral(tid: int, ref_code: str):
+    """Registra referral se não existir."""
+    if not ref_code.startswith('ref_'):
         return
+    try:
+        ref_id = int(ref_code[4:])
+        if ref_id == tid:
+            return
+        conn = _conn()
+        cur = conn.cursor()
+        cur.execute("SELECT referido_por FROM mp2_usuarios WHERE telegram_id=%s", (tid,))
+        row = cur.fetchone()
+        if row and row[0] is None:
+            cur.execute(
+                "UPDATE mp2_usuarios SET referido_por=%s WHERE telegram_id=%s",
+                (ref_id, tid)
+            )
+            conn.commit()
+        cur.close(); conn.close()
+    except Exception as e:
+        logger.warning(f'[bot2] referral: {e}')
 
-    linhas = ["📊 *Últimas Transações*\n━━━━━━━━━━━━━━━━━━━━━\n"]
-    for tx in historico:
-        tipo   = tx.get('tipo', '')
-        valor  = float(tx.get('valor', 0))
-        status = tx.get('status', '')
-        data   = tx.get('criado_em', '')
-        if data:
-            try:
-                data = datetime.fromisoformat(str(data)).strftime('%d/%m %H:%M')
-            except:
-                data = str(data)[:16]
 
-        emoji_tipo   = "📥" if tipo == 'deposito' else "📤" if tipo == 'saque' else "🎁"
-        emoji_status = {"confirmado":"✅","pendente":"⏳","cancelado":"❌"}.get(status, "❓")
+# ─── PONTO DE ENTRADA PRINCIPAL ──────────────────────────────────────────────
 
-        linhas.append(
-            f"{emoji_tipo} {fmt(valor)} {emoji_status} _{data}_"
-        )
-
-    await update.message.reply_text(
-        "\n".join(linhas),
-        parse_mode='Markdown',
-        reply_markup=teclado_principal()
-    )
-
-# ─── INDICAR ─────────────────────────────────────────────────────────────────
-async def cmd_indicar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    bot_info = await context.bot.get_me()
-    bot_username = bot_info.username
-
-    cfg      = mp2_get_config()
-    comissao = cfg.get('comissao_pct', '5')
-
-    link = f"https://t.me/{bot_username}?start=ref_{user.id}"
-
-    await update.message.reply_text(
-        f"👥 *Programa de Indicação*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"Ganhe *{comissao}%* de cada depósito dos seus indicados!\n\n"
-        f"🔗 *Seu link exclusivo:*\n"
-        f"`{link}`\n\n"
-        f"_Compartilhe e ganhe automaticamente!_",
-        parse_mode='Markdown',
-        reply_markup=teclado_principal()
-    )
-
-# ─── AJUDA ───────────────────────────────────────────────────────────────────
-async def cmd_ajuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    canal = mp2_get_canal('notificacoes')
-    canal_txt = f"\n📣 [Canal de Notificações]({canal['invite_link']})" if canal else ""
-
-    await update.message.reply_text(
-        f"ℹ️ *Ajuda — PayPixNex*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"*Como depositar:*\n"
-        f"1. Clique em 💰 Depositar\n"
-        f"2. Digite o valor desejado\n"
-        f"3. Copie o código PIX e pague\n"
-        f"4. Saldo atualiza automaticamente ✅\n\n"
-        f"*Como sacar:*\n"
-        f"1. Clique em 📤 Sacar\n"
-        f"2. Informe o valor e a chave PIX\n"
-        f"3. Aguarde até 24h para processamento\n\n"
-        f"*Suporte:* @paypix_nexbot{canal_txt}\n\n"
-        f"_Dúvidas? Envie /start para recomeçar._",
-        parse_mode='Markdown',
-        reply_markup=teclado_principal()
-    )
-
-# ─── /admin — comando do dono do bot ─────────────────────────────────────────
-async def cmd_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    if BOT2_ADMIN_ID and user.id != BOT2_ADMIN_ID:
-        await update.message.reply_text("❌ Acesso negado.")
-        return
-
-    stats = mp2_stats()
-    await update.message.reply_text(
-        f"🔧 *Painel Admin — @paypix_nexbot*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"👥 Usuários: {stats.get('total_usuarios', 0)}\n"
-        f"📥 Depósitos confirmados: {stats.get('depositos_confirmados', 0)}\n"
-        f"💰 Total depositado: {fmt(stats.get('total_depositado', 0))}\n"
-        f"📤 Saques pendentes: {stats.get('saques_pendentes', 0)}\n"
-        f"💸 Valor saques pend.: {fmt(stats.get('valor_saques_pendentes', 0))}\n"
-        f"✅ Saques aprovados: {stats.get('saques_aprovados', 0)}\n\n"
-        f"_Use /criar\\_canal para criar/recriar o canal_",
-        parse_mode='Markdown'
-    )
-
-# ─── /criar_canal — cria canal de notificações ───────────────────────────────
-async def cmd_criar_canal(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    if BOT2_ADMIN_ID and user.id != BOT2_ADMIN_ID:
-        await update.message.reply_text("❌ Acesso negado.")
-        return
-
-    msg = await update.message.reply_text("⏳ Criando canal PayPixNex...")
-
-    resultado = await criar_canal_notificacoes(context.bot)
-
-    if resultado.get('success'):
-        link = resultado.get('invite_link', '')
-        await msg.edit_text(
-            f"✅ *Canal criado com sucesso!*\n\n"
-            f"📣 Nome: PayPixNex Notificações\n"
-            f"🔗 Link: {link}\n\n"
-            f"_Compartilhe para que os usuários possam acompanhar!_",
-            parse_mode='Markdown'
-        )
-    else:
-        await msg.edit_text(
-            f"❌ Erro ao criar canal: {resultado.get('error', 'desconhecido')}\n\n"
-            f"_Certifique-se que o BOT2_TOKEN está correto e o bot tem permissão._"
-        )
-
-# ─── CRIAR CANAL AUTOMATICAMENTE ─────────────────────────────────────────────
-async def criar_canal_notificacoes(bot) -> dict:
+async def process_bot2_update(data: dict):
     """
-    Cria o canal 'PayPixNex Notificações' automaticamente.
-    Salva canal_id e invite_link no PostgreSQL (mp2_config).
+    Chamado por server.py quando POST /webhook/bot2 chega.
+    data = body JSON do Telegram.
     """
     try:
-        # Verifica se já existe
-        canal_existente = mp2_get_canal('notificacoes')
-        if canal_existente:
-            # Testa se o canal ainda existe
-            try:
-                await bot.get_chat(canal_existente['canal_id'])
-                logger.info(f"[Bot2] Canal já existe: {canal_existente['canal_id']}")
-                return {'success': True, **canal_existente}
-            except Exception:
-                logger.info("[Bot2] Canal anterior inválido, recriando...")
+        # Mensagem de texto
+        if 'message' in data:
+            msg     = data['message']
+            chat_id = msg['chat']['id']
+            nome    = msg['from'].get('first_name', 'Usuário')
+            uname   = msg['from'].get('username', '')
+            texto   = msg.get('text', '')
 
-        # Cria novo canal
-        canal = await bot.create_chat(
-            title="📣 PayPixNex Notificações",
-            chat_type="channel"
-        )
-        canal_id = canal.id
+            # Comandos
+            if texto.startswith('/start'):
+                args = texto[7:].strip() if len(texto) > 7 else ''
+                await cmd_start(chat_id, nome, uname, args)
+                return
+            if texto in ('/carteira', '👛 Carteira'):
+                await cmd_carteira(chat_id)
+                return
+            if texto in ('/depositar', '💰 Depositar'):
+                await cmd_depositar(chat_id)
+                return
+            if texto in ('/sacar', '💸 Sacar'):
+                await cmd_sacar(chat_id, nome, uname)
+                return
+            if texto in ('/historico', '/histórico', '📋 Histórico'):
+                await cmd_historico(chat_id)
+                return
+            if texto in ('/indicar', '🔗 Indicar'):
+                await cmd_indicar(chat_id, uname)
+                return
+            if texto in ('/ajuda', '/help', '❓ Ajuda'):
+                await cmd_ajuda(chat_id)
+                return
 
-        # Gera link de convite
-        invite_link = await bot.export_chat_invite_link(canal_id)
+            # Tratar texto baseado no estado atual
+            st = st_get(chat_id)
+            step = st.get('step', '')
 
-        # Salva no banco
-        mp2_salvar_canal('notificacoes', canal_id, invite_link, "📣 PayPixNex Notificações")
+            if step == 'aguardando_valor_dep':
+                await handle_valor_dep(chat_id, texto, nome, uname)
+            elif step == 'aguardando_valor_saque':
+                await handle_valor_saque(chat_id, texto)
+            elif step == 'aguardando_chave':
+                await handle_chave_pix(chat_id, texto, nome, uname)
+            else:
+                # Mensagem fora de contexto
+                await send(chat_id, '👇 Escolha uma opção:', kb_main())
 
-        # Mensagem de boas-vindas
-        await bot.send_message(
-            canal_id,
-            f"🚀 *Canal PayPixNex ativo!*\n\n"
-            f"📣 Aqui você acompanha:\n"
-            f"• ✅ PIX confirmados\n"
-            f"• 📤 Saques processados\n"
-            f"• 📊 Atualizações do sistema\n\n"
-            f"_Bem-vindo ao PayPixNex!_ 🏦",
-            parse_mode='Markdown'
-        )
+        # Callback de botão inline
+        elif 'callback_query' in data:
+            cb      = data['callback_query']
+            chat_id = cb['from']['id']
+            nome    = cb['from'].get('first_name', 'Usuário')
+            uname   = cb['from'].get('username', '')
+            cb_id   = cb['id']
+            cbd     = cb.get('data', '')
+            msg_id  = cb['message']['message_id']
 
-        logger.info(f"[Bot2] ✅ Canal criado: {canal_id} — {invite_link}")
-        return {'success': True, 'canal_id': canal_id, 'invite_link': invite_link}
+            await answer_cb(cb_id)
+
+            if cbd == 'cancelar':
+                st_clear(chat_id)
+                await edit_msg(chat_id, msg_id, '❌ Operação cancelada.', kb_main())
+            elif cbd == 'depositar':
+                await cmd_depositar(chat_id)
+            elif cbd == 'sacar':
+                await cmd_sacar(chat_id, nome, uname)
+            elif cbd == 'carteira':
+                await cmd_carteira(chat_id)
+            elif cbd == 'historico':
+                await cmd_historico(chat_id)
+            elif cbd == 'indicar':
+                await cmd_indicar(chat_id, uname)
+            elif cbd == 'ajuda':
+                await cmd_ajuda(chat_id)
+            elif cbd.startswith('chave_'):
+                await handle_tipo_chave(chat_id, cbd, msg_id)
+            elif cbd == 'confirmar_saque':
+                await handle_confirmar_saque(chat_id, nome, uname)
 
     except Exception as e:
-        logger.error(f"[Bot2] Erro criar canal: {e}")
-        return {'success': False, 'error': str(e)}
+        logger.error(f'[bot2] process_update erro: {e}', exc_info=True)
 
-# ─── CALLBACK HANDLER ────────────────────────────────────────────────────────
-async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    data = query.data
 
-    if data == "dep_novo":
-        await query.message.reply_text(
-            "💰 Digite o valor para depositar:",
-            reply_markup=teclado_cancelar()
-        )
-        return AGUARDANDO_VALOR_DEP
+# ─── NOTIFICAÇÕES ────────────────────────────────────────────────────────────
 
-    if data == "saq_novo":
-        await query.message.reply_text(
-            "📤 Digite o valor para sacar:",
-            reply_markup=teclado_cancelar()
-        )
-        return AGUARDANDO_VALOR_SAQUE
-
-    if data.startswith("dep_copiado_") or data.startswith("dep_pago_"):
-        await query.edit_message_reply_markup(reply_markup=None)
-        await query.message.reply_text(
-            "✅ Ótimo! Assim que o pagamento for confirmado pelo Mercado Pago, "
-            "seu saldo será atualizado automaticamente!\n\n"
-            "_Isso leva alguns segundos após o pagamento._",
-            reply_markup=teclado_principal()
-        )
-
-# ─── HANDLER TEXTO LIVRE ─────────────────────────────────────────────────────
-async def handler_texto(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    texto = update.message.text.strip()
-
-    rota = {
-        "💰 Depositar": cmd_depositar,
-        "💼 Carteira":  cmd_carteira,
-        "📤 Sacar":     cmd_sacar,
-        "📊 Histórico": cmd_historico,
-        "👥 Indicar":   cmd_indicar,
-        "ℹ️ Ajuda":    cmd_ajuda,
-    }
-
-    if texto in rota:
-        return await rota[texto](update, context)
-
-    await update.message.reply_text(
-        "❓ Comando não reconhecido. Use os botões abaixo:",
-        reply_markup=teclado_principal()
-    )
-
-# ─── CANCELAR ────────────────────────────────────────────────────────────────
-async def cmd_cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data.clear()
-    await update.message.reply_text(
-        "❌ Operação cancelada.",
-        reply_markup=teclado_principal()
-    )
-    return ConversationHandler.END
-
-# ─── CONSTRUIR APLICAÇÃO ─────────────────────────────────────────────────────
-def build_bot2_app():
-    if not BOT2_TOKEN:
-        logger.warning("[Bot2] BOT2_TOKEN não configurado — bot2 desativado")
-        return None
-
-    app = Application.builder().token(BOT2_TOKEN).build()
-
-    # ConversationHandler — depósito
-    conv_deposito = ConversationHandler(
-        entry_points=[
-            CommandHandler('depositar', cmd_depositar),
-            MessageHandler(filters.Regex(r'^💰 Depositar$'), cmd_depositar),
-            CallbackQueryHandler(cmd_depositar, pattern='^dep_novo$'),
-        ],
-        states={
-            AGUARDANDO_VALOR_DEP: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, receber_valor_dep)
-            ],
-        },
-        fallbacks=[
-            CommandHandler('cancelar', cmd_cancelar),
-            MessageHandler(filters.Regex(r'^❌ Cancelar$'), cmd_cancelar),
-        ],
-        allow_reentry=True,
-        per_message=False,
-    )
-
-    # ConversationHandler — saque
-    conv_saque = ConversationHandler(
-        entry_points=[
-            CommandHandler('sacar', cmd_sacar),
-            MessageHandler(filters.Regex(r'^📤 Sacar$'), cmd_sacar),
-            CallbackQueryHandler(cmd_sacar, pattern='^saq_novo$'),
-        ],
-        states={
-            AGUARDANDO_VALOR_SAQUE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, receber_valor_saque)
-            ],
-            AGUARDANDO_TIPO_CHAVE: [
-                CallbackQueryHandler(receber_tipo_chave, pattern='^tipo_')
-            ],
-            AGUARDANDO_CHAVE_PIX: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, receber_chave_pix)
-            ],
-            AGUARDANDO_CONFIRMACAO_SAQUE: [
-                CallbackQueryHandler(confirmar_saque, pattern='^saque_')
-            ],
-        },
-        fallbacks=[
-            CommandHandler('cancelar', cmd_cancelar),
-            MessageHandler(filters.Regex(r'^❌ Cancelar$'), cmd_cancelar),
-        ],
-        allow_reentry=True,
-        per_message=False,
-    )
-
-    # Registrar handlers
-    app.add_handler(CommandHandler('start',        cmd_start))
-    app.add_handler(CommandHandler('carteira',     cmd_carteira))
-    app.add_handler(CommandHandler('historico',    cmd_historico))
-    app.add_handler(CommandHandler('indicar',      cmd_indicar))
-    app.add_handler(CommandHandler('ajuda',        cmd_ajuda))
-    app.add_handler(CommandHandler('admin',        cmd_admin))
-    app.add_handler(CommandHandler('criar_canal',  cmd_criar_canal))
-    app.add_handler(conv_deposito)
-    app.add_handler(conv_saque)
-    app.add_handler(CallbackQueryHandler(callback_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handler_texto))
-
-    return app
-
-# ─── STARTUP: CRIAR CANAL AUTOMATICAMENTE ────────────────────────────────────
-async def _bot2_post_startup(app: Application):
-    """Executado após o bot iniciar: cria canal se não existir."""
-    await asyncio.sleep(5)  # aguarda bot conectar
-    logger.info("[Bot2] Verificando canal de notificações...")
-    resultado = await criar_canal_notificacoes(app.bot)
-    if resultado.get('success'):
-        logger.info(f"[Bot2] ✅ Canal OK: {resultado.get('invite_link', '')}")
-    else:
-        logger.warning(f"[Bot2] ⚠️ Canal: {resultado.get('error', '')}")
-
-# ─── INICIAR POLLING ─────────────────────────────────────────────────────────
-async def iniciar_bot2_polling():
-    """Inicia o bot em modo polling (separado do aiohttp server)."""
-    if not BOT2_TOKEN:
-        logger.warning("[Bot2] BOT2_TOKEN não definido — polling não iniciado")
+async def notificar_deposito_confirmado(telegram_id: int, valor: float, payment_id: str):
+    """Chamado por server.py quando o webhook MP confirma pagamento."""
+    if not telegram_id:
         return
-
-    logger.info("[Bot2] Iniciando @paypix_nexbot polling...")
-    app = build_bot2_app()
-    if not app:
-        return
-
-    # Inicializa DB
-    init_mp2_db()
-
+    # Atualizar saldo
     try:
-        await app.initialize()
-        await app.start()
-
-        # Criar canal após iniciar
-        asyncio.create_task(_bot2_post_startup(app))
-
-        await app.updater.start_polling(
-            drop_pending_updates=True,
-            allowed_updates=Update.ALL_TYPES
+        conn = _conn()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE mp2_usuarios SET saldo=saldo+%s, total_depositado=COALESCE(total_depositado,0)+%s WHERE telegram_id=%s",
+            (valor, valor, telegram_id)
         )
-        logger.info("[Bot2] ✅ Polling ativo — @paypix_nexbot")
-
-        # Manter rodando enquanto o servidor estiver ativo
-        while True:
-            await asyncio.sleep(60)
-
-    except asyncio.CancelledError:
-        logger.info("[Bot2] Polling encerrado (cancelado)")
+        conn.commit(); cur.close(); conn.close()
     except Exception as e:
-        logger.error(f"[Bot2] Erro polling: {e}")
-    finally:
-        try:
-            await app.updater.stop()
-            await app.stop()
-            await app.shutdown()
-        except:
-            pass
+        logger.error(f'[bot2] atualizar saldo: {e}')
+
+    saldo = _get_saldo(telegram_id)
+    txt = (
+        f'✅ *Pagamento confirmado!*\n\n'
+        f'💰 Depósito: *{fmt(valor)}*\n'
+        f'👛 Saldo atualizado: *{fmt(saldo)}*\n\n'
+        f'📝 ID MP: `{payment_id}`\n'
+        '🎉 Bom jogo!'
+    )
+    await send(telegram_id, txt, kb_main())
+
+
+async def notificar_saque_processado(telegram_id: int, valor: float, aprovado: bool, saque_id: int):
+    """Chamado pelo admin quando aprova/rejeita saque."""
+    if not telegram_id:
+        return
+    if aprovado:
+        txt = (
+            f'✅ *Saque processado!*\n\n'
+            f'💸 Valor enviado: *{fmt(valor)}*\n'
+            f'🆔 Saque #{saque_id}\n\n'
+            '⏱ O PIX pode levar até 30 minutos para chegar.'
+        )
+    else:
+        txt = (
+            f'❌ *Saque rejeitado*\n\n'
+            f'💸 Valor: *{fmt(valor)}*\n'
+            f'🆔 Saque #{saque_id}\n\n'
+            '📞 Entre em contato com o suporte se tiver dúvidas.'
+        )
+    await send(telegram_id, txt, kb_main())
+
+
+# ─── WEBHOOK MANAGEMENT ──────────────────────────────────────────────────────
+
+def registrar_webhook(base_url: str) -> dict:
+    """Registra o webhook no Telegram. Chamado por /api/bot2/set-webhook."""
+    token = get_token()
+    if not token:
+        return {'success': False, 'error': 'bot2_token não configurado. Salve o token primeiro.'}
+    webhook_url = f'{base_url}/webhook/bot2'
+    result = _tg_call('setWebhook', {'url': webhook_url, 'drop_pending_updates': True}, token=token)
+    if result.get('ok') or result.get('result') is True:
+        logger.info(f'[bot2] Webhook registrado: {webhook_url}')
+        return {'success': True, 'msg': f'Webhook ativo: {webhook_url}', 'url': webhook_url}
+    return {'success': False, 'error': result.get('description') or str(result)}
+
+
+def get_webhook_info() -> dict:
+    """Retorna info do webhook atual."""
+    token = get_token()
+    if not token:
+        return {'ok': False, 'error': 'sem token'}
+    return _tg_call('getWebhookInfo', {}, token=token)
+
+
+def get_bot_info() -> dict:
+    """Retorna informações do bot via getMe."""
+    token = get_token()
+    if not token:
+        return {'ok': False, 'error': 'sem token'}
+    return _tg_call('getMe', {}, token=token)

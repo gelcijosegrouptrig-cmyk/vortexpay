@@ -670,7 +670,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427e';
+  const VER = '20250427f';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -2256,10 +2256,35 @@ function toggleLoginSenha() {
             <!-- Campos de chaves -->
             <div style="display:grid;gap:16px;margin-bottom:20px">
 
+              <!-- Token do Bot Telegram — CAMPO NOVO E ESSENCIAL -->
+              <div style="background:#0a1a0a;border:2px solid #4caf5077;border-radius:12px;padding:16px">
+                <label style="font-size:13px;color:#4caf50;display:block;margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px">
+                  🤖 Token do Bot Telegram <span style="color:#f44;font-weight:700">*</span>
+                  <span style="color:#4caf5099;font-weight:400;text-transform:none;letter-spacing:0"> — obtenha em @BotFather</span>
+                </label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <div style="flex:1;position:relative">
+                    <input type="password" id="b2-bot-token"
+                      placeholder="Cole o token aqui: 123456789:AAFxx..."
+                      autocomplete="new-password"
+                      style="width:100%;box-sizing:border-box;background:#050a05;border:2px solid #4caf5055;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
+                    <span id="b2-bot-token-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
+                  </div>
+                  <button onclick="b2ToggleField('b2-bot-token')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                  <button onclick="b2SalvarTokenBot()" style="padding:10px 14px;background:linear-gradient(135deg,#1b5e20,#4caf50);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">💾 Salvar Token</button>
+                </div>
+                <div id="b2-bot-token-msg" style="font-size:12px;margin-top:6px;min-height:16px"></div>
+                <div style="font-size:11px;color:#555;margin-top:6px;line-height:1.5">
+                  1️⃣ Abra o <b style="color:#888">@BotFather</b> no Telegram → /newbot → obtenha o token<br>
+                  2️⃣ Cole o token acima e clique <b style="color:#4caf50">Salvar Token</b><br>
+                  3️⃣ Depois clique <b style="color:#009ee3">🔗 Registrar Webhook</b> para ativar o bot
+                </div>
+              </div>
+
               <!-- Access Token -->
               <div>
                 <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">
-                  🔑 Access Token <span style="color:#f44;font-weight:700">*</span>
+                  🔑 Access Token MP <span style="color:#f44;font-weight:700">*</span>
                   <span style="color:#555;font-weight:400;text-transform:none;letter-spacing:0"> — principal (APP_USR-...)</span>
                 </label>
                 <div style="display:flex;gap:8px;align-items:center">
@@ -2270,7 +2295,7 @@ function toggleLoginSenha() {
                       style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #009ee344;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
                     <span id="b2-token-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
                   </div>
-                  <button onclick="toggleMp2Field('mp2-access-token','mp2-token-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                  <button onclick="b2ToggleField('b2-access-token')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
                 </div>
                 <div style="font-size:11px;color:#555;margin-top:4px">Painel MP → Credenciais → Access Token de produção — <strong style="color:#4caf50">✅ já configurado: deixe em branco para manter</strong></div>
               </div>
@@ -2329,11 +2354,15 @@ function toggleLoginSenha() {
             <div style="display:flex;gap:12px;flex-wrap:wrap">
               <button onclick="b2SalvarChaves()" id="b2-btn-salvar"
                 style="flex:1;min-width:180px;padding:14px;background:linear-gradient(135deg,#003087,#009ee3);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">
-                💾 Salvar Chaves Mercado Pago
+                💾 Salvar Chaves MP
               </button>
               <button onclick="b2TestarConexao()"
                 style="padding:14px 20px;background:#0a1020;border:1px solid #009ee344;border-radius:10px;color:#009ee3;font-size:13px;font-weight:600;cursor:pointer">
-                🔗 Testar Conexão
+                🔗 Testar MP
+              </button>
+              <button onclick="b2RegistrarWebhook()"
+                style="padding:14px 20px;background:linear-gradient(135deg,#1b5e20,#4caf50);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+                📡 Registrar Webhook Bot
               </button>
             </div>
             <div id="b2-msg" style="margin-top:12px;font-size:13px;text-align:center;min-height:20px"></div>
@@ -6553,6 +6582,175 @@ async function carregarPaypixAdmin() {
 // (setInterval ppCheckStatus já registrado acima — não duplicar)
 
 // ════════════════════════════════════════════════════════════════
+// BOT2 — FUNÇÕES UTILITÁRIAS (toggleField, copiar, salvar token, webhook)
+// ════════════════════════════════════════════════════════════════
+
+function b2ToggleField(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+// Compatibilidade: toggleMp2Field usada por campos do PayPix e Bot2
+function toggleMp2Field(fieldId, badgeId) {
+  b2ToggleField(fieldId);
+}
+
+function copiarMp2Webhook() {
+  const el = document.getElementById('b2-webhook-url') || document.getElementById('pp-webhook-url');
+  const txt = el ? el.textContent.trim() : '';
+  if (!txt || txt === 'Carregando...') { b2Msg('⚠️ URL ainda carregando...', '#f59e0b'); return; }
+  navigator.clipboard.writeText(txt).then(() => b2Msg('📋 URL copiada!', '#4caf50')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    b2Msg('📋 URL copiada!', '#4caf50');
+  });
+}
+
+function b2Msg(txt, cor) {
+  const el = document.getElementById('b2-msg');
+  if (el) { el.innerHTML = `<span style="color:${cor||'#aaa'}">${txt}</span>`; }
+}
+
+// Salvar token do Bot Telegram via /api/bot2/token
+async function b2SalvarTokenBot() {
+  const inp  = document.getElementById('b2-bot-token');
+  const msg  = document.getElementById('b2-bot-token-msg');
+  const token = (inp ? inp.value.trim() : '');
+  if (!token) { if (msg) msg.innerHTML = '<span style="color:#f44">❌ Digite o token do bot</span>'; return; }
+  if (msg) msg.innerHTML = '<span style="color:#888">⏳ Validando token com Telegram...</span>';
+  try {
+    const r = await fetch(`${BASE}/api/bot2/token?secret=${encodeURIComponent(SECRET())}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ token })
+    });
+    const d = await r.json();
+    if (d.success) {
+      if (msg) msg.innerHTML = `<span style="color:#4caf50">✅ ${d.msg || 'Token salvo!'} · @${d.username}</span>`;
+      const badge = document.getElementById('b2-bot-token-badge');
+      if (badge) badge.style.display = 'inline';
+      if (inp) inp.value = '';
+      setTimeout(b2CheckStatus, 1000);
+    } else {
+      if (msg) msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao salvar token'}</span>`;
+    }
+  } catch(e) {
+    if (msg) msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+}
+
+// Salvar chaves Mercado Pago via /api/mp2/config
+async function b2SalvarChaves() {
+  const btn = document.getElementById('b2-btn-salvar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+  b2Msg('⏳ Salvando chaves...', '#888');
+  try {
+    const token  = (document.getElementById('b2-access-token')  || {}).value || '';
+    const pubkey = (document.getElementById('b2-public-key')     || {}).value || '';
+    const cid    = (document.getElementById('b2-client-id')      || {}).value || '';
+    const csec   = (document.getElementById('b2-client-secret')  || {}).value || '';
+    const r = await fetch(`${BASE}/api/mp2/config`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      body: JSON.stringify({
+        access_token:  token  || '__keep__',
+        public_key:    pubkey || '__keep__',
+        client_id:     cid   || '__keep__',
+        client_secret: csec  || '__keep__',
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      b2Msg('✅ Chaves Mercado Pago salvas com sucesso!', '#4caf50');
+      setTimeout(b2CheckStatus, 1500);
+    } else {
+      b2Msg('❌ ' + (d.error || 'Erro ao salvar'), '#f44');
+    }
+  } catch(e) {
+    b2Msg('❌ Erro: ' + e.message, '#f44');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Chaves MP'; }
+}
+
+// Testar conexão MP via /api/mp2/testar
+async function b2TestarConexao() {
+  b2Msg('⏳ Testando conexão...', '#888');
+  try {
+    const r = await fetch(`${BASE}/api/mp2/testar?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (d.success) {
+      b2Msg(`✅ Conectado! Conta: ${d.email} · ${d.ambiente}`, '#4caf50');
+    } else {
+      b2Msg('❌ ' + (d.error || 'Token MP inválido'), '#f44');
+    }
+  } catch(e) {
+    b2Msg('❌ Erro: ' + e.message, '#f44');
+  }
+}
+
+// Registrar webhook do bot no Telegram
+async function b2RegistrarWebhook() {
+  b2Msg('⏳ Registrando webhook no Telegram...', '#888');
+  try {
+    const r = await fetch(`${BASE}/api/bot2/set-webhook?secret=${encodeURIComponent(SECRET())}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url: `${BASE}/webhook/bot2` })
+    });
+    const d = await r.json();
+    if (d.success) {
+      b2Msg('✅ ' + (d.msg || 'Webhook registrado! Bot ativo.'), '#4caf50');
+      setTimeout(b2CheckStatus, 2000);
+    } else {
+      b2Msg('❌ ' + (d.error || 'Falha ao registrar webhook'), '#f44');
+    }
+  } catch(e) {
+    b2Msg('❌ Erro: ' + e.message, '#f44');
+  }
+}
+
+// ppSalvarChaves e ppTestarConexao (PayPix — tab-paypix)
+async function ppSalvarChaves() {
+  const btn = document.getElementById('pp-btn-salvar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+  const ppMsg = id => document.getElementById(id);
+  const setMsg = (t,c) => { const el=ppMsg('pp-msg'); if(el) el.innerHTML=`<span style="color:${c}">${t}</span>`; };
+  setMsg('⏳ Salvando chaves PayPix...','#888');
+  try {
+    const token  = (document.getElementById('mp2-access-token')  || {}).value || '';
+    const pubkey = (document.getElementById('mp2-public-key')     || {}).value || '';
+    const cid    = (document.getElementById('mp2-client-id')      || {}).value || '';
+    const csec   = (document.getElementById('mp2-client-secret')  || {}).value || '';
+    const r = await fetch(`${BASE}/api/pp/config`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      body: JSON.stringify({
+        access_token:  token  || '__keep__',
+        public_key:    pubkey || '__keep__',
+        client_id:     cid   || '__keep__',
+        client_secret: csec  || '__keep__',
+      })
+    });
+    const d = await r.json();
+    if (d.success) setMsg('✅ Chaves PayPix salvas!','#4caf50');
+    else setMsg('❌ '+(d.error||'Erro'),'#f44');
+  } catch(e) { setMsg('❌ '+e.message,'#f44'); }
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Chaves PayPix'; }
+}
+async function ppTestarConexao() {
+  const setMsg = (t,c) => { const el=document.getElementById('pp-msg'); if(el) el.innerHTML=`<span style="color:${c}">${t}</span>`; };
+  setMsg('⏳ Testando...','#888');
+  try {
+    const r = await fetch(`${BASE}/api/mp2/testar?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (d.success) setMsg(`✅ ${d.email} · ${d.ambiente}`,'#4caf50');
+    else setMsg('❌ '+(d.error||'Token inválido'),'#f44');
+  } catch(e) { setMsg('❌ '+e.message,'#f44'); }
+}
+
+// ════════════════════════════════════════════════════════════════
 // BOT2 — Mercado Pago — JavaScript (clone do PayPix)
 // ════════════════════════════════════════════════════════════════
 
@@ -7032,21 +7230,45 @@ function colToggle(id) {
 // ── Funções auxiliares PayPix (stubs para compatibilidade) ──
 async function b2CarregarChaves() {
   try {
-    // Endpoint correto é /api/mp2/config (não /api/mp2/chaves)
+    // Carrega chaves MP
     const r = await fetch(`${BASE}/api/mp2/config?secret=${encodeURIComponent(SECRET())}`);
     if (!r.ok) return;
     const d = await r.json();
     if (!d.success) return;
-    // Preenche campos de chaves se existirem
     if (d.access_token) {
       const el = document.getElementById('b2-access-token');
-      if (el) { el.placeholder = '✅ Configurado'; }
+      if (el) el.placeholder = '✅ Configurado — deixe em branco para manter';
       const b = document.getElementById('b2-token-badge');
       if (b) b.style.display = 'inline';
     }
-    if (d.webhook_url) {
-      const el = document.getElementById('b2-webhook-url');
-      if (el) el.textContent = d.webhook_url;
+    // Webhook URL
+    const origin = window.location.origin;
+    const wh = document.getElementById('b2-webhook-url');
+    if (wh) wh.textContent = `${origin}/webhook/mp2`;
+
+    // Verifica se bot2_token está configurado
+    const r2 = await fetch(`${BASE}/api/bot2/status?secret=${encodeURIComponent(SECRET())}`);
+    if (r2.ok) {
+      const d2 = await r2.json();
+      const b2badge = document.getElementById('b2-bot-token-badge');
+      const b2inp   = document.getElementById('b2-bot-token');
+      const b2msg   = document.getElementById('b2-bot-token-msg');
+      if (d2.online || d2.bot_real) {
+        if (b2badge) b2badge.style.display = 'inline';
+        if (b2inp)   b2inp.placeholder = '✅ Token configurado · @' + (d2.username || 'bot');
+        if (b2msg)   b2msg.innerHTML = `<span style="color:#4caf50">✅ Bot ativo: @${d2.username||'?'}</span>`;
+      } else {
+        // Verificar direto no banco via endpoint config
+        const r3 = await fetch(`${BASE}/api/bot2/config?secret=${encodeURIComponent(SECRET())}`);
+        if (r3.ok) {
+          const d3 = await r3.json();
+          if (d3.token_configurado) {
+            if (b2badge) b2badge.style.display = 'inline';
+            if (b2inp)   b2inp.placeholder = '✅ Token salvo — clique Registrar Webhook para ativar';
+            if (b2msg)   b2msg.innerHTML = '<span style="color:#f59e0b">⚠️ Token salvo mas webhook não registrado → clique 📡 Registrar Webhook Bot</span>';
+          }
+        }
+      }
     }
   } catch(e) { console.warn('[b2CarregarChaves]', e); }
 }
@@ -7167,7 +7389,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427e ===');
+  out.push('=== VERSÃO: 20250427f ===');
   out.push('');
 
   // Estado dos elementos críticos

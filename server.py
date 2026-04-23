@@ -5794,8 +5794,21 @@ async def route_paypix_afiliados_deletar(request):
 async def route_bot2_status(request):
     """Status do @paypix_nexbot - inclui userbot Telethon E bot real (python-telegram-bot)."""
 
-    # Status do bot REAL (BOT2_TOKEN configurado = pronto para usar)
-    bot2_token    = os.environ.get('BOT2_TOKEN', '')
+    # Status do bot REAL — verifica env E banco
+    bot2_token = os.environ.get('BOT2_TOKEN', '').strip()
+    if not bot2_token:
+        # Tentar do banco
+        try:
+            import psycopg2 as _pg2
+            _c = _pg2.connect(DATABASE_URL, connect_timeout=5)
+            _cur = _c.cursor()
+            _cur.execute("SELECT valor FROM mp2_config WHERE chave='bot2_token'")
+            _row = _cur.fetchone()
+            _cur.close(); _c.close()
+            bot2_token = (_row[0] or '').strip() if _row else ''
+        except Exception:
+            bot2_token = ''
+
     mp2_token     = os.environ.get('MP2_ACCESS_TOKEN', '')
     bot_real_ok   = bool(bot2_token)
 
@@ -6015,8 +6028,22 @@ async def route_mp2_webhook(request):
                     if external_ref:
                         processado = mp2_confirmar_pagamento_webhook(external_ref, payment_id)
                         print(f'✅ [mp2_webhook] {external_ref} processado={processado}', flush=True)
-                        # Notificar usuário via bot (se token configurado)
-                        _mp2_notificar_pagamento(external_ref, info.get('valor', 0))
+                        # Notificar usuário via novo bot2_handler (webhook)
+                        try:
+                            import psycopg2 as _pg2, psycopg2.extras as _pge2
+                            _wc = _pg2.connect(DATABASE_URL, connect_timeout=8)
+                            _wcu = _wc.cursor(cursor_factory=_pge2.RealDictCursor)
+                            _wcu.execute("SELECT telegram_id FROM mp2_transacoes WHERE mp_external_ref=%s", (external_ref,))
+                            _tx = _wcu.fetchone()
+                            _wcu.close(); _wc.close()
+                            if _tx and _tx.get('telegram_id'):
+                                from bot2_handler import notificar_deposito_confirmado
+                                asyncio.create_task(notificar_deposito_confirmado(
+                                    int(_tx['telegram_id']), float(info.get('valor', 0)), payment_id
+                                ))
+                        except Exception as _ne:
+                            print(f'[mp2_wh_notif] {_ne} — usando fallback', flush=True)
+                            _mp2_notificar_pagamento(external_ref, info.get('valor', 0))
                         # Pagar comissão ao parceiro (se houver)
                         _mp2_pagar_comissao_parceiro_webhook(external_ref, info.get('valor', 0))
                     return web.json_response({'ok': True, 'processado': True})
@@ -6050,8 +6077,20 @@ def _mp2_notificar_pagamento(external_ref: str, valor: float):
 
         cur.close(); conn.close()
 
-        bot2_token = os.environ.get('BOT2_TOKEN', '')
+        bot2_token = os.environ.get('BOT2_TOKEN', '').strip()
         if not bot2_token:
+            # Tentar buscar do banco
+            try:
+                _conn2 = psycopg2.connect(DATABASE_URL, connect_timeout=5)
+                _cur2 = _conn2.cursor()
+                _cur2.execute("SELECT valor FROM mp2_config WHERE chave='bot2_token'")
+                _row2 = _cur2.fetchone()
+                _cur2.close(); _conn2.close()
+                bot2_token = (_row2[0] or '').strip() if _row2 else ''
+            except Exception:
+                pass
+        if not bot2_token:
+            print('[mp2_notif] bot2_token não configurado — pulando notificação Telegram', flush=True)
             return
 
         valor_fmt = f"R$ {float(valor):.2f}".replace('.', ',')
@@ -6216,9 +6255,22 @@ async def route_mp2_processar_saque(request):
         ok = mp2_processar_saque(saque_id, aprovado, obs)
 
         if ok:
-            # Notificar usuário se aprovado
-            if aprovado:
-                _mp2_notificar_saque_aprovado(saque_id)
+            # Notificar usuário via novo bot2_handler (webhook)
+            try:
+                import psycopg2 as _pg, psycopg2.extras as _pge
+                _c = _pg.connect(DATABASE_URL, connect_timeout=8)
+                _cur = _c.cursor(cursor_factory=_pge.RealDictCursor)
+                _cur.execute("SELECT telegram_id, valor FROM mp2_saques WHERE id=%s", (saque_id,))
+                _saque = _cur.fetchone()
+                _cur.close(); _c.close()
+                if _saque:
+                    from bot2_handler import notificar_saque_processado
+                    asyncio.create_task(notificar_saque_processado(
+                        int(_saque['telegram_id']), float(_saque['valor']), aprovado, saque_id
+                    ))
+            except Exception as _en:
+                print(f'[notif_saque] {_en}', flush=True)
+                _mp2_notificar_saque_aprovado(saque_id)  # fallback legado
             return web.json_response({'success': True, 'saque_id': saque_id, 'status': 'aprovado' if aprovado else 'rejeitado'})
         return web.json_response({'success': False, 'error': 'Saque não encontrado ou já processado'})
     except Exception as e:
@@ -6235,7 +6287,16 @@ def _mp2_notificar_saque_aprovado(saque_id: int):
         saque = cur.fetchone()
         cur.close(); conn.close()
         if saque:
-            bot2_token  = os.environ.get('BOT2_TOKEN', '')
+            bot2_token = os.environ.get('BOT2_TOKEN', '').strip()
+            if not bot2_token:
+                try:
+                    _c2 = psycopg2.connect(DATABASE_URL, connect_timeout=5)
+                    _c2cur = _c2.cursor()
+                    _c2cur.execute("SELECT valor FROM mp2_config WHERE chave='bot2_token'")
+                    _r2 = _c2cur.fetchone()
+                    _c2cur.close(); _c2.close()
+                    bot2_token = (_r2[0] or '').strip() if _r2 else ''
+                except Exception: pass
             telegram_id = saque['telegram_id']
             valor       = float(saque['valor'])
             chave       = saque['chave_pix']
@@ -6253,6 +6314,146 @@ def _mp2_notificar_saque_aprovado(saque_id: int):
                 )
     except Exception as e:
         print(f'[mp2_notif_saque] Erro: {e}', flush=True)
+
+# ─── BOT2 WEBHOOK (novo — sem polling, sem Telethon) ────────────────────────
+
+async def route_bot2_webhook(request):
+    """
+    POST /webhook/bot2
+    Telegram envia updates aqui. Processa e responde.
+    Não requer autenticação — valida pelo token na URL internamente.
+    """
+    try:
+        data = await request.json()
+        from bot2_handler import process_bot2_update
+        asyncio.create_task(process_bot2_update(data))
+        return web.Response(text='OK', status=200)
+    except Exception as e:
+        print(f'[bot2_wh] Erro: {e}', flush=True)
+        return web.Response(text='OK', status=200)  # sempre 200 para o Telegram
+
+
+async def route_bot2_set_webhook(request):
+    """
+    POST /api/bot2/set-webhook
+    Admin chama para registrar o webhook no Telegram.
+    """
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        base_url = str(request.url).split('/api/')[0]  # https://paynexbet.com
+        from bot2_handler import registrar_webhook
+        resultado = registrar_webhook(base_url)
+        return web.json_response(resultado)
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_bot2_webhook_info(request):
+    """
+    GET /api/bot2/webhook-info
+    Retorna informações do webhook atual no Telegram.
+    """
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        from bot2_handler import get_webhook_info, get_bot_info
+        wh   = get_webhook_info()
+        info = get_bot_info()
+        return web.json_response({
+            'success': True,
+            'bot':     info,
+            'webhook': wh,
+            'token_configurado': bool(os.environ.get('BOT2_TOKEN', '')),
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_bot2_config_get(request):
+    """
+    GET /api/bot2/config
+    Retorna configuração básica do bot2 (token_configurado, webhook, etc).
+    """
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import psycopg2 as _pg
+        conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("SELECT valor FROM mp2_config WHERE chave='bot2_token'")
+        row = cur.fetchone()
+        bot2_token_db = bool(row and row[0] and len((row[0] or '').strip()) > 10)
+        cur.close(); conn.close()
+
+        bot2_token_env = bool(os.environ.get('BOT2_TOKEN', '').strip())
+        token_configurado = bot2_token_env or bot2_token_db
+
+        base_url = str(request.url).split('/api/')[0]
+        return web.json_response({
+            'success': True,
+            'token_configurado': token_configurado,
+            'token_origem': 'env' if bot2_token_env else ('banco' if bot2_token_db else 'nenhum'),
+            'webhook_url': f'{base_url}/webhook/bot2',
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_bot2_salvar_token(request):
+    """
+    POST /api/bot2/token
+    Salva BOT2_TOKEN no banco (mp2_config) sem precisar de variável Railway.
+    """
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        body  = await request.json()
+        token = (body.get('token') or '').strip()
+        if not token:
+            return web.json_response({'success': False, 'error': 'Token vazio'})
+
+        # Validar token antes de salvar
+        req = urllib.request.Request(
+            f'https://api.telegram.org/bot{token}/getMe',
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(req, timeout=8) as r:
+            resp = json.loads(r.read())
+        if not resp.get('ok'):
+            return web.json_response({'success': False, 'error': 'Token inválido no Telegram'})
+
+        # Salvar no banco
+        import psycopg2 as _pg
+        conn = _pg.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute(
+            "INSERT INTO mp2_config (chave, valor) VALUES ('bot2_token', %s) "
+            "ON CONFLICT (chave) DO UPDATE SET valor=%s, atualizado_em=NOW()",
+            (token, token)
+        )
+        conn.commit(); cur.close(); conn.close()
+
+        bot_info = resp.get('result', {})
+        return web.json_response({
+            'success': True,
+            'username': bot_info.get('username', ''),
+            'nome': bot_info.get('first_name', ''),
+            'msg': f"Token do @{bot_info.get('username','?')} salvo com sucesso!"
+        })
+    except urllib.error.HTTPError as e:
+        return web.json_response({'success': False, 'error': f'Token inválido: {e.code}'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
 
 async def route_mp2_stats(request):
     """Estatísticas gerais do PayPixNex para o admin."""
@@ -8241,6 +8442,12 @@ async def main():
     app.router.add_get('/api/mp2/status',                   route_mp2_status)
     app.router.add_get('/api/mp2/stats',                    route_mp2_stats)
     app.router.add_post('/webhook/mp2',                     route_mp2_webhook)
+    # ── Bot2 webhook (novo — sem polling) ──
+    app.router.add_post('/webhook/bot2',                    route_bot2_webhook)
+    app.router.add_post('/api/bot2/set-webhook',            route_bot2_set_webhook)
+    app.router.add_get('/api/bot2/webhook-info',            route_bot2_webhook_info)
+    app.router.add_post('/api/bot2/token',                  route_bot2_salvar_token)
+    app.router.add_get('/api/bot2/config',                  route_bot2_config_get)
     app.router.add_get('/api/mp2/depositos',                route_mp2_depositos_admin)
     app.router.add_get('/api/mp2/saques',                   route_mp2_saques_pendentes)
     app.router.add_post('/api/mp2/saques/processar',        route_mp2_processar_saque)
