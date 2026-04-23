@@ -719,7 +719,7 @@ function toggleLoginSenha() {
     <div class="sidebar-footer">
       <div class="status-dot">
         <div class="dot" id="tg-dot"></div>
-        <span id="tg-status">Verificando...</span>
+        <span id="tg-status">Verificando MP...</span>
       </div>
     </div>
   </aside>
@@ -964,6 +964,12 @@ function toggleLoginSenha() {
       <!-- SISTEMA -->
       <div id="tab-sistema" class="tab-content">
         <div class="metrics-grid">
+          <div class="metric-card orange">
+            <div class="metric-icon">💳</div>
+            <div class="metric-label">Gateway de Pagamento</div>
+            <div class="metric-value" style="font-size:16px;color:var(--orange)">Mercado Pago</div>
+            <div class="metric-sub">API MP2 — produção</div>
+          </div>
           <div class="metric-card blue">
             <div class="metric-icon">🌐</div>
             <div class="metric-label">Servidor</div>
@@ -972,8 +978,8 @@ function toggleLoginSenha() {
           </div>
           <div class="metric-card green">
             <div class="metric-icon">🔗</div>
-            <div class="metric-label">Webhook</div>
-            <div class="metric-value" style="font-size:16px">/webhook/confirmar</div>
+            <div class="metric-label">Webhook MP</div>
+            <div class="metric-value" style="font-size:14px">/webhook/mp2</div>
             <div class="metric-sub">Endpoint ativo</div>
           </div>
         </div>
@@ -4547,36 +4553,44 @@ async function loadHealth() {
   try {
     const r = await fetch(`${BASE}/health`);
     const d = await r.json();
-    
-    const online = d.telegram;
+
+    // Status baseado no MP2 (Mercado Pago), não Telegram
+    const mpAtivo = d.mp2_ativo === true || d.mp2_token_configurado === true;
+
+    // Dot e status no sidebar footer
     const dot = document.getElementById('tg-dot');
-    if (dot) dot.className = 'dot' + (online ? ' online' : '');
-    const tgStatus = document.getElementById('tg-status');
-    if (tgStatus) tgStatus.textContent = online ? '🟢 MP Online' : '🔴 Reconectando...';
+    if (dot) dot.className = 'dot' + (mpAtivo ? ' online' : '');
+    const stEl = document.getElementById('tg-status');
+    if (stEl) stEl.textContent = mpAtivo ? '🟢 MP Ativo' : '🔴 MP Offline';
+
+    // Card URL servidor
     const sysUrl = document.getElementById('sys-url');
     if (sysUrl) sysUrl.textContent = BASE.replace('https://','');
 
     // Links do sistema
-    document.getElementById('sys-links-table').innerHTML = `
+    const linksEl = document.getElementById('sys-links-table');
+    if (linksEl) linksEl.innerHTML = `
       <tr><td style="color:var(--text2);width:160px">💳 Depósito</td><td><a href="${BASE}/" target="_blank" style="color:var(--blue)">${BASE}/</a></td></tr>
       <tr><td style="color:var(--text2)">📤 Saque</td><td><a href="${BASE}/saque" target="_blank" style="color:var(--blue)">${BASE}/saque</a></td></tr>
       <tr><td style="color:var(--text2)">⚡ Health</td><td><a href="${BASE}/health" target="_blank" style="color:var(--green)">${BASE}/health</a></td></tr>
-      <tr><td style="color:var(--text2)">🔗 Webhook</td><td style="color:var(--text);font-family:monospace;font-size:12px">POST ${BASE}/webhook/confirmar<br><small style="color:var(--text3)">Header: X-PaynexBet-Secret</small></td></tr>
+      <tr><td style="color:var(--text2)">🔗 Webhook MP</td><td style="color:var(--text);font-family:monospace;font-size:12px">POST ${BASE}/webhook/mp2<br><small style="color:var(--text3)">Header: X-PaynexBet-Secret</small></td></tr>
     `;
 
-    document.getElementById('sys-info-table').innerHTML = `
-      <tr><td style="color:var(--text2);width:200px">Bot</td><td>@${d.bot || 'VortexBank_bot'}</td></tr>
-      <tr><td style="color:var(--text2)">Webhook endpoint</td><td style="font-family:monospace">${d.webhook || '/webhook/confirmar'}</td></tr>
-      <tr><td style="color:var(--text2)">Status Telegram</td><td>${online ? '<span style="color:var(--green)">✅ Conectado</span>' : '<span style="color:var(--red)">❌ Desconectado</span>'}</td></tr>
-      <tr><td style="color:var(--text2)">Reconexões</td><td>${d.tentativas || 0}</td></tr>
-      <tr><td style="color:var(--text2)">Último ping</td><td>${d.ultimo_ping_seg != null ? d.ultimo_ping_seg + 's atrás' : '—'}</td></tr>
-      <tr><td style="color:var(--text2)">Watchdog</td><td>${d.watchdog === 'ativo' ? '<span style="color:var(--green)">✅ Ativo</span>' : '<span style="color:var(--red)">❌ Inativo</span>'}</td></tr>
-      <tr><td style="color:var(--text2)">URL base</td><td>${BASE}</td></tr>
+    // Informações do sistema — sem Telegram
+    const infoEl = document.getElementById('sys-info-table');
+    if (infoEl) infoEl.innerHTML = `
+      <tr><td style="color:var(--text2);width:200px">🏦 Gateway</td><td><span style="color:var(--green);font-weight:700">Mercado Pago</span></td></tr>
+      <tr><td style="color:var(--text2)">💳 Status MP</td><td>${mpAtivo ? '<span style="color:var(--green)">✅ Ativo</span>' : '<span style="color:var(--red)">❌ Token não configurado</span>'}</td></tr>
+      <tr><td style="color:var(--text2)">🌍 Ambiente</td><td>${d.mp2_ambiente || d.ambiente || 'produção'}</td></tr>
+      <tr><td style="color:var(--text2)">🔗 Webhook endpoint</td><td style="font-family:monospace">${d.webhook || '/webhook/mp2'}</td></tr>
+      <tr><td style="color:var(--text2)">🔄 Watchdog</td><td>${d.watchdog === 'ativo' ? '<span style="color:var(--green)">✅ Ativo</span>' : '<span style="color:var(--text2)">—</span>'}</td></tr>
+      <tr><td style="color:var(--text2)">🌐 URL base</td><td>${BASE}</td></tr>
     `;
 
-    // Painel de reconexão: mostrar alerta se Telegram offline
-    atualizarPainelTelegram(online, d.telegram_motivo);
-  } catch(e) {}
+  } catch(e) {
+    const infoEl = document.getElementById('sys-info-table');
+    if (infoEl) infoEl.innerHTML = `<tr><td colspan="2" style="color:var(--red);padding:16px">❌ Erro ao carregar informações do sistema</td></tr>`;
+  }
 }
 
 // Painel Telegram removido — Mercado Pago é o único gateway ativo

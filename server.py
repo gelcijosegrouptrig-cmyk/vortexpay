@@ -4198,34 +4198,32 @@ async def route_pague(request):
     return web.Response(text=html, content_type='text/html', charset='utf-8')
 
 async def route_health(request):
-    motivo = None
-    if not _telegram_ready:
-        if _telegram_session_invalida:
-            motivo = 'sessao_invalida'
-        elif _telegram_reconectando:
-            motivo = 'reconectando'
-        elif _telegram_tentativas > 0:
-            motivo = 'tentando'
-        else:
-            motivo = 'iniciando'
-    # Tempo desde último ping bem-sucedido
-    ping_age = int(time.time() - _telegram_ultimo_ping) if _telegram_ultimo_ping else None
-    # Calcular FloodWait restante
-    fw_restante = None
-    if _floodwait_ate > time.time():
-        fw_restante = int((_floodwait_ate - time.time()) / 60)
+    # Verifica se o token MP2 está configurado (busca direto do banco)
+    mp2_ativo = False
+    mp2_ambiente = 'produção'
+    try:
+        from mp2_api import mp2_get_config
+        token = mp2_get_config('mp2_access_token', '')
+        mp2_ativo = bool(token and len(token) > 10)
+        mp2_ambiente = mp2_get_config('mp2_ambiente', 'produção') or 'produção'
+    except Exception:
+        pass
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260420-check-auth-v35',
-        'telegram': _telegram_ready,
-        'telegram_motivo': motivo,
+        'version': 'v20260423-mp2-only',
+        'gateway': 'mercado_pago',
+        'mp2_ativo': mp2_ativo,
+        'mp2_token_configurado': mp2_ativo,
+        'mp2_ambiente': mp2_ambiente,
         'watchdog': 'ativo',
-        'ultimo_ping_seg': ping_age,
-        'tentativas': _telegram_tentativas,
-        'bot': BOT_USERNAME,
-        'webhook': '/webhook/confirmar',
-        'floodwait_min': fw_restante,
+        'webhook': '/webhook/mp2',
+        # Mantém compatibilidade retroativa
+        'telegram': False,
+        'telegram_motivo': None,
+        'tentativas': 0,
+        'ultimo_ping_seg': None,
+        'bot': '@paypix_nexbot',
     })
 
 async def route_check_auth(request):
