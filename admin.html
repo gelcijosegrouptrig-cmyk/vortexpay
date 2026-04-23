@@ -160,11 +160,11 @@
   }
   .refresh-btn:hover { background: rgba(255,255,255,0.1); }
   .last-update { font-size: 12px; color: var(--text3); }
-  .content { padding: 28px; min-height: calc(100vh - 70px); }
+  .content { padding: 28px; padding-bottom: 60px; min-height: calc(100vh - 70px); }
 
   /* ── TABS ───────────────────────────────────────── */
-  .tab-content { display: none; min-height: 200px; }
-  .tab-content.active { display: block; }
+  .tab-content { display: none; min-height: 300px; }
+  .tab-content.active { display: block; min-height: 300px; }
 
   /* ── CARDS MÉTRICAS ─────────────────────────────── */
   .metrics-grid {
@@ -670,7 +670,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427d';
+  const VER = '20250427e';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -4595,6 +4595,8 @@ async function fazerLogin() {
 //  NAVEGAÇÃO
 // ═══════════════════════════════════════════════
 function showTab(tab) {
+  // Volta ao topo da página ao trocar de aba
+  window.scrollTo(0, 0);
   // Esconde todos os tabs
   document.querySelectorAll('.tab-content').forEach(t => {
     t.classList.remove('active');
@@ -7165,7 +7167,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427d ===');
+  out.push('=== VERSÃO: 20250427e ===');
   out.push('');
 
   // Estado dos elementos críticos
