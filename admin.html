@@ -1258,7 +1258,7 @@ function toggleLoginSenha() {
           <div style="font-size:28px">🤖</div>
           <div>
             <div style="font-weight:800;font-size:16px;color:#f59e0b">💸 PayPix — Mercado Pago</div>
-            <div style="font-size:12px;color:#666;margin-top:2px">Sistema PayPix com gateway Mercado Pago · Afiliados com % automática via PIX · <span style="color:#f59e0b">paynexbet.com/paypix</span></div>
+            <div style="font-size:12px;color:#666;margin-top:2px">PayPix com Mercado Pago · Afiliados com % automática via PIX · <span style="color:#f59e0b">paynexbet.com/paypix</span></div>
           </div>
           <div style="margin-left:auto">
             <span style="font-size:11px;background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44;padding:4px 10px;border-radius:20px;font-weight:700">💳 MERCADO PAGO</span>
@@ -1298,7 +1298,7 @@ function toggleLoginSenha() {
         <!-- Card principal — Status Mercado Pago -->
         <div class="table-card" style="margin-bottom:16px">
           <div class="table-header collapsible" id="col-hdr-pp-status" onclick="colToggle('pp-status')">
-            <h3>💸 PayPix — Status <span id="col-arrow-pp-status" class="collapse-arrow">▼</span></h3>
+            <h3>💳 @paypix_nexbot — Status <span id="col-arrow-pp-status" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <span id="pp-badge" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#1a2a1a;color:#4caf50">Verificando...</span>
               <button onclick="ppAtualizarSaldo()" style="padding:6px 14px;background:#1a3a5c;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔄 Saldo</button>
@@ -1328,7 +1328,7 @@ function toggleLoginSenha() {
             <div id="pp-alert" style="display:none"></div>
 
           </div>
-        </div></div><!-- /col-body-bot2-status -->
+        </div></div><!-- /col-body-pp-status -->
 
         <!-- Seção Telegram OCULTA — não usamos Telegram no bot MP -->
         <div style="display:none" id="pp-telegram-section">
@@ -1347,7 +1347,7 @@ function toggleLoginSenha() {
         <!-- ══ MERCADO PAGO — Configuração de Chaves ══ -->
         <div class="table-card" style="margin-top:16px;border-color:#009ee3aa">
           <div class="table-header collapsible" id="col-hdr-pp-config" style="background:linear-gradient(135deg,#003087,#009ee3)20" onclick="colToggle('pp-config')">
-            <h3>💸 PayPix — Credenciais Mercado Pago <span id="col-arrow-pp-config" class="collapse-arrow">▼</span></h3>
+            <h3>💳 Mercado Pago — @paypix_nexbot <span id="col-arrow-pp-config" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
               <span id="pp-badge-status" style="font-size:12px;padding:4px 12px;border-radius:20px;background:#0a1a2a;color:#aaa">Verificando...</span>
               <button onclick="ppTestarConexao()" style="padding:6px 14px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">🔗 Testar</button>
@@ -1382,7 +1382,7 @@ function toggleLoginSenha() {
                       style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #009ee344;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
                     <span id="pp-token-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
                   </div>
-                  <button onclick="ppToggleField('pp-access-token','pp-token-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                  <button onclick="toggleMp2Field('mp2-access-token','mp2-token-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
                 </div>
                 <div style="font-size:11px;color:#555;margin-top:4px">Painel MP → Credenciais → Access Token de produção — <strong style="color:#4caf50">✅ já configurado: deixe em branco para manter</strong></div>
               </div>
@@ -1401,7 +1401,7 @@ function toggleLoginSenha() {
                       style="width:100%;box-sizing:border-box;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:12px 14px;color:#fff;font-size:13px;font-family:monospace">
                     <span id="pp-pubkey-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;background:#00c85330;color:#00c853;border:1px solid #00c85350;border-radius:20px;padding:2px 8px;pointer-events:none">✅ Configurado</span>
                   </div>
-                  <button onclick="ppToggleField('pp-public-key','pp-pubkey-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
+                  <button onclick="toggleMp2Field('mp2-public-key','mp2-pubkey-badge')" style="padding:10px 14px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer">👁</button>
                 </div>
                 <div style="font-size:11px;color:#555;margin-top:4px">Necessária para integrações front-end (opcional no backend) — <strong style="color:#888">deixe em branco para manter a atual</strong></div>
               </div>
@@ -1418,7 +1418,7 @@ function toggleLoginSenha() {
                   <div style="display:flex;gap:6px">
                     <input type="password" id="pp-client-secret" placeholder="xxxxxxxxxxxxxxxxxxx"
                       style="flex:1;background:#0a0a14;border:2px solid #009ee322;border-radius:10px;padding:11px 14px;color:#fff;font-size:13px;font-family:monospace">
-                    <button onclick="ppToggleField('pp-client-secret')" style="padding:10px 12px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer;font-size:12px">👁</button>
+                    <button onclick="toggleMp2Field('mp2-client-secret')" style="padding:10px 12px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#aaa;cursor:pointer;font-size:12px">👁</button>
                   </div>
                 </div>
               </div>
@@ -1428,7 +1428,7 @@ function toggleLoginSenha() {
                 <div style="font-size:12px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📡 Webhook URL — configurar no painel MP</div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <code id="pp-webhook-url" style="flex:1;font-size:12px;color:#009ee3;word-break:break-all">Carregando...</code>
-                  <button onclick="ppCopiarWebhook()" style="padding:8px 12px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap">📋 Copiar</button>
+                  <button onclick="copiarMp2Webhook()" style="padding:8px 12px;background:#003087;border:none;border-radius:8px;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap">📋 Copiar</button>
                 </div>
                 <div style="font-size:11px;color:#555;margin-top:6px">
                   No painel Mercado Pago → <b style="color:#888">Suas integrações → Webhooks → Adicionar</b><br>
@@ -1457,7 +1457,7 @@ function toggleLoginSenha() {
             </div>
 
           </div>
-          </div><!-- /col-body-mp-config -->
+          </div><!-- /col-body-pp-config -->
         </div>
 
         <!-- ══ PARCEIROS AFILIADOS ══ -->
@@ -1553,7 +1553,7 @@ function toggleLoginSenha() {
                   style="flex:1;padding:12px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:14px;cursor:pointer">
                   ✅ Criar Parceiro
                 </button>
-                <button onclick="document.getElementById('mp2-form-parceiro').style.display='none'"
+                <button onclick="document.getElementById('pp-form-parceiro').style.display='none'"
                   style="padding:12px 20px;background:#0a0a14;border:1px solid #333;border-radius:10px;color:#aaa;font-size:14px;cursor:pointer">
                   Cancelar
                 </button>
@@ -1594,7 +1594,7 @@ function toggleLoginSenha() {
               </table>
             </div>
           </div>
-          </div><!-- /col-body-parceiros -->
+          </div><!-- /col-body-pp-parceiros -->
         </div>
 
         <!-- ══ CONFIG PÁGINA /bot E /pix ══ -->
@@ -1602,8 +1602,8 @@ function toggleLoginSenha() {
           <div class="table-header collapsible" id="col-hdr-pp-cfg-pagamento" style="background:linear-gradient(135deg,#1a0e0033,#f59e0b11)" onclick="colToggle('pp-cfg-pagamento')">
             <h3>⚙️ Configurar Página de Pagamento <span id="col-arrow-pp-cfg-pagamento" class="collapse-arrow">▼</span></h3>
             <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
-              <span style="font-size:11px;color:#888">paynexbet.com/paypix &amp; /pix</span>
-              <button onclick="ppConfigSalvar()" style="padding:6px 16px;background:#f59e0b;border:none;border-radius:8px;color:#000;font-size:13px;font-weight:700;cursor:pointer">💾 Salvar</button>
+              <span style="font-size:11px;color:#888">paynexbet.com/bot &amp; /pix</span>
+              <button onclick="botConfigSalvar()" style="padding:6px 16px;background:#f59e0b;border:none;border-radius:8px;color:#000;font-size:13px;font-weight:700;cursor:pointer">💾 Salvar</button>
             </div>
           </div>
           <div class="collapse-body" id="col-body-pp-cfg-pagamento">
@@ -1675,7 +1675,7 @@ function toggleLoginSenha() {
             <div style="background:#0a1520;border:1px solid #009ee333;border-radius:10px;padding:12px 16px;font-size:12px">
               <div style="color:#888;margin-bottom:6px">🔗 Links de acesso:</div>
               <div style="display:flex;flex-direction:column;gap:4px">
-                <div><span style="color:#009ee3">paynexbet.com/paypix</span> <span style="color:#555">— link público principal</span></div>
+                <div><span style="color:#009ee3">paynexbet.com/bot</span> <span style="color:#555">— link público principal</span></div>
                 <div><span style="color:#009ee3">paynexbet.com/paypix</span> <span style="color:#555">— alias do /bot</span></div>
                 <div><span style="color:#f59e0b">paynexbet.com/paypix?ref=<i>codigo</i></span> <span style="color:#555">— link de afiliado (comissão automática)</span></div>
               </div>
@@ -1683,37 +1683,37 @@ function toggleLoginSenha() {
 
             <div id="cfg-bot-msg" style="font-size:13px;text-align:center;min-height:20px"></div>
           </div>
-          </div><!-- /col-body-cfg-pagamento -->
+          </div><!-- /col-body-pp-cfg-pagamento -->
         </div>
 
         <!-- ══ STATS BOT2 ══ -->
         <div class="table-card" style="margin-top:16px">
-          <div class="table-header collapsible" id="col-hdr-stats" onclick="colToggle('stats')">
-            <h3>📊 Estatísticas @paypix_nexbot <span id="col-arrow-stats" class="collapse-arrow">▼</span></h3>
-            <button onclick="event.stopPropagation();ppCarregarStats()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          <div class="table-header collapsible" id="col-hdr-pp-stats" onclick="colToggle('pp-stats')">
+            <h3>📊 Estatísticas @paypix_nexbot <span id="col-arrow-pp-stats" class="collapse-arrow">▼</span></h3>
+            <button onclick="event.stopPropagation();mp2CarregarStats()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
-          <div class="collapse-body" id="col-body-stats">
+          <div class="collapse-body" id="col-body-pp-stats">
           <div style="padding:16px 20px">
             <div class="metrics-grid" style="margin:0">
               <div class="metric-card blue">
                 <div class="metric-icon">👥</div>
                 <div class="metric-label">Usuários</div>
-                <div class="metric-value" id="mp2-total-users">—</div>
+                <div class="metric-value" id="pp-total-users">—</div>
               </div>
               <div class="metric-card green">
                 <div class="metric-icon">📥</div>
                 <div class="metric-label">Dep. Confirmados</div>
-                <div class="metric-value" id="mp2-dep-confirmados">—</div>
+                <div class="metric-value" id="pp-dep-confirmados">—</div>
               </div>
               <div class="metric-card orange">
                 <div class="metric-icon">💰</div>
                 <div class="metric-label">Total Depositado</div>
-                <div class="metric-value" id="mp2-total-dep">—</div>
+                <div class="metric-value" id="pp-total-dep">—</div>
               </div>
               <div class="metric-card" style="border-color:#f4433644">
                 <div class="metric-icon">📤</div>
                 <div class="metric-label">Saques Pendentes</div>
-                <div class="metric-value" id="mp2-saques-pend">—</div>
+                <div class="metric-value" id="pp-saques-pend">—</div>
               </div>
             </div>
             <!-- Totais de Parceiros/Afiliados -->
@@ -1723,45 +1723,45 @@ function toggleLoginSenha() {
                 <div class="metric-card" style="border-color:#009ee344">
                   <div class="metric-icon">🤝</div>
                   <div class="metric-label">Parceiros Ativos</div>
-                  <div class="metric-value" id="mp2-parceiros-ativos" style="color:#009ee3">—</div>
-                  <div class="metric-sub" id="mp2-parceiros-total">de — total</div>
+                  <div class="metric-value" id="pp-parceiros-ativos" style="color:#009ee3">—</div>
+                  <div class="metric-sub" id="pp-parceiros-total">de — total</div>
                 </div>
                 <div class="metric-card" style="border-color:#f59e0b44">
                   <div class="metric-icon">💸</div>
                   <div class="metric-label">Total Gerado</div>
-                  <div class="metric-value" id="mp2-stats-total-gerado" style="color:#f59e0b;font-size:15px">R$ —</div>
+                  <div class="metric-value" id="pp-stats-total-gerado" style="color:#f59e0b;font-size:15px">R$ —</div>
                   <div class="metric-sub">via links afiliados</div>
                 </div>
                 <div class="metric-card" style="border-color:#22c55e44">
                   <div class="metric-icon">✅</div>
                   <div class="metric-label">Comissões Pagas</div>
-                  <div class="metric-value" id="mp2-stats-total-pago" style="color:#4ade80;font-size:15px">R$ —</div>
-                  <div class="metric-sub" id="mp2-stats-pend-comissao">pendente: R$ —</div>
+                  <div class="metric-value" id="pp-stats-total-pago" style="color:#4ade80;font-size:15px">R$ —</div>
+                  <div class="metric-sub" id="pp-stats-pend-comissao">pendente: R$ —</div>
                 </div>
               </div>
             </div>
           </div>
-          </div><!-- /col-body-stats -->
+          </div><!-- /col-body-pp-stats -->
         </div>
 
         <!-- ══ SAQUES PENDENTES BOT2 ══ -->
         <div class="table-card" style="margin-top:16px">
-          <div class="table-header collapsible" id="col-hdr-saques" onclick="colToggle('saques')">
-            <h3>📤 Saques Pendentes — @paypix_nexbot <span id="col-arrow-saques" class="collapse-arrow">▼</span></h3>
-            <button onclick="event.stopPropagation();ppCarregarSaques()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          <div class="table-header collapsible" id="col-hdr-pp-saques" onclick="colToggle('pp-saques')">
+            <h3>📤 Saques Pendentes — @paypix_nexbot <span id="col-arrow-pp-saques" class="collapse-arrow">▼</span></h3>
+            <button onclick="event.stopPropagation();mp2CarregarSaques()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
           </div>
-          <div class="collapse-body" id="col-body-saques">
+          <div class="collapse-body" id="col-body-pp-saques">
           <div style="overflow-x:auto">
             <table class="data-table">
               <thead><tr>
                 <th>ID</th><th>Usuário</th><th>Valor</th><th>Chave PIX</th><th>Tipo</th><th>Data</th><th>Ação</th>
               </tr></thead>
-              <tbody id="mp2-saques-tbody">
+              <tbody id="pp-saques-tbody">
                 <tr><td colspan="7" style="text-align:center;color:#666;padding:20px">Clique em Atualizar para carregar</td></tr>
               </tbody>
             </table>
           </div>
-          </div><!-- /col-body-saques -->
+          </div><!-- /col-body-pp-saques -->
         </div>
 
         <!-- ═══ Comissões de Parceiros ═══ -->
@@ -5833,33 +5833,259 @@ async function desativarPaypixRapido(){ await _togglePaypixAtivo(false); }
 
 
 // ════════════════════════════════════════════════════════════════
-// PAYPIX — Mercado Pago — JavaScript
+// PAYPIX — Mercado Pago — JavaScript (réplica)
 // ════════════════════════════════════════════════════════════════
 
-// Toggle visibilidade de campo senha
-function ppToggleField(fieldId, badgeId) {
-  const f = document.getElementById(fieldId);
-  if (!f) return;
-  f.type = f.type === 'password' ? 'text' : 'password';
-  if (badgeId) {
-    const b = document.getElementById(badgeId);
-    if (b) b.style.display = f.type === 'text' ? 'none' : 'none'; // sempre oculto ao digitar
+// ppCheckStatus — usa API do Mercado Pago (não Telegram)
+async function ppCheckStatus() {
+  try {
+    // Testa conexão com MP via /api/pp/testar
+    const r = await fetch(`${BASE}/api/pp/testar?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    const mpOk  = d.success === true;
+    const email = d.email || '';
+    const amb   = d.ambiente || 'produção';
+
+    // Badge no menu lateral
+    const badge = document.getElementById('badge-pp');
+    if (badge) {
+      badge.textContent = mpOk ? 'ON' : 'OFF';
+      badge.style.background = mpOk ? '#2e7d32' : '#c62828';
+    }
+
+    // Card métrica status
+    const st = document.getElementById('pp-status-text');
+    if (st) st.textContent = mpOk ? '✅ Online' : '❌ Sem token';
+    const sub = document.getElementById('pp-sub');
+    if (sub) sub.textContent = mpOk ? `MP ativo · ${amb}` : 'Configure o Access Token MP';
+
+    // Badge no header do card
+    const bd = document.getElementById('pp-badge');
+    if (bd) {
+      bd.textContent = mpOk ? '🟢 MP Ativo' : '🔴 Offline';
+      bd.style.color = mpOk ? '#4caf50' : '#f44336';
+      bd.style.background = mpOk ? '#0a2a0a' : '#2d1010';
+    }
+
+    // Status no card interno
+    const mpSt = document.getElementById('pp-mp-status');
+    if (mpSt) {
+      mpSt.textContent = mpOk ? '✅ Ativo' : '❌ Token inválido ou não configurado';
+      mpSt.style.color = mpOk ? '#4ade80' : '#f44336';
+    }
+    const mpEmail = document.getElementById('pp-mp-email');
+    if (mpEmail && email) mpEmail.textContent = email;
+
+    // Saldo: mostra email da conta (não há endpoint de saldo MP sem userbot)
+    const saldoEl = document.getElementById('pp-saldo');
+    const saldoHr = document.getElementById('pp-saldo-hora');
+    if (saldoEl && mpOk) {
+      saldoEl.textContent = email || 'Conta ativa';
+      if (saldoHr) saldoHr.textContent = `ambiente: ${amb}`;
+    } else if (saldoEl && !mpOk) {
+      saldoEl.textContent = '— Token ausente';
+    }
+
+    // Carrega stats de parceiros/comissões também
+    await ppCarregarTotaisParcerios();
+  } catch(e) {
+    const st = document.getElementById('pp-status-text');
+    if (st) st.textContent = '❓ Erro';
+    console.warn('[Bot2-MP] Erro ao checar status:', e);
   }
 }
 
-// Copiar webhook URL
-function ppCopiarWebhook() {
-  const el = document.getElementById('pp-webhook-url');
-  if (!el) return;
-  navigator.clipboard.writeText(el.textContent).then(() => {
-    const btn = event.target;
-    const orig = btn.textContent;
-    btn.textContent = '✅ Copiado!';
-    setTimeout(() => { btn.textContent = orig; }, 2000);
-  });
+// ppAtualizarSaldo — usa MP2/testar para mostrar conta ativa
+async function ppAtualizarSaldo() {
+  const el = document.getElementById('pp-saldo');
+  const hr = document.getElementById('pp-saldo-hora');
+  if (el) el.textContent = 'Consultando...';
+  try {
+    const r = await fetch(`${BASE}/api/pp/testar?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    const agora = new Date().toLocaleTimeString('pt-BR');
+    if (d.success) {
+      if (el) el.textContent = d.email || 'Conta ativa';
+      if (hr) hr.textContent = `${d.ambiente || 'produção'} · ${agora}`;
+    } else {
+      if (el) el.textContent = '— Sem token';
+      if (hr) hr.textContent = d.error || 'Configure o Access Token';
+    }
+  } catch(e) {
+    if (el) el.textContent = '— Erro';
+    if (hr) hr.textContent = 'Falha de conexão';
+  }
+  // Atualiza totais de parceiros junto
+  await ppCarregarTotaisParcerios();
 }
 
-// Copiar link novo parceiro
+// Carrega totais de parceiros/comissões para os cards de métricas
+async function ppCarregarTotaisParcerios() {
+  try {
+    const r = await fetch(`${BASE}/api/pp/parceiros?secret=${encodeURIComponent(SECRET())}`);
+    const d = await r.json();
+    if (!d.success) return;
+    const parceiros = d.parceiros || [];
+    let totalGerado = 0, totalComissao = 0, totalPago = 0;
+    parceiros.forEach(p => {
+      totalGerado   += parseFloat(p.total_gerado  || 0);
+      totalComissao += parseFloat(p.total_comissao|| 0);
+      totalPago     += parseFloat(p.total_pago    || 0);
+    });
+    const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+    const el = id => document.getElementById(id);
+    if (el('b2-total-gerado'))  el('b2-total-gerado').textContent  = fmt(totalGerado);
+    if (el('b2-total-pago'))    el('b2-total-pago').textContent    = fmt(totalPago);
+    const pendente = totalComissao - totalPago;
+    if (el('b2-comissao-pend')) el('b2-comissao-pend').textContent = `pendente: ${fmt(pendente > 0 ? pendente : 0)}`;
+  } catch(e) {
+    console.warn('[bot2Totais] Erro:', e);
+  }
+}
+
+async function ppSolicitarCodigo() {
+  const phone = document.getElementById('pp-phone-input').value.trim();
+  const btn   = document.getElementById('pp-btn-solicitar');
+  const msg   = document.getElementById('pp-msg-solicitar');
+  if (!phone || phone.length < 8) {
+    msg.innerHTML = '<span style="color:#f44">❌ Digite o número com DDD (ex: 11999887766)</span>';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+  msg.innerHTML = '';
+  try {
+    const r = await fetch(`${BASE}/api/pp/solicitar-codigo`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      body: JSON.stringify({ phone }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ Código enviado para ${d.phone}! Verifique o Telegram.</span>`;
+      document.getElementById('pp-step2').style.display = 'block';
+      document.getElementById('pp-codigo-input').focus();
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao solicitar'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+  btn.disabled = false;
+  btn.textContent = '📱 Enviar código para o Telegram';
+}
+
+async function ppConfirmarCodigo() {
+  const code = document.getElementById('pp-codigo-input').value.trim();
+  const btn  = document.getElementById('pp-btn-confirmar');
+  const msg  = document.getElementById('pp-msg-confirmar');
+  if (!code) { msg.innerHTML = '<span style="color:#f44">❌ Digite o código</span>'; return; }
+  btn.disabled = true;
+  btn.textContent = '⏳ Confirmando...';
+  msg.innerHTML = '';
+  try {
+    const r = await fetch(`${BASE}/api/pp/confirmar-codigo`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      body: JSON.stringify({ code }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message}</span>`;
+      document.getElementById('pp-step2').style.display = 'none';
+      document.getElementById('pp-alert').style.display = 'none';
+      setTimeout(ppCheckStatus, 2000);
+    } else if (d.needs_2fa) {
+      msg.innerHTML = '<span style="color:#ff9800">🔐 2FA necessário — preencha a senha abaixo</span>';
+      document.getElementById('pp-2fa-box').style.display = 'block';
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao confirmar'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+  btn.disabled = false;
+  btn.textContent = '✅ Confirmar';
+}
+
+async function ppConfirmar2FA() {
+  const senha = document.getElementById('pp-2fa-input').value.trim();
+  const code  = document.getElementById('pp-codigo-input').value.trim();
+  const msg   = document.getElementById('pp-msg-confirmar');
+  if (!senha) { msg.innerHTML = '<span style="color:#f44">❌ Digite a senha 2FA</span>'; return; }
+  try {
+    const r = await fetch(`${BASE}/api/pp/confirmar-codigo`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      body: JSON.stringify({ code, password: senha }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4caf50">✅ ${d.message}</span>`;
+      document.getElementById('pp-2fa-box').style.display = 'none';
+      document.getElementById('pp-step2').style.display = 'none';
+      setTimeout(ppCheckStatus, 2000);
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`;
+  }
+}
+
+// Checar status do Bot2 ao carregar e a cada 60s (só se logado)
+if (SECRET()) ppCheckStatus();
+setInterval(() => { if (SECRET()) ppCheckStatus(); }, 60000);
+
+// ─── PARCEIROS AFILIADOS PAYPIX ───────────────────────────────────────────────────────
+
+function ppMostrarFormParceiro() {
+  const f = document.getElementById('pp-form-parceiro');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('pp-link-novo').style.display = 'none';
+}
+
+async function ppCriarParceiro() {
+  const nome       = document.getElementById('p-nome').value.trim();
+  const codigo     = document.getElementById('p-codigo').value.trim();
+  const chavePix   = document.getElementById('p-chave-pix').value.trim();
+  const tipoChave  = document.getElementById('p-tipo-chave').value;
+  const comissao   = parseFloat(document.getElementById('p-comissao').value) || 10;
+  const msg        = document.getElementById('pp-form-msg');
+
+  if (!nome) { msg.innerHTML = '<span style="color:#f44">Nome obrigatório</span>'; return; }
+  if (!chavePix) { msg.innerHTML = '<span style="color:#f44">Chave PIX obrigatória</span>'; return; }
+
+  msg.innerHTML = '⏳ Criando parceiro...';
+  try {
+    const r = await fetch(`${BASE}/api/pp/parceiros`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      body: JSON.stringify({ nome, codigo: codigo || undefined, chave_pix: chavePix, tipo_chave: tipoChave, comissao_pct: comissao })
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = '<span style="color:#4ade80">✅ Parceiro criado!</span>';
+      // Mostrar link gerado
+      const linkEl = document.getElementById('pp-link-novo-url');
+      linkEl.textContent = d.link || d.parceiro?.link || '';
+      document.getElementById('pp-link-novo').style.display = 'block';
+      // Limpar form
+      document.getElementById('p-nome').value = '';
+      document.getElementById('p-codigo').value = '';
+      document.getElementById('p-chave-pix').value = '';
+      document.getElementById('p-comissao').value = '10';
+      document.getElementById('pp-form-parceiro').style.display = 'none';
+      // Recarregar lista
+      await ppCarregarParceiros();
+    } else {
+      msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao criar'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+  }
+}
+
 function ppCopiarLinkNovo() {
   const url = document.getElementById('pp-link-novo-url').textContent;
   navigator.clipboard.writeText(url).then(() => {
@@ -5870,214 +6096,23 @@ function ppCopiarLinkNovo() {
   });
 }
 
-// Preview comissão no formulário de parceiro
-function ppPreviewComissao() {
-  const pct = parseFloat(document.getElementById('p-comissao')?.value) || 10;
-  const chave = document.getElementById('p-chave-pix')?.value.trim() || '—';
-  const sim = (val) => 'R$ ' + (val * pct / 100).toFixed(2).replace('.', ',');
-  const s50  = document.getElementById('p-sim-50');
-  const s100 = document.getElementById('p-sim-100');
-  const s500 = document.getElementById('p-sim-500');
-  const sc   = document.getElementById('p-sim-chave');
-  if (s50)  s50.textContent  = '→ ' + sim(50);
-  if (s100) s100.textContent = '→ ' + sim(100);
-  if (s500) s500.textContent = '→ ' + sim(500);
-  if (sc)   sc.textContent   = chave || '—';
-}
-
-// Mostrar/esconder formulário de novo parceiro
-function ppMostrarFormParceiro() {
-  const f = document.getElementById('pp-form-parceiro');
-  if (!f) return;
-  f.style.display = f.style.display === 'none' ? 'block' : 'none';
-  const linkBox = document.getElementById('pp-link-novo');
-  if (linkBox) linkBox.style.display = 'none';
-}
-
-// ppCheckStatus — usa API do Mercado Pago via /api/mp2/testar (mesmo endpoint do bot2)
-async function ppCheckStatus() {
-  try {
-    const r = await fetch(`${BASE}/api/mp2/testar?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    const mpOk  = d.success === true;
-    const email = d.email || '';
-    const amb   = d.ambiente || 'produção';
-
-    // Badge no menu lateral
-    const badge = document.getElementById('badge-paypix');
-    if (badge) {
-      badge.textContent = mpOk ? 'ON' : 'OFF';
-      badge.style.background = mpOk ? '#2e7d32' : '#c62828';
-    }
-
-    // Badge no card de status
-    const ppBadge = document.getElementById('pp-badge');
-    if (ppBadge) {
-      ppBadge.textContent = mpOk ? '🟢 Mercado Pago OK' : '🔴 Erro MP';
-      ppBadge.style.background = mpOk ? '#1a2a1a' : '#2a0a0a';
-      ppBadge.style.color = mpOk ? '#4caf50' : '#f44336';
-    }
-
-    // Métricas
-    const statusText = document.getElementById('pp-status-text');
-    if (statusText) statusText.textContent = mpOk ? '🟢 Online' : '🔴 Offline';
-
-    const mpStatusEl = document.getElementById('pp-mp-status');
-    if (mpStatusEl) {
-      mpStatusEl.textContent = mpOk ? `✅ Conectado (${amb})` : '❌ Sem conexão';
-      mpStatusEl.style.color = mpOk ? '#4ade80' : '#f87171';
-    }
-    const mpEmail = document.getElementById('pp-mp-email');
-    if (mpEmail) mpEmail.textContent = email;
-
-    // Badge status integração
-    const badgeStatus = document.getElementById('pp-badge-status');
-    if (badgeStatus) {
-      badgeStatus.textContent = mpOk ? '🟢 Integração ativa' : '🔴 Sem token MP';
-      badgeStatus.style.background = mpOk ? '#0a2a0a' : '#2a0a0a';
-      badgeStatus.style.color = mpOk ? '#4ade80' : '#f87171';
-    }
-
-    // Status bar
-    const statusTxt = document.getElementById('pp-status-txt');
-    if (statusTxt) statusTxt.textContent = mpOk ? `✅ Mercado Pago conectado — conta: ${email || 'verificada'}` : '❌ Token Mercado Pago não configurado';
-
-  } catch(e) {
-    const ppBadge = document.getElementById('pp-badge');
-    if (ppBadge) { ppBadge.textContent = '⚠️ Erro'; ppBadge.style.color = '#ff9800'; }
-  }
-}
-
-// ppAtualizarSaldo — atualiza saldo da conta MP
-async function ppAtualizarSaldo() {
-  const el = document.getElementById('pp-saldo');
-  const horaEl = document.getElementById('pp-saldo-hora');
-  if (el) el.textContent = '⏳ carregando...';
-  try {
-    const r = await fetch(`${BASE}/api/bot2/saldo?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    if (d.success) {
-      if (el) el.textContent = d.saldo_formatado || d.saldo || 'R$ —';
-      if (horaEl) horaEl.textContent = 'atualizado ' + new Date().toLocaleTimeString('pt-BR');
-    } else {
-      if (el) el.textContent = 'R$ —';
-      if (horaEl) horaEl.textContent = d.error || 'erro ao carregar';
-    }
-  } catch(e) {
-    if (el) el.textContent = '⚠️ Erro';
-    if (horaEl) horaEl.textContent = e.message;
-  }
-}
-
-// ppTestarConexao — testa conexão Mercado Pago
-async function ppTestarConexao() {
-  const msgEl = document.getElementById('pp-msg');
-  const badgeEl = document.getElementById('pp-badge-status');
-  if (msgEl) msgEl.innerHTML = '<span style="color:#888">🔗 Testando conexão...</span>';
-  try {
-    const r = await fetch(`${BASE}/api/mp2/testar?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    if (d.success) {
-      if (msgEl) msgEl.innerHTML = `<span style="color:#4ade80">✅ Conexão OK — conta: ${d.email || 'verificada'} · ambiente: ${d.ambiente || 'produção'}</span>`;
-      if (badgeEl) { badgeEl.textContent = '🟢 Conectado'; badgeEl.style.color = '#4ade80'; badgeEl.style.background = '#0a2a0a'; }
-    } else {
-      if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">❌ Falha: ${d.error || 'Token inválido ou não configurado'}</span>`;
-      if (badgeEl) { badgeEl.textContent = '🔴 Erro'; badgeEl.style.color = '#f87171'; badgeEl.style.background = '#2a0a0a'; }
-    }
-  } catch(e) {
-    if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">❌ Erro: ${e.message}</span>`;
-  }
-}
-
-// ppSalvarChaves — salva credenciais Mercado Pago (usa o mesmo endpoint do mp2)
-async function ppSalvarChaves() {
-  const btn   = document.getElementById('pp-btn-salvar');
-  const msgEl = document.getElementById('pp-msg');
-  const token  = document.getElementById('pp-access-token')?.value.trim();
-  const pubKey = document.getElementById('pp-public-key')?.value.trim();
-  const clientId     = document.getElementById('pp-client-id')?.value.trim();
-  const clientSecret = document.getElementById('pp-client-secret')?.value.trim();
-
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
-  if (msgEl) msgEl.innerHTML = '<span style="color:#888">Salvando...</span>';
-
-  try {
-    const body = {};
-    if (token)  body.access_token  = token;
-    if (pubKey) body.public_key    = pubKey;
-    if (clientId) body.client_id   = clientId;
-    if (clientSecret) body.client_secret = clientSecret;
-
-    const r = await fetch(`${BASE}/api/mp2/config`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
-      body: JSON.stringify(body)
-    });
-    const d = await r.json();
-    if (d.success) {
-      if (msgEl) msgEl.innerHTML = '<span style="color:#4ade80">✅ Chaves salvas com sucesso! Integração ativa imediatamente.</span>';
-      // Limpar campos após salvar
-      if (token)  document.getElementById('pp-access-token').value = '';
-      if (pubKey) document.getElementById('pp-public-key').value = '';
-      if (clientId) document.getElementById('pp-client-id').value = '';
-      if (clientSecret) document.getElementById('pp-client-secret').value = '';
-      // Recarregar status
-      setTimeout(() => ppCheckStatus(), 1500);
-    } else {
-      if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">❌ ${d.error || 'Erro ao salvar'}</span>`;
-    }
-  } catch(e) {
-    if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">❌ Erro: ${e.message}</span>`;
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Chaves Mercado Pago'; }
-  }
-}
-
-// Carregar chaves configuradas (mostra badges se já configurado)
-async function ppCarregarChaves() {
-  try {
-    const r = await fetch(`${BASE}/api/mp2/config?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    if (d.success) {
-      // Webhook URL
-      const whEl = document.getElementById('pp-webhook-url');
-      if (whEl && d.webhook_url) whEl.textContent = d.webhook_url;
-      else if (whEl) whEl.textContent = `${BASE}/webhook/mercadopago`;
-
-      // Badges de "configurado"
-      if (d.has_token) {
-        const tb = document.getElementById('pp-token-badge');
-        if (tb) tb.style.display = 'inline';
-      }
-      if (d.has_public_key) {
-        const pb = document.getElementById('pp-pubkey-badge');
-        if (pb) pb.style.display = 'inline';
-      }
-    } else {
-      const whEl = document.getElementById('pp-webhook-url');
-      if (whEl) whEl.textContent = `${BASE}/webhook/mercadopago`;
-    }
-  } catch(e) {}
-}
-
-// ppCarregarParceiros — carrega tabela de parceiros (usa endpoint mp2)
 async function ppCarregarParceiros() {
   const tbody = document.getElementById('pp-parceiros-tbody');
   if (!tbody) return;
   try {
-    const r = await fetch(`${BASE}/api/mp2/parceiros?secret=${encodeURIComponent(SECRET())}`);
+    const r = await fetch(`${BASE}/api/pp/parceiros?secret=${encodeURIComponent(SECRET())}`);
     const d = await r.json();
     if (!d.success || !d.parceiros || d.parceiros.length === 0) {
       tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Nenhum parceiro cadastrado ainda — clique em "+ Novo Parceiro"</td></tr>';
       return;
     }
     tbody.innerHTML = d.parceiros.map(p => {
-      const link = p.link || `${BASE}/paypix?ref=${p.codigo}`;
+      const link = p.link || `https://web-production-9f54e.up.railway.app/paypix?ref=${p.codigo}`;
       const isAtivo = p.ativo;
       const statusBadge = isAtivo
         ? '<span style="color:#4ade80;font-size:11px;font-weight:700">● ativo</span>'
         : '<span style="color:#f87171;font-size:11px;font-weight:700">● inativo</span>';
-      return `<tr id="pp-row-${p.codigo}" style="opacity:${isAtivo?1:0.6}">
+      return `<tr id="row-${p.codigo}" style="opacity:${isAtivo?1:0.6}">
         <td>
           <div style="font-weight:700;font-size:14px">${p.nome}</div>
           <div style="font-size:10px;color:#555;font-family:monospace">${p.codigo}</div>
@@ -6098,16 +6133,16 @@ async function ppCarregarParceiros() {
           <div style="color:#fbbf24;font-weight:600">R$ ${(p.total_comissao||0).toFixed(2).replace('.',',')}</div>
           <div style="font-size:11px;color:#666">pago: R$ ${(p.total_pago||0).toFixed(2).replace('.',',')}</div>
         </td>
-        <td>${p.qtd_pagamentos||0}</td>
         <td>
           <div style="display:flex;align-items:center;gap:4px;max-width:200px">
             <code style="font-size:10px;color:#a855f7;word-break:break-all;flex:1">${link}</code>
-            <button onclick="ppCopiarLinkTabela('${link}')" title="Copiar link"
+            <button onclick="ppCopiarLink('${link}')" title="Copiar link"
               style="padding:3px 7px;background:#7c3aed22;border:1px solid #7c3aed44;border-radius:5px;color:#a855f7;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0">📋</button>
           </div>
         </td>
         <td>
           <div style="display:flex;flex-direction:column;gap:5px;min-width:120px">
+            <!-- Ativar/Desativar -->
             ${isAtivo
               ? `<button onclick="ppToggleParceiro('${p.codigo}','${p.nome.replace(/'/g,'')}',false)"
                   style="padding:5px 10px;background:#2a0a0a;border:1px solid #ef444466;border-radius:7px;color:#f87171;font-size:11px;cursor:pointer;font-weight:600">
@@ -6118,6 +6153,7 @@ async function ppCarregarParceiros() {
                   ▶ Ativar
                 </button>`
             }
+            <!-- Editar -->
             <button onclick="ppAbrirEdicao('${p.codigo}','${p.nome.replace(/'/g,'')}','${p.chave_pix}','${p.tipo_chave}',${p.comissao_pct})"
               style="padding:5px 10px;background:#0a1a2a;border:1px solid #3b82f666;border-radius:7px;color:#60a5fa;font-size:11px;cursor:pointer;font-weight:600">
               ✏️ Editar
@@ -6125,20 +6161,21 @@ async function ppCarregarParceiros() {
           </div>
         </td>
       </tr>
-      <tr id="pp-edit-${p.codigo}" style="display:none;background:#0a0a18">
+      <!-- Linha de edição inline (oculta por padrão) -->
+      <tr id="edit-${p.codigo}" style="display:none;background:#0a0a18">
         <td colspan="8" style="padding:16px">
           <div style="background:#0d0d20;border:1px solid #3b82f644;border-radius:12px;padding:16px">
             <div style="font-size:12px;color:#60a5fa;font-weight:700;margin-bottom:12px">✏️ Editar parceiro: ${p.nome}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:12px;align-items:end">
               <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">Nome</label>
-                <input id="pp-edit-nome-${p.codigo}" value="${p.nome.replace(/"/g,'')}"
+                <input id="edit-nome-${p.codigo}" value="${p.nome.replace(/"/g,'')}"
                   style="width:100%;background:#0a0a14;border:1px solid #3b82f644;border-radius:7px;padding:8px 10px;color:#fff;font-size:13px">
               </div>
               <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">Chave PIX</label>
                 <div style="display:flex;gap:6px">
-                  <select id="pp-edit-tipo-${p.codigo}"
+                  <select id="edit-tipo-${p.codigo}"
                     style="background:#0a0a14;border:1px solid #3b82f644;border-radius:7px;padding:8px;color:#fff;font-size:12px;width:120px">
                     <option value="cpf" ${p.tipo_chave==='cpf'?'selected':''}>CPF</option>
                     <option value="email" ${p.tipo_chave==='email'?'selected':''}>E-mail</option>
@@ -6146,14 +6183,14 @@ async function ppCarregarParceiros() {
                     <option value="cnpj" ${p.tipo_chave==='cnpj'?'selected':''}>CNPJ</option>
                     <option value="aleatoria" ${p.tipo_chave==='aleatoria'?'selected':''}>Aleatória</option>
                   </select>
-                  <input id="pp-edit-chave-${p.codigo}" value="${p.chave_pix.replace(/"/g,'')}"
+                  <input id="edit-chave-${p.codigo}" value="${p.chave_pix.replace(/"/g,'')}"
                     style="flex:1;background:#0a0a14;border:1px solid #3b82f644;border-radius:7px;padding:8px 10px;color:#60a5fa;font-size:13px;font-family:monospace">
                 </div>
               </div>
               <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">% Comissão</label>
                 <div style="display:flex;align-items:center;gap:6px">
-                  <input id="pp-edit-pct-${p.codigo}" type="number" min="1" max="90" value="${p.comissao_pct}"
+                  <input id="edit-pct-${p.codigo}" type="number" min="1" max="90" value="${p.comissao_pct}"
                     style="width:70px;background:#0a0a14;border:1px solid #a855f7;border-radius:7px;padding:8px;color:#a855f7;font-size:16px;font-weight:800;text-align:center">
                   <span style="color:#a855f7;font-weight:700;font-size:16px">%</span>
                 </div>
@@ -6164,11 +6201,11 @@ async function ppCarregarParceiros() {
                 style="padding:8px 20px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">
                 💾 Salvar
               </button>
-              <button onclick="document.getElementById('pp-edit-${p.codigo}').style.display='none'"
+              <button onclick="document.getElementById('edit-${p.codigo}').style.display='none'"
                 style="padding:8px 16px;background:#0a0a14;border:1px solid #333;border-radius:8px;color:#888;font-size:13px;cursor:pointer">
                 Cancelar
               </button>
-              <span id="pp-edit-msg-${p.codigo}" style="font-size:12px;align-self:center"></span>
+              <span id="edit-msg-${p.codigo}" style="font-size:12px;align-self:center"></span>
             </div>
           </div>
         </td>
@@ -6179,7 +6216,7 @@ async function ppCarregarParceiros() {
   }
 }
 
-function ppCopiarLinkTabela(url) {
+function ppCopiarLink(url) {
   navigator.clipboard.writeText(url).then(() => {
     const btn = event.target;
     const orig = btn.textContent;
@@ -6189,48 +6226,49 @@ function ppCopiarLinkTabela(url) {
 }
 
 function ppAbrirEdicao(codigo, nome, chave, tipo, pct) {
-  document.querySelectorAll('[id^="pp-edit-"]').forEach(el => {
-    if (/^pp-edit-[^-]/.test(el.id) && !el.id.includes('nome') && !el.id.includes('tipo') && !el.id.includes('chave') && !el.id.includes('pct') && !el.id.includes('msg')) {
+  // Fechar todas outras edições abertas
+  document.querySelectorAll('[id^="edit-"]').forEach(el => {
+    if (el.id.startsWith('edit-') && !el.id.startsWith('edit-nome-') && !el.id.startsWith('edit-tipo-') && !el.id.startsWith('edit-chave-') && !el.id.startsWith('edit-pct-') && !el.id.startsWith('edit-msg-')) {
       el.style.display = 'none';
     }
   });
-  const editRow = document.getElementById(`pp-edit-${codigo}`);
+  const editRow = document.getElementById(`edit-${codigo}`);
   if (editRow) editRow.style.display = editRow.style.display === 'none' ? '' : 'none';
 }
 
 async function ppSalvarEdicao(codigo) {
-  const nome  = document.getElementById(`pp-edit-nome-${codigo}`)?.value.trim();
-  const chave = document.getElementById(`pp-edit-chave-${codigo}`)?.value.trim();
-  const tipo  = document.getElementById(`pp-edit-tipo-${codigo}`)?.value;
-  const pct   = parseFloat(document.getElementById(`pp-edit-pct-${codigo}`)?.value) || 10;
-  const msgEl = document.getElementById(`pp-edit-msg-${codigo}`);
+  const nome    = document.getElementById(`edit-nome-${codigo}`).value.trim();
+  const chave   = document.getElementById(`edit-chave-${codigo}`).value.trim();
+  const tipo    = document.getElementById(`edit-tipo-${codigo}`).value;
+  const pct     = parseFloat(document.getElementById(`edit-pct-${codigo}`).value) || 10;
+  const msgEl   = document.getElementById(`edit-msg-${codigo}`);
 
-  if (!nome || !chave) { if (msgEl) msgEl.innerHTML = '<span style="color:#f44">Nome e chave PIX obrigatórios</span>'; return; }
-  if (msgEl) msgEl.innerHTML = '<span style="color:#888">⏳ Salvando...</span>';
+  if (!nome || !chave) { msgEl.innerHTML = '<span style="color:#f44">Nome e chave PIX obrigatórios</span>'; return; }
+  msgEl.innerHTML = '<span style="color:#888">⏳ Salvando...</span>';
   try {
-    const r = await fetch(`${BASE}/api/mp2/parceiros/${encodeURIComponent(codigo)}`, {
+    const r = await fetch(`${BASE}/api/pp/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
       body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct })
     });
     const d = await r.json();
     if (d.success) {
-      if (msgEl) msgEl.innerHTML = '<span style="color:#4ade80">✅ Salvo!</span>';
+      msgEl.innerHTML = '<span style="color:#4ade80">✅ Salvo!</span>';
       setTimeout(async () => {
-        const row = document.getElementById(`pp-edit-${codigo}`);
-        if (row) row.style.display = 'none';
+        document.getElementById(`edit-${codigo}`).style.display = 'none';
         await ppCarregarParceiros();
       }, 800);
     } else {
-      if (msgEl) msgEl.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
+      msgEl.innerHTML = `<span style="color:#f44">❌ ${d.error}</span>`;
     }
-  } catch(e) { if (msgEl) msgEl.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`; }
+  } catch(e) { msgEl.innerHTML = `<span style="color:#f44">❌ ${e.message}</span>`; }
 }
 
 async function ppToggleParceiro(codigo, nome, ativar) {
+  const acao = ativar ? 'ativar' : 'desativar';
   if (!confirm(`${ativar ? '▶ Ativar' : '⏸ Desativar'} parceiro "${nome}" (${codigo})?${!ativar ? '\nO link deixará de funcionar.' : '\nO link voltará a funcionar.'}`)) return;
   try {
-    const r = await fetch(`${BASE}/api/mp2/parceiros/${encodeURIComponent(codigo)}`, {
+    const r = await fetch(`${BASE}/api/pp/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
       body: JSON.stringify({ ativo: ativar })
@@ -6246,131 +6284,31 @@ async function ppToggleParceiro(codigo, nome, ativar) {
   }
 }
 
-// ppCriarParceiro — cria novo parceiro (usa mesmo endpoint do mp2)
-async function ppCriarParceiro() {
-  const nome       = document.getElementById('p-nome')?.value.trim();
-  const codigo     = document.getElementById('p-codigo')?.value.trim();
-  const chavePix   = document.getElementById('p-chave-pix')?.value.trim();
-  const tipoChave  = document.getElementById('p-tipo-chave')?.value;
-  const comissao   = parseFloat(document.getElementById('p-comissao')?.value) || 10;
-  const msg        = document.getElementById('pp-form-msg');
+async function ppDesativarParceiro(codigo, nome) {
+  await ppToggleParceiro(codigo, nome, false);
+}
 
-  if (!nome) { if (msg) msg.innerHTML = '<span style="color:#f44">Nome obrigatório</span>'; return; }
-  if (!chavePix) { if (msg) msg.innerHTML = '<span style="color:#f44">Chave PIX obrigatória</span>'; return; }
-
-  if (msg) msg.innerHTML = '⏳ Criando parceiro...';
-  try {
-    const r = await fetch(`${BASE}/api/mp2/parceiros`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
-      body: JSON.stringify({ nome, codigo: codigo || undefined, chave_pix: chavePix, tipo_chave: tipoChave, comissao_pct: comissao })
-    });
-    const d = await r.json();
-    if (d.success) {
-      if (msg) msg.innerHTML = '<span style="color:#4ade80">✅ Parceiro criado!</span>';
-      // Mostrar link gerado
-      const linkEl  = document.getElementById('pp-link-novo-url');
-      const linkBox = document.getElementById('pp-link-novo');
-      if (linkEl) linkEl.textContent = d.link || d.parceiro?.link || `${BASE}/paypix?ref=${d.parceiro?.codigo || codigo}`;
-      if (linkBox) linkBox.style.display = 'block';
-      // Limpar form
-      ['p-nome','p-codigo','p-chave-pix'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-      });
-      const pct = document.getElementById('p-comissao');
-      if (pct) pct.value = '10';
-      const form = document.getElementById('pp-form-parceiro');
-      if (form) form.style.display = 'none';
-      // Recarregar lista
-      await ppCarregarParceiros();
-    } else {
-      if (msg) msg.innerHTML = `<span style="color:#f44">❌ ${d.error || 'Erro ao criar'}</span>`;
-    }
-  } catch(e) {
-    if (msg) msg.innerHTML = `<span style="color:#f44">❌ Erro: ${e.message}</span>`;
+// ═══════════════════════════════════════════════════════════
+// ACORDEÃO — collapse/expand dos cards do bot2
+// ═══════════════════════════════════════════════════════════
+function colToggle(id) {
+  const body   = document.getElementById('col-body-' + id);
+  const header = document.getElementById('col-hdr-' + id);
+  const arrow  = document.getElementById('col-arrow-' + id);
+  if (!body) return;
+  const isOpen = !body.classList.contains('collapsed');
+  if (isOpen) {
+    body.classList.add('collapsed');
+    if (arrow)  arrow.classList.add('rotated');
+    if (header) header.classList.add('is-collapsed');
+  } else {
+    body.classList.remove('collapsed');
+    if (arrow)  arrow.classList.remove('rotated');
+    if (header) header.classList.remove('is-collapsed');
   }
 }
 
-// ppCarregarComissoes — histórico de repasses
-async function ppCarregarComissoes() {
-  const tbody = document.getElementById('pp-comissoes-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">⏳ Carregando...</td></tr>';
-  try {
-    const r = await fetch(`${BASE}/api/mp2/saques?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    if (!d.success || !d.saques || d.saques.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:20px">Nenhuma comissão registrada ainda</td></tr>';
-      return;
-    }
-    const statusColor = {
-      'pago': '#4ade80', 'pendente_manual': '#f59e0b',
-      'falhou': '#f87171', 'processando': '#60a5fa'
-    };
-    tbody.innerHTML = d.saques.map(s => {
-      const sc = statusColor[s.status] || '#aaa';
-      return `<tr>
-        <td style="font-size:11px;color:#555">#${s.id}</td>
-        <td><div style="font-weight:700">${s.parceiro_nome||'—'}</div><div style="font-size:10px;color:#555;font-family:monospace">${s.parceiro_codigo||''}</div></td>
-        <td style="color:#4ade80;font-weight:700">R$ ${(s.valor||0).toFixed(2).replace('.',',')}</td>
-        <td><div style="font-family:monospace;font-size:12px;color:#60a5fa">${s.chave_pix||'—'}</div><div style="font-size:10px;color:#555">${s.tipo_chave||''}</div></td>
-        <td><span style="color:${sc};font-weight:700;font-size:12px">${s.status}</span></td>
-        <td style="font-size:11px;color:#666;max-width:200px">${s.obs||'—'}</td>
-        <td style="font-size:11px;color:#555">${s.created_at ? new Date(s.created_at).toLocaleString('pt-BR') : '—'}</td>
-        <td>${s.status === 'pendente_manual'
-          ? `<button onclick="ppPagarComissaoManual(${s.id},'${(s.parceiro_nome||'').replace(/'/g,'')}',${s.valor||0})"
-              style="padding:5px 10px;background:#22c55e22;border:1px solid #22c55e55;border-radius:7px;color:#4ade80;font-size:11px;cursor:pointer;font-weight:600">
-              ✅ Confirmar
-            </button>` : '<span style="color:#555;font-size:11px">—</span>'
-        }</td>
-      </tr>`;
-    }).join('');
-  } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#f44;padding:20px">Erro: ${e.message}</td></tr>`;
-  }
-}
-
-async function ppPagarComissaoManual(sauqueId, parceiro, valor) {
-  if (!confirm(`Confirmar pagamento manual de R$ ${valor.toFixed(2)} para ${parceiro}?\nClique OK apenas se já realizou o PIX manualmente.`)) return;
-  try {
-    const r = await fetch(`${BASE}/api/mp2/saques/${sauqueId}/aprovar`, {
-      method: 'POST',
-      headers: { 'X-PaynexBet-Secret': SECRET() }
-    });
-    const d = await r.json();
-    if (d.success) {
-      await ppCarregarComissoes();
-    } else {
-      alert(`❌ Erro: ${d.error || 'desconhecido'}`);
-    }
-  } catch(e) {
-    alert('❌ Erro: ' + e.message);
-  }
-}
-
-// ppCarregarStats — carrega totais do painel PayPix
-async function ppCarregarStats() {
-  try {
-    const r = await fetch(`${BASE}/api/mp2/stats?secret=${encodeURIComponent(SECRET())}`);
-    const d = await r.json();
-    if (d.success) {
-      const tg = document.getElementById('pp-total-gerado');
-      const tp = document.getElementById('pp-total-pago');
-      const cp = document.getElementById('pp-comissao-pend');
-      if (tg) tg.textContent = 'R$ ' + (d.total_gerado||0).toFixed(2).replace('.',',');
-      if (tp) tp.textContent = 'R$ ' + (d.total_pago||0).toFixed(2).replace('.',',');
-      if (cp) cp.textContent = 'pendentes: R$ ' + (d.total_pendente||0).toFixed(2).replace('.',',');
-    }
-  } catch(e) {}
-}
-
-// ppConfigSalvar — salva configuração da página /paypix
-async function ppConfigSalvar() {
-  // redireciona para botConfigSalvar (usa mesmo endpoint)
-  await botConfigSalvar();
-}
-
+// Estado inicial: salva no sessionStorage qual está ab
 // Carrega aba PayPix (chamado pelo showTab)
 async function carregarPaypixAdmin() {
   await ppCheckStatus();
@@ -6379,6 +6317,11 @@ async function carregarPaypixAdmin() {
   await ppCarregarParceiros();
   await ppCarregarComissoes();
 }
+
+// Checar status PayPix ao carregar e a cada 60s (só se logado)
+if (SECRET()) ppCheckStatus();
+setInterval(() => { if (SECRET()) ppCheckStatus(); }, 60000);
+
 
 
 // ════════════════════════════════════════════════════════════════
@@ -7912,6 +7855,7 @@ function colToggle(id) {
 function colInitState() {
   // Por padrão: MP (mp) aberto, demais fechados
   const defaults = {
+    // Bot Mercado Pago (tab-bot2)
     'bot2-status':    false,
     'mp-config':      true,   // Mercado Pago aberto por padrão
     'parceiros':      false,
@@ -7920,6 +7864,15 @@ function colInitState() {
     'saques':         false,
     'qr-auto':        false,
     'debito-auto':    false,
+    // PayPix (tab-paypix) — réplica com prefixo pp-
+    'pp-status':      false,
+    'pp-config':      true,
+    'pp-parceiros':   false,
+    'pp-cfg-pagamento': false,
+    'pp-stats':       false,
+    'pp-saques':      false,
+    'pp-qr-auto':     false,
+    'pp-debito-auto': false,
   };
   Object.entries(defaults).forEach(([id, open]) => {
     const body   = document.getElementById('col-body-' + id);
