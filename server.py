@@ -10929,9 +10929,39 @@ function getTeamLogo(teamName) {
 
 function teamInitials(name) {
   if (!name) return '?';
-  const words = name.trim().replace(/^(FC|SC|CA|CR|CD|EC|SE|RB|AA|AC|AS|CF|SD|FK)\s/i,'').split(/\s+/);
+  // Remove prefixos, parênteses e caracteres especiais
+  const clean = name.trim()
+    .replace(/\(.*?\)/g, '')           // remove tudo entre parênteses ex: (BAH)
+    .replace(/[^a-zA-ZÀ-ú\s]/g, '')   // remove símbolos
+    .replace(/^(FC|SC|CA|CR|CD|EC|SE|RB|AA|AC|AS|CF|SD|FK)\s/i, '')
+    .trim();
+  if (!clean) return name.substring(0,2).toUpperCase();
+  const words = clean.split(/\s+/).filter(w => w.length > 0);
   if (words.length === 1) return words[0].substring(0,3).toUpperCase();
+  // Usa primeira letra de cada palavra significativa (ignora artigos)
+  const skip = new Set(['de','do','da','dos','das','del','el','la','los','las','di','van','von','e']);
+  const meaningful = words.filter(w => !skip.has(w.toLowerCase()));
+  if (meaningful.length >= 2) return (meaningful[0][0] + meaningful[meaningful.length-1][0]).toUpperCase();
   return (words[0][0] + (words[words.length-1][0]||'')).toUpperCase();
+}
+
+// Retorna label curta e limpa para botão de odd
+function teamShortLabel(name) {
+  if (!name) return '?';
+  // Remove parênteses e conteúdo
+  const clean = name.replace(/\s*\(.*?\)\s*/g, '').trim();
+  // Prefixos a ignorar
+  const noPfx = clean.replace(/^(FC|SC|CA|CR|CD|EC|SE|RB|AA|AC|AS|CF|SD|FK)\s+/i, '').trim();
+  const words = noPfx.split(/\s+/);
+  // Se nome curto (≤10 chars) retorna direto
+  if (noPfx.length <= 10) return noPfx;
+  // Artigos/preposições a pular
+  const skip = new Set(['de','do','da','dos','das','del','el','la','los','las','di','van','von','e','y','und']);
+  const sig = words.filter(w => w.length > 1 && !skip.has(w.toLowerCase()));
+  // 1 palavra significativa: retorna ela truncada
+  if (sig.length === 1) return sig[0].substring(0,8);
+  // 2+ palavras: retorna a primeira palavra significativa
+  return sig[0].length > 8 ? sig[0].substring(0,7) + '.' : sig[0];
 }
 
 function teamBadgeHtml(name) {
@@ -10992,13 +11022,13 @@ async function carregarJogos(sport) {
         </div>
         <div class="jogo-odds ${!temEmpate ? 'no-draw' : ''}">
           ${o.home != null ? `<div class="odd-btn" id="odd-${j.id}-casa" onclick="selecionarOdd('${j.id}','${j.home_team}','Casa',${o.home},'${j.home_team} × ${j.away_team}')">
-            <div class="odd-lbl">${j.home_team.split(' ')[0]}</div>
+            <div class="odd-lbl">${teamShortLabel(j.home_team)}</div>
             <div class="odd-val">${Number(o.home).toFixed(2)}</div></div>` : ''}
           ${temEmpate ? `<div class="odd-btn" id="odd-${j.id}-empate" onclick="selecionarOdd('${j.id}','Empate','X',${o.draw},'${j.home_team} × ${j.away_team}')">
             <div class="odd-lbl">Empate</div>
             <div class="odd-val">${Number(o.draw).toFixed(2)}</div></div>` : ''}
           ${o.away != null ? `<div class="odd-btn" id="odd-${j.id}-fora" onclick="selecionarOdd('${j.id}','${j.away_team}','Fora',${o.away},'${j.home_team} × ${j.away_team}')">
-            <div class="odd-lbl">${j.away_team.split(' ')[0]}</div>
+            <div class="odd-lbl">${teamShortLabel(j.away_team)}</div>
             <div class="odd-val">${Number(o.away).toFixed(2)}</div></div>` : ''}
         </div>`;
       lista.appendChild(card);

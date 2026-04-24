@@ -1,9 +1,10 @@
 {
-  "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "rebuildTimestamp": "1777049884",
-    "forceBust": "v20250428q-legalpages-1777049884"
+    "buildArgs": {
+      "REBUILD_TS": "1777050321",
+      "FORCE_BUST": "fix-team-labels-1777050321"
+    }
   },
   "deploy": {
     "startCommand": "bash start.sh",
@@ -11,6 +12,5 @@
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5
-  },
-  "_rebuild": "1777049884"
+  }
 }
