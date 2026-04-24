@@ -9957,32 +9957,46 @@ _SUIT_HOST        = os.environ.get('SUITPAY_HOST', 'https://ws.suitpay.app')
 _SUIT_WEBHOOK_URL = os.environ.get('SUITPAY_WEBHOOK_URL', 'https://paynexbet.com/webhook/suitpay')
 
 async def route_bet_jogos(request):
-    """GET /api/bet/jogos — retorna jogos com odds (cache 60s)"""
+    """GET /api/bet/jogos — retorna jogos com odds (cache 60s)
+    Suporta ?sport=<key> para filtrar por campeonato específico.
+    Cache global de todos os sports; filtro feito após cachear.
+    """
     import time as _time
     import aiohttp
     agora = _time.time()
+
+    # Parâmetro de filtro da query (ex: soccer_brazil_campeonato)
+    sport_filter = request.rel_url.query.get('sport', '').strip()
+
     # Retornar cache se válido
-    if agora - _odds_cache['ts'] < _ODDS_CACHE_TTL and _odds_cache['data']:
-        return web.json_response({'success': True, 'jogos': _odds_cache['data'], 'from_cache': True})
+    cache_valido = agora - _odds_cache['ts'] < _ODDS_CACHE_TTL and _odds_cache['data']
+    if cache_valido:
+        jogos = _odds_cache['data']
+        # Aplicar filtro se passado e não for "upcoming" / "destaque" (= todos)
+        if sport_filter and sport_filter not in ('upcoming', 'destaque', 'all'):
+            jogos = [j for j in jogos if j.get('sport') == sport_filter]
+        return web.json_response({'success': True, 'jogos': jogos, 'from_cache': True, 'total': len(jogos)})
 
     key = _get_odds_key()
     if not key:
         return web.json_response({'success': False, 'jogos': [], 'error': 'ODDS_API_KEY não configurada — adicione via /api/bet/config'})
 
-    # Esportes prioritários: Brasileirão + Libertadores + UEFA + upcoming
+    # Todos os sports suportados (sem limite de 10 total)
     sports = [
         'soccer_brazil_campeonato',
         'soccer_conmebol_copa_libertadores',
         'soccer_uefa_champs_league',
         'soccer_epl',
-        'upcoming',
+        'soccer_spain_la_liga',
+        'basketball_nba',
+        'americanfootball_nfl',
+        'tennis_atp_aus_open_singles',
+        'mma_mixed_martial_arts',
     ]
 
     all_jogos = []
     async with aiohttp.ClientSession() as sess:
         for sport in sports:
-            if len(all_jogos) >= 10:
-                break
             try:
                 url = f'https://api.the-odds-api.com/v4/sports/{sport}/odds'
                 params = {
@@ -9995,8 +10009,7 @@ async def route_bet_jogos(request):
                 async with sess.get(url, params=params, timeout=aiohttp.ClientTimeout(total=8)) as r:
                     if r.status == 200:
                         eventos = await r.json()
-                        for ev in (eventos or [])[:4]:
-                            # Pegar as melhores odds disponíveis (média dos bookmakers)
+                        for ev in (eventos or [])[:6]:
                             home_odds, draw_odds, away_odds = [], [], []
                             for bk in ev.get('bookmakers', [])[:5]:
                                 for mkt in bk.get('markets', []):
@@ -10012,11 +10025,11 @@ async def route_bet_jogos(request):
                                                 draw_odds.append(v)
                             def avg(lst): return round(sum(lst)/len(lst), 2) if lst else None
                             jogo = {
-                                'id':           ev.get('id'),
-                                'sport':        sport,
-                                'league':       ev.get('sport_title', sport),
-                                'home_team':    ev.get('home_team', ''),
-                                'away_team':    ev.get('away_team', ''),
+                                'id':            ev.get('id'),
+                                'sport':         sport,
+                                'league':        ev.get('sport_title', sport),
+                                'home_team':     ev.get('home_team', ''),
+                                'away_team':     ev.get('away_team', ''),
                                 'commence_time': ev.get('commence_time', ''),
                                 'odds': {
                                     'home': avg(home_odds),
@@ -10025,12 +10038,21 @@ async def route_bet_jogos(request):
                                 }
                             }
                             all_jogos.append(jogo)
+                    elif r.status == 422:
+                        pass  # sport não disponível na API gratuita
             except Exception as e_odds:
                 print(f'[bet/jogos] erro sport={sport}: {e_odds}', flush=True)
 
+    # Salvar cache completo (todos os sports)
     _odds_cache['ts']   = agora
     _odds_cache['data'] = all_jogos
-    return web.json_response({'success': True, 'jogos': all_jogos, 'total': len(all_jogos)})
+
+    # Filtrar para a resposta se solicitado
+    jogos_resp = all_jogos
+    if sport_filter and sport_filter not in ('upcoming', 'destaque', 'all'):
+        jogos_resp = [j for j in all_jogos if j.get('sport') == sport_filter]
+
+    return web.json_response({'success': True, 'jogos': jogos_resp, 'total': len(jogos_resp)})
 
 
 async def route_bet_live(request):

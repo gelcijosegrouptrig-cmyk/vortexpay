@@ -500,6 +500,13 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
         <div class="sport-chip" data-sport="soccer_spain_la_liga" onclick="chipSport(this)">🇪🇸 La Liga</div>
         <div class="sport-chip" data-sport="basketball_nba" onclick="chipSport(this)">🏀 NBA</div>
         <div class="sport-chip" data-sport="americanfootball_nfl" onclick="chipSport(this)">🏈 NFL</div>
+        <div class="sport-chip" data-sport="mma_mixed_martial_arts" onclick="chipSport(this)">🥊 MMA</div>
+      </div>
+      <!-- Título dinâmico da seção -->
+      <div class="sec-head" style="margin-bottom:12px">
+        <div class="accent" id="apostas-accent"></div>
+        <h3 id="apostas-titulo" style="font-size:14px;font-weight:800;color:var(--text)">🔥 Em Destaque</h3>
+        <span id="apostas-count" style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:600"></span>
       </div>
       <div class="jogos-grid" id="jogos-lista">
         <div class="loading-center" style="grid-column:1/-1"><div class="spinner2"></div>Carregando jogos...</div>
@@ -786,10 +793,24 @@ function navTo(view, extra){
       showView('apostas');setHnActive('hn-apostas');
       const sport=extra||'upcoming';
       _currentSport=sport;
-      // marcar chip
+      // Marcar chip correto
       document.querySelectorAll('.sport-chip').forEach(c=>{
         c.classList.toggle('active',c.dataset.sport===sport)
       });
+      // Marcar sb-item correto baseado no sport
+      const sbSportMap={
+        'upcoming':'sb-destaque','destaque':'sb-destaque',
+        'soccer_brazil_campeonato':'sb-brasileirao',
+        'soccer_conmebol_copa_libertadores':'sb-libertadores',
+        'soccer_uefa_champs_league':'sb-champions',
+        'soccer_epl':'sb-premier',
+        'soccer_spain_la_liga':'sb-laliga',
+        'basketball_nba':'sb-basquete',
+        'americanfootball_nfl':'sb-nfl',
+        'mma_mixed_martial_arts':'sb-mma',
+        'tennis_atp_aus_open_singles':'sb-tenis',
+      };
+      setSbActive(sbSportMap[sport]||'sb-destaque');
       carregarJogos(sport);
       break;
     case 'live':
@@ -972,61 +993,109 @@ function irSorteio(){
   sbNav('sorteio');
 }
 
+/* ══ MAPA DE LABELS POR SPORT ══ */
+const _SPORT_LABELS = {
+  'upcoming':                              { titulo: '🔥 Em Destaque',        cor: 'var(--gold)' },
+  'destaque':                              { titulo: '🔥 Em Destaque',        cor: 'var(--gold)' },
+  'soccer_brazil_campeonato':              { titulo: '🇧🇷 Brasileirão Série A', cor: '#22c55e' },
+  'soccer_conmebol_copa_libertadores':     { titulo: '🏆 Copa Libertadores',   cor: '#f5a623' },
+  'soccer_uefa_champs_league':             { titulo: '⭐ Champions League',    cor: '#60a5fa' },
+  'soccer_epl':                            { titulo: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League',      cor: '#a78bfa' },
+  'soccer_spain_la_liga':                  { titulo: '🇪🇸 La Liga',            cor: '#f87171' },
+  'basketball_nba':                        { titulo: '🏀 NBA',                 cor: '#fb923c' },
+  'americanfootball_nfl':                  { titulo: '🏈 NFL',                 cor: '#34d399' },
+  'tennis_atp_aus_open_singles':           { titulo: '🎾 Tênis ATP',           cor: '#fbbf24' },
+  'mma_mixed_martial_arts':                { titulo: '🥊 MMA / Boxe',          cor: '#ef4444' },
+};
+
 /* ══ APOSTAS ══ */
-async function carregarJogos(sport){
-  const lista=document.getElementById('jogos-lista');
-  lista.innerHTML='<div class="loading-center" style="grid-column:1/-1"><div class="spinner2"></div>Carregando jogos...</div>';
-  try{
-    const r=await fetch(BASE+'/api/bet/jogos?sport='+sport);
-    const d=await r.json();
-    const jogos=(d.jogos||[]).filter(j=>sport==='upcoming'||j.sport===sport);
-    if(!jogos.length){
-      lista.innerHTML='<div class="loading-center" style="grid-column:1/-1">⚽ Nenhum jogo encontrado agora.</div>';return;
+async function carregarJogos(sport) {
+  const lista  = document.getElementById('jogos-lista');
+  const titulo = document.getElementById('apostas-titulo');
+  const count  = document.getElementById('apostas-count');
+  const accent = document.getElementById('apostas-accent');
+
+  // Atualizar cabeçalho da seção
+  const info = _SPORT_LABELS[sport] || { titulo: sport, cor: 'var(--gold)' };
+  if (titulo) titulo.textContent = info.titulo;
+  if (accent) accent.style.background = info.cor;
+  if (count)  count.textContent = '';
+
+  lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div class="spinner2"></div>Carregando ' + info.titulo + '...</div>';
+
+  // Sincronizar chip ativo
+  document.querySelectorAll('.sport-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.sport === sport);
+  });
+
+  try {
+    const r = await fetch(BASE + '/api/bet/jogos?sport=' + sport);
+    const d = await r.json();
+    // Filtro duplo: backend + client-side para garantir segmentação
+    let jogos = (d.jogos || []);
+    if (sport && sport !== 'upcoming' && sport !== 'destaque') {
+      jogos = jogos.filter(j => j.sport === sport);
     }
-    lista.innerHTML='';
-    for(const j of jogos){
-      const live=new Date(j.commence_time)<new Date();
-      const o=j.odds||{};
-      const temEmpate=o.draw!=null;
-      const card=document.createElement('div');
-      card.className='jogo-card'+(live?' live-c':'');
-      const hora=j.commence_time?new Date(j.commence_time).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
-      // logo
-      const hLogo=getTeamLogo?.(j.home_team);
-      const aLogo=getTeamLogo?.(j.away_team);
-      const hBadge=hLogo?'<img class="t-escudo" src="'+hLogo+'" alt="" onerror="this.style.display=\'none\'">':'<div class="t-ini">'+teamInitials(j.home_team)+'</div>';
-      const aBadge=aLogo?'<img class="t-escudo" src="'+aLogo+'" alt="" onerror="this.style.display=\'none\'">':'<div class="t-ini">'+teamInitials(j.away_team)+'</div>';
-      // pred
-      let predHtml='';
-      try{
-        const pr=await fetch(BASE+'/api/bet/predictions?fixture='+j.id);
-        const pd=await pr.json();
-        if(pd.success&&pd.prediction){
-          const p=pd.prediction;const pct=p.percent||{};
-          predHtml='<div class="pred-bar"><div class="pred-h" style="width:'+((pct.home||'33%'))+'">'+((pct.home||'33%'))+'</div><div class="pred-d" style="width:'+((pct.draw||'34%'))+'">'+((pct.draw||''))+'</div><div class="pred-a" style="width:'+((pct.away||'33%'))+'">'+((pct.away||'33%'))+'</div></div><div class="pred-adv">🤖 '+(p.advice||'Favorito: '+p.winner)+'</div>';
+
+    // Atualizar contagem
+    if (count) count.textContent = jogos.length ? jogos.length + ' jogo' + (jogos.length > 1 ? 's' : '') : '';
+
+    if (!jogos.length) {
+      lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div style="font-size:32px;margin-bottom:12px">⚽</div><div style="color:var(--muted);font-size:14px">Nenhum jogo disponível para<br><strong style="color:var(--text)">' + info.titulo + '</strong> agora.</div><div style="margin-top:12px;font-size:12px;color:var(--muted)">Tente outra liga ou volte mais tarde.</div></div>';
+      return;
+    }
+    lista.innerHTML = '';
+    for (const j of jogos) {
+      const live    = new Date(j.commence_time) < new Date();
+      const o       = j.odds || {};
+      const temEmpate = o.draw != null;
+      const card    = document.createElement('div');
+      card.className = 'jogo-card' + (live ? ' live-c' : '');
+      const hora    = j.commence_time ? new Date(j.commence_time).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+      const hLogo   = getTeamLogo?.(j.home_team);
+      const aLogo   = getTeamLogo?.(j.away_team);
+      const hBadge  = hLogo ? '<img class="t-escudo" src="' + hLogo + '" alt="" onerror="this.style.display=\'none\'">' : '<div class="t-ini">' + teamInitials(j.home_team) + '</div>';
+      const aBadge  = aLogo ? '<img class="t-escudo" src="' + aLogo + '" alt="" onerror="this.style.display=\'none\'">' : '<div class="t-ini">' + teamInitials(j.away_team) + '</div>';
+      // Liga badge colorida
+      const lInfo   = _SPORT_LABELS[j.sport] || {};
+      const ligaColor = lInfo.cor || 'var(--muted)';
+      // Previsão (silenciosa)
+      let predHtml = '';
+      try {
+        const pr = await fetch(BASE + '/api/bet/predictions?fixture=' + j.id);
+        const pd = await pr.json();
+        if (pd.success && pd.prediction) {
+          const p = pd.prediction; const pct = p.percent || {};
+          predHtml = '<div class="pred-bar"><div class="pred-h" style="width:' + (pct.home||'33%') + '">' + (pct.home||'33%') + '</div><div class="pred-d" style="width:' + (pct.draw||'34%') + '">' + (pct.draw||'') + '</div><div class="pred-a" style="width:' + (pct.away||'33%') + '">' + (pct.away||'33%') + '</div></div><div class="pred-adv">🤖 ' + (p.advice||'Favorito: '+p.winner) + '</div>';
         }
-      }catch(ep){}
-      card.innerHTML=
-        '<div class="jc-meta"><span class="jc-liga">'+(j.league||j.sport)+'</span>'+
-        (live?'<span class="live-tag">● AO VIVO</span>':'<span class="jc-hora">'+hora+'</span>')+'</div>'+
-        '<div class="jc-times"><div class="time-b">'+hBadge+'<span class="t-nome">'+j.home_team+'</span></div>'+
-        '<span class="t-vs">'+(live?'<span style="color:var(--red);font-size:10px;font-weight:900">AO VIVO</span>':'VS')+'</span>'+
-        '<div class="time-b away">'+aBadge+'<span class="t-nome">'+j.away_team+'</span></div></div>'+
-        predHtml+
-        '<div class="jc-odds'+(temEmpate?'':' no-draw')+'">'+
-        (o.home!=null?'<div class="odd-btn2" id="ob-'+j.id+'-c" onclick="selOdd(\''+j.id+'\',\''+j.home_team+'\',\'C\','+o.home+',\''+j.home_team+' × '+j.away_team+'\')"><div class="o-lbl">'+teamShortLabel(j.home_team)+'</div><div class="o-val">'+Number(o.home).toFixed(2)+'</div></div>':'')+
-        (temEmpate?'<div class="odd-btn2" id="ob-'+j.id+'-e" onclick="selOdd(\''+j.id+'\',\'Empate\',\'X\','+o.draw+',\''+j.home_team+' × '+j.away_team+'\')"><div class="o-lbl">Empate</div><div class="o-val">'+Number(o.draw).toFixed(2)+'</div></div>':'')+
-        (o.away!=null?'<div class="odd-btn2" id="ob-'+j.id+'-f" onclick="selOdd(\''+j.id+'\',\''+j.away_team+'\',\'F\','+o.away+',\''+j.home_team+' × '+j.away_team+'\')"><div class="o-lbl">'+teamShortLabel(j.away_team)+'</div><div class="o-val">'+Number(o.away).toFixed(2)+'</div></div>':'')+
+      } catch(ep) {}
+      card.innerHTML =
+        '<div class="jc-meta">' +
+          '<span class="jc-liga" style="color:' + ligaColor + ';font-weight:700">' + (j.league || j.sport) + '</span>' +
+          (live ? '<span class="live-tag">● AO VIVO</span>' : '<span class="jc-hora">' + hora + '</span>') +
+        '</div>' +
+        '<div class="jc-times">' +
+          '<div class="time-b">' + hBadge + '<span class="t-nome">' + j.home_team + '</span></div>' +
+          '<span class="t-vs">' + (live ? '<span style="color:var(--red);font-size:10px;font-weight:900">AO VIVO</span>' : 'VS') + '</span>' +
+          '<div class="time-b away">' + aBadge + '<span class="t-nome">' + j.away_team + '</span></div>' +
+        '</div>' +
+        predHtml +
+        '<div class="jc-odds' + (temEmpate ? '' : ' no-draw') + '">' +
+          (o.home!=null ? '<div class="odd-btn2" id="ob-'+j.id+'-c" onclick="selOdd(\''+j.id+'\',\''+j.home_team+'\',\'C\','+o.home+',\''+j.home_team+' × '+j.away_team+'\')"><div class="o-lbl">'+teamShortLabel(j.home_team)+'</div><div class="o-val">'+Number(o.home).toFixed(2)+'</div></div>' : '') +
+          (temEmpate ? '<div class="odd-btn2" id="ob-'+j.id+'-e" onclick="selOdd(\''+j.id+'\',\'Empate\',\'X\','+o.draw+',\''+j.home_team+' × '+j.away_team+'\')"><div class="o-lbl">Empate</div><div class="o-val">'+Number(o.draw).toFixed(2)+'</div></div>' : '') +
+          (o.away!=null ? '<div class="odd-btn2" id="ob-'+j.id+'-f" onclick="selOdd(\''+j.id+'\',\''+j.away_team+'\',\'F\','+o.away+',\''+j.home_team+' × '+j.away_team+'\')"><div class="o-lbl">'+teamShortLabel(j.away_team)+'</div><div class="o-val">'+Number(o.away).toFixed(2)+'</div></div>' : '') +
         '</div>';
       lista.appendChild(card);
     }
-  }catch(e){lista.innerHTML='<div class="loading-center" style="grid-column:1/-1">⚠️ Erro ao carregar. Tentando novamente...</div>';setTimeout(()=>carregarJogos(sport),5000)}
+  } catch(e) {
+    lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1">⚠️ Erro ao carregar. <button onclick="carregarJogos(\'' + sport + '\')" style="background:var(--blue);border:none;color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;margin-left:8px">Tentar novamente</button></div>';
+  }
 }
 
-function chipSport(el){
-  document.querySelectorAll('.sport-chip').forEach(c=>c.classList.remove('active'));
+function chipSport(el) {
+  document.querySelectorAll('.sport-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
-  _currentSport=el.dataset.sport;
+  _currentSport = el.dataset.sport;
   carregarJogos(_currentSport);
 }
 
