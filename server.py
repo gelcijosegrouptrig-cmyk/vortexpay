@@ -7136,7 +7136,7 @@ async def route_parceiro_info_publico(request):
         conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
         cur  = conn.cursor()
         cur.execute("""
-            SELECT nome, modo_pagamento, valor_fixo_parceiro, ativo
+            SELECT nome, modo_pagamento, valor_fixo_parceiro, ativo, COALESCE(permitir_assinatura, false)
             FROM mp2_parceiros WHERE codigo = %s
         """, (codigo,))
         row = cur.fetchone()
@@ -7147,7 +7147,8 @@ async def route_parceiro_info_publico(request):
             'success': True,
             'nome': row[0],
             'modo_pagamento': row[1] or 'livre',
-            'valor_fixo_parceiro': float(row[2] or 0)
+            'valor_fixo_parceiro': float(row[2] or 0),
+            'permitir_assinatura': bool(row[4])
         })
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)}, status=500)
@@ -7173,7 +7174,8 @@ async def route_mp2_parceiros_listar(request):
                    TO_CHAR(p.criado_em, %s) AS criado_em,
                    COUNT(t.id) FILTER (WHERE t.status = %s) AS qtd_pagamentos,
                    COALESCE(p.modo_pagamento, 'livre') AS modo_pagamento,
-                   COALESCE(p.valor_fixo_parceiro, 0)  AS valor_fixo_parceiro
+                   COALESCE(p.valor_fixo_parceiro, 0)  AS valor_fixo_parceiro,
+                   COALESCE(p.permitir_assinatura, false) AS permitir_assinatura
             FROM mp2_parceiros p
             LEFT JOIN mp2_transacoes t ON t.parceiro_codigo = p.codigo
             GROUP BY p.id
@@ -7348,6 +7350,9 @@ async def route_mp2_parceiros_editar(request):
             vfp = max(0.0, vfp)
             campos.append('valor_fixo_parceiro = %s')
             valores.append(vfp)
+        if 'permitir_assinatura' in body:
+            campos.append('permitir_assinatura = %s')
+            valores.append(bool(body['permitir_assinatura']))
         if not campos:
             cur.close(); conn.close()
             return web.json_response({'success': False, 'error': 'Nenhum campo para atualizar'})
@@ -8072,6 +8077,9 @@ async def route_mp3_parceiros_editar(request):
             vfp = float(body.get('valor_fixo_parceiro') or 0)
             fields.append('valor_fixo_parceiro=%s')
             vals.append(max(0.0, vfp))
+        if 'permitir_assinatura' in body:
+            fields.append('permitir_assinatura=%s')
+            vals.append(bool(body['permitir_assinatura']))
         if fields:
             vals.append(codigo)
             cur.execute(f"UPDATE mp3_parceiros SET {', '.join(fields)} WHERE codigo=%s", vals)

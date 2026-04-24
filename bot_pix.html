@@ -406,6 +406,21 @@ window.addEventListener('DOMContentLoaded', async () => {
           setModo('livre');
           document.getElementById('modo-tabs').style.display = '';
         }
+        // Controle de assinatura: se parceiro não permite, ocultar toggle
+        const toggleWrap = document.getElementById('toggle-recorrente')?.closest('.recorrente-toggle');
+        if(toggleWrap){
+          if(parceiro.permitir_assinatura === false){
+            toggleWrap.style.display = 'none';
+            // Garantir que assinatura está desativada
+            const ck = document.getElementById('toggle-recorrente');
+            if(ck) ck.checked = false;
+            isRecorrente = false;
+            const extraDiv = document.getElementById('recorrente-extra');
+            if(extraDiv) extraDiv.classList.remove('show');
+          } else {
+            toggleWrap.style.display = '';
+          }
+        }
       }
     }catch(e){}
   }

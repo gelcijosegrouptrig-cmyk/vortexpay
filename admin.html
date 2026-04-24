@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250427y</title>
+<title>PaynexBet - Painel Admin v20250427z</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427y';
+  const VER = '20250427z';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -7673,28 +7673,50 @@ async function ppCarregarParceiros() {
                 </div>
               </div>
             </div>
-            <!-- linha 2: modo de pagamento -->
+            <!-- linha 2: modo de pagamento + assinatura -->
             <div style="background:#07071a;border:1px solid #3b82f622;border-radius:10px;padding:12px;margin-bottom:12px">
               <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:600">💳 Modo de pagamento do link</div>
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='livre'?'#3b82f6':'#333'};background:${(p.modo_pagamento||'livre')==='livre'?'#1e3a5f':'#0a0a14'};transition:all .2s"
-                  onclick="ppModoChange('${p.codigo}','livre')">
-                  <input type="radio" id="pp-edit-modo-livre-${p.codigo}" name="pp-edit-modo-${p.codigo}" value="livre" ${(p.modo_pagamento||'livre')==='livre'?'checked':''} style="accent-color:#3b82f6">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+                <div id="pp-btn-livre-${p.codigo}"
+                  onclick="ppModoChange('${p.codigo}','livre')"
+                  style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='livre'?'#3b82f6':'#444'};background:${(p.modo_pagamento||'livre')==='livre'?'#1e3a5f':'#0a0a14'};transition:all .2s;user-select:none">
+                  <span style="font-size:16px">${(p.modo_pagamento||'livre')==='livre'?'🔵':'⚪'}</span>
                   <span style="font-size:13px;font-weight:600;color:${(p.modo_pagamento||'livre')==='livre'?'#60a5fa':'#888'}">🔓 Valor Livre</span>
-                </label>
-                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='fixo'?'#a855f7':'#333'};background:${(p.modo_pagamento||'livre')==='fixo'?'#1a0a2e':'#0a0a14'};transition:all .2s"
-                  onclick="ppModoChange('${p.codigo}','fixo')">
-                  <input type="radio" id="pp-edit-modo-fixo-${p.codigo}" name="pp-edit-modo-${p.codigo}" value="fixo" ${(p.modo_pagamento||'livre')==='fixo'?'checked':''} style="accent-color:#a855f7">
+                </div>
+                <div id="pp-btn-fixo-${p.codigo}"
+                  onclick="ppModoChange('${p.codigo}','fixo')"
+                  style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='fixo'?'#a855f7':'#444'};background:${(p.modo_pagamento||'livre')==='fixo'?'#1a0a2e':'#0a0a14'};transition:all .2s;user-select:none">
+                  <span style="font-size:16px">${(p.modo_pagamento||'livre')==='fixo'?'🟣':'⚪'}</span>
                   <span style="font-size:13px;font-weight:600;color:${(p.modo_pagamento||'livre')==='fixo'?'#c084fc':'#888'}">🔒 Valor Fixo</span>
-                </label>
+                </div>
                 <div id="pp-edit-vfp-wrap-${p.codigo}" style="display:${(p.modo_pagamento||'livre')==='fixo'?'flex':'none'};align-items:center;gap:6px;margin-left:6px">
                   <span style="font-size:13px;color:#888">R$</span>
-                  <input id="pp-edit-vfp-${p.codigo}" type="number" min="1" step="0.01" value="${(p.valor_fixo_parceiro||0).toFixed(2)}"
+                  <input id="pp-edit-vfp-${p.codigo}" type="number" min="0.01" step="0.01" value="${(p.valor_fixo_parceiro||0).toFixed(2)}"
                     style="width:90px;background:#0a0a14;border:1px solid #a855f7;border-radius:7px;padding:7px 10px;color:#c084fc;font-size:14px;font-weight:700;text-align:center">
                   <span style="font-size:11px;color:#666">cobrado por pagamento</span>
                 </div>
               </div>
+              <!-- assinatura mensal -->
+              <div style="border-top:1px solid #3b82f622;padding-top:10px">
+                <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:600">🔄 Assinatura mensal automática</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <div id="pp-btn-assn-on-${p.codigo}"
+                    onclick="ppAssnaturaChange('${p.codigo}',true)"
+                    style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:7px 14px;border-radius:8px;border:2px solid ${p.permitir_assinatura?'#9c27b0':'#444'};background:${p.permitir_assinatura?'#1a0a22':'#0a0a14'};transition:all .2s;user-select:none">
+                    <span style="font-size:15px">${p.permitir_assinatura?'🟣':'⚪'}</span>
+                    <span style="font-size:12px;font-weight:600;color:${p.permitir_assinatura?'#ce93d8':'#888'}">✅ Permitir</span>
+                  </div>
+                  <div id="pp-btn-assn-off-${p.codigo}"
+                    onclick="ppAssnaturaChange('${p.codigo}',false)"
+                    style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:7px 14px;border-radius:8px;border:2px solid ${!p.permitir_assinatura?'#ef4444':'#444'};background:${!p.permitir_assinatura?'#2a0a0a':'#0a0a14'};transition:all .2s;user-select:none">
+                    <span style="font-size:15px">${!p.permitir_assinatura?'🔴':'⚪'}</span>
+                    <span style="font-size:12px;font-weight:600;color:${!p.permitir_assinatura?'#f87171':'#888'}">🚫 Não permitir</span>
+                  </div>
+                  <span style="font-size:11px;color:#666">Permite que o cliente ative recorrência neste link</span>
+                </div>
+              </div>
             </div>
+
             <div style="display:flex;gap:8px;margin-top:4px">
               <button onclick="ppSalvarEdicao('${p.codigo}')"
                 style="padding:8px 20px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">
@@ -7738,21 +7760,41 @@ function ppAbrirEdicao(codigo, nome, chave, tipo, pct) {
 }
 
 function ppModoChange(codigo, modo) {
-  // Atualizar radio
-  const radio = document.getElementById(`pp-edit-modo-${modo}-${codigo}`);
-  if (radio) radio.checked = true;
   // Mostrar/ocultar campo de valor fixo
   const wrap = document.getElementById(`pp-edit-vfp-wrap-${codigo}`);
   if (wrap) wrap.style.display = modo === 'fixo' ? 'flex' : 'none';
-  // Atualizar estilos dos botões radio
+  // Atualizar estilo dos botões div
   ['livre','fixo'].forEach(m => {
-    const lbl = document.querySelector(`label[onclick="ppModoChange('${codigo}','${m}')"]`);
-    if (!lbl) return;
-    const isSelected = m === modo;
-    lbl.style.borderColor = isSelected ? (m==='fixo'?'#a855f7':'#3b82f6') : '#333';
-    lbl.style.background  = isSelected ? (m==='fixo'?'#1a0a2e':'#1e3a5f') : '#0a0a14';
-    lbl.querySelector('span').style.color = isSelected ? (m==='fixo'?'#c084fc':'#60a5fa') : '#888';
+    const btn = document.getElementById(`pp-btn-${m}-${codigo}`);
+    if (!btn) return;
+    const sel = m === modo;
+    btn.style.borderColor = sel ? (m==='fixo'?'#a855f7':'#3b82f6') : '#444';
+    btn.style.background  = sel ? (m==='fixo'?'#1a0a2e':'#1e3a5f') : '#0a0a14';
+    const icon = btn.querySelector('span:first-child');
+    const lbl  = btn.querySelector('span:last-child');
+    if (icon) icon.textContent = sel ? (m==='fixo'?'🟣':'🔵') : '⚪';
+    if (lbl)  lbl.style.color  = sel ? (m==='fixo'?'#c084fc':'#60a5fa') : '#888';
   });
+  // armazenar seleção atual no dataset do botão livre (referência fácil)
+  const btnLivre = document.getElementById(`pp-btn-livre-${codigo}`);
+  if (btnLivre) btnLivre.dataset.modo = modo;
+}
+
+function ppAssnaturaChange(codigo, permitir) {
+  ['on','off'].forEach(s => {
+    const btn = document.getElementById(`pp-btn-assn-${s}-${codigo}`);
+    if (!btn) return;
+    const sel = (s === 'on') === permitir;
+    btn.style.borderColor = sel ? (s==='on'?'#9c27b0':'#ef4444') : '#444';
+    btn.style.background  = sel ? (s==='on'?'#1a0a22':'#2a0a0a') : '#0a0a14';
+    const icon = btn.querySelector('span:first-child');
+    const lbl  = btn.querySelector('span:last-child');
+    if (icon) icon.textContent = sel ? (s==='on'?'🟣':'🔴') : '⚪';
+    if (lbl)  lbl.style.color  = sel ? (s==='on'?'#ce93d8':'#f87171') : '#888';
+  });
+  // armazenar estado
+  const btnOn = document.getElementById(`pp-btn-assn-on-${codigo}`);
+  if (btnOn) btnOn.dataset.permitir = permitir ? '1' : '0';
 }
 
 async function ppSalvarEdicao(codigo) {
@@ -7760,8 +7802,11 @@ async function ppSalvarEdicao(codigo) {
   const chave   = document.getElementById(`pp-edit-chave-${codigo}`).value.trim();
   const tipo    = document.getElementById(`pp-edit-tipo-${codigo}`).value;
   const pct     = parseFloat(document.getElementById(`pp-edit-pct-${codigo}`).value) || 10;
-  const modo    = document.querySelector(`input[name="pp-edit-modo-${codigo}"]:checked`)?.value || 'livre';
+  const btnLivrePP = document.getElementById(`pp-btn-livre-${codigo}`);
+  const modo    = btnLivrePP?.dataset.modo || (document.getElementById(`pp-edit-vfp-wrap-${codigo}`)?.style.display !== 'none' ? 'fixo' : 'livre');
   const vfp     = parseFloat(document.getElementById(`pp-edit-vfp-${codigo}`)?.value) || 0;
+  const btnAssnPP = document.getElementById(`pp-btn-assn-on-${codigo}`);
+  const permitirAssn = btnAssnPP?.dataset.permitir === '1';
   const msgEl   = document.getElementById(`pp-edit-msg-${codigo}`);
 
   if (!nome || !chave) { msgEl.innerHTML = '<span style="color:#f44">Nome e chave PIX obrigatórios</span>'; return; }
@@ -7771,7 +7816,7 @@ async function ppSalvarEdicao(codigo) {
     const r = await fetch(`${BASE}/api/pp/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
-      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct, modo_pagamento: modo, valor_fixo_parceiro: vfp })
+      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct, modo_pagamento: modo, valor_fixo_parceiro: vfp, permitir_assinatura: permitirAssn })
     });
     const d = await r.json();
     if (d.success) {
@@ -8582,28 +8627,50 @@ async function pcCarregarParceiros() {
                 </div>
               </div>
             </div>
-            <!-- linha 2: modo de pagamento -->
+            <!-- linha 2: modo de pagamento + assinatura -->
             <div style="background:#07071a;border:1px solid #3b82f622;border-radius:10px;padding:12px;margin-bottom:12px">
               <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:600">💳 Modo de pagamento do link</div>
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='livre'?'#3b82f6':'#333'};background:${(p.modo_pagamento||'livre')==='livre'?'#1e3a5f':'#0a0a14'};transition:all .2s"
-                  onclick="pcModoChange('${p.codigo}','livre')">
-                  <input type="radio" id="pc-edit-modo-livre-${p.codigo}" name="pc-edit-modo-${p.codigo}" value="livre" ${(p.modo_pagamento||'livre')==='livre'?'checked':''} style="accent-color:#3b82f6">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+                <div id="pc-btn-livre-${p.codigo}"
+                  onclick="pcModoChange('${p.codigo}','livre')"
+                  style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='livre'?'#3b82f6':'#444'};background:${(p.modo_pagamento||'livre')==='livre'?'#1e3a5f':'#0a0a14'};transition:all .2s;user-select:none">
+                  <span style="font-size:16px">${(p.modo_pagamento||'livre')==='livre'?'🔵':'⚪'}</span>
                   <span style="font-size:13px;font-weight:600;color:${(p.modo_pagamento||'livre')==='livre'?'#60a5fa':'#888'}">🔓 Valor Livre</span>
-                </label>
-                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='fixo'?'#a855f7':'#333'};background:${(p.modo_pagamento||'livre')==='fixo'?'#1a0a2e':'#0a0a14'};transition:all .2s"
-                  onclick="pcModoChange('${p.codigo}','fixo')">
-                  <input type="radio" id="pc-edit-modo-fixo-${p.codigo}" name="pc-edit-modo-${p.codigo}" value="fixo" ${(p.modo_pagamento||'livre')==='fixo'?'checked':''} style="accent-color:#a855f7">
+                </div>
+                <div id="pc-btn-fixo-${p.codigo}"
+                  onclick="pcModoChange('${p.codigo}','fixo')"
+                  style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='fixo'?'#a855f7':'#444'};background:${(p.modo_pagamento||'livre')==='fixo'?'#1a0a2e':'#0a0a14'};transition:all .2s;user-select:none">
+                  <span style="font-size:16px">${(p.modo_pagamento||'livre')==='fixo'?'🟣':'⚪'}</span>
                   <span style="font-size:13px;font-weight:600;color:${(p.modo_pagamento||'livre')==='fixo'?'#c084fc':'#888'}">🔒 Valor Fixo</span>
-                </label>
+                </div>
                 <div id="pc-edit-vfp-wrap-${p.codigo}" style="display:${(p.modo_pagamento||'livre')==='fixo'?'flex':'none'};align-items:center;gap:6px;margin-left:6px">
                   <span style="font-size:13px;color:#888">R$</span>
-                  <input id="pc-edit-vfp-${p.codigo}" type="number" min="1" step="0.01" value="${(p.valor_fixo_parceiro||0).toFixed(2)}"
+                  <input id="pc-edit-vfp-${p.codigo}" type="number" min="0.01" step="0.01" value="${(p.valor_fixo_parceiro||0).toFixed(2)}"
                     style="width:90px;background:#0a0a14;border:1px solid #a855f7;border-radius:7px;padding:7px 10px;color:#c084fc;font-size:14px;font-weight:700;text-align:center">
                   <span style="font-size:11px;color:#666">cobrado por pagamento</span>
                 </div>
               </div>
+              <!-- assinatura mensal -->
+              <div style="border-top:1px solid #3b82f622;padding-top:10px">
+                <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:600">🔄 Assinatura mensal automática</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <div id="pc-btn-assn-on-${p.codigo}"
+                    onclick="pcAssnaturaChange('${p.codigo}',true)"
+                    style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:7px 14px;border-radius:8px;border:2px solid ${p.permitir_assinatura?'#9c27b0':'#444'};background:${p.permitir_assinatura?'#1a0a22':'#0a0a14'};transition:all .2s;user-select:none">
+                    <span style="font-size:15px">${p.permitir_assinatura?'🟣':'⚪'}</span>
+                    <span style="font-size:12px;font-weight:600;color:${p.permitir_assinatura?'#ce93d8':'#888'}">✅ Permitir</span>
+                  </div>
+                  <div id="pc-btn-assn-off-${p.codigo}"
+                    onclick="pcAssnaturaChange('${p.codigo}',false)"
+                    style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:7px 14px;border-radius:8px;border:2px solid ${!p.permitir_assinatura?'#ef4444':'#444'};background:${!p.permitir_assinatura?'#2a0a0a':'#0a0a14'};transition:all .2s;user-select:none">
+                    <span style="font-size:15px">${!p.permitir_assinatura?'🔴':'⚪'}</span>
+                    <span style="font-size:12px;font-weight:600;color:${!p.permitir_assinatura?'#f87171':'#888'}">🚫 Não permitir</span>
+                  </div>
+                  <span style="font-size:11px;color:#666">Permite que o cliente ative recorrência neste link</span>
+                </div>
+              </div>
             </div>
+
             <div style="display:flex;gap:8px;margin-top:4px">
               <button onclick="pcSalvarEdicao('${p.codigo}')"
                 style="padding:8px 20px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">
@@ -8644,18 +8711,37 @@ function pcAbrirEdicao(codigo, nome, chave, tipo, pct) {
 }
 
 function pcModoChange(codigo, modo) {
-  const radio = document.getElementById(`pc-edit-modo-${modo}-${codigo}`);
-  if (radio) radio.checked = true;
   const wrap = document.getElementById(`pc-edit-vfp-wrap-${codigo}`);
   if (wrap) wrap.style.display = modo === 'fixo' ? 'flex' : 'none';
   ['livre','fixo'].forEach(m => {
-    const lbl = document.querySelector(`label[onclick="pcModoChange('${codigo}','${m}')"]`);
-    if (!lbl) return;
-    const isSelected = m === modo;
-    lbl.style.borderColor = isSelected ? (m==='fixo'?'#a855f7':'#3b82f6') : '#333';
-    lbl.style.background  = isSelected ? (m==='fixo'?'#1a0a2e':'#1e3a5f') : '#0a0a14';
-    lbl.querySelector('span').style.color = isSelected ? (m==='fixo'?'#c084fc':'#60a5fa') : '#888';
+    const btn = document.getElementById(`pc-btn-${m}-${codigo}`);
+    if (!btn) return;
+    const sel = m === modo;
+    btn.style.borderColor = sel ? (m==='fixo'?'#a855f7':'#3b82f6') : '#444';
+    btn.style.background  = sel ? (m==='fixo'?'#1a0a2e':'#1e3a5f') : '#0a0a14';
+    const icon = btn.querySelector('span:first-child');
+    const lbl  = btn.querySelector('span:last-child');
+    if (icon) icon.textContent = sel ? (m==='fixo'?'🟣':'🔵') : '⚪';
+    if (lbl)  lbl.style.color  = sel ? (m==='fixo'?'#c084fc':'#60a5fa') : '#888';
   });
+  const btnLivre = document.getElementById(`pc-btn-livre-${codigo}`);
+  if (btnLivre) btnLivre.dataset.modo = modo;
+}
+
+function pcAssnaturaChange(codigo, permitir) {
+  ['on','off'].forEach(s => {
+    const btn = document.getElementById(`pc-btn-assn-${s}-${codigo}`);
+    if (!btn) return;
+    const sel = (s === 'on') === permitir;
+    btn.style.borderColor = sel ? (s==='on'?'#9c27b0':'#ef4444') : '#444';
+    btn.style.background  = sel ? (s==='on'?'#1a0a22':'#2a0a0a') : '#0a0a14';
+    const icon = btn.querySelector('span:first-child');
+    const lbl  = btn.querySelector('span:last-child');
+    if (icon) icon.textContent = sel ? (s==='on'?'🟣':'🔴') : '⚪';
+    if (lbl)  lbl.style.color  = sel ? (s==='on'?'#ce93d8':'#f87171') : '#888';
+  });
+  const btnOn = document.getElementById(`pc-btn-assn-on-${codigo}`);
+  if (btnOn) btnOn.dataset.permitir = permitir ? '1' : '0';
 }
 
 async function pcSalvarEdicao(codigo) {
@@ -8663,8 +8749,11 @@ async function pcSalvarEdicao(codigo) {
   const chave   = document.getElementById(`pc-edit-chave-${codigo}`).value.trim();
   const tipo    = document.getElementById(`pc-edit-tipo-${codigo}`).value;
   const pct     = parseFloat(document.getElementById(`pc-edit-pct-${codigo}`).value) || 10;
-  const modo    = document.querySelector(`input[name="pc-edit-modo-${codigo}"]:checked`)?.value || 'livre';
+  const btnLivrePC = document.getElementById(`pc-btn-livre-${codigo}`);
+  const modo    = btnLivrePC?.dataset.modo || (document.getElementById(`pc-edit-vfp-wrap-${codigo}`)?.style.display !== 'none' ? 'fixo' : 'livre');
   const vfp     = parseFloat(document.getElementById(`pc-edit-vfp-${codigo}`)?.value) || 0;
+  const btnAssnPC = document.getElementById(`pc-btn-assn-on-${codigo}`);
+  const permitirAssn = btnAssnPC?.dataset.permitir === '1';
   const msgEl   = document.getElementById(`pc-edit-msg-${codigo}`);
 
   if (!nome || !chave) { msgEl.innerHTML = '<span style="color:#f44">Nome e chave PIX obrigatórios</span>'; return; }
@@ -8674,7 +8763,7 @@ async function pcSalvarEdicao(codigo) {
     const r = await fetch(`${BASE}/api/pc/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
-      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct, modo_pagamento: modo, valor_fixo_parceiro: vfp })
+      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct, modo_pagamento: modo, valor_fixo_parceiro: vfp, permitir_assinatura: permitirAssn })
     });
     const d = await r.json();
     if (d.success) {
@@ -9349,28 +9438,50 @@ async function b2CarregarParceiros() {
                 </div>
               </div>
             </div>
-            <!-- linha 2: modo de pagamento -->
+            <!-- linha 2: modo de pagamento + assinatura -->
             <div style="background:#07071a;border:1px solid #3b82f622;border-radius:10px;padding:12px;margin-bottom:12px">
               <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:600">💳 Modo de pagamento do link</div>
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='livre'?'#3b82f6':'#333'};background:${(p.modo_pagamento||'livre')==='livre'?'#1e3a5f':'#0a0a14'};transition:all .2s"
-                  onclick="b2ModoChange('${p.codigo}','livre')">
-                  <input type="radio" id="edit-modo-livre-${p.codigo}" name="edit-modo-${p.codigo}" value="livre" ${(p.modo_pagamento||'livre')==='livre'?'checked':''} style="accent-color:#3b82f6">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+                <div id="b2-btn-livre-${p.codigo}"
+                  onclick="b2ModoChange('${p.codigo}','livre')"
+                  style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='livre'?'#3b82f6':'#444'};background:${(p.modo_pagamento||'livre')==='livre'?'#1e3a5f':'#0a0a14'};transition:all .2s;user-select:none">
+                  <span style="font-size:16px">${(p.modo_pagamento||'livre')==='livre'?'🔵':'⚪'}</span>
                   <span style="font-size:13px;font-weight:600;color:${(p.modo_pagamento||'livre')==='livre'?'#60a5fa':'#888'}">🔓 Valor Livre</span>
-                </label>
-                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='fixo'?'#a855f7':'#333'};background:${(p.modo_pagamento||'livre')==='fixo'?'#1a0a2e':'#0a0a14'};transition:all .2s"
-                  onclick="b2ModoChange('${p.codigo}','fixo')">
-                  <input type="radio" id="edit-modo-fixo-${p.codigo}" name="edit-modo-${p.codigo}" value="fixo" ${(p.modo_pagamento||'livre')==='fixo'?'checked':''} style="accent-color:#a855f7">
+                </div>
+                <div id="b2-btn-fixo-${p.codigo}"
+                  onclick="b2ModoChange('${p.codigo}','fixo')"
+                  style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='fixo'?'#a855f7':'#444'};background:${(p.modo_pagamento||'livre')==='fixo'?'#1a0a2e':'#0a0a14'};transition:all .2s;user-select:none">
+                  <span style="font-size:16px">${(p.modo_pagamento||'livre')==='fixo'?'🟣':'⚪'}</span>
                   <span style="font-size:13px;font-weight:600;color:${(p.modo_pagamento||'livre')==='fixo'?'#c084fc':'#888'}">🔒 Valor Fixo</span>
-                </label>
+                </div>
                 <div id="edit-vfp-wrap-${p.codigo}" style="display:${(p.modo_pagamento||'livre')==='fixo'?'flex':'none'};align-items:center;gap:6px;margin-left:6px">
                   <span style="font-size:13px;color:#888">R$</span>
-                  <input id="edit-vfp-${p.codigo}" type="number" min="1" step="0.01" value="${(p.valor_fixo_parceiro||0).toFixed(2)}"
+                  <input id="edit-vfp-${p.codigo}" type="number" min="0.01" step="0.01" value="${(p.valor_fixo_parceiro||0).toFixed(2)}"
                     style="width:90px;background:#0a0a14;border:1px solid #a855f7;border-radius:7px;padding:7px 10px;color:#c084fc;font-size:14px;font-weight:700;text-align:center">
                   <span style="font-size:11px;color:#666">cobrado por pagamento</span>
                 </div>
               </div>
+              <!-- assinatura mensal -->
+              <div style="border-top:1px solid #3b82f622;padding-top:10px">
+                <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:600">🔄 Assinatura mensal automática</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <div id="b2-btn-assn-on-${p.codigo}"
+                    onclick="b2AssnaturaChange('${p.codigo}',true)"
+                    style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:7px 14px;border-radius:8px;border:2px solid ${p.permitir_assinatura?'#9c27b0':'#444'};background:${p.permitir_assinatura?'#1a0a22':'#0a0a14'};transition:all .2s;user-select:none">
+                    <span style="font-size:15px">${p.permitir_assinatura?'🟣':'⚪'}</span>
+                    <span style="font-size:12px;font-weight:600;color:${p.permitir_assinatura?'#ce93d8':'#888'}">✅ Permitir</span>
+                  </div>
+                  <div id="b2-btn-assn-off-${p.codigo}"
+                    onclick="b2AssnaturaChange('${p.codigo}',false)"
+                    style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:7px 14px;border-radius:8px;border:2px solid ${!p.permitir_assinatura?'#ef4444':'#444'};background:${!p.permitir_assinatura?'#2a0a0a':'#0a0a14'};transition:all .2s;user-select:none">
+                    <span style="font-size:15px">${!p.permitir_assinatura?'🔴':'⚪'}</span>
+                    <span style="font-size:12px;font-weight:600;color:${!p.permitir_assinatura?'#f87171':'#888'}">🚫 Não permitir</span>
+                  </div>
+                  <span style="font-size:11px;color:#666">Permite que o cliente ative recorrência neste link</span>
+                </div>
+              </div>
             </div>
+
             <div style="display:flex;gap:8px;margin-top:4px">
               <button onclick="b2SalvarEdicao('${p.codigo}')"
                 style="padding:8px 20px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">
@@ -9412,18 +9523,37 @@ function b2AbrirEdicao(codigo, nome, chave, tipo, pct) {
 }
 
 function b2ModoChange(codigo, modo) {
-  const radio = document.getElementById(`edit-modo-${modo}-${codigo}`);
-  if (radio) radio.checked = true;
   const wrap = document.getElementById(`edit-vfp-wrap-${codigo}`);
   if (wrap) wrap.style.display = modo === 'fixo' ? 'flex' : 'none';
   ['livre','fixo'].forEach(m => {
-    const lbl = document.querySelector(`label[onclick="b2ModoChange('${codigo}','${m}')"]`);
-    if (!lbl) return;
-    const isSelected = m === modo;
-    lbl.style.borderColor = isSelected ? (m==='fixo'?'#a855f7':'#3b82f6') : '#333';
-    lbl.style.background  = isSelected ? (m==='fixo'?'#1a0a2e':'#1e3a5f') : '#0a0a14';
-    lbl.querySelector('span').style.color = isSelected ? (m==='fixo'?'#c084fc':'#60a5fa') : '#888';
+    const btn = document.getElementById(`b2-btn-${m}-${codigo}`);
+    if (!btn) return;
+    const sel = m === modo;
+    btn.style.borderColor = sel ? (m==='fixo'?'#a855f7':'#3b82f6') : '#444';
+    btn.style.background  = sel ? (m==='fixo'?'#1a0a2e':'#1e3a5f') : '#0a0a14';
+    const icon = btn.querySelector('span:first-child');
+    const lbl  = btn.querySelector('span:last-child');
+    if (icon) icon.textContent = sel ? (m==='fixo'?'🟣':'🔵') : '⚪';
+    if (lbl)  lbl.style.color  = sel ? (m==='fixo'?'#c084fc':'#60a5fa') : '#888';
   });
+  const btnLivre = document.getElementById(`b2-btn-livre-${codigo}`);
+  if (btnLivre) btnLivre.dataset.modo = modo;
+}
+
+function b2AssnaturaChange(codigo, permitir) {
+  ['on','off'].forEach(s => {
+    const btn = document.getElementById(`b2-btn-assn-${s}-${codigo}`);
+    if (!btn) return;
+    const sel = (s === 'on') === permitir;
+    btn.style.borderColor = sel ? (s==='on'?'#9c27b0':'#ef4444') : '#444';
+    btn.style.background  = sel ? (s==='on'?'#1a0a22':'#2a0a0a') : '#0a0a14';
+    const icon = btn.querySelector('span:first-child');
+    const lbl  = btn.querySelector('span:last-child');
+    if (icon) icon.textContent = sel ? (s==='on'?'🟣':'🔴') : '⚪';
+    if (lbl)  lbl.style.color  = sel ? (s==='on'?'#ce93d8':'#f87171') : '#888';
+  });
+  const btnOn = document.getElementById(`b2-btn-assn-on-${codigo}`);
+  if (btnOn) btnOn.dataset.permitir = permitir ? '1' : '0';
 }
 
 async function b2SalvarEdicao(codigo) {
@@ -9431,8 +9561,11 @@ async function b2SalvarEdicao(codigo) {
   const chave   = document.getElementById(`edit-chave-${codigo}`).value.trim();
   const tipo    = document.getElementById(`edit-tipo-${codigo}`).value;
   const pct     = parseFloat(document.getElementById(`edit-pct-${codigo}`).value) || 10;
-  const modo    = document.querySelector(`input[name="edit-modo-${codigo}"]:checked`)?.value || 'livre';
+  const btnLivreB2 = document.getElementById(`b2-btn-livre-${codigo}`);
+  const modo    = btnLivreB2?.dataset.modo || (document.getElementById(`edit-vfp-wrap-${codigo}`)?.style.display !== 'none' ? 'fixo' : 'livre');
   const vfp     = parseFloat(document.getElementById(`edit-vfp-${codigo}`)?.value) || 0;
+  const btnAssnB2 = document.getElementById(`b2-btn-assn-on-${codigo}`);
+  const permitirAssn = btnAssnB2?.dataset.permitir === '1';
   const msgEl   = document.getElementById(`edit-msg-${codigo}`);
 
   if (!nome || !chave) { msgEl.innerHTML = '<span style="color:#f44">Nome e chave PIX obrigatórios</span>'; return; }
@@ -9442,7 +9575,7 @@ async function b2SalvarEdicao(codigo) {
     const r = await fetch(`${BASE}/api/mp2/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
-      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct, modo_pagamento: modo, valor_fixo_parceiro: vfp })
+      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct, modo_pagamento: modo, valor_fixo_parceiro: vfp, permitir_assinatura: permitirAssn })
     });
     const d = await r.json();
     if (d.success) {
@@ -10494,7 +10627,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427y ===');
+  out.push('=== VERSÃO: 20250427z ===');
   out.push('');
 
   // Estado dos elementos críticos
