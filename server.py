@@ -11652,7 +11652,8 @@ async def route_bet_crest(request):
     return web.json_response({'crest': None})
 
 
-async def route_bet_dbcheck(request):    """GET /api/bet/dbcheck — diagnóstico de conexão DB"""
+async def route_bet_dbcheck(request):
+    """GET /api/bet/dbcheck — diagnóstico de conexão DB"""
     import time, psycopg2 as _pg2
     results = []
     urls_to_try = [
