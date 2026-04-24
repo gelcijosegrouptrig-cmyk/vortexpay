@@ -4579,7 +4579,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20250428j-logos-dbfix',
+        'version': 'v20250428k-psycopg2-fix',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -10191,12 +10191,13 @@ _BET_DB_URL_FALLBACK = 'postgresql://postgres:EfJgSbrAkQbFlQJWdxIpIZftseKsDVKs@m
 
 async def _bet_db():
     """Retorna conexão psycopg2 ou None — tenta DATABASE_URL env var e fallback hardcoded"""
+    import psycopg2 as _pg2
     # Tenta 1: DATABASE_URL do ambiente (Railway injeta automaticamente)
     for db_url in [DATABASE_URL, _BET_DB_URL_FALLBACK]:
         if not db_url:
             continue
         try:
-            conn = psycopg2.connect(db_url, connect_timeout=10)
+            conn = _pg2.connect(db_url, connect_timeout=10)
             conn.autocommit = False
             return conn
         except Exception as e:
@@ -11505,7 +11506,7 @@ async def route_bet_config(request):
 
 async def route_bet_dbcheck(request):
     """GET /api/bet/dbcheck — diagnóstico de conexão DB"""
-    import time
+    import time, psycopg2 as _pg2
     results = []
     urls_to_try = [
         ('env_DATABASE_URL', DATABASE_URL),
@@ -11517,7 +11518,7 @@ async def route_bet_dbcheck(request):
             continue
         t0 = time.time()
         try:
-            conn = psycopg2.connect(url, connect_timeout=8)
+            conn = _pg2.connect(url, connect_timeout=8)
             cur = conn.cursor()
             cur.execute("SELECT COUNT(*) FROM usuarios")
             cnt_u = cur.fetchone()[0]
