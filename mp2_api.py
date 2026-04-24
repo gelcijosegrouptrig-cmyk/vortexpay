@@ -761,7 +761,9 @@ def mp2_get_parceiro(codigo: str) -> dict:
         cur  = conn.cursor(psycopg2.extras.RealDictCursor)
         cur.execute("""
             SELECT id, codigo, nome, chave_pix, tipo_chave,
-                   comissao_pct, ativo, link, total_gerado, total_comissao, total_pago
+                   comissao_pct, ativo, link, total_gerado, total_comissao, total_pago,
+                   COALESCE(modo_pagamento, 'livre') AS modo_pagamento,
+                   COALESCE(valor_fixo_parceiro, 0)  AS valor_fixo_parceiro
             FROM mp2_parceiros WHERE codigo = %s
         """, (codigo,))
         row = cur.fetchone()
@@ -772,6 +774,7 @@ def mp2_get_parceiro(codigo: str) -> dict:
             d['total_gerado'] = float(d['total_gerado'] or 0)
             d['total_comissao'] = float(d['total_comissao'] or 0)
             d['total_pago'] = float(d['total_pago'] or 0)
+            d['valor_fixo_parceiro'] = float(d['valor_fixo_parceiro'] or 0)
             return d
         return None
     except Exception as e:

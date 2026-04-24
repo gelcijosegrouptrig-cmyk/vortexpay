@@ -384,13 +384,28 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Parceiro
   if(ref){
     try{
-      const pr = await fetch(`${BASE}/api/mp2/parceiros`);
-      const pd = await pr.json();
-      const parceiro = (pd.parceiros||[]).find(p=>p.codigo===ref);
-      if(parceiro){
+      const pr = await fetch(`${BASE}/api/parceiro/${encodeURIComponent(ref)}`);
+      const parceiro = await pr.json();
+      if(parceiro && parceiro.success){
         document.getElementById('parceiro-badge').style.display='block';
         document.getElementById('parceiro-nome').textContent = parceiro.nome;
-        document.getElementById('footer-parceiro').textContent = `Parceiro: ${parceiro.nome}`;
+        if(typeof document.getElementById('footer-parceiro') !== 'undefined' && document.getElementById('footer-parceiro'))
+          document.getElementById('footer-parceiro').textContent = `Parceiro: ${parceiro.nome}`;
+        // Aplicar modo_pagamento do parceiro (sobrepõe configuração global)
+        if(parceiro.modo_pagamento === 'fixo' && parceiro.valor_fixo_parceiro > 0){
+          // Parceiro tem valor fixo próprio — força modo fixo com o valor dele
+          cfg.modo_fixo = true;
+          cfg.valor_fixo = parceiro.valor_fixo_parceiro;
+          setModo('fixo');
+          document.getElementById('vf-num').textContent  = 'R$ ' + parceiro.valor_fixo_parceiro.toFixed(2).replace('.',',');
+          document.getElementById('vf-desc').textContent = cfg.descricao || 'Pagamento único';
+          document.getElementById('modo-tabs').style.display = 'none';
+        } else if(parceiro.modo_pagamento === 'livre'){
+          // Parceiro quer valor livre — sobrepõe config global (mesmo que admin definiu fixo)
+          cfg.modo_fixo = false;
+          setModo('livre');
+          document.getElementById('modo-tabs').style.display = '';
+        }
       }
     }catch(e){}
   }

@@ -7126,6 +7126,32 @@ async def route_mp2_testar(request):
 # ─── PARCEIROS / AFILIADOS - /api/mp2/parceiros ──────────────────
 # ══════════════════════════════════════════════════════════════════
 
+async def route_parceiro_info_publico(request):
+    """GET /api/parceiro/{codigo} - Info pública do parceiro (sem secret): nome, modo_pagamento, valor_fixo_parceiro."""
+    try:
+        codigo = request.match_info.get('codigo', '')
+        if not codigo:
+            return web.json_response({'success': False, 'error': 'Código obrigatório'})
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("""
+            SELECT nome, modo_pagamento, valor_fixo_parceiro, ativo
+            FROM mp2_parceiros WHERE codigo = %s
+        """, (codigo,))
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if not row or not row[3]:
+            return web.json_response({'success': False, 'error': 'Parceiro não encontrado'})
+        return web.json_response({
+            'success': True,
+            'nome': row[0],
+            'modo_pagamento': row[1] or 'livre',
+            'valor_fixo_parceiro': float(row[2] or 0)
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
 async def route_mp2_parceiros_listar(request):
     """GET /api/mp2/parceiros - Lista todos os parceiros (SQL direto)."""
 
@@ -7145,7 +7171,9 @@ async def route_mp2_parceiros_listar(request):
                    COALESCE(p.total_comissao,0) AS total_comissao,
                    COALESCE(p.total_pago,0)     AS total_pago,
                    TO_CHAR(p.criado_em, %s) AS criado_em,
-                   COUNT(t.id) FILTER (WHERE t.status = %s) AS qtd_pagamentos
+                   COUNT(t.id) FILTER (WHERE t.status = %s) AS qtd_pagamentos,
+                   COALESCE(p.modo_pagamento, 'livre') AS modo_pagamento,
+                   COALESCE(p.valor_fixo_parceiro, 0)  AS valor_fixo_parceiro
             FROM mp2_parceiros p
             LEFT JOIN mp2_transacoes t ON t.parceiro_codigo = p.codigo
             GROUP BY p.id
@@ -7310,18 +7338,29 @@ async def route_mp2_parceiros_editar(request):
             pct = max(1.0, min(90.0, pct))
             campos.append('comissao_pct = %s')
             valores.append(pct)
+        if 'modo_pagamento' in body:
+            modo = str(body['modo_pagamento']).strip().lower()
+            if modo not in ('fixo', 'livre'): modo = 'livre'
+            campos.append('modo_pagamento = %s')
+            valores.append(modo)
+        if 'valor_fixo_parceiro' in body:
+            vfp = float(body.get('valor_fixo_parceiro') or 0)
+            vfp = max(0.0, vfp)
+            campos.append('valor_fixo_parceiro = %s')
+            valores.append(vfp)
         if not campos:
             cur.close(); conn.close()
             return web.json_response({'success': False, 'error': 'Nenhum campo para atualizar'})
         valores.append(codigo)
-        cur.execute(f"UPDATE mp2_parceiros SET {', '.join(campos)} WHERE codigo = %s RETURNING id, nome, chave_pix, tipo_chave, comissao_pct, ativo", valores)
+        cur.execute(f"UPDATE mp2_parceiros SET {', '.join(campos)} WHERE codigo = %s RETURNING id, nome, chave_pix, tipo_chave, comissao_pct, ativo, modo_pagamento, valor_fixo_parceiro", valores)
         row = cur.fetchone()
         conn.commit(); cur.close(); conn.close()
         if not row:
             return web.json_response({'success': False, 'error': 'Parceiro não encontrado'})
         return web.json_response({'success': True, 'parceiro': {
             'id': row[0], 'nome': row[1], 'chave_pix': row[2],
-            'tipo_chave': row[3], 'comissao_pct': float(row[4]), 'ativo': row[5]
+            'tipo_chave': row[3], 'comissao_pct': float(row[4]), 'ativo': row[5],
+            'modo_pagamento': row[6] or 'livre', 'valor_fixo_parceiro': float(row[7] or 0)
         }})
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)}, status=500)
@@ -8024,6 +8063,15 @@ async def route_mp3_parceiros_editar(request):
         if 'ativo' in body:
             fields.append('ativo=%s')
             vals.append(bool(body['ativo']))
+        if 'modo_pagamento' in body:
+            modo = str(body['modo_pagamento']).strip().lower()
+            if modo not in ('fixo', 'livre'): modo = 'livre'
+            fields.append('modo_pagamento=%s')
+            vals.append(modo)
+        if 'valor_fixo_parceiro' in body:
+            vfp = float(body.get('valor_fixo_parceiro') or 0)
+            fields.append('valor_fixo_parceiro=%s')
+            vals.append(max(0.0, vfp))
         if fields:
             vals.append(codigo)
             cur.execute(f"UPDATE mp3_parceiros SET {', '.join(fields)} WHERE codigo=%s", vals)
@@ -9898,6 +9946,7 @@ async def main():
     app.router.add_get('/api/mp2/config',                   route_mp2_config_get)
     app.router.add_post('/api/mp2/config',                  route_mp2_config_save)
     app.router.add_get('/api/mp2/testar',                   route_mp2_testar)
+    app.router.add_get('/api/parceiro/{codigo}',            route_parceiro_info_publico)  # público
     app.router.add_get('/api/mp2/parceiros',                route_mp2_parceiros_listar)
     app.router.add_post('/api/mp2/parceiros',               route_mp2_parceiros_criar)
     app.router.add_delete('/api/mp2/parceiros/{codigo}',    route_mp2_parceiros_deletar)

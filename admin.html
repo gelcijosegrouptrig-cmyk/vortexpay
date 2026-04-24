@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250427x</title>
+<title>PaynexBet - Painel Admin v20250427y</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427x';
+  const VER = '20250427y';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -7642,7 +7642,8 @@ async function ppCarregarParceiros() {
         <td colspan="8" style="padding:16px">
           <div style="background:#0d0d20;border:1px solid #3b82f644;border-radius:12px;padding:16px">
             <div style="font-size:12px;color:#60a5fa;font-weight:700;margin-bottom:12px">✏️ Editar parceiro: ${p.nome}</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:12px;align-items:end">
+            <!-- linha 1: nome + chave pix + comissão -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:12px;align-items:end;margin-bottom:12px">
               <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">Nome</label>
                 <input id="pp-edit-nome-${p.codigo}" value="${p.nome.replace(/"/g,'')}"
@@ -7672,7 +7673,29 @@ async function ppCarregarParceiros() {
                 </div>
               </div>
             </div>
-            <div style="display:flex;gap:8px;margin-top:12px">
+            <!-- linha 2: modo de pagamento -->
+            <div style="background:#07071a;border:1px solid #3b82f622;border-radius:10px;padding:12px;margin-bottom:12px">
+              <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:600">💳 Modo de pagamento do link</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='livre'?'#3b82f6':'#333'};background:${(p.modo_pagamento||'livre')==='livre'?'#1e3a5f':'#0a0a14'};transition:all .2s"
+                  onclick="ppModoChange('${p.codigo}','livre')">
+                  <input type="radio" id="pp-edit-modo-livre-${p.codigo}" name="pp-edit-modo-${p.codigo}" value="livre" ${(p.modo_pagamento||'livre')==='livre'?'checked':''} style="accent-color:#3b82f6">
+                  <span style="font-size:13px;font-weight:600;color:${(p.modo_pagamento||'livre')==='livre'?'#60a5fa':'#888'}">🔓 Valor Livre</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='fixo'?'#a855f7':'#333'};background:${(p.modo_pagamento||'livre')==='fixo'?'#1a0a2e':'#0a0a14'};transition:all .2s"
+                  onclick="ppModoChange('${p.codigo}','fixo')">
+                  <input type="radio" id="pp-edit-modo-fixo-${p.codigo}" name="pp-edit-modo-${p.codigo}" value="fixo" ${(p.modo_pagamento||'livre')==='fixo'?'checked':''} style="accent-color:#a855f7">
+                  <span style="font-size:13px;font-weight:600;color:${(p.modo_pagamento||'livre')==='fixo'?'#c084fc':'#888'}">🔒 Valor Fixo</span>
+                </label>
+                <div id="pp-edit-vfp-wrap-${p.codigo}" style="display:${(p.modo_pagamento||'livre')==='fixo'?'flex':'none'};align-items:center;gap:6px;margin-left:6px">
+                  <span style="font-size:13px;color:#888">R$</span>
+                  <input id="pp-edit-vfp-${p.codigo}" type="number" min="1" step="0.01" value="${(p.valor_fixo_parceiro||0).toFixed(2)}"
+                    style="width:90px;background:#0a0a14;border:1px solid #a855f7;border-radius:7px;padding:7px 10px;color:#c084fc;font-size:14px;font-weight:700;text-align:center">
+                  <span style="font-size:11px;color:#666">cobrado por pagamento</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:4px">
               <button onclick="ppSalvarEdicao('${p.codigo}')"
                 style="padding:8px 20px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">
                 💾 Salvar
@@ -7714,20 +7737,41 @@ function ppAbrirEdicao(codigo, nome, chave, tipo, pct) {
   if (editRow) editRow.style.display = editRow.style.display === 'none' ? '' : 'none';
 }
 
+function ppModoChange(codigo, modo) {
+  // Atualizar radio
+  const radio = document.getElementById(`pp-edit-modo-${modo}-${codigo}`);
+  if (radio) radio.checked = true;
+  // Mostrar/ocultar campo de valor fixo
+  const wrap = document.getElementById(`pp-edit-vfp-wrap-${codigo}`);
+  if (wrap) wrap.style.display = modo === 'fixo' ? 'flex' : 'none';
+  // Atualizar estilos dos botões radio
+  ['livre','fixo'].forEach(m => {
+    const lbl = document.querySelector(`label[onclick="ppModoChange('${codigo}','${m}')"]`);
+    if (!lbl) return;
+    const isSelected = m === modo;
+    lbl.style.borderColor = isSelected ? (m==='fixo'?'#a855f7':'#3b82f6') : '#333';
+    lbl.style.background  = isSelected ? (m==='fixo'?'#1a0a2e':'#1e3a5f') : '#0a0a14';
+    lbl.querySelector('span').style.color = isSelected ? (m==='fixo'?'#c084fc':'#60a5fa') : '#888';
+  });
+}
+
 async function ppSalvarEdicao(codigo) {
   const nome    = document.getElementById(`pp-edit-nome-${codigo}`).value.trim();
   const chave   = document.getElementById(`pp-edit-chave-${codigo}`).value.trim();
   const tipo    = document.getElementById(`pp-edit-tipo-${codigo}`).value;
   const pct     = parseFloat(document.getElementById(`pp-edit-pct-${codigo}`).value) || 10;
+  const modo    = document.querySelector(`input[name="pp-edit-modo-${codigo}"]:checked`)?.value || 'livre';
+  const vfp     = parseFloat(document.getElementById(`pp-edit-vfp-${codigo}`)?.value) || 0;
   const msgEl   = document.getElementById(`pp-edit-msg-${codigo}`);
 
   if (!nome || !chave) { msgEl.innerHTML = '<span style="color:#f44">Nome e chave PIX obrigatórios</span>'; return; }
+  if (modo === 'fixo' && vfp <= 0) { msgEl.innerHTML = '<span style="color:#f44">Informe o valor fixo (R$) maior que 0</span>'; return; }
   msgEl.innerHTML = '<span style="color:#888">⏳ Salvando...</span>';
   try {
     const r = await fetch(`${BASE}/api/pp/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
-      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct })
+      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct, modo_pagamento: modo, valor_fixo_parceiro: vfp })
     });
     const d = await r.json();
     if (d.success) {
@@ -8507,7 +8551,8 @@ async function pcCarregarParceiros() {
         <td colspan="8" style="padding:16px">
           <div style="background:#0d0d20;border:1px solid #3b82f644;border-radius:12px;padding:16px">
             <div style="font-size:12px;color:#60a5fa;font-weight:700;margin-bottom:12px">✏️ Editar parceiro: ${p.nome}</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:12px;align-items:end">
+            <!-- linha 1: nome + chave pix + comissão -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:12px;align-items:end;margin-bottom:12px">
               <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">Nome</label>
                 <input id="pc-edit-nome-${p.codigo}" value="${p.nome.replace(/"/g,'')}"
@@ -8537,7 +8582,29 @@ async function pcCarregarParceiros() {
                 </div>
               </div>
             </div>
-            <div style="display:flex;gap:8px;margin-top:12px">
+            <!-- linha 2: modo de pagamento -->
+            <div style="background:#07071a;border:1px solid #3b82f622;border-radius:10px;padding:12px;margin-bottom:12px">
+              <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:600">💳 Modo de pagamento do link</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='livre'?'#3b82f6':'#333'};background:${(p.modo_pagamento||'livre')==='livre'?'#1e3a5f':'#0a0a14'};transition:all .2s"
+                  onclick="pcModoChange('${p.codigo}','livre')">
+                  <input type="radio" id="pc-edit-modo-livre-${p.codigo}" name="pc-edit-modo-${p.codigo}" value="livre" ${(p.modo_pagamento||'livre')==='livre'?'checked':''} style="accent-color:#3b82f6">
+                  <span style="font-size:13px;font-weight:600;color:${(p.modo_pagamento||'livre')==='livre'?'#60a5fa':'#888'}">🔓 Valor Livre</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='fixo'?'#a855f7':'#333'};background:${(p.modo_pagamento||'livre')==='fixo'?'#1a0a2e':'#0a0a14'};transition:all .2s"
+                  onclick="pcModoChange('${p.codigo}','fixo')">
+                  <input type="radio" id="pc-edit-modo-fixo-${p.codigo}" name="pc-edit-modo-${p.codigo}" value="fixo" ${(p.modo_pagamento||'livre')==='fixo'?'checked':''} style="accent-color:#a855f7">
+                  <span style="font-size:13px;font-weight:600;color:${(p.modo_pagamento||'livre')==='fixo'?'#c084fc':'#888'}">🔒 Valor Fixo</span>
+                </label>
+                <div id="pc-edit-vfp-wrap-${p.codigo}" style="display:${(p.modo_pagamento||'livre')==='fixo'?'flex':'none'};align-items:center;gap:6px;margin-left:6px">
+                  <span style="font-size:13px;color:#888">R$</span>
+                  <input id="pc-edit-vfp-${p.codigo}" type="number" min="1" step="0.01" value="${(p.valor_fixo_parceiro||0).toFixed(2)}"
+                    style="width:90px;background:#0a0a14;border:1px solid #a855f7;border-radius:7px;padding:7px 10px;color:#c084fc;font-size:14px;font-weight:700;text-align:center">
+                  <span style="font-size:11px;color:#666">cobrado por pagamento</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:4px">
               <button onclick="pcSalvarEdicao('${p.codigo}')"
                 style="padding:8px 20px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">
                 💾 Salvar
@@ -8576,20 +8643,38 @@ function pcAbrirEdicao(codigo, nome, chave, tipo, pct) {
   if (editRow) editRow.style.display = editRow.style.display === 'none' ? '' : 'none';
 }
 
+function pcModoChange(codigo, modo) {
+  const radio = document.getElementById(`pc-edit-modo-${modo}-${codigo}`);
+  if (radio) radio.checked = true;
+  const wrap = document.getElementById(`pc-edit-vfp-wrap-${codigo}`);
+  if (wrap) wrap.style.display = modo === 'fixo' ? 'flex' : 'none';
+  ['livre','fixo'].forEach(m => {
+    const lbl = document.querySelector(`label[onclick="pcModoChange('${codigo}','${m}')"]`);
+    if (!lbl) return;
+    const isSelected = m === modo;
+    lbl.style.borderColor = isSelected ? (m==='fixo'?'#a855f7':'#3b82f6') : '#333';
+    lbl.style.background  = isSelected ? (m==='fixo'?'#1a0a2e':'#1e3a5f') : '#0a0a14';
+    lbl.querySelector('span').style.color = isSelected ? (m==='fixo'?'#c084fc':'#60a5fa') : '#888';
+  });
+}
+
 async function pcSalvarEdicao(codigo) {
   const nome    = document.getElementById(`pc-edit-nome-${codigo}`).value.trim();
   const chave   = document.getElementById(`pc-edit-chave-${codigo}`).value.trim();
   const tipo    = document.getElementById(`pc-edit-tipo-${codigo}`).value;
   const pct     = parseFloat(document.getElementById(`pc-edit-pct-${codigo}`).value) || 10;
+  const modo    = document.querySelector(`input[name="pc-edit-modo-${codigo}"]:checked`)?.value || 'livre';
+  const vfp     = parseFloat(document.getElementById(`pc-edit-vfp-${codigo}`)?.value) || 0;
   const msgEl   = document.getElementById(`pc-edit-msg-${codigo}`);
 
   if (!nome || !chave) { msgEl.innerHTML = '<span style="color:#f44">Nome e chave PIX obrigatórios</span>'; return; }
+  if (modo === 'fixo' && vfp <= 0) { msgEl.innerHTML = '<span style="color:#f44">Informe o valor fixo (R$) maior que 0</span>'; return; }
   msgEl.innerHTML = '<span style="color:#888">⏳ Salvando...</span>';
   try {
     const r = await fetch(`${BASE}/api/pc/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
-      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct })
+      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct, modo_pagamento: modo, valor_fixo_parceiro: vfp })
     });
     const d = await r.json();
     if (d.success) {
@@ -9233,7 +9318,8 @@ async function b2CarregarParceiros() {
         <td colspan="8" style="padding:16px">
           <div style="background:#0d0d20;border:1px solid #3b82f644;border-radius:12px;padding:16px">
             <div style="font-size:12px;color:#60a5fa;font-weight:700;margin-bottom:12px">✏️ Editar parceiro: ${p.nome}</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:12px;align-items:end">
+            <!-- linha 1: nome + chave pix + comissão -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:12px;align-items:end;margin-bottom:12px">
               <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">Nome</label>
                 <input id="edit-nome-${p.codigo}" value="${p.nome.replace(/"/g,'')}"
@@ -9263,7 +9349,29 @@ async function b2CarregarParceiros() {
                 </div>
               </div>
             </div>
-            <div style="display:flex;gap:8px;margin-top:12px">
+            <!-- linha 2: modo de pagamento -->
+            <div style="background:#07071a;border:1px solid #3b82f622;border-radius:10px;padding:12px;margin-bottom:12px">
+              <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:600">💳 Modo de pagamento do link</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='livre'?'#3b82f6':'#333'};background:${(p.modo_pagamento||'livre')==='livre'?'#1e3a5f':'#0a0a14'};transition:all .2s"
+                  onclick="b2ModoChange('${p.codigo}','livre')">
+                  <input type="radio" id="edit-modo-livre-${p.codigo}" name="edit-modo-${p.codigo}" value="livre" ${(p.modo_pagamento||'livre')==='livre'?'checked':''} style="accent-color:#3b82f6">
+                  <span style="font-size:13px;font-weight:600;color:${(p.modo_pagamento||'livre')==='livre'?'#60a5fa':'#888'}">🔓 Valor Livre</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid ${(p.modo_pagamento||'livre')==='fixo'?'#a855f7':'#333'};background:${(p.modo_pagamento||'livre')==='fixo'?'#1a0a2e':'#0a0a14'};transition:all .2s"
+                  onclick="b2ModoChange('${p.codigo}','fixo')">
+                  <input type="radio" id="edit-modo-fixo-${p.codigo}" name="edit-modo-${p.codigo}" value="fixo" ${(p.modo_pagamento||'livre')==='fixo'?'checked':''} style="accent-color:#a855f7">
+                  <span style="font-size:13px;font-weight:600;color:${(p.modo_pagamento||'livre')==='fixo'?'#c084fc':'#888'}">🔒 Valor Fixo</span>
+                </label>
+                <div id="edit-vfp-wrap-${p.codigo}" style="display:${(p.modo_pagamento||'livre')==='fixo'?'flex':'none'};align-items:center;gap:6px;margin-left:6px">
+                  <span style="font-size:13px;color:#888">R$</span>
+                  <input id="edit-vfp-${p.codigo}" type="number" min="1" step="0.01" value="${(p.valor_fixo_parceiro||0).toFixed(2)}"
+                    style="width:90px;background:#0a0a14;border:1px solid #a855f7;border-radius:7px;padding:7px 10px;color:#c084fc;font-size:14px;font-weight:700;text-align:center">
+                  <span style="font-size:11px;color:#666">cobrado por pagamento</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:4px">
               <button onclick="b2SalvarEdicao('${p.codigo}')"
                 style="padding:8px 20px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;cursor:pointer">
                 💾 Salvar
@@ -9303,20 +9411,38 @@ function b2AbrirEdicao(codigo, nome, chave, tipo, pct) {
   if (editRow) editRow.style.display = editRow.style.display === 'none' ? '' : 'none';
 }
 
+function b2ModoChange(codigo, modo) {
+  const radio = document.getElementById(`edit-modo-${modo}-${codigo}`);
+  if (radio) radio.checked = true;
+  const wrap = document.getElementById(`edit-vfp-wrap-${codigo}`);
+  if (wrap) wrap.style.display = modo === 'fixo' ? 'flex' : 'none';
+  ['livre','fixo'].forEach(m => {
+    const lbl = document.querySelector(`label[onclick="b2ModoChange('${codigo}','${m}')"]`);
+    if (!lbl) return;
+    const isSelected = m === modo;
+    lbl.style.borderColor = isSelected ? (m==='fixo'?'#a855f7':'#3b82f6') : '#333';
+    lbl.style.background  = isSelected ? (m==='fixo'?'#1a0a2e':'#1e3a5f') : '#0a0a14';
+    lbl.querySelector('span').style.color = isSelected ? (m==='fixo'?'#c084fc':'#60a5fa') : '#888';
+  });
+}
+
 async function b2SalvarEdicao(codigo) {
   const nome    = document.getElementById(`edit-nome-${codigo}`).value.trim();
   const chave   = document.getElementById(`edit-chave-${codigo}`).value.trim();
   const tipo    = document.getElementById(`edit-tipo-${codigo}`).value;
   const pct     = parseFloat(document.getElementById(`edit-pct-${codigo}`).value) || 10;
+  const modo    = document.querySelector(`input[name="edit-modo-${codigo}"]:checked`)?.value || 'livre';
+  const vfp     = parseFloat(document.getElementById(`edit-vfp-${codigo}`)?.value) || 0;
   const msgEl   = document.getElementById(`edit-msg-${codigo}`);
 
   if (!nome || !chave) { msgEl.innerHTML = '<span style="color:#f44">Nome e chave PIX obrigatórios</span>'; return; }
+  if (modo === 'fixo' && vfp <= 0) { msgEl.innerHTML = '<span style="color:#f44">Informe o valor fixo (R$) maior que 0</span>'; return; }
   msgEl.innerHTML = '<span style="color:#888">⏳ Salvando...</span>';
   try {
     const r = await fetch(`${BASE}/api/mp2/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
-      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct })
+      body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct, modo_pagamento: modo, valor_fixo_parceiro: vfp })
     });
     const d = await r.json();
     if (d.success) {
@@ -10368,7 +10494,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427x ===');
+  out.push('=== VERSÃO: 20250427y ===');
   out.push('');
 
   // Estado dos elementos críticos
