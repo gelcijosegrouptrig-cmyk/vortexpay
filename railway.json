@@ -1,4 +1,1 @@
-{
-  "build": {"builder": "NIXPACKS", "buildArgs": {"REBUILD_TS": "1777058156", "FORCE_BUST": "fix-layout-noscroll-1777058156"}},
-  "deploy": {"startCommand": "bash start.sh", "healthcheckPath": "/health", "healthcheckTimeout": 300, "restartPolicyType": "ON_FAILURE", "restartPolicyMaxRetries": 5}
-}
+{"build":{"builder":"NIXPACKS","buildArgs":{"REBUILD_TS":"1777058788","FORCE_BUST":"new-layout-bet365-1777058788"}},"deploy":{"startCommand":"bash start.sh","healthcheckPath":"/health","healthcheckTimeout":300,"restartPolicyType":"ON_FAILURE","restartPolicyMaxRetries":5}}

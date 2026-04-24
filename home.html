@@ -2,461 +2,297 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#0a0a14">
 <title>PaynexBet — Sorteios & Apostas Esportivas</title>
-<meta name="description" content="Aposte nos seus times favoritos e participe de sorteios com prêmios reais via Pix. Plataforma 100% automática e segura.">
 <style>
-  :root {
-    --bg:       #0a0a14;
-    --bg2:      #0f0f1e;
-    --bg3:      #141428;
-    --card:     #12122a;
-    --border:   #ffffff10;
-    --gold:     #f5a623;
-    --gold2:    #ffd369;
-    --blue:     #3b82f6;
-    --blue2:    #60a5fa;
-    --green:    #22c55e;
-    --purple:   #8b5cf6;
-    --text:     #f1f5f9;
-    --muted:    #94a3b8;
-    --radius:   14px;
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  html { scroll-behavior:smooth; }
-  body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+:root{
+  --bg:#0d0d18;--bg2:#111120;--bg3:#16162a;--card:#131325;
+  --border:#ffffff0d;--border2:#ffffff18;
+  --gold:#f5a623;--gold2:#ffd369;
+  --blue:#3b82f6;--blue2:#60a5fa;
+  --green:#22c55e;--red:#ef4444;--purple:#8b5cf6;
+  --text:#f1f5f9;--muted:#64748b;--muted2:#94a3b8;
+  --sidebar:220px;--header:56px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text)}
 
-  /* ── TOPBAR ── */
-  .topbar {
-    position: sticky; top:0; z-index:100;
-    background: rgba(10,10,20,0.92);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    height: 60px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .topbar-brand {
-    display: flex; align-items: center; gap: 10px;
-    font-size: 20px; font-weight: 900; letter-spacing: -0.5px;
-    background: linear-gradient(90deg, var(--gold), var(--gold2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    text-decoration: none;
-  }
-  .topbar-brand span.icon { font-size: 22px; -webkit-text-fill-color: initial; }
-  .topbar-actions { display: flex; gap: 10px; align-items: center; }
-  .btn-entrar {
-    padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600;
-    background: transparent; border: 1.5px solid var(--blue); color: var(--blue2);
-    cursor: pointer; transition: all .2s;
-  }
-  .btn-entrar:hover { background: var(--blue); color: #fff; }
-  .btn-cadastrar {
-    padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 700;
-    background: linear-gradient(135deg, var(--gold), #e8950a);
-    border: none; color: #1a0a00; cursor: pointer; transition: all .2s;
-  }
-  .btn-cadastrar:hover { transform: translateY(-1px); box-shadow: 0 4px 20px #f5a62340; }
+/* ══════════════ HEADER ══════════════ */
+.header{
+  position:fixed;top:0;left:0;right:0;height:var(--header);z-index:200;
+  background:rgba(13,13,24,0.97);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;gap:0;
+}
+.header-logo{
+  width:var(--sidebar);flex-shrink:0;
+  display:flex;align-items:center;gap:8px;padding:0 18px;
+  font-size:18px;font-weight:900;letter-spacing:-0.5px;
+  background:linear-gradient(90deg,var(--gold),var(--gold2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  text-decoration:none;white-space:nowrap;
+}
+.header-logo .ico{font-size:20px;-webkit-text-fill-color:initial}
+.header-nav{flex:1;display:flex;align-items:center;gap:2px;padding:0 12px;overflow:hidden}
+.hnav-btn{
+  display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;
+  font-size:13px;font-weight:600;color:var(--muted2);background:transparent;
+  border:none;cursor:pointer;white-space:nowrap;transition:all .15s;text-decoration:none;
+}
+.hnav-btn:hover{background:var(--bg3);color:var(--text)}
+.hnav-btn.active{background:linear-gradient(135deg,#1e3a8a22,#3b82f622);color:var(--blue2);border:1px solid #3b82f622}
+.hnav-btn .dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.4s infinite}
+.header-actions{display:flex;align-items:center;gap:8px;padding:0 16px;flex-shrink:0}
+.btn-in{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;background:transparent;border:1.5px solid var(--border2);color:var(--muted2);cursor:pointer;transition:all .15s}
+.btn-in:hover{border-color:var(--blue);color:var(--blue2)}
+.btn-out{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:700;background:linear-gradient(135deg,var(--gold),#e8950a);border:none;color:#1a0800;cursor:pointer;transition:all .15s}
+.btn-out:hover{filter:brightness(1.1)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-  /* ── HERO ── */
-  .hero {
-    position: relative; overflow: hidden;
-    min-height: 0;
-    display: flex; align-items: center; justify-content: center;
-    flex-direction: column; text-align: center;
-    padding: 36px 24px 36px;
-  }
-  .hero-bg {
-    position: absolute; inset: 0;
-    background:
-      radial-gradient(ellipse 80% 60% at 50% -10%, #3b82f618 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 80%, #f5a62310 0%, transparent 50%),
-      radial-gradient(ellipse 50% 50% at 20% 70%, #8b5cf610 0%, transparent 50%);
-    z-index: 0;
-  }
-  .hero-grid {
-    position: absolute; inset: 0; z-index: 0; opacity: 0.03;
-    background-image: linear-gradient(var(--text) 1px, transparent 1px),
-                      linear-gradient(90deg, var(--text) 1px, transparent 1px);
-    background-size: 50px 50px;
-  }
-  .hero-content { position: relative; z-index: 1; max-width: 780px; }
-  .hero-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: #22c55e18; border: 1px solid #22c55e40;
-    color: var(--green); padding: 6px 16px; border-radius: 99px;
-    font-size: 12px; font-weight: 600; margin-bottom: 14px;
-  }
-  .pulse { width:8px; height:8px; border-radius:50%; background:var(--green);
-    animation: pulse 1.5s infinite; display:inline-block; }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+/* ══════════════ LAYOUT ══════════════ */
+.layout{
+  display:flex;
+  position:fixed;top:var(--header);left:0;right:0;bottom:0;
+  overflow:hidden;
+}
 
-  .hero-logo {
-    width: 64px; height: 64px; margin: 0 auto 14px;
-    background: linear-gradient(135deg, #1e1e3a, #2a2a50);
-    border: 2px solid var(--gold);
-    border-radius: 18px; display: flex; align-items: center; justify-content: center;
-    font-size: 32px; box-shadow: 0 0 30px #f5a62330;
-    animation: float 3s ease-in-out infinite;
-  }
-  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+/* ══════════════ SIDEBAR ══════════════ */
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  background:var(--bg2);border-right:1px solid var(--border);
+  overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:thin;scrollbar-color:#ffffff10 transparent;
+}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:#ffffff15;border-radius:3px}
+.sb-section{padding:10px 0 4px}
+.sb-label{padding:4px 14px 6px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.sb-item{
+  display:flex;align-items:center;gap:9px;padding:7px 14px;
+  font-size:13px;font-weight:500;color:var(--muted2);cursor:pointer;
+  transition:all .15s;border-left:2px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.sb-item:hover{background:var(--bg3);color:var(--text);border-left-color:var(--blue)}
+.sb-item.active{background:linear-gradient(90deg,#3b82f612,transparent);color:var(--blue2);border-left-color:var(--blue)}
+.sb-item .ico{font-size:15px;flex-shrink:0;width:18px;text-align:center}
+.sb-item .badge{margin-left:auto;background:#ef444422;color:#ef4444;border:1px solid #ef444430;border-radius:4px;font-size:9px;font-weight:700;padding:1px 5px;flex-shrink:0}
+.sb-item .badge.live{background:#22c55e22;color:#22c55e;border-color:#22c55e30}
+.sb-divider{height:1px;background:var(--border);margin:6px 0}
 
-  .hero-title {
-    font-size: clamp(24px, 3.5vw, 40px);
-    font-weight: 900; line-height: 1.15; margin-bottom: 10px;
-    letter-spacing: -0.5px;
-  }
-  .hero-title .gold { background: linear-gradient(90deg, var(--gold), var(--gold2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-  .hero-title .blue { background: linear-gradient(90deg, var(--blue), var(--blue2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+/* ══════════════ MAIN ══════════════ */
+.main{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:thin;scrollbar-color:#ffffff10 transparent;
+  display:flex;flex-direction:column;
+}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:#ffffff10;border-radius:4px}
 
-  .hero-sub {
-    font-size: 15px; color: var(--muted); max-width: 520px; margin: 0 auto 20px;
-    line-height: 1.5;
-  }
+/* ══════════════ HERO COMPACTO ══════════════ */
+.hero{
+  position:relative;overflow:hidden;
+  background:linear-gradient(135deg,#0d0d22 0%,#0a1628 50%,#0d0d22 100%);
+  border-bottom:1px solid var(--border);
+  padding:28px 28px 24px;
+  display:flex;align-items:center;gap:32px;flex-shrink:0;
+}
+.hero::before{
+  content:'';position:absolute;top:-60px;right:-60px;
+  width:300px;height:300px;border-radius:50%;
+  background:radial-gradient(circle,#f5a62315 0%,transparent 70%);pointer-events:none;
+}
+.hero::after{
+  content:'';position:absolute;bottom:-40px;left:30%;
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,#3b82f60d 0%,transparent 70%);pointer-events:none;
+}
+.hero-left{flex:1;min-width:0;position:relative;z-index:1}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;
+  background:#22c55e12;border:1px solid #22c55e30;
+  color:var(--green);padding:3px 12px;border-radius:99px;font-size:11px;font-weight:600;
+}
+.hero-badge .pulse{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.4s infinite}
+.hero-title{font-size:clamp(20px,2.2vw,30px);font-weight:900;line-height:1.2;margin-bottom:8px;letter-spacing:-0.5px}
+.hero-title .g{background:linear-gradient(90deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-title .b{background:linear-gradient(90deg,var(--blue),var(--blue2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{font-size:13px;color:var(--muted2);margin-bottom:16px;line-height:1.5;max-width:480px}
+.hero-btns{display:flex;gap:10px;flex-wrap:wrap}
+.btn-hs{padding:9px 20px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:7px;border:none}
+.btn-hs.primary{background:linear-gradient(135deg,var(--gold),#e8950a);color:#1a0800;box-shadow:0 3px 16px #f5a62328}
+.btn-hs.primary:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-hs.secondary{background:linear-gradient(135deg,var(--blue),#1d4ed8);color:#fff;box-shadow:0 3px 16px #3b82f628}
+.btn-hs.secondary:hover{filter:brightness(1.1);transform:translateY(-1px)}
 
-  .hero-chips {
-    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 20px;
-  }
-  .chip {
-    background: var(--bg3); border: 1px solid var(--border);
-    padding: 8px 16px; border-radius: 99px; font-size: 13px; color: var(--muted);
-    display: flex; align-items: center; gap: 6px;
-  }
+.hero-right{display:flex;gap:10px;flex-shrink:0;position:relative;z-index:1}
+.stat-card{
+  background:var(--card);border:1px solid var(--border2);border-radius:12px;
+  padding:14px 18px;text-align:center;min-width:90px;
+}
+.stat-card .sv{font-size:18px;font-weight:900;color:var(--gold2);line-height:1}
+.stat-card .sl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+.stat-card.live-card .sv{color:var(--green)}
 
-  /* ── HERO BTNS ── */
-  .hero-btns { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
-  .btn-hero-primary {
-    padding: 12px 28px; border-radius: 10px; font-size: 15px; font-weight: 800;
-    background: linear-gradient(135deg, var(--gold), #e8950a);
-    border: none; color: #1a0a00; cursor: pointer;
-    display: flex; align-items: center; gap: 10px;
-    box-shadow: 0 4px 30px #f5a62340;
-    transition: all .25s; text-decoration: none;
-  }
-  .btn-hero-primary:hover { transform: translateY(-3px); box-shadow: 0 8px 40px #f5a62350; }
-  .btn-hero-secondary {
-    padding: 12px 28px; border-radius: 10px; font-size: 15px; font-weight: 800;
-    background: linear-gradient(135deg, var(--blue), #2563eb);
-    border: none; color: #fff; cursor: pointer;
-    display: flex; align-items: center; gap: 10px;
-    box-shadow: 0 4px 30px #3b82f630;
-    transition: all .25s; text-decoration: none;
-  }
-  .btn-hero-secondary:hover { transform: translateY(-3px); box-shadow: 0 8px 40px #3b82f650; }
+/* ══════════════ CONTEÚDO PRINCIPAL ══════════════ */
+.content{flex:1;display:grid;grid-template-columns:1fr 300px;gap:0;min-height:0}
+.content-main{padding:18px 20px;overflow-y:auto;scrollbar-width:thin}
+.content-main::-webkit-scrollbar{width:3px}
+.content-main::-webkit-scrollbar-thumb{background:#ffffff10}
+.content-side{background:var(--bg2);border-left:1px solid var(--border);padding:14px;overflow-y:auto;scrollbar-width:thin}
+.content-side::-webkit-scrollbar{width:3px}
 
-  /* ── STATS BAR ── */
-  .stats-bar {
-    background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-    padding: 12px 24px;
-    display: flex; justify-content: center; gap: 0; flex-wrap: wrap;
-  }
-  .stat-item {
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
-    padding: 8px 32px; border-right: 1px solid var(--border);
-  }
-  .stat-item:last-child { border-right: none; }
-  .stat-val { font-size: 22px; font-weight: 900; color: var(--gold2); }
-  .stat-lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+/* ══════════════ SEÇÃO TÍTULO ══════════════ */
+.sec-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.sec-head h3{font-size:14px;font-weight:700;color:var(--text)}
+.sec-head .accent{width:3px;height:16px;background:var(--gold);border-radius:2px}
+.sec-head .see-all{margin-left:auto;font-size:11px;color:var(--blue2);cursor:pointer;background:none;border:none;font-weight:600}
+.sec-head .see-all:hover{text-decoration:underline}
 
-  /* ── SECTIONS ── */
-  .section { padding: 36px 24px; max-width: 1100px; margin: 0 auto; }
-  .section-title {
-    text-align: center; font-size: clamp(18px, 2.5vw, 26px);
-    font-weight: 900; margin-bottom: 8px;
-  }
-  .section-sub { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+/* ══════════════ FEATURE CARDS ══════════════ */
+.features-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.feat-card{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:14px 12px;display:flex;flex-direction:column;gap:8px;
+  transition:all .2s;cursor:default;
+}
+.feat-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.feat-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.feat-ico.g{background:#f5a62312;border:1px solid #f5a62328}
+.feat-ico.b{background:#3b82f612;border:1px solid #3b82f628}
+.feat-ico.gr{background:#22c55e12;border:1px solid #22c55e28}
+.feat-ico.p{background:#8b5cf612;border:1px solid #8b5cf628}
+.feat-title{font-size:12px;font-weight:700;color:var(--text)}
+.feat-desc{font-size:11px;color:var(--muted);line-height:1.4}
 
-  /* ── FEATURES GRID ── */
-  .features-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;
-  }
-  .feature-card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 18px 20px;
-    transition: all .25s; cursor: default;
-  }
-  .feature-card:hover { border-color: #f5a62330; transform: translateY(-4px); box-shadow: 0 8px 32px #0004; }
-  .feature-icon {
-    width: 52px; height: 52px; border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 26px; margin-bottom: 16px;
-  }
-  .feature-icon.gold { background: #f5a62315; border: 1px solid #f5a62330; }
-  .feature-icon.blue { background: #3b82f615; border: 1px solid #3b82f630; }
-  .feature-icon.green { background: #22c55e15; border: 1px solid #22c55e30; }
-  .feature-icon.purple { background: #8b5cf615; border: 1px solid #8b5cf630; }
-  .feature-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
-  .feature-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+/* ══════════════ JOGOS DESTAQUE ══════════════ */
+.jogos-mini{display:flex;flex-direction:column;gap:6px}
+.jogo-mini{
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:10px 12px;display:flex;align-items:center;gap:10px;
+  cursor:pointer;transition:all .15s;
+}
+.jogo-mini:hover{border-color:var(--border2);background:var(--bg3)}
+.jm-liga{font-size:10px;color:var(--muted);min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jm-times{flex:1;font-size:12px;font-weight:600;color:var(--text)}
+.jm-times span{display:block;line-height:1.6}
+.jm-odds{display:flex;gap:5px;flex-shrink:0}
+.odd-pill{
+  background:var(--bg3);border:1px solid var(--border2);border-radius:7px;
+  padding:4px 9px;font-size:12px;font-weight:700;color:var(--blue2);
+  cursor:pointer;transition:all .15s;min-width:46px;text-align:center;
+}
+.odd-pill:hover{background:#1e3a8a;border-color:var(--blue);color:#fff}
+.odd-pill.empate{color:var(--muted2)}
+.jm-live{background:#ef444418;color:#ef4444;border:1px solid #ef444428;border-radius:4px;font-size:9px;font-weight:700;padding:2px 5px;flex-shrink:0}
 
-  /* ── PREMIO CARD ── */
-  .premio-banner {
-    background: linear-gradient(135deg, #1a1a30, #1e1e3a);
-    border: 1px solid var(--gold);
-    border-radius: 20px; padding: 40px 32px;
-    text-align: center; position: relative; overflow: hidden;
-    box-shadow: 0 0 60px #f5a62318;
-  }
-  .premio-banner::before {
-    content:''; position:absolute; top:-40px; left:50%; transform:translateX(-50%);
-    width:200px; height:200px; border-radius:50%;
-    background: radial-gradient(circle, #f5a62320 0%, transparent 70%);
-  }
-  .premio-label { font-size: 12px; text-transform:uppercase; letter-spacing:2px; color:var(--gold); font-weight:700; margin-bottom:12px; }
-  .premio-val {
-    font-size: clamp(42px, 8vw, 72px); font-weight: 900; line-height: 1;
-    background: linear-gradient(90deg, var(--gold), var(--gold2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    margin-bottom: 16px;
-  }
-  .premio-info { color: var(--muted); font-size: 15px; margin-bottom: 28px; }
-  .btn-participar {
-    padding: 15px 40px; border-radius: 12px; font-size: 16px; font-weight: 800;
-    background: linear-gradient(135deg, var(--gold), #e8950a);
-    border: none; color: #1a0a00; cursor: pointer; transition: all .25s;
-    display: inline-flex; align-items: center; gap: 8px;
-  }
-  .btn-participar:hover { transform: translateY(-2px); box-shadow: 0 6px 30px #f5a62440; }
+/* ══════════════ PRÊMIO CARD ══════════════ */
+.premio-card{
+  background:linear-gradient(135deg,#1a1530,#1e1a3a);
+  border:1px solid var(--gold);border-radius:14px;padding:18px;margin-bottom:14px;
+  text-align:center;position:relative;overflow:hidden;
+}
+.premio-card::before{content:'';position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,#f5a62318 0%,transparent 70%)}
+.prm-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--gold);font-weight:700;margin-bottom:6px}
+.prm-val{font-size:clamp(22px,3vw,32px);font-weight:900;background:linear-gradient(90deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;line-height:1}
+.prm-info{font-size:11px;color:var(--muted2);margin-bottom:14px}
+.btn-prm{width:100%;padding:10px;border-radius:9px;font-size:13px;font-weight:800;background:linear-gradient(135deg,var(--gold),#e8950a);border:none;color:#1a0800;cursor:pointer;transition:all .2s}
+.btn-prm:hover{filter:brightness(1.1)}
 
-  /* ── COMO FUNCIONA ── */
-  .steps { display:flex; flex-direction:column; gap:0; position:relative; }
-  .steps::before {
-    content:''; position:absolute; left:27px; top:0; bottom:0;
-    width:2px; background:linear-gradient(180deg, var(--gold)40, var(--blue)40, transparent);
-    z-index:0;
-  }
-  .step {
-    display:flex; gap:20px; align-items:flex-start; position:relative; z-index:1;
-    padding:0 0 32px 0;
-  }
-  .step:last-child { padding-bottom:0; }
-  .step-num {
-    width:56px; height:56px; border-radius:50%; flex-shrink:0;
-    display:flex; align-items:center; justify-content:center;
-    font-size:18px; font-weight:900; border:2px solid;
-  }
-  .step-num.s1 { background:#f5a62318; border-color:var(--gold); color:var(--gold); }
-  .step-num.s2 { background:#3b82f618; border-color:var(--blue); color:var(--blue2); }
-  .step-num.s3 { background:#22c55e18; border-color:var(--green); color:var(--green); }
-  .step-num.s4 { background:#8b5cf618; border-color:var(--purple); color:var(--purple); }
-  .step-body { padding-top:12px; }
-  .step-title { font-size:17px; font-weight:700; margin-bottom:6px; }
-  .step-desc { font-size:14px; color:var(--muted); line-height:1.6; }
+/* ══════════════ SORTEIO PROGRESS ══════════════ */
+.sorteio-info{margin-bottom:14px}
+.si-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px}
+.si-row .lbl{color:var(--muted)}
+.si-row .val{color:var(--text);font-weight:700}
+.progress-bar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-bottom:12px}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:3px;transition:width .5s}
 
-  /* ── TRUST ── */
-  .trust-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
-  .trust-item {
-    background:var(--bg3); border:1px solid var(--border); border-radius:12px;
-    padding:20px; text-align:center;
-  }
-  .trust-icon { font-size:28px; margin-bottom:8px; }
-  .trust-title { font-size:14px; font-weight:700; margin-bottom:4px; }
-  .trust-desc { font-size:12px; color:var(--muted); }
+/* ══════════════ LINKS RÁPIDOS ══════════════ */
+.quick-links{display:flex;flex-direction:column;gap:6px}
+.ql-item{
+  display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:9px;
+  background:var(--card);border:1px solid var(--border);
+  font-size:12px;font-weight:600;color:var(--text);cursor:pointer;transition:all .15s;
+}
+.ql-item:hover{border-color:var(--border2);background:var(--bg3)}
+.ql-item .ql-ico{font-size:16px;width:20px;text-align:center}
+.ql-item .ql-arrow{margin-left:auto;color:var(--muted);font-size:12px}
+.ql-item.gold-item{border-color:#f5a62328;background:linear-gradient(90deg,#f5a62308,transparent)}
+.ql-item.gold-item:hover{border-color:#f5a62345}
+.ql-item.blue-item{border-color:#3b82f628;background:linear-gradient(90deg,#3b82f608,transparent)}
 
-  /* ── FOOTER ── */
-  .footer {
-    background:var(--bg2); border-top:1px solid var(--border);
-    padding:40px 24px 30px;
-  }
-  .footer-inner { max-width:900px; margin:0 auto; text-align:center; }
-  .footer-brand {
-    font-size:22px; font-weight:900; margin-bottom:8px;
-    background:linear-gradient(90deg,var(--gold),var(--gold2));
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-  }
-  .footer-sub { font-size:13px; color:var(--muted); margin-bottom:20px; }
-  .footer-links { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-bottom:24px; }
-  .footer-links a { color:var(--muted); font-size:13px; text-decoration:none; }
-  .footer-links a:hover { color:var(--text); }
-  .footer-copy { font-size:12px; color:#64748b; }
+/* ══════════════ MODAL ══════════════ */
+.modal-overlay{display:none;position:fixed;inset:0;background:#00000088;z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:18px;padding:28px 24px;width:100%;max-width:380px;position:relative}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:4px}
+.modal-close:hover{color:var(--text)}
+.modal-tabs{display:flex;background:var(--bg3);border-radius:10px;padding:3px;margin-bottom:20px}
+.mtab{flex:1;padding:8px;border-radius:8px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;color:var(--muted2);transition:all .2s;border:none;background:transparent}
+.mtab.active{background:var(--card);color:var(--text);box-shadow:0 1px 8px #0005}
+.modal-title{font-size:18px;font-weight:900;margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--muted2);margin-bottom:18px;line-height:1.4}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--muted2);margin-bottom:5px}
+.form-group input{width:100%;padding:10px 14px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-size:14px;transition:border .2s;outline:none}
+.form-group input:focus{border-color:var(--blue)}
+.btn-submit{width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:800;background:linear-gradient(135deg,var(--gold),#e8950a);border:none;color:#1a0800;cursor:pointer;margin-top:4px;transition:all .2s}
+.btn-submit:hover{filter:brightness(1.1)}
+.switch-link{text-align:center;margin-top:12px;font-size:13px;color:var(--muted2)}
+.switch-link a{color:var(--blue2);cursor:pointer;text-decoration:none;font-weight:600}
+.msg-error{background:#ef444418;border:1px solid #ef444430;border-radius:8px;padding:8px 12px;font-size:12px;color:#ef4444;margin-bottom:10px;display:none}
+.msg-success{background:#22c55e18;border:1px solid #22c55e30;border-radius:8px;padding:8px 12px;font-size:12px;color:#22c55e;margin-bottom:10px;display:none}
 
-  /* ── MODAL CADASTRO/LOGIN ── */
-  .modal-overlay {
-    position:fixed; inset:0; z-index:1000;
-    background:rgba(0,0,0,.7); backdrop-filter:blur(8px);
-    display:none; align-items:center; justify-content:center; padding:16px;
-  }
-  .modal-overlay.open { display:flex; }
-  .modal-box {
-    background:var(--bg2); border:1px solid var(--border);
-    border-radius:20px; width:100%; max-width:440px;
-    padding:32px 28px; position:relative;
-    box-shadow:0 20px 80px rgba(0,0,0,.6);
-    animation: slideUp .3s ease;
-  }
-  @keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-  .modal-close {
-    position:absolute; top:16px; right:16px;
-    background:var(--bg3); border:1px solid var(--border);
-    width:32px; height:32px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    cursor:pointer; color:var(--muted); font-size:18px; line-height:1;
-  }
-  .modal-close:hover { color:var(--text); }
-  .modal-logo { text-align:center; margin-bottom:24px; }
-  .modal-logo-icon {
-    width:60px; height:60px; border-radius:16px; margin:0 auto 12px;
-    background:linear-gradient(135deg,#1e1e3a,#2a2a50);
-    border:2px solid var(--gold); display:flex; align-items:center;
-    justify-content:center; font-size:28px;
-  }
-  .modal-logo-title {
-    font-size:20px; font-weight:900;
-    background:linear-gradient(90deg,var(--gold),var(--gold2));
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-  }
-  .modal-tabs { display:flex; margin-bottom:24px; border-radius:10px; overflow:hidden; border:1px solid var(--border); }
-  .modal-tab {
-    flex:1; padding:10px; text-align:center; font-size:14px; font-weight:700;
-    cursor:pointer; background:transparent; color:var(--muted); border:none;
-    transition:all .2s;
-  }
-  .modal-tab.active { background:linear-gradient(135deg,var(--blue),#2563eb); color:#fff; }
+/* ══════════════ USER CHIP / DROPDOWN ══════════════ */
+.user-chip{display:flex;align-items:center;gap:8px;cursor:pointer;padding:5px 10px;border-radius:9px;background:var(--bg3);border:1px solid var(--border2);transition:all .15s}
+.user-chip:hover{border-color:var(--border2)}
+.uc-avatar{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--blue),#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.uc-name{font-size:13px;font-weight:700;color:var(--text)}
+.uc-saldo{font-size:12px;color:var(--green);font-weight:700}
+.user-dropdown{display:none;position:absolute;top:calc(var(--header) + 6px);right:14px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:6px;min-width:180px;z-index:300;box-shadow:0 8px 32px #00000060}
+.user-dropdown.open{display:block}
+.ud-item{padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s}
+.ud-item:hover{background:var(--bg3)}
+.ud-sep{height:1px;background:var(--border);margin:4px 0}
 
-  .form-group { margin-bottom:16px; }
-  .form-label { display:block; font-size:13px; font-weight:600; color:var(--muted); margin-bottom:6px; }
-  .form-input {
-    width:100%; background:var(--bg3); border:1.5px solid var(--border);
-    border-radius:10px; padding:12px 14px; font-size:15px; color:var(--text);
-    transition:border-color .2s; outline:none;
-  }
-  .form-input:focus { border-color:var(--blue); }
-  .form-input::placeholder { color:#475569; }
-  .form-input-icon { position:relative; }
-  .form-input-icon .form-input { padding-left:40px; }
-  .form-input-icon .input-icon {
-    position:absolute; left:13px; top:50%; transform:translateY(-50%);
-    font-size:16px; color:#475569; pointer-events:none;
-  }
-
-  .btn-submit {
-    width:100%; padding:14px; border-radius:12px; font-size:16px; font-weight:800;
-    background:linear-gradient(135deg,var(--blue),#2563eb);
-    border:none; color:#fff; cursor:pointer; transition:all .25s; margin-top:8px;
-    display:flex; align-items:center; justify-content:center; gap:8px;
-  }
-  .btn-submit:hover { transform:translateY(-1px); box-shadow:0 4px 20px #3b82f640; }
-  .btn-submit:disabled { opacity:.6; cursor:not-allowed; transform:none; }
-
-  .btn-submit-gold {
-    width:100%; padding:14px; border-radius:12px; font-size:16px; font-weight:800;
-    background:linear-gradient(135deg,var(--gold),#e8950a);
-    border:none; color:#1a0a00; cursor:pointer; transition:all .25s; margin-top:8px;
-    display:flex; align-items:center; justify-content:center; gap:8px;
-  }
-  .btn-submit-gold:hover { transform:translateY(-1px); box-shadow:0 4px 20px #f5a62340; }
-  .btn-submit-gold:disabled { opacity:.6; cursor:not-allowed; transform:none; }
-
-  .divider { text-align:center; color:var(--muted); font-size:12px; margin:14px 0; position:relative; }
-  .divider::before,.divider::after {
-    content:''; position:absolute; top:50%; width:38%; height:1px;
-    background:var(--border);
-  }
-  .divider::before { left:0; } .divider::after { right:0; }
-
-  .modal-alt { text-align:center; font-size:13px; color:var(--muted); margin-top:16px; }
-  .modal-alt a { color:var(--blue2); text-decoration:none; font-weight:600; cursor:pointer; }
-  .modal-alt a:hover { text-decoration:underline; }
-
-  .alert { padding:12px 14px; border-radius:10px; font-size:13px; margin-bottom:14px; display:none; }
-  .alert.show { display:block; }
-  .alert-error { background:#ef44441a; border:1px solid #ef444440; color:#f87171; }
-  .alert-success { background:#22c55e1a; border:1px solid #22c55e40; color:#4ade80; }
-
-  .cpf-mask { letter-spacing:.5px; }
-
-  /* ── USER LOGGED AREA ── */
-  .user-chip {
-    display:flex; align-items:center; gap:8px;
-    background:var(--bg3); border:1px solid var(--border);
-    padding:6px 14px 6px 8px; border-radius:99px; cursor:pointer;
-    font-size:13px;
-  }
-  .user-chip-avatar {
-    width:28px; height:28px; border-radius:50%;
-    background:linear-gradient(135deg,var(--blue),var(--purple));
-    display:flex; align-items:center; justify-content:center;
-    font-size:12px; font-weight:800; color:#fff; flex-shrink:0;
-  }
-  .user-chip-name { font-weight:600; color:var(--text); }
-  .user-chip-saldo { color:var(--gold2); font-weight:700; }
-
-  .user-dropdown {
-    position:absolute; top:56px; right:16px; z-index:200;
-    background:var(--bg2); border:1px solid var(--border);
-    border-radius:14px; padding:8px; min-width:200px;
-    box-shadow:0 8px 40px rgba(0,0,0,.4);
-    display:none;
-  }
-  .user-dropdown.open { display:block; }
-  .ud-item {
-    padding:10px 14px; border-radius:10px; cursor:pointer;
-    font-size:14px; display:flex; align-items:center; gap:10px;
-    transition:background .15s;
-  }
-  .ud-item:hover { background:var(--bg3); }
-  .ud-sep { height:1px; background:var(--border); margin:4px 0; }
-
-  /* ── RESPONSIVE ── */
-  @media(min-width:1024px) {
-    .hero { padding: 24px 24px; }
-    .hero-logo { width:52px; height:52px; font-size:26px; margin-bottom:10px; }
-    .hero-title { font-size: clamp(22px, 2.8vw, 34px); margin-bottom:8px; }
-    .hero-sub { font-size:14px; margin-bottom:14px; }
-    .hero-chips { margin-bottom:14px; gap:6px; }
-    .hero-chips .chip { padding:5px 12px; font-size:12px; }
-    .btn-hero-primary, .btn-hero-secondary { padding:10px 22px; font-size:14px; }
-    .stats-bar { padding:10px 24px; }
-    .stat-val { font-size:18px; }
-    .section { padding:28px 24px; }
-    .section-title { font-size:22px; margin-bottom:6px; }
-    .section-sub { font-size:13px; margin-bottom:18px; }
-    .feature-card { padding:14px 16px; }
-    .feature-icon { width:40px; height:40px; font-size:20px; margin-bottom:10px; }
-    .feature-title { font-size:14px; margin-bottom:4px; }
-    .feature-desc { font-size:12px; }
-    .features-grid { gap:12px; }
-    .hero-badge { margin-bottom:10px; font-size:11px; padding:4px 12px; }
-    .premio-banner { padding:24px 20px; }
-    .premio-val { font-size:clamp(28px,4vw,42px); }
-    .steps { gap:12px; }
-    .step { padding:14px; }
-    .footer { padding:20px 24px 16px; }
-    .trust-grid { gap:10px; }
-    .trust-card { padding:14px; }
-  }
-  @media(max-width:640px) {
-    .topbar { padding:0 16px; }
-    .stat-item { padding:8px 16px; }
-    .stat-val { font-size:18px; }
-    .steps::before { left:22px; }
-    .step-num { width:46px; height:46px; font-size:16px; }
-    .premio-banner { padding:28px 20px; }
-    .modal-box { padding:24px 18px; }
-    .btn-entrar { padding:7px 14px; font-size:13px; }
-    .btn-cadastrar { padding:7px 14px; font-size:13px; }
-  }
+/* ══════════════ MOBILE ══════════════ */
+@media(max-width:768px){
+  html,body{overflow:auto!important}
+  .layout{position:static;overflow:visible;flex-direction:column;height:auto}
+  .main{overflow:visible;height:auto}
+  .content{grid-template-columns:1fr;height:auto}
+  .content-main,.content-side{overflow:visible;height:auto}
+  .sidebar{display:none}
+  .header{--sidebar:0px}
+  .header-logo{width:auto;padding:0 14px}
+  .header-nav{display:none}
+  .features-row{grid-template-columns:1fr 1fr}
+  .hero{flex-direction:column;padding:20px 16px}
+  .hero-right{width:100%;justify-content:center}
+  .stat-card{min-width:70px;padding:10px 12px}
+  .stat-card .sv{font-size:15px}
+}
+@media(max-width:480px){
+  .features-row{grid-template-columns:1fr}
+  .hero-right{gap:6px}
+}
 </style>
 </head>
 <body>
 
-<!-- ── TOPBAR ── -->
-<nav class="topbar">
-  <a href="/" class="topbar-brand">
-    <span class="icon">🎰</span> PaynexBet
-  </a>
-  <!-- Ações: login/cadastro ou user chip -->
-  <div class="topbar-actions" id="topbar-actions">
-    <button class="btn-entrar" onclick="openModal('login')">Entrar</button>
-    <button class="btn-cadastrar" onclick="openModal('cadastro')">Criar conta</button>
+<!-- ══ HEADER ══ -->
+<header class="header">
+  <a href="/" class="header-logo"><span class="ico">🎰</span> PaynexBet</a>
+  <nav class="header-nav">
+    <button class="hnav-btn active" onclick="goTo('/apostas')">⚽ Apostas</button>
+    <button class="hnav-btn" onclick="goTo('/sorteio')">🎲 Sorteios</button>
+    <button class="hnav-btn" onclick="goTo('/apostas')"><span class="dot"></span> Ao Vivo</button>
+    <button class="hnav-btn" onclick="goTo('/conta')">💰 Minha Conta</button>
+  </nav>
+  <div class="header-actions" id="header-actions">
+    <button class="btn-in" onclick="openModal('login')">Entrar</button>
+    <button class="btn-out" onclick="openModal('cadastro')">Criar conta</button>
   </div>
-
-  <!-- Dropdown logado -->
   <div class="user-dropdown" id="user-dropdown">
     <div class="ud-item" onclick="goTo('/apostas')">⚽ Apostas Esportivas</div>
     <div class="ud-item" onclick="goTo('/sorteio')">🎲 Sorteios</div>
@@ -464,440 +300,355 @@
     <div class="ud-sep"></div>
     <div class="ud-item" style="color:#ef4444" onclick="logout()">🚪 Sair</div>
   </div>
-</nav>
+</header>
 
-<!-- ── HERO ── -->
-<section class="hero">
-  <div class="hero-bg"></div>
-  <div class="hero-grid"></div>
-  <div class="hero-content">
-    <div class="hero-badge"><span class="pulse"></span> Sistema online agora</div>
-    <div class="hero-logo">🎰</div>
-    <h1 class="hero-title">
-      <span class="gold">Sorteios</span> &amp; <span class="blue">Apostas</span><br>
-      num só lugar!
-    </h1>
-    <p class="hero-sub">
-      Deposite via Pix, concorra a prêmios nos sorteios e aposte nos seus times favoritos com odds em tempo real.
-    </p>
-    <div class="hero-chips">
-      <span class="chip">🏆 Prêmios reais no Pix</span>
-      <span class="chip">⚽ Apostas esportivas</span>
-      <span class="chip">⚡ 100% automático</span>
-      <span class="chip">🔒 Ambiente seguro</span>
-    </div>
-    <div class="hero-btns">
-      <button class="btn-hero-primary" onclick="heroAction('sorteio')">🎲 Participar do Sorteio</button>
-      <button class="btn-hero-secondary" onclick="heroAction('apostas')">⚽ Apostar Agora</button>
-    </div>
-  </div>
-</section>
+<!-- ══ LAYOUT ══ -->
+<div class="layout">
 
-<!-- ── STATS BAR ── -->
-<div class="stats-bar">
-  <div class="stat-item">
-    <span class="stat-val" id="stat-premio">R$ 750</span>
-    <span class="stat-lbl">Prêmio atual</span>
-  </div>
-  <div class="stat-item">
-    <span class="stat-val" id="stat-jogos">+48</span>
-    <span class="stat-lbl">Jogos ao vivo</span>
-  </div>
-  <div class="stat-item">
-    <span class="stat-val">Pix</span>
-    <span class="stat-lbl">Pagamento</span>
-  </div>
-  <div class="stat-item">
-    <span class="stat-val">24/7</span>
-    <span class="stat-lbl">Suporte</span>
-  </div>
-</div>
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar">
+    <div class="sb-section">
+      <div class="sb-label">Em Alta</div>
+      <div class="sb-item active" onclick="goTo('/apostas')"><span class="ico">🔥</span>Em Destaque <span class="badge live">AO VIVO</span></div>
+      <div class="sb-item" onclick="goTo('/apostas')"><span class="ico">🇧🇷</span>Brasileirão</div>
+      <div class="sb-item" onclick="goTo('/apostas')"><span class="ico">🏆</span>Libertadores</div>
+      <div class="sb-item" onclick="goTo('/apostas')"><span class="ico">⭐</span>Champions League</div>
+      <div class="sb-item" onclick="goTo('/apostas')"><span class="ico">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span>Premier League</div>
+      <div class="sb-item" onclick="goTo('/apostas')"><span class="ico">🇪🇸</span>La Liga</div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-section">
+      <div class="sb-label">Esportes</div>
+      <div class="sb-item" onclick="goTo('/apostas')"><span class="ico">⚽</span>Futebol</div>
+      <div class="sb-item" onclick="goTo('/apostas')"><span class="ico">🏀</span>Basquete</div>
+      <div class="sb-item" onclick="goTo('/apostas')"><span class="ico">🎾</span>Tênis</div>
+      <div class="sb-item" onclick="goTo('/apostas')"><span class="ico">🏈</span>Futebol Americano</div>
+      <div class="sb-item" onclick="goTo('/apostas')"><span class="ico">🥊</span>MMA / Boxe</div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-section">
+      <div class="sb-label">Sorteios</div>
+      <div class="sb-item" onclick="goTo('/sorteio')"><span class="ico">🎰</span>Participar Agora <span class="badge">R$750</span></div>
+      <div class="sb-item" onclick="goTo('/sorteio')"><span class="ico">📋</span>Meus Bilhetes</div>
+      <div class="sb-item" onclick="goTo('/sorteio')"><span class="ico">🏅</span>Ganhadores</div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-section">
+      <div class="sb-label">Minha Conta</div>
+      <div class="sb-item" onclick="goTo('/conta')"><span class="ico">💳</span>Depositar (Pix)</div>
+      <div class="sb-item" onclick="goTo('/conta')"><span class="ico">💰</span>Sacar</div>
+      <div class="sb-item" onclick="goTo('/conta')"><span class="ico">📊</span>Histórico</div>
+    </div>
+  </aside>
 
-<!-- ── FEATURES ── -->
-<div class="section">
-  <h2 class="section-title">Por que escolher a <span style="background:linear-gradient(90deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">PaynexBet</span>?</h2>
-  <p class="section-sub">A plataforma mais completa para quem quer diversão e prêmios reais.</p>
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feature-icon gold">🏆</div>
-      <div class="feature-title">Prêmios em Dinheiro</div>
-      <div class="feature-desc">Concorra a prêmios reais nos sorteios semanais e receba diretamente na sua chave Pix.</div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon blue">⚽</div>
-      <div class="feature-title">Apostas Esportivas</div>
-      <div class="feature-desc">Odds em tempo real para Brasileirão, Libertadores, Champions League, Premier League e mais.</div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon green">⚡</div>
-      <div class="feature-title">Pix Instantâneo</div>
-      <div class="feature-desc">Depósito e saque via Pix, processados automaticamente em segundos, 24 horas por dia.</div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon purple">🔒</div>
-      <div class="feature-title">100% Seguro</div>
-      <div class="feature-desc">Plataforma criptografada com autenticação por CPF, garantindo a segurança dos seus dados.</div>
-    </div>
-  </div>
-</div>
+  <!-- ══ MAIN ══ -->
+  <main class="main">
 
-<!-- ── PRÊMIO ATUAL ── -->
-<div style="padding:0 24px 72px; max-width:700px; margin:0 auto;">
-  <h2 class="section-title">🏆 Prêmio Atual do Sorteio</h2>
-  <p class="section-sub">Próximo sorteio em breve — participe agora!</p>
-  <div class="premio-banner">
-    <div class="premio-label">🏆 Prêmio estimado</div>
-    <div class="premio-val" id="premio-display">R$ 750,00</div>
-    <div class="premio-info">Bilhetes a partir de R$ 10,00 via Pix</div>
-    <button class="btn-participar" onclick="heroAction('sorteio')">🎲 Quero Participar</button>
-  </div>
-</div>
-
-<!-- ── COMO FUNCIONA ── -->
-<div class="section" style="padding-top:0">
-  <h2 class="section-title">Como funciona?</h2>
-  <p class="section-sub">Em apenas 4 passos simples você está pronto para jogar.</p>
-  <div style="max-width:560px; margin:0 auto;">
-    <div class="steps">
-      <div class="step">
-        <div class="step-num s1">1</div>
-        <div class="step-body">
-          <div class="step-title">Crie sua conta</div>
-          <div class="step-desc">Cadastre-se com seu nome e CPF. Rápido, gratuito e 100% seguro. Nenhum dado extra necessário.</div>
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-left">
+        <div class="hero-badge"><span class="pulse"></span> Sistema online agora</div>
+        <h1 class="hero-title">
+          <span class="g">Sorteios</span> &amp; <span class="b">Apostas</span> num só lugar!
+        </h1>
+        <p class="hero-sub">Deposite via Pix, concorra a prêmios nos sorteios e aposte nos seus times favoritos com odds em tempo real.</p>
+        <div class="hero-btns">
+          <button class="btn-hs primary" onclick="heroAction('sorteio')">🎲 Participar do Sorteio</button>
+          <button class="btn-hs secondary" onclick="heroAction('apostas')">⚽ Apostar Agora</button>
         </div>
       </div>
-      <div class="step">
-        <div class="step-num s2">2</div>
-        <div class="step-body">
-          <div class="step-title">Deposite via Pix</div>
-          <div class="step-desc">Gere um QR Code Pix, pague pelo app do banco e o saldo cai na sua carteira instantaneamente.</div>
+      <div class="hero-right">
+        <div class="stat-card">
+          <div class="sv" id="st-premio">R$ 750</div>
+          <div class="sl">Prêmio Atual</div>
         </div>
-      </div>
-      <div class="step">
-        <div class="step-num s3">3</div>
-        <div class="step-body">
-          <div class="step-title">Escolha sua diversão</div>
-          <div class="step-desc">Participe do sorteio comprando bilhetes ou aposte nos seus times favoritos com odds ao vivo.</div>
+        <div class="stat-card live-card">
+          <div class="sv" id="st-jogos">+10</div>
+          <div class="sl">Jogos Hoje</div>
         </div>
-      </div>
-      <div class="step">
-        <div class="step-num s4">4</div>
-        <div class="step-body">
-          <div class="step-title">Receba seus prêmios</div>
-          <div class="step-desc">Ganhou? Solicite o saque e receba diretamente na sua chave Pix em minutos.</div>
+        <div class="stat-card">
+          <div class="sv">Pix</div>
+          <div class="sl">Pagamento</div>
+        </div>
+        <div class="stat-card">
+          <div class="sv">24/7</div>
+          <div class="sl">Suporte</div>
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- ── CONFIANÇA ── -->
-<div style="background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:56px 24px;">
-  <div class="section" style="padding:0; max-width:900px">
-    <h2 class="section-title">Sua segurança é prioridade</h2>
-    <p class="section-sub" style="margin-bottom:36px;">Infraestrutura robusta para proteger seus dados e dinheiro.</p>
-    <div class="trust-grid">
-      <div class="trust-item"><div class="trust-icon">🔐</div><div class="trust-title">Dados criptografados</div><div class="trust-desc">Seus dados pessoais protegidos com criptografia de ponta</div></div>
-      <div class="trust-item"><div class="trust-icon">⚡</div><div class="trust-title">Pix em segundos</div><div class="trust-desc">Transações processadas automaticamente 24/7</div></div>
-      <div class="trust-item"><div class="trust-icon">🛡️</div><div class="trust-title">Sem taxas ocultas</div><div class="trust-desc">Saques e depósitos sem cobranças extras</div></div>
-      <div class="trust-item"><div class="trust-icon">📞</div><div class="trust-title">Suporte ativo</div><div class="trust-desc">Equipe disponível para te ajudar sempre que precisar</div></div>
+    <!-- CONTEÚDO -->
+    <div class="content">
+
+      <!-- COLUNA ESQUERDA -->
+      <div class="content-main">
+
+        <!-- Features -->
+        <div class="sec-head"><div class="accent"></div><h3>Por que escolher a PaynexBet?</h3></div>
+        <div class="features-row">
+          <div class="feat-card">
+            <div class="feat-ico g">🏆</div>
+            <div class="feat-title">Prêmios em Dinheiro</div>
+            <div class="feat-desc">Concorra a prêmios reais nos sorteios e receba direto no Pix.</div>
+          </div>
+          <div class="feat-card">
+            <div class="feat-ico b">⚽</div>
+            <div class="feat-title">Apostas Esportivas</div>
+            <div class="feat-desc">Odds em tempo real para Brasileirão, Libertadores, Champions e mais.</div>
+          </div>
+          <div class="feat-card">
+            <div class="feat-ico gr">⚡</div>
+            <div class="feat-title">Pix Instantâneo</div>
+            <div class="feat-desc">Depósito e saque via Pix, processados automaticamente 24h.</div>
+          </div>
+          <div class="feat-card">
+            <div class="feat-ico p">🔒</div>
+            <div class="feat-title">100% Seguro</div>
+            <div class="feat-desc">Dados protegidos com criptografia e ambiente confiável.</div>
+          </div>
+        </div>
+
+        <!-- Jogos em Destaque -->
+        <div class="sec-head" style="margin-top:4px">
+          <div class="accent"></div>
+          <h3>Partidas em Destaque</h3>
+          <button class="see-all" onclick="goTo('/apostas')">Ver todas →</button>
+        </div>
+        <div class="jogos-mini" id="jogos-home"></div>
+
+      </div>
+
+      <!-- COLUNA DIREITA -->
+      <div class="content-side">
+
+        <!-- Prêmio -->
+        <div class="premio-card">
+          <div class="prm-label">🏆 Prêmio Estimado</div>
+          <div class="prm-val" id="premio-val">R$ 750,00</div>
+          <div class="prm-info">Próximo sorteio em breve</div>
+          <div class="sorteio-info">
+            <div class="si-row"><span class="lbl">Participantes</span><span class="val" id="si-part">--</span></div>
+            <div class="si-row"><span class="lbl">Seus bilhetes</span><span class="val" id="si-tick">--</span></div>
+            <div class="progress-bar"><div class="progress-fill" id="si-prog" style="width:65%"></div></div>
+          </div>
+          <button class="btn-prm" onclick="heroAction('sorteio')">🎲 Participar Agora</button>
+        </div>
+
+        <!-- Links rápidos -->
+        <div class="sec-head" style="margin-bottom:8px"><div class="accent" style="background:var(--blue)"></div><h3>Acesso Rápido</h3></div>
+        <div class="quick-links">
+          <div class="ql-item gold-item" onclick="goTo('/apostas')"><span class="ql-ico">⚽</span>Apostas Esportivas<span class="ql-arrow">›</span></div>
+          <div class="ql-item blue-item" onclick="goTo('/conta')"><span class="ql-ico">💳</span>Depositar via Pix<span class="ql-arrow">›</span></div>
+          <div class="ql-item" onclick="goTo('/conta')"><span class="ql-ico">💰</span>Sacar Ganhos<span class="ql-arrow">›</span></div>
+          <div class="ql-item" onclick="goTo('/sorteio')"><span class="ql-ico">🎰</span>Meus Bilhetes<span class="ql-arrow">›</span></div>
+          <div class="ql-item" onclick="window.location.href='/suporte'"><span class="ql-ico">💬</span>Suporte 24/7<span class="ql-arrow">›</span></div>
+        </div>
+
+        <!-- Footer mini -->
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+            <a href="/termos" style="font-size:10px;color:var(--muted);text-decoration:none">Termos</a>
+            <a href="/privacidade" style="font-size:10px;color:var(--muted);text-decoration:none">Privacidade</a>
+            <a href="/responsavel" style="font-size:10px;color:var(--muted);text-decoration:none">Jogo Responsável</a>
+            <a href="/suporte" style="font-size:10px;color:var(--muted);text-decoration:none">Suporte</a>
+          </div>
+          <p style="text-align:center;font-size:10px;color:var(--muted);margin-top:8px">© 2025 PaynexBet · +18</p>
+        </div>
+
+      </div>
     </div>
-  </div>
+  </main>
 </div>
 
-<!-- ── CTA FINAL ── -->
-<div style="padding:80px 24px; text-align:center; background:var(--bg);">
-  <div style="max-width:600px; margin:0 auto;">
-    <h2 style="font-size:clamp(28px,5vw,42px); font-weight:900; margin-bottom:16px;">
-      Pronto para <span style="background:linear-gradient(90deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">ganhar</span>?
-    </h2>
-    <p style="color:var(--muted); font-size:17px; margin-bottom:36px; line-height:1.6;">
-      Crie sua conta agora mesmo. É grátis, rápido e você já pode começar a jogar hoje!
-    </p>
-    <button class="btn-hero-primary" style="margin:0 auto; font-size:18px; padding:18px 48px;" onclick="openModal('cadastro')">
-      🚀 Criar conta grátis
-    </button>
-  </div>
-</div>
-
-<!-- ── FOOTER ── -->
-<footer class="footer">
-  <div class="footer-inner">
-    <div class="footer-brand">🎰 PaynexBet</div>
-    <div class="footer-sub">Sorteios & Apostas Esportivas</div>
-    <div class="footer-links">
-      <a href="/termos">Termos de uso</a>
-      <a href="/privacidade">Política de privacidade</a>
-      <a href="/responsavel">Jogo responsável</a>
-      <a href="/suporte">Suporte</a>
-    </div>
-    <div class="footer-copy">© 2025 PaynexBet — Todos os direitos reservados. +18. Jogue com responsabilidade.</div>
-  </div>
-</footer>
-
-<!-- ── MODAL CADASTRO / LOGIN ── -->
-<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+<!-- ══ MODAL ══ -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal-box">
-    <button class="modal-close" onclick="closeModal()">✕</button>
-    <div class="modal-logo">
-      <div class="modal-logo-icon">🎰</div>
-      <div class="modal-logo-title">PaynexBet</div>
-    </div>
+    <button class="modal-close" onclick="closeModal()">×</button>
     <div class="modal-tabs">
-      <button class="modal-tab active" id="tab-cadastro" onclick="switchTab('cadastro')">✨ Criar conta</button>
-      <button class="modal-tab"        id="tab-login"    onclick="switchTab('login')">🔑 Entrar</button>
+      <button class="mtab active" id="tab-login" onclick="switchTab('login')">Entrar</button>
+      <button class="mtab" id="tab-cadastro" onclick="switchTab('cadastro')">Criar conta</button>
     </div>
 
-    <!-- ALERTA -->
-    <div class="alert alert-error"   id="modal-alert-err"></div>
-    <div class="alert alert-success" id="modal-alert-ok"></div>
+    <!-- LOGIN -->
+    <div id="form-login">
+      <div class="modal-title">Bem-vindo de volta! 👋</div>
+      <div class="modal-sub">Entre com seu CPF para acessar sua conta.</div>
+      <div class="msg-error" id="err-login"></div>
+      <div class="msg-success" id="ok-login"></div>
+      <div class="form-group">
+        <label>CPF</label>
+        <input type="text" id="inp-cpf-login" placeholder="000.000.000-00" maxlength="14" oninput="maskCPF(this)">
+      </div>
+      <button class="btn-submit" onclick="doLogin()">Entrar →</button>
+      <div class="switch-link">Não tem conta? <a onclick="switchTab('cadastro')">Criar conta grátis</a></div>
+    </div>
 
-    <!-- FORM CADASTRO -->
-    <form id="form-cadastro" onsubmit="submitCadastro(event)" autocomplete="off">
+    <!-- CADASTRO -->
+    <div id="form-cadastro" style="display:none">
+      <div class="modal-title">Criar conta grátis 🚀</div>
+      <div class="modal-sub">Cadastre-se e comece a ganhar agora mesmo.</div>
+      <div class="msg-error" id="err-cad"></div>
+      <div class="msg-success" id="ok-cad"></div>
       <div class="form-group">
-        <label class="form-label">Seu nome completo</label>
-        <div class="form-input-icon">
-          <span class="input-icon">👤</span>
-          <input class="form-input" type="text" id="cad-nome" placeholder="Ex: João da Silva" required minlength="3">
-        </div>
+        <label>Nome completo</label>
+        <input type="text" id="inp-nome" placeholder="Seu nome">
       </div>
       <div class="form-group">
-        <label class="form-label">CPF</label>
-        <div class="form-input-icon">
-          <span class="input-icon">🪪</span>
-          <input class="form-input cpf-mask" type="text" id="cad-cpf" placeholder="000.000.000-00" maxlength="14" required>
-        </div>
+        <label>CPF</label>
+        <input type="text" id="inp-cpf-cad" placeholder="000.000.000-00" maxlength="14" oninput="maskCPF(this)">
       </div>
-      <button class="btn-submit-gold" type="submit" id="btn-cad">
-        <span>🎉 Criar minha conta</span>
-      </button>
-      <div class="modal-alt">Já tem conta? <a onclick="switchTab('login')">Entrar agora</a></div>
-    </form>
-
-    <!-- FORM LOGIN -->
-    <form id="form-login" onsubmit="submitLogin(event)" autocomplete="off" style="display:none">
-      <div class="form-group">
-        <label class="form-label">CPF</label>
-        <div class="form-input-icon">
-          <span class="input-icon">🪪</span>
-          <input class="form-input cpf-mask" type="text" id="log-cpf" placeholder="000.000.000-00" maxlength="14" required>
-        </div>
-      </div>
-      <button class="btn-submit" type="submit" id="btn-log">
-        <span>🔑 Acessar minha conta</span>
-      </button>
-      <div class="modal-alt">Não tem conta? <a onclick="switchTab('cadastro')">Cadastre-se grátis</a></div>
-    </form>
+      <button class="btn-submit" onclick="doCadastro()">Criar conta →</button>
+      <div class="switch-link">Já tem conta? <a onclick="switchTab('login')">Entrar</a></div>
+    </div>
   </div>
 </div>
 
 <script>
 const BASE = '';
 
-/* ──────────── UTILS ──────────── */
-function fmtCPF(v) {
-  return v.replace(/\D/g,'').replace(/(\d{3})(\d)/,'$1.$2')
-          .replace(/(\d{3})\.(\d{3})(\d)/,'$1.$2.$3')
-          .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/,'$1.$2.$3-$4').substring(0,14);
-}
-function rawCPF(v) { return v.replace(/\D/g,''); }
-function validCPF(c) { return rawCPF(c).length === 11; }
+/* ── SESSION ── */
+function saveSession(u){localStorage.setItem('pnb_user',JSON.stringify(u))}
+function loadSession(){try{return JSON.parse(localStorage.getItem('pnb_user'))}catch(e){return null}}
+function clearSession(){localStorage.removeItem('pnb_user')}
 
-document.querySelectorAll('.cpf-mask').forEach(el => {
-  el.addEventListener('input', () => { el.value = fmtCPF(el.value); });
-});
-
-function showAlert(type, msg) {
-  document.getElementById('modal-alert-err').className = 'alert alert-error';
-  document.getElementById('modal-alert-ok').className  = 'alert alert-success';
-  if (type === 'error') {
-    const el = document.getElementById('modal-alert-err');
-    el.textContent = msg; el.classList.add('show');
+/* ── TOPBAR ── */
+function renderHeader(){
+  const u = loadSession();
+  const el = document.getElementById('header-actions');
+  if(u){
+    const ini = u.nome?u.nome.trim().split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase():'?';
+    const saldo = Number(u.saldo||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    el.innerHTML = '<div class="user-chip" onclick="toggleDD()"><div class="uc-avatar">'+ini+'</div><span class="uc-name">'+u.nome.split(' ')[0]+'</span><span class="uc-saldo">'+saldo+'</span></div>';
   } else {
-    const el = document.getElementById('modal-alert-ok');
-    el.textContent = msg; el.classList.add('show');
+    el.innerHTML = '<button class="btn-in" onclick="openModal(\'login\')">Entrar</button><button class="btn-out" onclick="openModal(\'cadastro\')">Criar conta</button>';
   }
 }
-function clearAlerts() {
-  document.getElementById('modal-alert-err').className = 'alert alert-error';
-  document.getElementById('modal-alert-ok').className  = 'alert alert-success';
-}
-
-/* ──────────── MODAL ──────────── */
-function openModal(tab) {
-  clearAlerts();
-  switchTab(tab || 'cadastro');
-  document.getElementById('modal').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-function closeModal() {
-  document.getElementById('modal').classList.remove('open');
-  document.body.style.overflow = '';
-}
-function closeModalOutside(e) { if (e.target === document.getElementById('modal')) closeModal(); }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-function switchTab(tab) {
-  document.getElementById('form-cadastro').style.display = tab === 'cadastro' ? '' : 'none';
-  document.getElementById('form-login').style.display    = tab === 'login'    ? '' : 'none';
-  document.getElementById('tab-cadastro').className = 'modal-tab' + (tab==='cadastro'?' active':'');
-  document.getElementById('tab-login').className    = 'modal-tab' + (tab==='login'   ?' active':'');
-  clearAlerts();
-}
-
-/* ──────────── SESSION ──────────── */
-function saveSession(user) {
-  localStorage.setItem('pnb_user', JSON.stringify(user));
-}
-function loadSession() {
-  try { return JSON.parse(localStorage.getItem('pnb_user')); } catch(e) { return null; }
-}
-function clearSession() { localStorage.removeItem('pnb_user'); }
-
-/* ──────────── TOPBAR ──────────── */
-function renderTopbar() {
-  const user = loadSession();
-  const el = document.getElementById('topbar-actions');
-  if (user) {
-    const initials = user.nome ? user.nome.trim().split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase() : '?';
-    const saldo = Number(user.saldo || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-    el.innerHTML = `
-      <div class="user-chip" onclick="toggleDropdown()">
-        <div class="user-chip-avatar">${initials}</div>
-        <span class="user-chip-name">${user.nome.split(' ')[0]}</span>
-        <span class="user-chip-saldo">${saldo}</span>
-        <span style="color:var(--muted);font-size:10px">▾</span>
-      </div>`;
-  } else {
-    el.innerHTML = `
-      <button class="btn-entrar" onclick="openModal('login')">Entrar</button>
-      <button class="btn-cadastrar" onclick="openModal('cadastro')">Criar conta</button>`;
-  }
-}
-
-function toggleDropdown() {
-  const dd = document.getElementById('user-dropdown');
-  dd.classList.toggle('open');
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('.user-chip') && !e.target.closest('.user-dropdown'))
+function toggleDD(){document.getElementById('user-dropdown').classList.toggle('open')}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.user-chip')&&!e.target.closest('.user-dropdown'))
     document.getElementById('user-dropdown').classList.remove('open');
 });
-
-function logout() {
-  clearSession();
-  renderTopbar();
-  document.getElementById('user-dropdown').classList.remove('open');
-}
-
-function goTo(path) {
-  const user = loadSession();
-  if (!user) { openModal('login'); return; }
+function logout(){clearSession();renderHeader();document.getElementById('user-dropdown').classList.remove('open')}
+function goTo(path){
+  const u = loadSession();
+  if(!u){openModal('login');return}
   window.location.href = path;
 }
-
-/* ──────────── HERO BUTTONS ──────────── */
-function heroAction(dest) {
-  const user = loadSession();
-  if (!user) {
-    openModal('cadastro');
-    return;
-  }
-  if (dest === 'sorteio') window.location.href = '/sorteio';
-  else window.location.href = '/apostas';
+function heroAction(section){
+  const u = loadSession();
+  if(!u){openModal('cadastro');return}
+  window.location.href = section==='sorteio'?'/sorteio':'/apostas';
 }
 
-/* ──────────── CADASTRO ──────────── */
-async function submitCadastro(e) {
-  e.preventDefault();
-  clearAlerts();
-  const nome = document.getElementById('cad-nome').value.trim();
-  const cpf  = rawCPF(document.getElementById('cad-cpf').value);
-  if (!nome || nome.length < 3) { showAlert('error','❌ Nome deve ter ao menos 3 caracteres.'); return; }
-  if (!validCPF(cpf)) { showAlert('error','❌ CPF inválido. Digite os 11 dígitos.'); return; }
+/* ── MODAL ── */
+function openModal(tab){
+  document.getElementById('modal-overlay').classList.add('open');
+  switchTab(tab||'login');
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open')}
+function switchTab(tab){
+  document.getElementById('tab-login').classList.toggle('active',tab==='login');
+  document.getElementById('tab-cadastro').classList.toggle('active',tab==='cadastro');
+  document.getElementById('form-login').style.display=tab==='login'?'block':'none';
+  document.getElementById('form-cadastro').style.display=tab==='cadastro'?'block':'none';
+}
 
-  const btn = document.getElementById('btn-cad');
-  btn.disabled = true;
-  btn.innerHTML = '<span>⏳ Criando conta...</span>';
+/* ── MASK CPF ── */
+function maskCPF(el){
+  let v=el.value.replace(/\D/g,'').substring(0,11);
+  if(v.length>9)v=v.replace(/(\d{3})(\d{3})(\d{3})(\d+)/,'$1.$2.$3-$4');
+  else if(v.length>6)v=v.replace(/(\d{3})(\d{3})(\d+)/,'$1.$2.$3');
+  else if(v.length>3)v=v.replace(/(\d{3})(\d+)/,'$1.$2');
+  el.value=v;
+}
+function cleanCPF(v){return v.replace(/\D/g,'')}
+function showMsg(id,msg,isErr){
+  const el=document.getElementById(id);
+  el.textContent=msg;el.style.display='block';
+  setTimeout(()=>{el.style.display='none'},4000);
+}
 
-  try {
-    const res = await fetch(`${BASE}/api/bet/login`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({nome, cpf})
+/* ── LOGIN ── */
+async function doLogin(){
+  const cpf=cleanCPF(document.getElementById('inp-cpf-login').value);
+  if(cpf.length!==11){showMsg('err-login','CPF inválido.',true);return}
+  try{
+    const r=await fetch(BASE+'/api/bet/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cpf})});
+    const d=await r.json();
+    if(d.error){showMsg('err-login',d.error,true);return}
+    saveSession(d);renderHeader();closeModal();
+  }catch(e){showMsg('err-login','Erro de conexão.',true)}
+}
+
+/* ── CADASTRO ── */
+async function doCadastro(){
+  const nome=document.getElementById('inp-nome').value.trim();
+  const cpf=cleanCPF(document.getElementById('inp-cpf-cad').value);
+  if(!nome){showMsg('err-cad','Informe seu nome.',true);return}
+  if(cpf.length!==11){showMsg('err-cad','CPF inválido.',true);return}
+  try{
+    const r=await fetch(BASE+'/api/bet/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,cpf})});
+    const d=await r.json();
+    if(d.error){showMsg('err-cad',d.error,true);return}
+    saveSession(d);renderHeader();closeModal();
+  }catch(e){showMsg('err-cad','Erro de conexão.',true)}
+}
+
+/* ── CARREGAR JOGOS ── */
+async function loadJogosHome(){
+  const el=document.getElementById('jogos-home');
+  try{
+    const r=await fetch(BASE+'/api/bet/jogos');
+    const d=await r.json();
+    const jogos=(d.jogos||[]).slice(0,5);
+    if(!jogos.length){el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">Nenhum jogo disponível agora.</div>';return}
+    el.innerHTML='';
+    jogos.forEach(j=>{
+      const o=j.odds||{};
+      const hora=j.commence_time?new Date(j.commence_time).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'-';
+      const live=new Date(j.commence_time)<new Date();
+      const div=document.createElement('div');
+      div.className='jogo-mini';
+      div.onclick=()=>goTo('/apostas');
+      div.innerHTML=
+        '<div class="jm-liga">'+(j.league||j.sport)+'<br><small style="color:#555">'+hora+'</small></div>'+
+        '<div class="jm-times"><span>'+j.home_team+'</span><span style="color:var(--muted);font-size:10px">vs</span><span>'+j.away_team+'</span></div>'+
+        (live?'<div class="jm-live">● AO VIVO</div>':'')+
+        '<div class="jm-odds">'+
+        (o.home!=null?'<div class="odd-pill">'+Number(o.home).toFixed(2)+'</div>':'')+
+        (o.draw!=null?'<div class="odd-pill empate">'+Number(o.draw).toFixed(2)+'</div>':'')+
+        (o.away!=null?'<div class="odd-pill">'+Number(o.away).toFixed(2)+'</div>':'')+
+        '</div>';
+      el.appendChild(div);
     });
-    const d = await res.json();
-    if (d.success) {
-      saveSession(d.usuario);
-      showAlert('success', `🎉 Bem-vindo, ${d.usuario.nome.split(' ')[0]}! Conta criada com sucesso.`);
-      setTimeout(() => {
-        closeModal();
-        renderTopbar();
-      }, 1400);
-    } else {
-      showAlert('error', '❌ ' + (d.error || 'Erro ao criar conta. Tente novamente.'));
-    }
-  } catch(err) {
-    showAlert('error', '❌ Erro de conexão. Verifique sua internet.');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<span>🎉 Criar minha conta</span>';
-  }
+    document.getElementById('st-jogos').textContent='+'+jogos.length;
+  }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">Carregando jogos...</div>'}
 }
 
-/* ──────────── LOGIN ──────────── */
-async function submitLogin(e) {
-  e.preventDefault();
-  clearAlerts();
-  const cpf = rawCPF(document.getElementById('log-cpf').value);
-  if (!validCPF(cpf)) { showAlert('error','❌ CPF inválido. Digite os 11 dígitos.'); return; }
-
-  const btn = document.getElementById('btn-log');
-  btn.disabled = true;
-  btn.innerHTML = '<span>⏳ Verificando...</span>';
-
-  try {
-    const res = await fetch(`${BASE}/api/bet/login`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({cpf})
-    });
-    const d = await res.json();
-    if (d.success) {
-      saveSession(d.usuario);
-      showAlert('success', `✅ Bem-vindo de volta, ${d.usuario.nome ? d.usuario.nome.split(' ')[0] : 'usuário'}!`);
-      setTimeout(() => {
-        closeModal();
-        renderTopbar();
-      }, 1200);
-    } else {
-      showAlert('error', '❌ CPF não encontrado. Crie sua conta primeiro.');
+/* ── SORTEIO INFO ── */
+async function loadSorteioInfo(){
+  try{
+    const r=await fetch(BASE+'/api/bet/config');
+    const d=await r.json();
+    if(d.premio){
+      const val=Number(d.premio).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+      document.getElementById('premio-val').textContent=val;
+      document.getElementById('st-premio').textContent='R$ '+Number(d.premio).toLocaleString('pt-BR');
     }
-  } catch(err) {
-    showAlert('error', '❌ Erro de conexão. Verifique sua internet.');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<span>🔑 Acessar minha conta</span>';
-  }
+    if(d.participantes!=null){
+      document.getElementById('si-part').textContent=d.participantes+' pessoas';
+      const pct=Math.min(100,Math.round(d.participantes/200*100));
+      document.getElementById('si-prog').style.width=pct+'%';
+    }
+    const u=loadSession();
+    document.getElementById('si-tick').textContent=u?'Ver na conta':'Faça login';
+  }catch(e){}
 }
 
-/* ──────────── CARREGA PRÊMIO ──────────── */
-async function carregarPremio() {
-  try {
-    const r = await fetch(`${BASE}/api/sorteio/status`);
-    const d = await r.json();
-    if (d && d.premio_estimado) {
-      const val = Number(d.premio_estimado).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-      document.getElementById('premio-display').textContent = val;
-      document.getElementById('stat-premio').textContent =
-        'R$ ' + Math.round(d.premio_estimado).toLocaleString('pt-BR');
-    }
-  } catch(e) {}
-}
-
-/* ──────────── INIT ──────────── */
-renderTopbar();
-carregarPremio();
+/* ── INIT ── */
+renderHeader();
+loadJogosHome();
+loadSorteioInfo();
 </script>
 </body>
 </html>
