@@ -4579,7 +4579,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20250428h-fullwidth-layout',
+        'version': 'v20250428i-fullscreen-grid',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -10459,19 +10459,25 @@ def _page_apostas_html():
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#fff;min-height:100vh}
 
 /* TOPBAR */
-.topbar{background:#0d0d16;border-bottom:1px solid #ffffff0c;padding:0 16px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.topbar-logo{font-size:18px;font-weight:900;background:linear-gradient(135deg,#FFD700,#FFA500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none}
+.topbar{background:#0d0d16;border-bottom:1px solid #ffffff0c;padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;width:100%}
+.topbar-logo{font-size:20px;font-weight:900;background:linear-gradient(135deg,#FFD700,#FFA500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none;letter-spacing:-0.5px}
 .topbar-right{display:flex;align-items:center;gap:10px}
-.saldo-badge{background:#00d68f14;border:1px solid #22c55e33;border-radius:8px;padding:4px 12px;font-size:13px;font-weight:700;color:#4ade80}
-.btn-conta{background:#1e3a8a;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none}
+.saldo-badge{background:#00d68f14;border:1px solid #22c55e33;border-radius:8px;padding:5px 14px;font-size:14px;font-weight:700;color:#4ade80}
+.btn-conta{background:#1e3a8a;border:none;border-radius:8px;padding:7px 14px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none}
 
 /* LAYOUT FULL-WIDTH */
-.page-layout{display:flex;min-height:calc(100vh - 52px);width:100%}
-.main{flex:1;min-width:0;padding:14px 20px 80px;width:100%}
+.page-layout{display:flex;min-height:calc(100vh - 52px);width:100%;overflow-x:hidden}
+.main{flex:1;min-width:0;padding:14px 16px 80px;width:100%;overflow-x:hidden}
+@media(min-width:768px){
+  .main{padding:16px 24px 80px}
+}
 @media(min-width:1024px){
   .page-layout{gap:0}
   .main{padding:20px 32px 24px}
   .bet-slip-sidebar{width:340px;flex-shrink:0;background:#0d0d16;border-left:1px solid #ffffff0c;padding:16px;height:calc(100vh - 52px);position:sticky;top:52px;overflow-y:auto;display:flex;flex-direction:column}
+}
+@media(min-width:1440px){
+  .main{padding:24px 48px 24px}
 }
 
 /* FILTROS ESPORTES */
@@ -10484,8 +10490,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .secao-titulo{font-size:12px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .live-dot{width:6px;height:6px;background:#ef4444;border-radius:50%;animation:blink 1.2s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.jogos-lista{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:20px}
+.jogos-lista{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:20px}
+@media(min-width:640px){.jogos-lista{grid-template-columns:1fr 1fr}}
 @media(min-width:1024px){.jogos-lista{grid-template-columns:1fr 1fr}}
+@media(min-width:1280px){.jogos-lista{grid-template-columns:1fr 1fr 1fr}}
 .jogo-card{background:var(--card);border:1px solid #ffffff0c;border-radius:14px;padding:14px;cursor:pointer;transition:border-color .2s}
 .jogo-card:hover{border-color:#3b82f633}
 .jogo-card.live{border-left:3px solid #ef4444}
@@ -10536,8 +10544,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sidebar-footer{border-top:1px solid #22c55e22;padding-top:12px}
 @media(min-width:1024px){
   .bet-slip-bar{display:none !important}
-  .bet-slip-sidebar{display:flex;flex-direction:column;width:320px;flex-shrink:0;background:#0d0d16;border-left:1px solid #ffffff0c;padding:20px 16px;height:calc(100vh - 52px);position:sticky;top:52px;overflow-y:auto}
+  .bet-slip-sidebar{display:flex;flex-direction:column;width:340px;flex-shrink:0;background:#0d0d16;border-left:1px solid #ffffff0c;padding:20px 16px;height:calc(100vh - 52px);position:sticky;top:52px;overflow-y:auto}
   .main{padding-bottom:24px}
+}
+@media(min-width:1440px){
+  .bet-slip-sidebar{width:380px}
 }
 
 /* LOGIN MODAL */
@@ -10570,7 +10581,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <header class="topbar">
   <a href="/" class="topbar-logo">🎰 PaynexBet</a>
   <div class="topbar-right">
-    <div class="saldo-badge" id="saldo-display">R$ 0,00</div>
+    <div class="saldo-badge" id="saldo-display">💰 R$ 0,00</div>
     <a href="/conta" class="btn-conta" id="btn-conta-link">👤 Conta</a>
   </div>
 </header>
@@ -10578,13 +10589,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="page-layout">
 <div class="main">
   <!-- Filtros de esporte -->
-  <div class="sport-tabs" id="sport-tabs">
-    <div class="sport-tab active" data-sport="upcoming" onclick="trocarSport(this)">🔥 Em destaque</div>
-    <div class="sport-tab" data-sport="soccer_brazil_campeonato" onclick="trocarSport(this)">🇧🇷 Brasileirão</div>
-    <div class="sport-tab" data-sport="soccer_conmebol_copa_libertadores" onclick="trocarSport(this)">🏆 Libertadores</div>
-    <div class="sport-tab" data-sport="soccer_uefa_champs_league" onclick="trocarSport(this)">⭐ Champions</div>
-    <div class="sport-tab" data-sport="soccer_epl" onclick="trocarSport(this)">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</div>
-    <div class="sport-tab" data-sport="basketball_nba" onclick="trocarSport(this)">🏀 NBA</div>
+  <div style="margin-bottom:12px">
+    <h2 style="font-size:13px;color:#555;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+      <span style="width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block;animation:blink 1.2s infinite"></span>
+      Apostar Agora
+    </h2>
+    <div class="sport-tabs" id="sport-tabs">
+      <div class="sport-tab active" data-sport="upcoming" onclick="trocarSport(this)">🔥 Em destaque</div>
+      <div class="sport-tab" data-sport="soccer_brazil_campeonato" onclick="trocarSport(this)">🇧🇷 Brasileirão</div>
+      <div class="sport-tab" data-sport="soccer_conmebol_copa_libertadores" onclick="trocarSport(this)">🏆 Libertadores</div>
+      <div class="sport-tab" data-sport="soccer_uefa_champs_league" onclick="trocarSport(this)">⭐ Champions</div>
+      <div class="sport-tab" data-sport="soccer_epl" onclick="trocarSport(this)">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</div>
+      <div class="sport-tab" data-sport="basketball_nba" onclick="trocarSport(this)">🏀 NBA</div>
+    </div>
   </div>
 
   <div class="secao-titulo"><span class="live-dot"></span> Jogos disponíveis</div>

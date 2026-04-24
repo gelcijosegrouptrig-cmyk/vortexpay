@@ -21,5 +21,6 @@
   "rebuildTimestamp": 1777039883030,
   "forceRebuild": true,
   "bust": "FULL-1777039883",
-  "_forceNew": "1777039883"
+  "_forceNew": "1777039883",
+  "forceBust": "v20250428i-fullscreen-1777042970"
 }
