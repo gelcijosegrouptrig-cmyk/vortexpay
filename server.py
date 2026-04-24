@@ -4579,7 +4579,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20250428l-crests-official',
+        'version': 'v20250428m-crests-live',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
