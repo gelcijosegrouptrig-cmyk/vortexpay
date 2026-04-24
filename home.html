@@ -340,18 +340,20 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 /* ══ BETSLIP LATERAL ══ */
 :root{--slip:320px}
 .betslip{
-  position:fixed;right:-var(--slip);top:var(--header);bottom:0;width:var(--slip);
-  background:var(--bg2);border-left:1px solid var(--border2);
-  display:flex;flex-direction:column;z-index:150;
+  position:fixed;
+  right:calc(-1 * var(--slip));
+  top:var(--header);
+  bottom:0;
+  width:var(--slip);
+  background:var(--bg2);
+  border-left:1px solid var(--border2);
+  display:flex;
+  flex-direction:column;
+  z-index:150;
   transition:right .28s cubic-bezier(.4,0,.2,1);
   box-shadow:-4px 0 24px #00000055;
 }
 .betslip.open{right:0}
-/* empurra o main quando slip aberto em desktop */
-@media(min-width:900px){
-  .betslip.open ~ .shell .main,
-  .shell.slip-open .main{margin-right:var(--slip);transition:margin-right .28s}
-}
 
 .bs-header{display:flex;align-items:center;gap:8px;padding:14px 16px;
   border-bottom:1px solid var(--border2);flex-shrink:0}
@@ -434,11 +436,11 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 /* Responsivo */
 @media(max-width:768px){
   .sidebar{display:none}
-  :root{--sidebar:0px;--slip:100vw}
+  :root{--sidebar:0px;--slip:92vw}
   .hero-right{width:auto}
   .view{padding:12px 12px 80px}
   .content{grid-template-columns:1fr}
-  .betslip{width:100%;right:-100vw}
+  .betslip{width:var(--slip);right:calc(-1 * var(--slip))}
   .betslip.open{right:0}
   .slip-fab{bottom:16px;right:16px}
 }
@@ -1245,15 +1247,11 @@ function chipSport(el) {
 /* ══ BETSLIP ══ */
 function toggleSlip(open){
   const el = document.getElementById('betslip');
-  const shell = document.querySelector('.shell');
   if(open === undefined) open = !el.classList.contains('open');
-  if(open){
-    el.classList.add('open');
-    shell.classList.add('slip-open');
-  } else {
-    el.classList.remove('open');
-    shell.classList.remove('slip-open');
-  }
+  el.classList.toggle('open', open);
+  // Mostrar/ocultar FAB
+  const fab = document.getElementById('slip-fab');
+  if(fab) fab.classList.toggle('hidden', open || _selecoes.length === 0);
 }
 
 function selOdd(jid, time, tipo, odd, jogo){
@@ -1305,7 +1303,6 @@ function renderSlip(){
     const slipOpen = document.getElementById('betslip').classList.contains('open');
     fabEl.classList.toggle('hidden', count === 0 || slipOpen);
   }
-
   // Área vazia
   if(bsEmpty) bsEmpty.style.display = count ? 'none' : 'block';
   if(bsFooter) bsFooter.style.display = count ? 'block' : 'none';
@@ -1439,15 +1436,17 @@ function _showBsMsg(txt, isErr){
   setTimeout(() => { el.className = 'bs-msg'; }, 5000);
 }
 
-// Esconder FAB ao abrir slip manualmente
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('betslip')?.addEventListener('transitionend', () => {
-    const fab = document.getElementById('slip-fab');
-    if(!fab) return;
-    const open = document.getElementById('betslip').classList.contains('open');
-    if(open) fab.classList.add('hidden');
-    else if(_selecoes.length) fab.classList.remove('hidden');
-  });
+// Fechar slip ao clicar fora (overlay em mobile)
+document.addEventListener('click', e => {
+  const slip = document.getElementById('betslip');
+  const fab  = document.getElementById('slip-fab');
+  if(!slip) return;
+  if(slip.classList.contains('open') &&
+     !slip.contains(e.target) &&
+     (!fab || !fab.contains(e.target))){
+    // Só fechar em mobile (em desktop o X fecha)
+    if(window.innerWidth <= 768) toggleSlip(false);
+  }
 });
 
 function teamInitials(name){
