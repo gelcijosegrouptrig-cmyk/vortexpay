@@ -4579,7 +4579,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20250428m-crests-live',
+        'version': 'v20250428n-crests-db-fix',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -11609,45 +11609,208 @@ async def route_bet_config(request):
 
 
 # ── Cache de crests football-data.org ──
-_crest_cache_py = {}
+# Pré-populado com crests oficiais para resposta imediata (sem chamada à API)
+_crest_cache_py = {
+    # Brasileirão Série A
+    'EC Bahia': 'https://crests.football-data.org/1777.png',
+    'Bahia': 'https://crests.football-data.org/1777.png',
+    'Santos FC': 'https://crests.football-data.org/6685.png',
+    'Santos': 'https://crests.football-data.org/6685.png',
+    'Botafogo FR': 'https://crests.football-data.org/1770.png',
+    'Botafogo': 'https://crests.football-data.org/1770.png',
+    'SC Internacional': 'https://crests.football-data.org/6684.png',
+    'Internacional': 'https://crests.football-data.org/6684.png',
+    'Cruzeiro EC': 'https://crests.football-data.org/1771.png',
+    'Cruzeiro': 'https://crests.football-data.org/1771.png',
+    'São Paulo FC': 'https://crests.football-data.org/1776.png',
+    'Sao Paulo': 'https://crests.football-data.org/1776.png',
+    'São Paulo': 'https://crests.football-data.org/1776.png',
+    'Mirassol FC': 'https://crests.football-data.org/4364.png',
+    'Mirassol': 'https://crests.football-data.org/4364.png',
+    'CR Flamengo': 'https://crests.football-data.org/1783.png',
+    'Flamengo': 'https://crests.football-data.org/1783.png',
+    'Fluminense FC': 'https://crests.football-data.org/1765.png',
+    'Fluminense': 'https://crests.football-data.org/1765.png',
+    'SE Palmeiras': 'https://crests.football-data.org/1769.png',
+    'Palmeiras': 'https://crests.football-data.org/1769.png',
+    'CA Mineiro': 'https://crests.football-data.org/1766.png',
+    'Atletico Mineiro': 'https://crests.football-data.org/1766.png',
+    'Atlético Mineiro': 'https://crests.football-data.org/1766.png',
+    'SC Corinthians Paulista': 'https://crests.football-data.org/1779.png',
+    'Corinthians': 'https://crests.football-data.org/1779.png',
+    'Grêmio FBPA': 'https://crests.football-data.org/1767.png',
+    'Gremio': 'https://crests.football-data.org/1767.png',
+    'Grêmio': 'https://crests.football-data.org/1767.png',
+    'CR Vasco da Gama': 'https://crests.football-data.org/1780.png',
+    'Vasco da Gama': 'https://crests.football-data.org/1780.png',
+    'Vasco': 'https://crests.football-data.org/1780.png',
+    'CA Paranaense': 'https://crests.football-data.org/1768.png',
+    'Athletico Paranaense': 'https://crests.football-data.org/1768.png',
+    'RB Bragantino': 'https://crests.football-data.org/4286.png',
+    'Red Bull Bragantino': 'https://crests.football-data.org/4286.png',
+    'Bragantino': 'https://crests.football-data.org/4286.png',
+    'EC Vitória': 'https://crests.football-data.org/1782.png',
+    'Vitória': 'https://crests.football-data.org/1782.png',
+    'Fortaleza EC': 'https://crests.football-data.org/7482.png',
+    'Fortaleza': 'https://crests.football-data.org/7482.png',
+    'Sport Club do Recife': 'https://crests.football-data.org/1781.png',
+    'Sport Recife': 'https://crests.football-data.org/1781.png',
+    'Sport': 'https://crests.football-data.org/1781.png',
+    'Ceará SC': 'https://crests.football-data.org/4316.png',
+    'Ceará': 'https://crests.football-data.org/4316.png',
+    # Copa Libertadores
+    'CA Boca Juniors': 'https://crests.football-data.org/2061.png',
+    'Boca Juniors': 'https://crests.football-data.org/2061.png',
+    'CA Peñarol': 'https://crests.football-data.org/5184.png',
+    'Penarol': 'https://crests.football-data.org/5184.png',
+    'Club Nacional de Football': 'https://crests.football-data.org/7055.png',
+    'Nacional': 'https://crests.football-data.org/7055.png',
+    'LDU de Quito': 'https://crests.football-data.org/4528.png',
+    'LDU Quito': 'https://crests.football-data.org/4528.png',
+    'CA Lanús': 'https://crests.football-data.org/2066.png',
+    'Lanus': 'https://crests.football-data.org/2066.png',
+    'CA Rosario Central': 'https://crests.football-data.org/2070.png',
+    'Rosario Central': 'https://crests.football-data.org/2070.png',
+    'Estudiantes de La Plata': 'https://crests.football-data.org/2051.png',
+    'Barcelona SC': 'https://crests.football-data.org/4520.png',
+    'CAR Independiente del Valle': 'https://crests.football-data.org/6989.png',
+    'Independiente del Valle': 'https://crests.football-data.org/6989.png',
+    'Club Bolívar': 'https://crests.football-data.org/4261.png',
+    'Bolivar': 'https://crests.football-data.org/4261.png',
+    'Club Guaraní': 'https://crests.football-data.org/7868.png',
+    'Club Cerro Porteño': 'https://crests.football-data.org/9373.png',
+    # Champions League
+    'Real Madrid CF': 'https://crests.football-data.org/86.png',
+    'Real Madrid': 'https://crests.football-data.org/86.png',
+    'FC Barcelona': 'https://crests.football-data.org/81.png',
+    'Barcelona': 'https://crests.football-data.org/81.png',
+    'FC Bayern München': 'https://crests.football-data.org/5.png',
+    'Bayern Munich': 'https://crests.football-data.org/5.png',
+    'Bayern München': 'https://crests.football-data.org/5.png',
+    'Paris Saint-Germain FC': 'https://crests.football-data.org/524.png',
+    'Paris Saint Germain': 'https://crests.football-data.org/524.png',
+    'PSG': 'https://crests.football-data.org/524.png',
+    'Club Atlético de Madrid': 'https://crests.football-data.org/78.png',
+    'Atletico Madrid': 'https://crests.football-data.org/78.png',
+    'Atlético Madrid': 'https://crests.football-data.org/78.png',
+    'Chelsea FC': 'https://crests.football-data.org/61.png',
+    'Chelsea': 'https://crests.football-data.org/61.png',
+    'Arsenal FC': 'https://crests.football-data.org/57.png',
+    'Arsenal': 'https://crests.football-data.org/57.png',
+    'Liverpool FC': 'https://crests.football-data.org/64.png',
+    'Liverpool': 'https://crests.football-data.org/64.png',
+    'Manchester City FC': 'https://crests.football-data.org/65.png',
+    'Manchester City': 'https://crests.football-data.org/65.png',
+    'Manchester United FC': 'https://crests.football-data.org/66.png',
+    'Manchester United': 'https://crests.football-data.org/66.png',
+    'Tottenham Hotspur FC': 'https://crests.football-data.org/73.png',
+    'Tottenham': 'https://crests.football-data.org/73.png',
+    'Juventus FC': 'https://crests.football-data.org/109.png',
+    'Juventus': 'https://crests.football-data.org/109.png',
+    'FC Internazionale Milano': 'https://crests.football-data.org/108.png',
+    'Inter Milan': 'https://crests.football-data.org/108.png',
+    'Internazionale': 'https://crests.football-data.org/108.png',
+    'Borussia Dortmund': 'https://crests.football-data.org/4.png',
+    'Bayer 04 Leverkusen': 'https://crests.football-data.org/3.png',
+    'Leverkusen': 'https://crests.football-data.org/3.png',
+    'SSC Napoli': 'https://crests.football-data.org/113.png',
+    'Napoli': 'https://crests.football-data.org/113.png',
+    'AFC Ajax': 'https://crests.football-data.org/678.png',
+    'Ajax': 'https://crests.football-data.org/678.png',
+    'Sporting CP': 'https://crests.football-data.org/498.png',
+    'Sport Lisboa e Benfica': 'https://crests.football-data.org/1903.png',
+    'Benfica': 'https://crests.football-data.org/1903.png',
+    'Galatasaray SK': 'https://crests.football-data.org/610.png',
+    'Galatasaray': 'https://crests.football-data.org/610.png',
+    'Olympique de Marseille': 'https://crests.football-data.org/516.png',
+    'Marseille': 'https://crests.football-data.org/516.png',
+    'AS Monaco FC': 'https://crests.football-data.org/548.png',
+    'Monaco': 'https://crests.football-data.org/548.png',
+    'Atalanta BC': 'https://crests.football-data.org/102.png',
+    'Atalanta': 'https://crests.football-data.org/102.png',
+    'Eintracht Frankfurt': 'https://crests.football-data.org/19.png',
+    # Premier League
+    'Aston Villa FC': 'https://crests.football-data.org/58.png',
+    'Aston Villa': 'https://crests.football-data.org/58.png',
+    'Everton FC': 'https://crests.football-data.org/62.png',
+    'Everton': 'https://crests.football-data.org/62.png',
+    'Fulham FC': 'https://crests.football-data.org/63.png',
+    'Fulham': 'https://crests.football-data.org/63.png',
+    'Newcastle United FC': 'https://crests.football-data.org/67.png',
+    'Newcastle': 'https://crests.football-data.org/67.png',
+    'Nottingham Forest FC': 'https://crests.football-data.org/351.png',
+    'Nottingham Forest': 'https://crests.football-data.org/351.png',
+    'Crystal Palace FC': 'https://crests.football-data.org/354.png',
+    'Crystal Palace': 'https://crests.football-data.org/354.png',
+    'Brighton & Hove Albion FC': 'https://crests.football-data.org/397.png',
+    'Brighton': 'https://crests.football-data.org/397.png',
+    'West Ham United FC': 'https://crests.football-data.org/563.png',
+    'West Ham': 'https://crests.football-data.org/563.png',
+    'Brentford FC': 'https://crests.football-data.org/402.png',
+    'Brentford': 'https://crests.football-data.org/402.png',
+    'Wolverhampton Wanderers FC': 'https://crests.football-data.org/76.png',
+    'Wolves': 'https://crests.football-data.org/76.png',
+}
+
+def _get_crest_static(nome: str):
+    """Busca crest no mapa estático com matching normalizado."""
+    import unicodedata
+    if not nome:
+        return None
+    # 1. Busca exata
+    if nome in _crest_cache_py:
+        return _crest_cache_py[nome]
+    # 2. Busca normalizada (sem acentos, case-insensitive)
+    def norm(s):
+        return unicodedata.normalize('NFD', s.lower()).encode('ascii','ignore').decode()
+    n = norm(nome)
+    for key, url in _crest_cache_py.items():
+        k = norm(key)
+        if n == k or n in k or k in n:
+            _crest_cache_py[nome] = url  # Cachear para próxima vez
+            return url
+    return None
 
 async def route_bet_crest(request):
-    """GET /api/bet/crest?nome=TeamName — busca escudo via football-data.org"""
+    """GET /api/bet/crest?nome=TeamName — retorna URL do escudo oficial"""
     import aiohttp
     nome = (request.rel_url.query.get('nome') or '').strip()
     if not nome:
         return web.json_response({'crest': None})
-    # Checar cache
-    if nome in _crest_cache_py:
-        return web.json_response({'crest': _crest_cache_py[nome]})
-
+    # 1. Verificar mapa estático primeiro (resposta imediata)
+    crest = _get_crest_static(nome)
+    if crest:
+        return web.json_response({'crest': crest})
+    # 2. Se não encontrou, buscar na API do football-data.org
     FD_TOKEN = '265288a553fd4d3e887f706160b96ec8'
     headers  = {'X-Auth-Token': FD_TOKEN}
-
-    # Tentar buscar nas competições principais
-    competitions = ['BSA','BSB','CLI','CL','PL','PD','FL1','BL1','SA']
-    async with aiohttp.ClientSession() as session:
-        for comp in competitions:
-            try:
-                url = f'https://api.football-data.org/v4/competitions/{comp}/teams'
-                async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as r:
-                    if r.status != 200: continue
-                    data = await r.json()
-                    for team in data.get('teams', []):
-                        tname = team.get('name','')
-                        crest = team.get('crest') or ''
-                        if crest:
-                            _crest_cache_py[tname] = crest
-                            # Alias sem prefixos (FC, SC, etc)
-                            short = tname.replace('FC ','').replace('SC ','').replace('CA ','').replace('CR ','').replace('EC ','').strip()
-                            if short != tname: _crest_cache_py[short] = crest
-                        # Match exato ou parcial
-                        if nome.lower() in tname.lower() or tname.lower() in nome.lower():
-                            if crest:
-                                _crest_cache_py[nome] = crest
-                                return web.json_response({'crest': crest})
-            except Exception:
-                continue
+    competitions = ['BSA', 'CLI', 'CL', 'PL', 'PD', 'FL1', 'BL1', 'SA']
+    try:
+        async with aiohttp.ClientSession() as session:
+            for comp in competitions:
+                try:
+                    url = f'https://api.football-data.org/v4/competitions/{comp}/teams'
+                    async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=4)) as r:
+                        if r.status != 200:
+                            continue
+                        data = await r.json()
+                        for team in data.get('teams', []):
+                            tname = team.get('name', '')
+                            tcrest = team.get('crest') or ''
+                            if tcrest:
+                                _crest_cache_py[tname] = tcrest
+                                # Alias curto sem prefixos
+                                for prefix in ['FC ', 'SC ', 'CA ', 'CR ', 'EC ', 'SE ', 'CD ', 'AC ', 'AS ']:
+                                    if tname.startswith(prefix):
+                                        _crest_cache_py[tname[len(prefix):].strip()] = tcrest
+                        # Tentar match após preencher cache
+                        found = _get_crest_static(nome)
+                        if found:
+                            return web.json_response({'crest': found})
+                except Exception:
+                    continue
+    except Exception:
+        pass
     _crest_cache_py[nome] = None
     return web.json_response({'crest': None})
 
