@@ -9901,9 +9901,10 @@ def _suit_parse_keys():
 def _bet_load_keys_from_db():
     """Lê ODDS_API_KEY, SUITPAY_CI, SUITPAY_CS do PostgreSQL configuracoes"""
     try:
+        import psycopg2 as _pg2
         if not DATABASE_URL:
-            return {}, {}
-        conn = psycopg2.connect(DATABASE_URL)
+            return {}
+        conn = _pg2.connect(DATABASE_URL)
         cur  = conn.cursor()
         cur.execute("""
             SELECT chave, valor FROM configuracoes
@@ -11267,7 +11268,8 @@ async def route_bet_config(request):
 
     saved = []
     try:
-        conn = psycopg2.connect(DATABASE_URL)
+        import psycopg2 as _pg2
+        conn = _pg2.connect(DATABASE_URL)
         cur  = conn.cursor()
         mapping = {
             'odds_api_key':  'bet_odds_api_key',
