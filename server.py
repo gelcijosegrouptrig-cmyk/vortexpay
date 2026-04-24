@@ -13774,6 +13774,72 @@ async def main():
     except Exception as e_rec:
         print(f'⚠️ [recorrente] Erro ao iniciar job: {e_rec}', flush=True)
 
+    # ── Warm-up do cache ESPN (pré-carrega tabelas para evitar erro no primeiro acesso) ──
+    async def _warmup_espn_cache():
+        import aiohttp, json as _json
+        await asyncio.sleep(5)  # aguarda servidor estabilizar
+        print('[warmup] Iniciando pré-carga das tabelas ESPN...', flush=True)
+        ligas_warmup = list(_ESPN_LEAGUES.keys())
+        async with aiohttp.ClientSession(headers={'User-Agent': 'Mozilla/5.0'}) as sess:
+            for lk in ligas_warmup:
+                if lk in _espn_table_cache:
+                    continue
+                cfg = _ESPN_LEAGUES.get(lk)
+                if not cfg:
+                    continue
+                espn_slug, league_name = cfg
+                url = f'{_ESPN_STANDINGS_BASE}/{espn_slug}/standings'
+                try:
+                    async with sess.get(url, timeout=aiohttp.ClientTimeout(total=12)) as r:
+                        raw = await r.read()
+                        if not raw:
+                            continue
+                        d = _json.loads(raw)
+                    children = d.get('children', [])
+                    multi_group = len(children) > 1
+                    grupos = []
+                    all_rows = []
+                    for grp in children:
+                        grp_name = grp.get('name', '')
+                        entries = grp.get('standings', {}).get('entries', [])
+                        grp_rows = []
+                        rank = 1
+                        for entry in entries:
+                            team = entry.get('team', {})
+                            stats_list = entry.get('stats', [])
+                            stats = {s['name']: s.get('value', 0) for s in stats_list}
+                            logo = team.get('logo', '')
+                            if not logo and team.get('logos'):
+                                logo = team['logos'][0].get('href', '')
+                            gf = int(stats.get('pointsFor', 0) or 0)
+                            ga = int(stats.get('pointsAgainst', 0) or 0)
+                            row = {
+                                'rank': rank, 'name': team.get('displayName', team.get('name', '')),
+                                'logo': logo, 'points': int(stats.get('points', 0) or 0),
+                                'played': int(stats.get('gamesPlayed', 0) or 0),
+                                'won': int(stats.get('wins', 0) or 0), 'draw': int(stats.get('ties', 0) or 0),
+                                'lost': int(stats.get('losses', 0) or 0), 'gf': gf, 'ga': ga, 'gd': gf - ga,
+                                'form': '', 'description': '',
+                            }
+                            grp_rows.append(row)
+                            all_rows.append(row)
+                            rank += 1
+                        if grp_rows:
+                            grupos.append({'name': grp_name, 'rows': grp_rows})
+                    result_data = {
+                        'success': True, 'standings': all_rows, 'league': league_name,
+                        'grupos': grupos if multi_group else [], 'has_groups': multi_group,
+                    }
+                    import time as _wt
+                    _espn_table_cache[lk] = {'ts': _wt.time(), 'data': result_data}
+                    print(f'[warmup] {league_name}: {len(all_rows)} times OK', flush=True)
+                    await asyncio.sleep(0.5)  # não sobrecarregar a ESPN
+                except Exception as e_wu:
+                    print(f'[warmup] {league_name} (id={lk}) erro: {e_wu}', flush=True)
+        print('[warmup] Cache ESPN pronto!', flush=True)
+
+    asyncio.create_task(_warmup_espn_cache())
+
     await asyncio.Event().wait()
 
 if __name__ == '__main__':
