@@ -9880,8 +9880,18 @@ import hashlib as _hashlib
 _odds_cache       = {'ts': 0, 'data': []}
 _ODDS_CACHE_TTL   = 60   # segundos
 _ODDS_API_KEY     = os.environ.get('ODDS_API_KEY', '')
-_SUIT_CI          = os.environ.get('SUITPAY_CI', '')
-_SUIT_CS          = os.environ.get('SUITPAY_CS', '')
+
+# ── SuitPay: suporte ao formato "CI|CS" numa variável só
+# Se SUITPAY_CI = "1155|nsw9FJ..." e SUITPAY_CS vazio ou igual → separa pelo pipe
+def _suit_parse_keys():
+    raw_ci = os.environ.get('SUITPAY_CI', '')
+    raw_cs = os.environ.get('SUITPAY_CS', '')
+    if '|' in raw_ci and (not raw_cs or raw_cs == raw_ci):
+        parts = raw_ci.split('|', 1)
+        return parts[0].strip(), parts[1].strip()
+    return raw_ci.strip(), raw_cs.strip()
+
+_SUIT_CI, _SUIT_CS = _suit_parse_keys()
 _SUIT_HOST        = os.environ.get('SUITPAY_HOST', 'https://ws.suitpay.app')
 _SUIT_WEBHOOK_URL = os.environ.get('SUITPAY_WEBHOOK_URL', 'https://paynexbet.com/webhook/suitpay')
 
@@ -9968,19 +9978,27 @@ async def route_webhook_suitpay(request):
     except Exception:
         return web.json_response({'ok': False, 'error': 'JSON inválido'}, status=400)
 
-    # Validar hash SHA-256
+    # Validar hash SHA-256 conforme doc SuitPay:
+    # 1) Concatenar todos os valores (exceto 'hash') na ORDEM RECEBIDA no JSON
+    # 2) Concatenar o ClientSecret (cs) ao final
+    # 3) SHA-256 do resultado
     cs = _SUIT_CS
-    if cs:
-        campos_ordenados = ['idTransaction','typeTransaction','statusTransaction',
-                            'value','payerName','payerTaxId','paymentDate',
-                            'paymentCode','requestNumber']
-        concat = ''.join(str(data.get(c, '')) for c in campos_ordenados if c in data)
+    hash_recv = data.get('hash', '')
+    if cs and hash_recv:
+        concat = ''.join(str(v) for k, v in data.items() if k != 'hash')
         concat += cs
         hash_calc = _hashlib.sha256(concat.encode()).hexdigest()
-        hash_recv = data.get('hash', '')
-        if hash_recv and hash_recv != hash_calc:
-            print(f'[webhook/suitpay] hash inválido! recv={hash_recv} calc={hash_calc}', flush=True)
-            return web.json_response({'ok': False, 'error': 'hash inválido'}, status=403)
+        if hash_recv != hash_calc:
+            # Tentar também com ordem fixa (fallback p/ retrocompatibilidade)
+            campos_fixos = ['idTransaction','typeTransaction','statusTransaction',
+                            'value','payerName','payerTaxId','paymentDate',
+                            'paymentCode','requestNumber']
+            concat2 = ''.join(str(data.get(c, '')) for c in campos_fixos if c in data)
+            concat2 += cs
+            hash_calc2 = _hashlib.sha256(concat2.encode()).hexdigest()
+            if hash_recv != hash_calc2:
+                print(f'[webhook/suitpay] ⚠️ hash inválido! recv={hash_recv} calc={hash_calc}', flush=True)
+                return web.json_response({'ok': False, 'error': 'hash inválido'}, status=403)
 
     status     = data.get('statusTransaction', '')
     valor      = float(data.get('value', 0))
