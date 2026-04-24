@@ -10967,20 +10967,34 @@ function teamShortLabel(name) {
 function teamBadgeHtml(name) {
   const logo = getTeamLogo(name);
   const initials = teamInitials(name);
-  const fallback = `<span class="time-initials">${initials}</span>`;
+  const uid = 'cr_' + Math.random().toString(36).substr(2,8);
   if (logo) {
-    return `<img class="time-escudo" src="${logo}" alt="${name}"
-              onerror="this.replaceWith(document.createRange().createContextualFragment('<span class=\\"time-initials\\">${initials}</span>'))">`;
+    // Retorna img com data-attr; onerror aplicado via delegação depois
+    return '<img class="time-escudo" id="' + uid + '" src="' + logo + '" alt="" data-ini="' + initials + '" data-crest="1">';
   }
-  // Busca dinâmica via API em background
-  const uid = 'crest_' + Math.random().toString(36).substr(2,6);
+  // Sem logo: span com iniciais, busca crest em background
   setTimeout(async () => {
     const url = await fetchCrestDynamic(name);
     const el = document.getElementById(uid);
-    if (el && url) el.outerHTML = `<img class="time-escudo" src="${url}" alt="${name}" onerror="this.style.display='none'">`;
-  }, 0);
-  return `<span class="time-initials" id="${uid}">${initials}</span>`;
+    if (el && url) {
+      el.src = url;
+      el.className = 'time-escudo';
+    }
+  }, 300);
+  return '<span class="time-initials" id="' + uid + '">' + initials + '</span>';
 }
+
+// Delegação global: trata erros de carregamento dos escudos
+document.addEventListener('error', function(e) {
+  const el = e.target;
+  if (el && el.classList && el.classList.contains('time-escudo') && el.dataset.crest) {
+    const ini = el.dataset.ini || '?';
+    const span = document.createElement('span');
+    span.className = 'time-initials';
+    span.textContent = ini;
+    el.replaceWith(span);
+  }
+}, true);
 
 // ── Jogos / Odds ──
 async function carregarJogos(sport) {

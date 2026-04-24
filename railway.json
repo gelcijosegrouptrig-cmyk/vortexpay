@@ -1,16 +1,4 @@
 {
-  "build": {
-    "builder": "NIXPACKS",
-    "buildArgs": {
-      "REBUILD_TS": "1777050321",
-      "FORCE_BUST": "fix-team-labels-1777050321"
-    }
-  },
-  "deploy": {
-    "startCommand": "bash start.sh",
-    "healthcheckPath": "/health",
-    "healthcheckTimeout": 300,
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 5
-  }
+  "build": {"builder": "NIXPACKS", "buildArgs": {"REBUILD_TS": "1777052042", "FORCE_BUST": "fix-badge-escaping-1777052042"}},
+  "deploy": {"startCommand": "bash start.sh", "healthcheckPath": "/health", "healthcheckTimeout": 300, "restartPolicyType": "ON_FAILURE", "restartPolicyMaxRetries": 5}
 }
