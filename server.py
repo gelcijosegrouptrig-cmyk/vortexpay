@@ -4579,7 +4579,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20250428e-suitpay-endpoint-fix',
+        'version': 'v20250428f-suitpay-cpf-format',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -10108,7 +10108,17 @@ async def route_bet_deposito(request):
     valor      = float(body.get('valor', 0))
     usuario_id = body.get('usuario_id', '')
     nome       = body.get('nome', 'Cliente')
-    cpf        = body.get('cpf', '')
+    cpf_raw    = re.sub(r'\D', '', body.get('cpf', ''))  # apenas dígitos
+
+    # Formatar CPF no padrão que SuitPay aceita: NNN.NNN.NNN-NN
+    def _fmt_cpf(c):
+        c = re.sub(r'\D', '', c)
+        if len(c) == 11:
+            return f'{c[:3]}.{c[3:6]}.{c[6:9]}-{c[9:11]}'
+        if len(c) == 14:  # CNPJ: NN.NNN.NNN/NNNN-NN
+            return f'{c[:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:14]}'
+        return c
+    cpf = _fmt_cpf(cpf_raw) if cpf_raw else '000.000.000-00'
 
     if valor < 5:
         return web.json_response({'success': False, 'error': 'Valor mínimo R$5,00'})
