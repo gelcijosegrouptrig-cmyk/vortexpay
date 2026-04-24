@@ -10187,52 +10187,259 @@ async def route_bet_predictions(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 
+# ── TheSportsDB (gratuito, sem key) ──────────────────────────────────────────
+_TSDB_BASE = 'https://www.thesportsdb.com/api/v1/json/3'
+
+# Mapeamento: chave frontend → (league_id_tsdb, season_format, nome)
+_TSDB_LEAGUES = {
+    '71':  ('4351', '2025',     'Brasileirão Série A'),
+    '75':  ('4352', '2025',     'Brasileirão Série B'),
+    '13':  ('4529', '2025',     'Copa Libertadores'),
+    '11':  ('4529', '2025',     'Copa Sul-Americana'),
+    '2':   ('4480', '2024-2025','UEFA Champions League'),
+    '39':  ('4328', '2024-2025','Premier League'),
+    '140': ('4335', '2024-2025','La Liga'),
+    '135': ('4332', '2024-2025','Serie A (Itália)'),
+    '78':  ('4331', '2024-2025','Bundesliga'),
+    '61':  ('4334', '2024-2025','Ligue 1'),
+}
+
+# Sport fixtures map: sport_key → (tsdb_league_id, nome)
+_TSDB_FIXTURES = {
+    'soccer_brazil_campeonato':          ('4351', 'Brasileirão Série A'),
+    'soccer_conmebol_copa_libertadores': ('4529', 'Copa Libertadores'),
+    'soccer_uefa_champs_league':         ('4480', 'Champions League'),
+    'soccer_epl':                        ('4328', 'Premier League'),
+    'soccer_spain_la_liga':              ('4335', 'La Liga'),
+    'soccer_italy_serie_a':              ('4332', 'Serie A'),
+    'soccer_germany_bundesliga':         ('4331', 'Bundesliga'),
+    'soccer_france_ligue_one':           ('4334', 'Ligue 1'),
+}
+
+_tsdb_table_cache  = {}   # key=league_id+season → {'ts':..., 'data':[]}
+_tsdb_fix_cache    = {}   # key=sport → {'ts':..., 'data':[]}
+_TSDB_TTL          = 1800  # 30 min
+
+
+async def route_tsdb_tabela(request):
+    """GET /api/bet/tabela?league=71&season=2025 — tabela via TheSportsDB (free)"""
+    import time as _time, aiohttp
+    agora = _time.time()
+    league_param = request.rel_url.query.get('league', '71')
+    season_param = request.rel_url.query.get('season', '')
+
+    cfg = _TSDB_LEAGUES.get(league_param)
+    if not cfg:
+        return web.json_response({'success': False, 'standings': [], 'error': f'Liga {league_param} não mapeada'})
+
+    tsdb_lid, default_season, league_name = cfg
+    season = season_param or default_season
+    cache_key = f'{tsdb_lid}_{season}'
+
+    cached = _tsdb_table_cache.get(cache_key)
+    if cached and agora - cached['ts'] < _TSDB_TTL:
+        return web.json_response({'success': True, 'standings': cached['data'],
+                                  'league': league_name, 'from_cache': True})
+
+    url = f'{_TSDB_BASE}/lookuptable.php?l={tsdb_lid}&s={season}'
+    try:
+        async with aiohttp.ClientSession(headers={'User-Agent': 'Mozilla/5.0'}) as sess:
+            async with sess.get(url, timeout=aiohttp.ClientTimeout(total=10)) as r:
+                raw = await r.read()
+                if not raw:
+                    return web.json_response({'success': False, 'standings': [], 'error': 'Sem dados para esta temporada'})
+                d = await r.json(content_type=None) if False else __import__('json').loads(raw)
+        table = d.get('table', []) or []
+        rows = []
+        for t in table:
+            gf = int(t.get('intGoalsFor') or 0)
+            ga = int(t.get('intGoalsAgainst') or 0)
+            rows.append({
+                'rank':    int(t.get('intRank') or 0),
+                'name':    t.get('strTeam', ''),
+                'logo':    (t.get('strBadge') or t.get('strTeamBadge') or '').replace('\\/','/')
+                              .replace('/tiny', '/medium'),
+                'points':  int(t.get('intPoints') or 0),
+                'played':  int(t.get('intPlayed') or 0),
+                'won':     int(t.get('intWin') or 0),
+                'draw':    int(t.get('intDraw') or 0),
+                'lost':    int(t.get('intLoss') or 0),
+                'gf':      gf,
+                'ga':      ga,
+                'gd':      gf - ga,
+                'form':    t.get('strForm', '') or '',
+                'description': '',
+            })
+        _tsdb_table_cache[cache_key] = {'ts': agora, 'data': rows}
+        return web.json_response({'success': True, 'standings': rows, 'league': league_name})
+    except Exception as e:
+        print(f'[tsdb/tabela] err league={tsdb_lid} season={season}: {e}', flush=True)
+        return web.json_response({'success': False, 'standings': [], 'error': str(e)})
+
+
+async def route_tsdb_fixtures(request):
+    """GET /api/bet/fixtures?sport=soccer_brazil_campeonato — próximos jogos via TheSportsDB"""
+    import time as _time, aiohttp
+    agora = _time.time()
+    sport = request.rel_url.query.get('sport', '').strip()
+
+    fixtures_result = []
+    sports_to_fetch = []
+
+    if sport and sport in _TSDB_FIXTURES:
+        sports_to_fetch = [(sport, _TSDB_FIXTURES[sport])]
+    elif not sport or sport in ('upcoming', 'all', 'destaque'):
+        sports_to_fetch = list(_TSDB_FIXTURES.items())
+    else:
+        return web.json_response({'success': True, 'jogos': [], 'total': 0})
+
+    async with aiohttp.ClientSession(headers={'User-Agent': 'Mozilla/5.0'}) as sess:
+        for sp_key, (tsdb_lid, league_name) in sports_to_fetch:
+            cached = _tsdb_fix_cache.get(tsdb_lid)
+            if cached and agora - cached['ts'] < _TSDB_TTL:
+                fixtures_result.extend(cached['data'])
+                continue
+            url = f'{_TSDB_BASE}/eventsnextleague.php?id={tsdb_lid}'
+            try:
+                async with sess.get(url, timeout=aiohttp.ClientTimeout(total=8)) as r:
+                    raw = await r.read()
+                    if not raw:
+                        continue
+                    d = __import__('json').loads(raw)
+                events = d.get('events', []) or []
+                # Filtrar apenas eventos da liga correta (evita retornos errados)
+                valid = [e for e in events if str(e.get('idLeague','')) == str(tsdb_lid)]
+                if not valid:
+                    valid = events[:10]  # fallback
+                jogos = []
+                for ev in valid[:8]:
+                    jogos.append({
+                        'id':            ev.get('idEvent', ''),
+                        'sport':         sp_key,
+                        'league':        league_name,
+                        'home_team':     ev.get('strHomeTeam', ''),
+                        'away_team':     ev.get('strAwayTeam', ''),
+                        'home_logo':     (ev.get('strHomeTeamBadge') or '').replace('\\/','/')
+                                          .replace('/tiny','/small'),
+                        'away_logo':     (ev.get('strAwayTeamBadge') or '').replace('\\/','/')
+                                          .replace('/tiny','/small'),
+                        'commence_time': ev.get('dateEvent','') + 'T' + (ev.get('strTime','00:00:00') or '00:00:00') + 'Z',
+                        'venue':         ev.get('strVenue',''),
+                        'round':         ev.get('intRound',''),
+                        'odds': {'home': None, 'draw': None, 'away': None},
+                        'source': 'thesportsdb',
+                    })
+                _tsdb_fix_cache[tsdb_lid] = {'ts': agora, 'data': jogos}
+                fixtures_result.extend(jogos)
+            except Exception as e:
+                print(f'[tsdb/fixtures] err lid={tsdb_lid}: {e}', flush=True)
+
+    return web.json_response({'success': True, 'jogos': fixtures_result, 'total': len(fixtures_result)})
+
+
 async def route_bet_standings(request):
-    """GET /api/bet/standings?league=71&season=2024 — tabela de classificação"""
+    """GET /api/bet/standings?league=71&season=2024 — tabela de classificação
+    Usa TheSportsDB (gratuito) como fonte primária (api-sports.io suspenso).
+    """
     import time as _time, aiohttp
     agora = _time.time()
     league = request.rel_url.query.get('league', '71')
-    season = request.rel_url.query.get('season', '2024')
+    season = request.rel_url.query.get('season', '')
     cache_key = f'{league}_{season}'
     cached = _standings_cache['data'].get(cache_key)
     if cached and agora - _standings_cache['ts'] < _STANDINGS_TTL:
-        return web.json_response({'success': True, 'standings': cached})
+        return web.json_response({'success': True, 'standings': cached, 'from_cache': True})
+
+    # Mapeamento: ID api-football → (TheSportsDB ID, season format, nome)
+    _TSDB_MAP = {
+        '71':  ('4351', '2025',       'Brasileirão Série A'),
+        '75':  ('4352', '2025',       'Brasileirão Série B'),
+        '13':  ('4529', '2025',       'Copa Libertadores'),
+        '11':  ('4528', '2024-2025',  'Copa Sul-Americana'),
+        '2':   ('4480', '2024-2025',  'UEFA Champions League'),
+        '39':  ('4328', '2024-2025',  'Premier League'),
+        '140': ('4335', '2024-2025',  'La Liga'),
+        '135': ('4332', '2024-2025',  'Serie A Italia'),
+        '78':  ('4331', '2024-2025',  'Bundesliga'),
+        '61':  ('4334', '2024-2025',  'Ligue 1'),
+        '4351': ('4351', '2025',      'Brasileirão Série A'),
+        '4352': ('4352', '2025',      'Brasileirão Série B'),
+        '4480': ('4480', '2024-2025', 'UEFA Champions League'),
+        '4328': ('4328', '2024-2025', 'Premier League'),
+        '4335': ('4335', '2024-2025', 'La Liga'),
+        '4332': ('4332', '2024-2025', 'Serie A Italia'),
+        '4331': ('4331', '2024-2025', 'Bundesliga'),
+        '4334': ('4334', '2024-2025', 'Ligue 1'),
+    }
+
+    tsdb_id, tsdb_season, league_name = _TSDB_MAP.get(league, (league, season or '2025', 'Liga'))
+    if season:
+        tsdb_season = season
+
+    _TSDB_BASE = 'https://www.thesportsdb.com/api/v1/json/3'
+    url = f'{_TSDB_BASE}/lookuptable.php?l={tsdb_id}&s={tsdb_season}'
+
     try:
-        async with aiohttp.ClientSession(headers=_APISPORTS_HDR) as sess:
-            async with sess.get(f'{_APIFOOTBALL_BASE}/standings',
-                                params={'league': league, 'season': season},
-                                timeout=aiohttp.ClientTimeout(total=8)) as r:
-                d = await r.json() if r.status == 200 else {}
-        resp = d.get('response', [])
-        if not resp:
-            return web.json_response({'success': False, 'standings': [], 'error': d.get('errors', '')})
-        lg = resp[0].get('league', {})
-        rows = lg.get('standings', [[]])[0]
+        async with aiohttp.ClientSession() as sess:
+            async with sess.get(url,
+                                headers={'User-Agent': 'PaynexBet/1.0'},
+                                timeout=aiohttp.ClientTimeout(total=10)) as r:
+                if r.status == 429:
+                    old = _standings_cache['data'].get(cache_key)
+                    if old:
+                        return web.json_response({'success': True, 'standings': old, 'from_cache': True})
+                    return web.json_response({'success': False, 'standings': [],
+                                             'error': 'Rate limit. Tente novamente em instantes.'})
+                if r.status != 200:
+                    return web.json_response({'success': False, 'standings': [],
+                                             'error': f'API retornou status {r.status}'})
+                content = await r.read()
+                if not content or content.strip() in (b'', b'null', b'[]'):
+                    return web.json_response({'success': False, 'standings': [],
+                                             'error': 'Tabela não disponível para esta temporada.'})
+                d = await r.json(content_type=None)
+
+        table_raw = d.get('table', []) or []
+        if not table_raw:
+            return web.json_response({'success': False, 'standings': [],
+                                     'error': 'Tabela sem dados para esta temporada.'})
+
         data = []
-        for t in rows:
-            tm = t.get('team', {})
-            all_ = t.get('all', {})
+        for t in table_raw:
+            rank   = int(t.get('intRank', 0) or 0)
+            pts    = int(t.get('intPoints', 0) or 0)
+            played = int(t.get('intPlayed', 0) or 0)
+            won    = int(t.get('intWin', 0) or 0)
+            draw   = int(t.get('intDraw', 0) or 0)
+            lost   = int(t.get('intLoss', 0) or 0)
+            gf     = int(t.get('intGoalsFor', 0) or 0)
+            ga     = int(t.get('intGoalsAgainst', 0) or 0)
+            gd     = gf - ga
+            logo   = (t.get('strBadge', '') or '').replace('/tiny', '/medium')
             data.append({
-                'rank':     t.get('rank'),
-                'team_id':  tm.get('id'),
-                'name':     tm.get('name', ''),
-                'logo':     tm.get('logo', ''),
-                'points':   t.get('points'),
-                'played':   all_.get('played', 0),
-                'won':      all_.get('win', 0),
-                'draw':     all_.get('draw', 0),
-                'lost':     all_.get('lose', 0),
-                'gf':       all_.get('goals', {}).get('for', 0),
-                'ga':       all_.get('goals', {}).get('against', 0),
-                'gd':       t.get('goalsDiff', 0),
-                'form':     t.get('form', ''),
-                'description': t.get('description', ''),
+                'rank':        rank,
+                'name':        t.get('strTeam', ''),
+                'logo':        logo,
+                'points':      pts,
+                'played':      played,
+                'won':         won,
+                'draw':        draw,
+                'lost':        lost,
+                'gf':          gf,
+                'ga':          ga,
+                'gd':          gd,
+                'form':        t.get('strForm', '') or '',
+                'description': '',
             })
+
         _standings_cache['data'][cache_key] = data
         _standings_cache['ts'] = agora
-        return web.json_response({'success': True, 'standings': data,
-                                  'league': lg.get('name', ''), 'logo': lg.get('logo', '')})
+        return web.json_response({'success': True, 'standings': data, 'league': league_name})
+
     except Exception as e:
+        old = _standings_cache['data'].get(cache_key)
+        if old:
+            return web.json_response({'success': True, 'standings': old, 'from_cache': True})
         return web.json_response({'success': False, 'standings': [], 'error': str(e)})
 
 
@@ -13148,6 +13355,8 @@ async def main():
     app.router.add_get('/api/bet/live',         route_bet_live)
     app.router.add_get('/api/bet/predictions',  route_bet_predictions)
     app.router.add_get('/api/bet/standings',    route_bet_standings)
+    app.router.add_get('/api/bet/tabela',       route_tsdb_tabela)
+    app.router.add_get('/api/bet/fixtures',     route_tsdb_fixtures)
     app.router.add_post('/api/bet/deposito',    route_bet_deposito)
     app.router.add_post('/webhook/suitpay',     route_webhook_suitpay)
     # BET — auth + saldo + apostar + sacar + páginas

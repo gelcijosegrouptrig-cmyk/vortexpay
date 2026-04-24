@@ -964,8 +964,8 @@ function navTo(view, extra){
     case 'tabela':
       showView('tabela');setHnActive('hn-tabela');setSbActive('sb-tabela');
       const chip=document.querySelector('.liga-chip.active');
-      if(chip)carregarTabela(chip.dataset.league,chip.dataset.season,chip.textContent.trim());
-      else carregarTabela('71','2024','Brasileirão Série A');
+      if(chip)carregarTabela(chip.dataset.league,chip.dataset.season||'',chip.textContent.trim());
+      else carregarTabela('71','','🇧🇷 Brasileirão Série A');
       break;
     case 'sorteio':
       showView('sorteio');setHnActive('hn-sorteios');setSbActive('sb-sorteio');
@@ -1174,12 +1174,33 @@ async function carregarJogos(sport) {
   });
 
   try {
+    // 1. Buscar odds (the-odds-api) — tem odds mas pode ter menos jogos
     const r = await fetch(BASE + '/api/bet/jogos?sport=' + sport);
     const d = await r.json();
     // Filtro duplo: backend + client-side para garantir segmentação
     let jogos = (d.jogos || []);
     if (sport && sport !== 'upcoming' && sport !== 'destaque') {
       jogos = jogos.filter(j => j.sport === sport);
+    }
+
+    // 2. Se poucos jogos (< 3), buscar mais via TheSportsDB (fixtures sem odds)
+    const sportsFutebol = ['soccer_brazil_campeonato','soccer_conmebol_copa_libertadores',
+      'soccer_uefa_champs_league','soccer_epl','soccer_spain_la_liga',
+      'soccer_italy_serie_a','soccer_germany_bundesliga','soccer_france_ligue_one'];
+    if (jogos.length < 3 && (sportsFutebol.includes(sport) || sport === 'upcoming' || sport === 'destaque')) {
+      try {
+        const rf = await fetch(BASE + '/api/bet/fixtures?sport=' + sport);
+        const df = await rf.json();
+        const fixJogos = (df.jogos || []);
+        // Merge: adicionar só jogos que não estão em odds (por id ou por times)
+        const existingIds = new Set(jogos.map(j => j.id));
+        const existingPairs = new Set(jogos.map(j => j.home_team+'|'+j.away_team));
+        for (const fj of fixJogos) {
+          if (!existingIds.has(fj.id) && !existingPairs.has(fj.home_team+'|'+fj.away_team)) {
+            jogos.push(fj);
+          }
+        }
+      } catch(ef) { /* silencioso */ }
     }
 
     // Atualizar contagem
@@ -1197,8 +1218,8 @@ async function carregarJogos(sport) {
       const card    = document.createElement('div');
       card.className = 'jogo-card' + (live ? ' live-c' : '');
       const hora    = j.commence_time ? new Date(j.commence_time).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
-      const hLogo   = getTeamLogo?.(j.home_team);
-      const aLogo   = getTeamLogo?.(j.away_team);
+      const hLogo   = j.home_logo || getTeamLogo?.(j.home_team);
+      const aLogo   = j.away_logo || getTeamLogo?.(j.away_team);
       const hBadge  = hLogo ? '<img class="t-escudo" src="' + hLogo + '" alt="" onerror="this.style.display=\'none\'">' : '<div class="t-ini">' + teamInitials(j.home_team) + '</div>';
       const aBadge  = aLogo ? '<img class="t-escudo" src="' + aLogo + '" alt="" onerror="this.style.display=\'none\'">' : '<div class="t-ini">' + teamInitials(j.away_team) + '</div>';
       // Liga badge colorida
@@ -1570,7 +1591,7 @@ async function carregarAoVivo(){
 function chipLiga(el){
   document.querySelectorAll('.liga-chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
-  carregarTabela(el.dataset.league,el.dataset.season,el.textContent.trim());
+  carregarTabela(el.dataset.league,el.dataset.season||'',el.textContent.trim());
 }
 function zoneClass(desc){
   if(!desc)return'';
@@ -1588,28 +1609,58 @@ async function carregarTabela(league,season,titulo){
   const box=document.getElementById('tabela-box');
   const tit=document.getElementById('tabela-titulo');
   box.innerHTML='<div class="loading-center"><div class="spinner2"></div>Carregando tabela...</div>';
-  if(tit)tit.textContent=(titulo||'Tabela')+' '+season;
+  if(tit)tit.textContent=(titulo||'Tabela').replace(/^[\p{Emoji}\s]+/u,'').trim();
   try{
-    const r=await fetch(BASE+'/api/bet/standings?league='+league+'&season='+season);
+    // Usa nova rota TheSportsDB (gratuita, sem key)
+    const qs=season?`league=${league}&season=${season}`:`league=${league}`;
+    const r=await fetch(BASE+'/api/bet/tabela?'+qs);
     const d=await r.json();
     if(!d.success||!d.standings||!d.standings.length){
-      box.innerHTML='<div class="loading-center">⚠️ Dados não disponíveis para esta liga.</div>';return;
+      box.innerHTML='<div class="loading-center">⚠️ Dados não disponíveis para esta liga agora.<br><small style="color:var(--muted)">Tente outra liga ou aguarde.</small></div>';return;
     }
     const rows=d.standings;
+    if(tit)tit.textContent=(d.league||titulo||'Tabela');
     box.innerHTML='<div class="tabela-wrap">'+
-      '<div class="t-head"><div>#</div><div>Time</div><div style="text-align:center">V</div><div style="text-align:center">E</div><div style="text-align:center">D</div><div style="text-align:center">SG</div><div style="text-align:center">Pts</div><div style="text-align:right">Forma</div></div>'+
-      rows.map(t=>{
+      '<div class="t-head"><div>#</div><div>Time</div>'+
+      '<div style="text-align:center" title="Jogos">J</div>'+
+      '<div style="text-align:center" title="Vitórias">V</div>'+
+      '<div style="text-align:center" title="Empates">E</div>'+
+      '<div style="text-align:center" title="Derrotas">D</div>'+
+      '<div style="text-align:center" title="Saldo de Gols">SG</div>'+
+      '<div style="text-align:center" title="Pontos"><b>Pts</b></div>'+
+      '</div>'+
+      rows.map((t,i)=>{
         const rCls=t.rank===1?'p1':t.rank===2?'p2':t.rank===3?'p3':'';
-        const zc=zoneClass(t.description||'');
-        const lo=t.logo?'<img class="tl" src="'+t.logo+'" alt="" onerror="this.style.display=\'none\'">':'';
-        return'<div class="t-row '+zc+'"><div class="c-rank '+rCls+'">'+t.rank+'</div>'+
+        // Zonas de classificação automática
+        let zc='';
+        if(rows.length>=4){
+          const pct=t.rank/rows.length;
+          if(t.rank<=4) zc='z-cl';
+          else if(t.rank<=6) zc='z-el';
+          else if(t.rank>=rows.length-3) zc='z-rl';
+        }
+        const lo=t.logo?'<img class="tl" src="'+t.logo+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">':'';
+        const sgTxt=(t.gd>=0?'+':'')+t.gd;
+        return'<div class="t-row '+zc+'">'+
+          '<div class="c-rank '+rCls+'">'+t.rank+'</div>'+
           '<div class="c-team">'+lo+'<span class="tn">'+t.name+'</span></div>'+
-          '<div class="c-n">'+t.won+'</div><div class="c-n">'+t.draw+'</div><div class="c-n">'+t.lost+'</div>'+
-          '<div class="c-n">'+(t.gd>=0?'+':'')+t.gd+'</div>'+
+          '<div class="c-n">'+t.played+'</div>'+
+          '<div class="c-n">'+t.won+'</div>'+
+          '<div class="c-n">'+t.draw+'</div>'+
+          '<div class="c-n">'+t.lost+'</div>'+
+          '<div class="c-n">'+sgTxt+'</div>'+
           '<div class="c-pts">'+t.points+'</div>'+
-          '<div class="c-form">'+formDots(t.form)+'</div></div>';
-      }).join('')+'</div>';
-  }catch(e){box.innerHTML='<div class="loading-center">⚠️ Erro ao carregar. Tente novamente.</div>'}
+          '</div>';
+      }).join('')+'</div>'+
+      '<div style="padding:8px 12px;font-size:10px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap">'+
+        '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;margin-right:4px"></span>Classificação para Copa</span>'+
+        '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:4px"></span>Zona de Perigo</span>'+
+        '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:4px"></span>Rebaixamento</span>'+
+      '</div>';
+  }catch(e){
+    console.warn('[carregarTabela]',e);
+    box.innerHTML='<div class="loading-center">⚠️ Erro ao carregar. <button onclick="carregarTabela(\'' + league + '\',\''+season+'\',\''+titulo+'\')" style="background:var(--blue);border:none;color:#fff;padding:5px 14px;border-radius:8px;cursor:pointer;margin-left:8px">Tentar novamente</button></div>';
+  }
 }
 
 /* ══ BILHETES ══ */
