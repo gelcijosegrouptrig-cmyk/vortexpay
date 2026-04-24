@@ -4579,7 +4579,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20250428c-bet-suitpay',
+        'version': 'v20250428d-bet-db-priority',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -9918,25 +9918,28 @@ def _bet_load_keys_from_db():
         return {}
 
 def _get_odds_key():
-    """Retorna ODDS_API_KEY: env var tem prioridade, depois DB"""
-    k = os.environ.get('ODDS_API_KEY', '').strip()
+    """Retorna ODDS_API_KEY: DB tem prioridade (permite troca sem redeploy), depois env var"""
+    db = _bet_load_keys_from_db()
+    k = db.get('bet_odds_api_key', '').strip()
     if k:
         return k
-    db = _bet_load_keys_from_db()
-    return db.get('bet_odds_api_key', '')
+    return os.environ.get('ODDS_API_KEY', '').strip()
 
 def _get_suit_keys():
-    """Retorna (CI, CS): env var tem prioridade, depois DB"""
-    ci, cs = _suit_parse_keys()
-    if ci and cs:
-        return ci, cs
+    """Retorna (CI, CS): DB tem prioridade sobre env var (para permitir troca sem redeploy)"""
+    # 1. Tentar DB primeiro — permite atualização via /api/bet/config sem redeploy
     db = _bet_load_keys_from_db()
-    db_ci = db.get('bet_suitpay_ci', '')
-    db_cs = db.get('bet_suitpay_cs', '')
+    db_ci = db.get('bet_suitpay_ci', '').strip()
+    db_cs = db.get('bet_suitpay_cs', '').strip()
+    # Se o DB tem CI no formato pipe "ID|SECRET", separar
     if '|' in db_ci and (not db_cs or db_cs == db_ci):
         parts = db_ci.split('|', 1)
-        return parts[0].strip(), parts[1].strip()
-    return db_ci or ci, db_cs or cs
+        db_ci, db_cs = parts[0].strip(), parts[1].strip()
+    if db_ci and db_cs:
+        return db_ci, db_cs
+    # 2. Fallback: env vars
+    ci, cs = _suit_parse_keys()
+    return ci, cs
 
 _SUIT_CI, _SUIT_CS = _suit_parse_keys()   # inicialização; funções acima recarregam em runtime
 _SUIT_HOST        = os.environ.get('SUITPAY_HOST', 'https://ws.suitpay.app')
@@ -11306,8 +11309,8 @@ async def route_bet_config_get(request):
         'odds_api_key': f'{odds_key[:6]}...{odds_key[-4:]}' if len(odds_key) > 10 else ('configurada' if odds_key else 'NÃO CONFIGURADA'),
         'suitpay_ci':   suit_ci[:4] + '...' if suit_ci else 'NÃO CONFIGURADO',
         'suitpay_cs':   suit_cs[:6] + '...' if suit_cs else 'NÃO CONFIGURADO',
-        'fonte_odds':   'env' if os.environ.get('ODDS_API_KEY','') else ('db' if odds_key else 'nenhuma'),
-        'fonte_suit':   'env' if os.environ.get('SUITPAY_CI','') else ('db' if suit_ci else 'nenhuma'),
+        'fonte_odds':   'db' if (db := _bet_load_keys_from_db()) and db.get('bet_odds_api_key') else ('env' if os.environ.get('ODDS_API_KEY','') else 'nenhuma'),
+        'fonte_suit':   'db' if db.get('bet_suitpay_ci','') else ('env' if os.environ.get('SUITPAY_CI','') else 'nenhuma'),
     })
 
 
