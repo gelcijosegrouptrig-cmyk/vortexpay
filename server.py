@@ -10101,6 +10101,1099 @@ async def route_bet_deposito(request):
     })
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# ███  BET — Fases 3-7: Apostar / Sacar / Auth / Páginas  ███
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def _bet_db():
+    """Retorna conexão psycopg2 ou None"""
+    if not DATABASE_URL:
+        return None
+    try:
+        return psycopg2.connect(DATABASE_URL)
+    except Exception as e:
+        print(f'[bet_db] erro: {e}', flush=True)
+        return None
+
+# ── FASE 3: Auth / Login por CPF ──────────────────────────────────────────
+
+async def route_bet_login(request):
+    """POST /api/bet/login — login/cadastro por CPF"""
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({'success': False, 'error': 'JSON inválido'}, status=400)
+
+    nome = (body.get('nome') or '').strip()
+    cpf  = ''.join(filter(str.isdigit, body.get('cpf') or ''))
+
+    if not cpf or len(cpf) < 11:
+        return web.json_response({'success': False, 'error': 'CPF inválido'})
+
+    conn = await _bet_db()
+    if not conn:
+        return web.json_response({'success': False, 'error': 'DB indisponível'})
+
+    try:
+        cur = conn.cursor()
+        # Upsert: cria ou retorna usuário existente
+        cur.execute("""
+            INSERT INTO usuarios (cpf, nome)
+            VALUES (%s, %s)
+            ON CONFLICT (cpf) DO UPDATE SET nome = CASE
+                WHEN usuarios.nome IS NULL OR usuarios.nome='' THEN EXCLUDED.nome
+                ELSE usuarios.nome END
+            RETURNING id, nome, cpf, saldo
+        """, (cpf, nome or f'Apostador {cpf[-4:]}'))
+        row = cur.fetchone()
+        conn.commit()
+        cur.close(); conn.close()
+        return web.json_response({
+            'success': True,
+            'usuario': {'id': row[0], 'nome': row[1], 'cpf': row[2], 'saldo': float(row[3] or 0)}
+        })
+    except Exception as e:
+        conn.close()
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_bet_saldo(request):
+    """GET /api/bet/saldo/{usuario_id} — consulta saldo e apostas recentes"""
+    usuario_id = request.match_info.get('usuario_id', '')
+    conn = await _bet_db()
+    if not conn:
+        return web.json_response({'success': False, 'error': 'DB indisponível'})
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, nome, cpf, saldo FROM usuarios WHERE id=%s", (usuario_id,))
+        u = cur.fetchone()
+        if not u:
+            cur.close(); conn.close()
+            return web.json_response({'success': False, 'error': 'Usuário não encontrado'})
+        # Últimas 10 apostas
+        cur.execute("""
+            SELECT jogo_nome, selecao, odd, valor, retorno_potencial, status, resultado, criado_em
+            FROM apostas WHERE usuario_id=%s ORDER BY criado_em DESC LIMIT 10
+        """, (usuario_id,))
+        apostas = [{'jogo': r[0], 'selecao': r[1], 'odd': float(r[2] or 0),
+                    'valor': float(r[3] or 0), 'retorno': float(r[4] or 0),
+                    'status': r[5], 'resultado': r[6],
+                    'data': r[7].strftime('%d/%m/%Y %H:%M') if r[7] else ''} for r in cur.fetchall()]
+        # Últimos depósitos
+        cur.execute("""
+            SELECT valor, status, pago_em, criado_em FROM depositos_suit
+            WHERE usuario_id=%s ORDER BY criado_em DESC LIMIT 5
+        """, (usuario_id,))
+        deps = [{'valor': float(r[0] or 0), 'status': r[1],
+                 'pago_em': r[2].strftime('%d/%m/%Y %H:%M') if r[2] else '',
+                 'criado': r[3].strftime('%d/%m/%Y %H:%M') if r[3] else ''} for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return web.json_response({
+            'success': True,
+            'usuario': {'id': u[0], 'nome': u[1], 'cpf': u[2], 'saldo': float(u[3] or 0)},
+            'apostas': apostas,
+            'depositos': deps,
+        })
+    except Exception as e:
+        conn.close()
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+# ── FASE 5: Apostar ────────────────────────────────────────────────────────
+
+async def route_bet_apostar(request):
+    """POST /api/bet/apostar — registra aposta debitando saldo"""
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({'success': False, 'error': 'JSON inválido'}, status=400)
+
+    usuario_id = body.get('usuario_id')
+    jogo_id    = body.get('jogo_id', '')
+    jogo_nome  = body.get('jogo_nome', '')
+    selecao    = body.get('selecao', '')
+    odd        = float(body.get('odd', 0))
+    valor      = float(body.get('valor', 0))
+
+    if not usuario_id:
+        return web.json_response({'success': False, 'error': 'Faça login primeiro'})
+    if valor < 2:
+        return web.json_response({'success': False, 'error': 'Valor mínimo R$2,00'})
+    if odd < 1.01:
+        return web.json_response({'success': False, 'error': 'Odd inválida'})
+
+    retorno = round(valor * odd, 2)
+
+    conn = await _bet_db()
+    if not conn:
+        return web.json_response({'success': False, 'error': 'DB indisponível'})
+    try:
+        cur = conn.cursor()
+        # Verificar saldo
+        cur.execute("SELECT saldo FROM usuarios WHERE id=%s FOR UPDATE", (usuario_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return web.json_response({'success': False, 'error': 'Usuário não encontrado'})
+        saldo_atual = float(row[0] or 0)
+        if saldo_atual < valor:
+            cur.close(); conn.close()
+            return web.json_response({
+                'success': False,
+                'error': f'Saldo insuficiente. Saldo atual: R$ {saldo_atual:.2f}'
+            })
+        # Debitar saldo
+        cur.execute("UPDATE usuarios SET saldo = saldo - %s WHERE id=%s", (valor, usuario_id))
+        # Registrar aposta
+        cur.execute("""
+            INSERT INTO apostas (usuario_id, jogo_id, jogo_nome, selecao, odd, valor, retorno_potencial, status)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,'pendente') RETURNING id
+        """, (usuario_id, jogo_id, jogo_nome, selecao, odd, valor, retorno))
+        aposta_id = cur.fetchone()[0]
+        conn.commit()
+        # Saldo atualizado
+        cur.execute("SELECT saldo FROM usuarios WHERE id=%s", (usuario_id,))
+        novo_saldo = float(cur.fetchone()[0] or 0)
+        cur.close(); conn.close()
+        return web.json_response({
+            'success': True,
+            'aposta_id': aposta_id,
+            'saldo': novo_saldo,
+            'retorno_potencial': retorno,
+            'msg': f'✅ Aposta de R$ {valor:.2f} registrada! Retorno potencial: R$ {retorno:.2f}'
+        })
+    except Exception as e:
+        conn.close()
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+# ── FASE 6: Sacar ──────────────────────────────────────────────────────────
+
+async def route_bet_sacar(request):
+    """POST /api/bet/sacar — saque via SuitPay PIX"""
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({'success': False, 'error': 'JSON inválido'}, status=400)
+
+    usuario_id  = body.get('usuario_id')
+    valor       = float(body.get('valor', 0))
+    chave_pix   = (body.get('chave_pix') or '').strip()
+    tipo_chave  = (body.get('tipo_chave') or 'cpf').strip()
+
+    if not usuario_id:
+        return web.json_response({'success': False, 'error': 'Faça login primeiro'})
+    if valor < 20:
+        return web.json_response({'success': False, 'error': 'Valor mínimo de saque: R$20,00'})
+    if not chave_pix:
+        return web.json_response({'success': False, 'error': 'Informe sua chave PIX'})
+    if not _SUIT_CI or not _SUIT_CS:
+        return web.json_response({'success': False, 'error': 'Gateway de pagamento não configurado'})
+
+    conn = await _bet_db()
+    if not conn:
+        return web.json_response({'success': False, 'error': 'DB indisponível'})
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT saldo, nome FROM usuarios WHERE id=%s FOR UPDATE", (usuario_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return web.json_response({'success': False, 'error': 'Usuário não encontrado'})
+        saldo_atual = float(row[0] or 0)
+        nome_usuario = row[1] or ''
+        if saldo_atual < valor:
+            cur.close(); conn.close()
+            return web.json_response({'success': False, 'error': f'Saldo insuficiente (R$ {saldo_atual:.2f})'})
+        # Reservar saldo (debitar)
+        cur.execute("UPDATE usuarios SET saldo = saldo - %s WHERE id=%s", (valor, usuario_id))
+        conn.commit()
+        cur.close(); conn.close()
+    except Exception as e:
+        conn.close()
+        return web.json_response({'success': False, 'error': str(e)})
+
+    # Chamar SuitPay Cash-out
+    import uuid as _uuid
+    payload_suit = {
+        'requestNumber': f'saque_{usuario_id}_{_uuid.uuid4().hex[:8]}',
+        'value': valor,
+        'key': chave_pix,
+        'typeKey': tipo_chave,
+        'callbackUrl': _SUIT_WEBHOOK_URL,
+        'client': {'name': nome_usuario}
+    }
+    try:
+        async with aiohttp.ClientSession() as sess:
+            async with sess.post(
+                f'{_SUIT_HOST}/v1/gateway/pix-payment',
+                json=payload_suit,
+                headers={'ci': _SUIT_CI, 'cs': _SUIT_CS, 'Content-Type': 'application/json'},
+                timeout=aiohttp.ClientTimeout(total=15)
+            ) as r:
+                resp = await r.json()
+    except Exception as e_suit:
+        # Devolver saldo em caso de erro
+        conn2 = await _bet_db()
+        if conn2:
+            try:
+                c2 = conn2.cursor()
+                c2.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (valor, usuario_id))
+                conn2.commit(); c2.close(); conn2.close()
+            except Exception: pass
+        return web.json_response({'success': False, 'error': f'Erro ao processar saque: {e_suit}'})
+
+    if not resp.get('success'):
+        # Devolver saldo
+        conn2 = await _bet_db()
+        if conn2:
+            try:
+                c2 = conn2.cursor()
+                c2.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (valor, usuario_id))
+                conn2.commit(); c2.close(); conn2.close()
+            except Exception: pass
+        return web.json_response({'success': False, 'error': resp.get('message', 'Erro no saque')})
+
+    return web.json_response({
+        'success': True,
+        'msg': f'✅ Saque de R$ {valor:.2f} enviado para {chave_pix}!'
+    })
+
+
+# ── FASE 7: Páginas HTML /apostas e /conta ─────────────────────────────────
+
+def _page_apostas_html():
+    return r"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0f">
+<title>PaynexBet — Apostas Esportivas</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--gold:#FFD700;--blue:#3b82f6;--green:#22c55e;--red:#ef4444;--bg:#0a0a0f;--card:#111118;--card2:#13131e}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#fff;min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:#0d0d16;border-bottom:1px solid #ffffff0c;padding:0 16px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-logo{font-size:18px;font-weight:900;background:linear-gradient(135deg,#FFD700,#FFA500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.saldo-badge{background:#00d68f14;border:1px solid #22c55e33;border-radius:8px;padding:4px 12px;font-size:13px;font-weight:700;color:#4ade80}
+.btn-conta{background:#1e3a8a;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none}
+
+/* MAIN */
+.main{max-width:680px;margin:0 auto;padding:14px 14px 80px}
+
+/* FILTROS ESPORTES */
+.sport-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.sport-tabs::-webkit-scrollbar{display:none}
+.sport-tab{flex-shrink:0;background:var(--card);border:1px solid #ffffff10;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;color:#888;cursor:pointer;white-space:nowrap;transition:all .15s}
+.sport-tab.active{background:#1e3a8a;border-color:#3b82f6;color:#fff}
+
+/* CARD JOGO */
+.secao-titulo{font-size:12px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.live-dot{width:6px;height:6px;background:#ef4444;border-radius:50%;animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.jogos-lista{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.jogo-card{background:var(--card);border:1px solid #ffffff0c;border-radius:14px;padding:14px;cursor:pointer;transition:border-color .2s}
+.jogo-card:hover{border-color:#3b82f633}
+.jogo-card.live{border-left:3px solid #ef4444}
+.jogo-meta{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.jogo-liga{font-size:11px;color:#555;flex:1}
+.jogo-hora{font-size:11px;color:#666}
+.live-tag{background:#ef444418;color:#ef4444;border:1px solid #ef444433;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700}
+.jogo-times{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.time-nome{font-size:14px;font-weight:800;color:#fff;max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.placar{font-size:13px;font-weight:700;color:#888;text-align:center}
+.jogo-odds{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.jogo-odds.no-draw{grid-template-columns:1fr 1fr}
+.odd-btn{background:#0d1120;border:1px solid #3b82f622;border-radius:10px;padding:8px 6px;text-align:center;cursor:pointer;transition:all .15s}
+.odd-btn:hover,.odd-btn.sel{background:#1e3a8a;border-color:#3b82f6}
+.odd-lbl{font-size:10px;color:#666;margin-bottom:3px}
+.odd-val{font-size:15px;font-weight:900;color:var(--blue)}
+.odd-btn.sel .odd-val{color:#fff}
+
+/* CARRINHO FIXO */
+.bet-slip-bar{position:fixed;bottom:0;left:0;right:0;background:#0d1a0d;border-top:1px solid #22c55e33;z-index:200;transition:max-height .3s;max-height:56px;overflow:hidden}
+.bet-slip-bar.open{max-height:90vh;overflow:auto}
+.bet-slip-toggle{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer}
+.bst-left{display:flex;align-items:center;gap:10px}
+.bst-count{background:#22c55e;color:#000;border-radius:50%;width:22px;height:22px;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center}
+.bst-title{font-size:14px;font-weight:700;color:#4ade80}
+.bst-odd{font-size:12px;color:#888}
+.bst-confirmar{background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:8px;padding:8px 16px;color:#000;font-size:13px;font-weight:900;cursor:pointer}
+.bet-slip-body{padding:0 16px 16px}
+.bs-item{background:#0a140a;border:1px solid #22c55e1a;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start}
+.bs-item-info{flex:1}
+.bs-item-jogo{font-size:11px;color:#666;margin-bottom:2px}
+.bs-item-sel{font-size:13px;font-weight:700;color:#4ade80}
+.bs-item-odd{font-size:12px;color:#22c55e}
+.bs-item-remove{background:none;border:none;color:#666;font-size:18px;cursor:pointer;padding:0 0 0 8px;line-height:1}
+.bs-valor-row{display:flex;gap:8px;margin-top:8px;align-items:center}
+.bs-input{flex:1;background:#0a0a14;border:1px solid #22c55e33;border-radius:8px;padding:10px;color:#fff;font-size:16px;font-weight:700}
+.bs-chips{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.bs-chip{background:#0d1a0d;border:1px solid #22c55e22;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;color:#4ade80;cursor:pointer}
+.bs-chip:hover{background:#1a2e1a}
+.bs-retorno{font-size:12px;color:#555;margin-top:8px;text-align:right}
+.bs-retorno span{color:#4ade80;font-weight:700;font-size:14px}
+.bs-btn-apostar{width:100%;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:10px;padding:14px;color:#000;font-size:15px;font-weight:900;cursor:pointer;margin-top:10px}
+
+/* LOGIN MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;align-items:flex-end;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal-box{background:#13131e;border-radius:20px 20px 0 0;padding:24px 20px 32px;width:100%;max-width:480px;border-top:1px solid #3b82f633}
+.modal-title{font-size:18px;font-weight:900;color:#fff;margin-bottom:6px}
+.modal-sub{font-size:13px;color:#666;margin-bottom:20px;line-height:1.5}
+.modal-input{width:100%;background:#0a0a14;border:1px solid #3b82f633;border-radius:10px;padding:12px 14px;color:#fff;font-size:15px;margin-bottom:10px}
+.modal-btn{width:100%;background:linear-gradient(135deg,#1e3a8a,#3b82f6);border:none;border-radius:10px;padding:14px;color:#fff;font-size:15px;font-weight:900;cursor:pointer}
+.modal-close{float:right;background:none;border:none;color:#666;font-size:22px;cursor:pointer;margin-top:-4px}
+
+/* TOAST */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1a2e1a;border:1px solid #22c55e44;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;color:#4ade80;z-index:9999;display:none;white-space:nowrap}
+.toast.err{background:#2e1a1a;border-color:#ef444444;color:#f87171}
+.toast.show{display:block;animation:fadeInOut 2.5s ease}
+@keyframes fadeInOut{0%{opacity:0;transform:translateX(-50%) translateY(-10px)}15%,85%{opacity:1;transform:translateX(-50%) translateY(0)}100%{opacity:0}}
+
+/* LOADING */
+.loading-spinner{display:flex;align-items:center;justify-content:center;padding:40px;color:#555;font-size:14px;gap:10px}
+.spinner{width:20px;height:20px;border:2px solid #333;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(min-width:600px){.bet-slip-bar{max-width:680px;left:50%;transform:translateX(-50%);border-radius:16px 16px 0 0}}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <a href="/" class="topbar-logo">🎰 PaynexBet</a>
+  <div class="topbar-right">
+    <div class="saldo-badge" id="saldo-display">R$ 0,00</div>
+    <a href="/conta" class="btn-conta" id="btn-conta-link">👤 Conta</a>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Filtros de esporte -->
+  <div class="sport-tabs" id="sport-tabs">
+    <div class="sport-tab active" data-sport="upcoming" onclick="trocarSport(this)">🔥 Em destaque</div>
+    <div class="sport-tab" data-sport="soccer_brazil_campeonato" onclick="trocarSport(this)">🇧🇷 Brasileirão</div>
+    <div class="sport-tab" data-sport="soccer_conmebol_copa_libertadores" onclick="trocarSport(this)">🏆 Libertadores</div>
+    <div class="sport-tab" data-sport="soccer_uefa_champs_league" onclick="trocarSport(this)">⭐ Champions</div>
+    <div class="sport-tab" data-sport="soccer_epl" onclick="trocarSport(this)">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</div>
+    <div class="sport-tab" data-sport="basketball_nba" onclick="trocarSport(this)">🏀 NBA</div>
+  </div>
+
+  <div class="secao-titulo"><span class="live-dot"></span> Jogos disponíveis</div>
+  <div class="jogos-lista" id="jogos-lista">
+    <div class="loading-spinner"><div class="spinner"></div> Carregando jogos...</div>
+  </div>
+</div>
+
+<!-- CARRINHO (bet slip) -->
+<div class="bet-slip-bar" id="bet-slip-bar">
+  <div class="bet-slip-toggle" onclick="toggleSlip()">
+    <div class="bst-left">
+      <div class="bst-count" id="slip-count">0</div>
+      <div class="bst-title">Minha aposta</div>
+      <div class="bst-odd" id="slip-odd-total">Odd total: —</div>
+    </div>
+    <button class="bst-confirmar" onclick="event.stopPropagation();confirmarAposta()">Apostar ▶</button>
+  </div>
+  <div class="bet-slip-body" id="slip-body" style="display:none">
+    <div id="slip-items"></div>
+    <div class="bs-valor-row">
+      <input class="bs-input" type="number" id="slip-valor" placeholder="R$ valor" min="2" step="1" oninput="calcRetorno()">
+    </div>
+    <div class="bs-chips">
+      <div class="bs-chip" onclick="setValor(5)">R$5</div>
+      <div class="bs-chip" onclick="setValor(10)">R$10</div>
+      <div class="bs-chip" onclick="setValor(20)">R$20</div>
+      <div class="bs-chip" onclick="setValor(50)">R$50</div>
+      <div class="bs-chip" onclick="setValor(100)">R$100</div>
+    </div>
+    <div class="bs-retorno">Retorno potencial: <span id="slip-retorno">R$ 0,00</span></div>
+    <button class="bs-btn-apostar" onclick="confirmarAposta()">🎯 Confirmar Aposta</button>
+  </div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="modal-overlay" id="login-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="fecharModal()">✕</button>
+    <div class="modal-title">👤 Entre na sua conta</div>
+    <div class="modal-sub">Informe seu CPF para acessar. Se for novo, sua conta é criada automaticamente!</div>
+    <input class="modal-input" id="modal-nome" type="text" placeholder="Seu nome (opcional)">
+    <input class="modal-input" id="modal-cpf" type="tel" placeholder="CPF (somente números)" maxlength="14" oninput="maskCPF(this)">
+    <button class="modal-btn" onclick="fazerLogin()">🚀 Entrar / Cadastrar</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = '';
+const _fmt = n => 'R$ ' + Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+let _usuario = JSON.parse(localStorage.getItem('bet_usuario') || 'null');
+let _selecoes = [];
+let _sportAtual = 'upcoming';
+
+// ── Inicialização ──
+document.addEventListener('DOMContentLoaded', () => {
+  atualizarSaldo();
+  carregarJogos(_sportAtual);
+});
+
+function atualizarSaldo() {
+  const el = document.getElementById('saldo-display');
+  if (_usuario) {
+    el.textContent = _fmt(_usuario.saldo);
+    // Sincronizar com servidor
+    fetch(`${BASE}/api/bet/saldo/${_usuario.id}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          _usuario.saldo = d.usuario.saldo;
+          localStorage.setItem('bet_usuario', JSON.stringify(_usuario));
+          el.textContent = _fmt(_usuario.saldo);
+        }
+      }).catch(() => {});
+  } else {
+    el.textContent = 'R$ 0,00';
+  }
+}
+
+// ── Jogos / Odds ──
+async function carregarJogos(sport) {
+  const lista = document.getElementById('jogos-lista');
+  lista.innerHTML = '<div class="loading-spinner"><div class="spinner"></div> Carregando...</div>';
+  try {
+    const r = await fetch(`${BASE}/api/bet/jogos?sport=${sport}`);
+    const d = await r.json();
+    const jogos = (d.jogos || []).filter(j => sport === 'upcoming' || j.sport === sport);
+    if (!jogos.length) {
+      lista.innerHTML = '<div class="loading-spinner">⚽ Nenhum jogo encontrado para este esporte agora.</div>';
+      return;
+    }
+    lista.innerHTML = '';
+    jogos.forEach(j => {
+      const live = new Date(j.commence_time) < new Date();
+      const o = j.odds || {};
+      const temEmpate = o.draw != null;
+      const card = document.createElement('div');
+      card.className = 'jogo-card' + (live ? ' live' : '');
+      const hora = j.commence_time
+        ? new Date(j.commence_time).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+        : '';
+      card.innerHTML = `
+        <div class="jogo-meta">
+          <span class="jogo-liga">${j.league || j.sport}</span>
+          ${live ? '<span class="live-tag">● AO VIVO</span>' : `<span class="jogo-hora">${hora}</span>`}
+        </div>
+        <div class="jogo-times">
+          <span class="time-nome">${j.home_team}</span>
+          <span class="placar">${live ? 'AO VIVO' : 'VS'}</span>
+          <span class="time-nome" style="text-align:right">${j.away_team}</span>
+        </div>
+        <div class="jogo-odds ${!temEmpate ? 'no-draw' : ''}">
+          ${o.home != null ? `<div class="odd-btn" id="odd-${j.id}-casa" onclick="selecionarOdd('${j.id}','${j.home_team}','Casa',${o.home},'${j.home_team} × ${j.away_team}')">
+            <div class="odd-lbl">${j.home_team.split(' ')[0]}</div>
+            <div class="odd-val">${Number(o.home).toFixed(2)}</div></div>` : ''}
+          ${temEmpate ? `<div class="odd-btn" id="odd-${j.id}-empate" onclick="selecionarOdd('${j.id}','Empate','X',${o.draw},'${j.home_team} × ${j.away_team}')">
+            <div class="odd-lbl">Empate</div>
+            <div class="odd-val">${Number(o.draw).toFixed(2)}</div></div>` : ''}
+          ${o.away != null ? `<div class="odd-btn" id="odd-${j.id}-fora" onclick="selecionarOdd('${j.id}','${j.away_team}','Fora',${o.away},'${j.home_team} × ${j.away_team}')">
+            <div class="odd-lbl">${j.away_team.split(' ')[0]}</div>
+            <div class="odd-val">${Number(o.away).toFixed(2)}</div></div>` : ''}
+        </div>`;
+      lista.appendChild(card);
+    });
+  } catch(e) {
+    lista.innerHTML = '<div class="loading-spinner">⚠️ Erro ao carregar jogos. Tentando novamente...</div>';
+    setTimeout(() => carregarJogos(sport), 5000);
+  }
+}
+
+function trocarSport(el) {
+  document.querySelectorAll('.sport-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  _sportAtual = el.dataset.sport;
+  carregarJogos(_sportAtual);
+}
+
+// ── Seleção de odds ──
+function selecionarOdd(jogoId, time, tipo, odd, jogo) {
+  const existing = _selecoes.findIndex(s => s.jogoId === jogoId);
+  if (existing >= 0) {
+    if (_selecoes[existing].tipo === tipo) {
+      // Desmarcar se clicar no mesmo
+      _selecoes.splice(existing, 1);
+    } else {
+      _selecoes[existing] = {jogoId, time, tipo, odd, jogo};
+    }
+  } else {
+    _selecoes.push({jogoId, time, tipo, odd, jogo});
+  }
+  // Atualizar visual
+  ['casa','empate','fora'].forEach(t => {
+    const btn = document.getElementById(`odd-${jogoId}-${t}`);
+    if (btn) btn.classList.remove('sel');
+  });
+  const selAtual = _selecoes.find(s => s.jogoId === jogoId);
+  if (selAtual) {
+    const tipoMap = {'Casa':'casa','X':'empate','Fora':'fora'};
+    const btnSel = document.getElementById(`odd-${jogoId}-${tipoMap[selAtual.tipo] || 'casa'}`);
+    if (btnSel) btnSel.classList.add('sel');
+  }
+  renderSlip();
+}
+
+function renderSlip() {
+  const bar = document.getElementById('bet-slip-bar');
+  const count = document.getElementById('slip-count');
+  const oddTot = document.getElementById('slip-odd-total');
+  const items = document.getElementById('slip-items');
+  const body = document.getElementById('slip-body');
+
+  count.textContent = _selecoes.length;
+  const totalOdd = _selecoes.reduce((a, s) => a * s.odd, 1);
+  oddTot.textContent = _selecoes.length ? `Odd total: ${totalOdd.toFixed(2)}` : 'Sem seleções';
+
+  if (!_selecoes.length) {
+    bar.classList.remove('open');
+    body.style.display = 'none';
+    return;
+  }
+  items.innerHTML = _selecoes.map(s => `
+    <div class="bs-item">
+      <div class="bs-item-info">
+        <div class="bs-item-jogo">${s.jogo}</div>
+        <div class="bs-item-sel">${s.time} (${s.tipo})</div>
+        <div class="bs-item-odd">Odd: ${s.odd.toFixed(2)}</div>
+      </div>
+      <button class="bs-item-remove" onclick="removerSelecao('${s.jogoId}')">×</button>
+    </div>`).join('');
+  calcRetorno();
+}
+
+function removerSelecao(jogoId) {
+  _selecoes = _selecoes.filter(s => s.jogoId !== jogoId);
+  renderSlip();
+}
+
+function toggleSlip() {
+  const bar = document.getElementById('bet-slip-bar');
+  const body = document.getElementById('slip-body');
+  if (!_selecoes.length) return;
+  bar.classList.toggle('open');
+  body.style.display = bar.classList.contains('open') ? 'block' : 'none';
+}
+
+function setValor(v) {
+  document.getElementById('slip-valor').value = v;
+  calcRetorno();
+}
+
+function calcRetorno() {
+  const v = parseFloat(document.getElementById('slip-valor').value) || 0;
+  const totalOdd = _selecoes.reduce((a, s) => a * s.odd, 1);
+  document.getElementById('slip-retorno').textContent = _fmt(v * totalOdd);
+}
+
+// ── Apostar ──
+async function confirmarAposta() {
+  if (!_selecoes.length) { toast('Selecione pelo menos uma aposta', 'err'); return; }
+  if (!_usuario) { abrirLogin(); return; }
+
+  const valor = parseFloat(document.getElementById('slip-valor').value) || 0;
+  if (valor < 2) { toast('Valor mínimo: R$ 2,00', 'err'); return; }
+
+  const totalOdd = _selecoes.reduce((a, s) => a * s.odd, 1);
+  const primeiraSelecao = _selecoes[0];
+
+  const body = {
+    usuario_id: _usuario.id,
+    jogo_id:    primeiraSelecao.jogoId,
+    jogo_nome:  primeiraSelecao.jogo,
+    selecao:    _selecoes.map(s => `${s.time} (${s.tipo})`).join(' + '),
+    odd:        totalOdd,
+    valor:      valor,
+  };
+
+  try {
+    const r = await fetch(`${BASE}/api/bet/apostar`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (d.success) {
+      toast(d.msg || '✅ Aposta registrada!');
+      _usuario.saldo = d.saldo;
+      localStorage.setItem('bet_usuario', JSON.stringify(_usuario));
+      atualizarSaldo();
+      _selecoes = [];
+      renderSlip();
+      document.getElementById('slip-valor').value = '';
+    } else {
+      if (d.error && d.error.includes('Saldo insuficiente')) {
+        toast('Saldo insuficiente! Deposite para continuar.', 'err');
+        setTimeout(() => window.location.href = '/conta', 1500);
+      } else {
+        toast(d.error || '❌ Erro ao apostar', 'err');
+      }
+    }
+  } catch(e) {
+    toast('Erro de conexão. Tente novamente.', 'err');
+  }
+}
+
+// ── Login ──
+function abrirLogin() {
+  document.getElementById('login-modal').classList.add('show');
+  document.getElementById('modal-cpf').focus();
+}
+
+function fecharModal() {
+  document.getElementById('login-modal').classList.remove('show');
+}
+
+async function fazerLogin() {
+  const nome = document.getElementById('modal-nome').value.trim();
+  const cpf  = document.getElementById('modal-cpf').value.replace(/\D/g, '');
+  if (cpf.length < 11) { toast('CPF inválido', 'err'); return; }
+  try {
+    const r = await fetch(`${BASE}/api/bet/login`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({nome, cpf}),
+    });
+    const d = await r.json();
+    if (d.success) {
+      _usuario = d.usuario;
+      localStorage.setItem('bet_usuario', JSON.stringify(_usuario));
+      fecharModal();
+      atualizarSaldo();
+      toast(`✅ Bem-vindo, ${_usuario.nome}!`);
+    } else {
+      toast(d.error || 'Erro ao entrar', 'err');
+    }
+  } catch(e) {
+    toast('Erro de conexão', 'err');
+  }
+}
+
+function maskCPF(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/,'$1.$2.$3-$4');
+  else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{0,3})/,'$1.$2.$3');
+  else if (v.length > 3) v = v.replace(/(\d{3})(\d{0,3})/,'$1.$2');
+  el.value = v;
+}
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (type === 'err' ? ' err' : '') + ' show';
+  setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// Atualizar jogos a cada 60s
+setInterval(() => carregarJogos(_sportAtual), 60000);
+</script>
+</body>
+</html>"""
+
+
+def _page_conta_html():
+    return r"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0f">
+<title>PaynexBet — Minha Conta</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--gold:#FFD700;--blue:#3b82f6;--green:#22c55e;--red:#ef4444;--bg:#0a0a0f;--card:#111118}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#fff;min-height:100vh}
+.topbar{background:#0d0d16;border-bottom:1px solid #ffffff0c;padding:0 16px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-logo{font-size:18px;font-weight:900;background:linear-gradient(135deg,#FFD700,#FFA500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none}
+.btn-sair{background:#1a0a0a;border:1px solid #ef444433;border-radius:8px;padding:6px 12px;color:#f87171;font-size:12px;font-weight:700;cursor:pointer}
+.main{max-width:480px;margin:0 auto;padding:16px 14px 40px}
+
+/* SALDO CARD */
+.saldo-card{background:linear-gradient(135deg,#0a1a0a,#0d2010);border:1.5px solid #22c55e33;border-radius:18px;padding:20px;text-align:center;margin-bottom:16px}
+.saldo-label{font-size:12px;color:#666;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px}
+.saldo-valor{font-size:42px;font-weight:900;color:#4ade80;line-height:1}
+.saldo-nome{font-size:13px;color:#555;margin-top:8px}
+
+/* TABS */
+.tabs{display:flex;gap:0;background:var(--card);border-radius:12px;padding:4px;margin-bottom:16px}
+.tab-btn{flex:1;padding:9px;font-size:13px;font-weight:700;border:none;border-radius:9px;cursor:pointer;background:transparent;color:#666;transition:all .2s}
+.tab-btn.active{background:#111827;color:#fff}
+
+/* DEPÓSITO */
+.deposito-section{display:none}
+.deposito-section.show{display:block}
+.secao-titulo{font-size:12px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.valor-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.valor-chip{background:var(--card);border:1px solid #3b82f633;border-radius:8px;padding:8px 16px;font-size:14px;font-weight:700;color:var(--blue);cursor:pointer;transition:all .15s}
+.valor-chip:hover,.valor-chip.sel{background:#1e3a8a;border-color:var(--blue);color:#fff}
+.input-custom{width:100%;background:#0a0a14;border:1px solid #3b82f633;border-radius:10px;padding:12px;color:#fff;font-size:16px;margin-bottom:10px}
+.btn-gerar{width:100%;background:linear-gradient(135deg,#1e3a8a,#3b82f6);border:none;border-radius:10px;padding:14px;color:#fff;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:12px}
+
+/* QR CODE */
+.qr-box{background:#0d1120;border:1px solid #3b82f633;border-radius:14px;padding:16px;text-align:center;display:none}
+.qr-box.show{display:block}
+.qr-img{width:180px;height:180px;margin:0 auto 12px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.qr-img img{width:100%;height:100%}
+.qr-code-text{background:#0a0a14;border:1px solid #3b82f622;border-radius:8px;padding:10px;font-size:11px;color:#888;word-break:break-all;text-align:left;margin-bottom:10px;font-family:monospace;max-height:60px;overflow:hidden}
+.btn-copiar{width:100%;background:#111827;border:1px solid #3b82f633;border-radius:8px;padding:10px;color:var(--blue);font-size:13px;font-weight:700;cursor:pointer}
+.aguardando{font-size:12px;color:#22c55e;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:6px}
+.dot-pulse{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* APOSTAS */
+.apostas-section{display:none}
+.apostas-section.show{display:block}
+.aposta-item{background:var(--card);border:1px solid #ffffff0c;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start}
+.aposta-left{flex:1}
+.aposta-jogo{font-size:11px;color:#666;margin-bottom:2px}
+.aposta-sel{font-size:13px;font-weight:700;color:#fff}
+.aposta-meta{font-size:11px;color:#888;margin-top:3px}
+.aposta-right{text-align:right;flex-shrink:0;padding-left:10px}
+.aposta-valor{font-size:13px;font-weight:700;color:#fff}
+.aposta-status{font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;margin-top:4px;display:inline-block}
+.st-pendente{background:#f59e0b18;color:#fbbf24;border:1px solid #f59e0b33}
+.st-ganha{background:#22c55e18;color:#4ade80;border:1px solid #22c55e33}
+.st-perdida{background:#ef444418;color:#f87171;border:1px solid #ef444433}
+
+/* SAQUE */
+.saque-section{display:none}
+.saque-section.show{display:block}
+.form-label{font-size:11px;color:#666;margin-bottom:4px;display:block}
+.form-select{width:100%;background:#0a0a14;border:1px solid #ffffff1a;border-radius:8px;padding:10px;color:#fff;font-size:14px;margin-bottom:10px}
+.btn-sacar{width:100%;background:linear-gradient(135deg,#1a6b3c,#22c55e);border:none;border-radius:10px;padding:14px;color:#fff;font-size:15px;font-weight:900;cursor:pointer}
+
+/* LOGIN */
+.login-card{background:var(--card);border:1px solid #3b82f633;border-radius:18px;padding:24px 20px;margin-top:20px}
+.login-title{font-size:18px;font-weight:900;margin-bottom:6px}
+.login-sub{font-size:13px;color:#666;margin-bottom:18px;line-height:1.5}
+.login-input{width:100%;background:#0a0a14;border:1px solid #3b82f633;border-radius:10px;padding:12px;color:#fff;font-size:15px;margin-bottom:10px}
+.login-btn{width:100%;background:linear-gradient(135deg,#1e3a8a,#3b82f6);border:none;border-radius:10px;padding:14px;color:#fff;font-size:15px;font-weight:900;cursor:pointer}
+
+/* TOAST */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1a2e1a;border:1px solid #22c55e44;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;color:#4ade80;z-index:9999;display:none;white-space:nowrap}
+.toast.err{background:#2e1a1a;border-color:#ef444444;color:#f87171}
+.toast.show{display:block;animation:fadeInOut 2.5s ease}
+@keyframes fadeInOut{0%{opacity:0;transform:translateX(-50%) translateY(-10px)}15%,85%{opacity:1;transform:translateX(-50%) translateY(0)}100%{opacity:0}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="/" class="topbar-logo">🎰 PaynexBet</a>
+  <div style="display:flex;gap:8px;align-items:center">
+    <a href="/apostas" style="background:#1e3a8a;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-size:12px;font-weight:700;text-decoration:none">⚽ Apostas</a>
+    <button class="btn-sair" onclick="sair()">🚪 Sair</button>
+  </div>
+</header>
+
+<div class="main" id="main-logado" style="display:none">
+  <!-- Saldo -->
+  <div class="saldo-card">
+    <div class="saldo-label">Seu saldo</div>
+    <div class="saldo-valor" id="ct-saldo">R$ 0,00</div>
+    <div class="saldo-nome" id="ct-nome">—</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="trocarTab('deposito',this)">💳 Depositar</button>
+    <button class="tab-btn" onclick="trocarTab('apostas',this)">🎯 Apostas</button>
+    <button class="tab-btn" onclick="trocarTab('saque',this)">💸 Sacar</button>
+  </div>
+
+  <!-- DEPÓSITO -->
+  <div class="deposito-section show" id="tab-deposito">
+    <div class="secao-titulo">Quanto deseja depositar?</div>
+    <div class="valor-chips">
+      <div class="valor-chip" onclick="selecionarValorDep(10,this)">R$10</div>
+      <div class="valor-chip" onclick="selecionarValorDep(20,this)">R$20</div>
+      <div class="valor-chip" onclick="selecionarValorDep(50,this)">R$50</div>
+      <div class="valor-chip" onclick="selecionarValorDep(100,this)">R$100</div>
+      <div class="valor-chip" onclick="selecionarValorDep(200,this)">R$200</div>
+    </div>
+    <input class="input-custom" type="number" id="dep-valor" placeholder="Outro valor (mín. R$5)" min="5">
+    <button class="btn-gerar" onclick="gerarDeposito()">🔑 Gerar QR Code PIX</button>
+
+    <div class="qr-box" id="qr-box">
+      <div style="font-size:13px;color:#888;margin-bottom:12px">Escaneie o QR Code ou copie o código</div>
+      <div class="qr-img" id="qr-img-box"></div>
+      <div class="qr-code-text" id="qr-code-text"></div>
+      <button class="btn-copiar" onclick="copiarQR()">📋 Copiar código PIX</button>
+      <div class="aguardando"><span class="dot-pulse"></span> Aguardando pagamento...</div>
+    </div>
+  </div>
+
+  <!-- APOSTAS -->
+  <div class="apostas-section" id="tab-apostas">
+    <div class="secao-titulo">Minhas apostas</div>
+    <div id="apostas-lista"><div style="text-align:center;color:#555;padding:20px">Carregando...</div></div>
+  </div>
+
+  <!-- SAQUE -->
+  <div class="saque-section" id="tab-saque">
+    <div class="secao-titulo">Saque via PIX</div>
+    <label class="form-label">Valor a sacar (mín. R$20)</label>
+    <input class="input-custom" type="number" id="saq-valor" placeholder="R$ valor" min="20">
+    <label class="form-label">Tipo de chave PIX</label>
+    <select class="form-select" id="saq-tipo">
+      <option value="cpf">CPF</option>
+      <option value="email">E-mail</option>
+      <option value="telefone">Telefone</option>
+      <option value="aleatoria">Chave aleatória</option>
+    </select>
+    <label class="form-label">Chave PIX</label>
+    <input class="input-custom" type="text" id="saq-chave" placeholder="Sua chave PIX">
+    <button class="btn-sacar" onclick="realizarSaque()">💸 Solicitar Saque</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="main" id="main-login" style="display:block">
+  <div class="login-card">
+    <div class="login-title">👤 Entrar na conta</div>
+    <div class="login-sub">Digite seu CPF para acessar. Se for novo, sua conta é criada na hora!</div>
+    <input class="login-input" id="lc-nome" type="text" placeholder="Seu nome (opcional)">
+    <input class="login-input" id="lc-cpf" type="tel" placeholder="CPF (somente números)" maxlength="14" oninput="maskCPF(this)">
+    <button class="login-btn" onclick="fazerLogin()">🚀 Entrar / Cadastrar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = '';
+const _fmt = n => 'R$ ' + Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+let _usuario = JSON.parse(localStorage.getItem('bet_usuario') || 'null');
+let _depValor = 0;
+let _qrCode = '';
+let _pollInterval = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (_usuario) {
+    mostrarContaLogada();
+    carregarDados();
+  }
+});
+
+function mostrarContaLogada() {
+  document.getElementById('main-logado').style.display = 'block';
+  document.getElementById('main-login').style.display = 'none';
+  document.getElementById('ct-saldo').textContent = _fmt(_usuario.saldo);
+  document.getElementById('ct-nome').textContent = `👤 ${_usuario.nome} · CPF: ${'•'.repeat(7)}${(_usuario.cpf||'').slice(-4)}`;
+}
+
+async function carregarDados() {
+  if (!_usuario) return;
+  try {
+    const r = await fetch(`${BASE}/api/bet/saldo/${_usuario.id}`);
+    const d = await r.json();
+    if (d.success) {
+      _usuario.saldo = d.usuario.saldo;
+      localStorage.setItem('bet_usuario', JSON.stringify(_usuario));
+      document.getElementById('ct-saldo').textContent = _fmt(_usuario.saldo);
+      // Renderizar apostas
+      const lista = document.getElementById('apostas-lista');
+      if (!d.apostas.length) {
+        lista.innerHTML = '<div style="text-align:center;color:#555;padding:20px">Nenhuma aposta ainda. <a href="/apostas" style="color:#3b82f6">Aposte agora!</a></div>';
+      } else {
+        lista.innerHTML = d.apostas.map(a => `
+          <div class="aposta-item">
+            <div class="aposta-left">
+              <div class="aposta-jogo">${a.jogo}</div>
+              <div class="aposta-sel">${a.selecao}</div>
+              <div class="aposta-meta">Odd: ${a.odd.toFixed(2)} · ${a.data}</div>
+            </div>
+            <div class="aposta-right">
+              <div class="aposta-valor">R$ ${a.valor.toFixed(2)}</div>
+              <div class="aposta-status st-${a.status}">${a.status.toUpperCase()}</div>
+              ${a.resultado === 'ganha' ? `<div style="font-size:11px;color:#4ade80;margin-top:2px">+R$ ${a.retorno.toFixed(2)}</div>` : ''}
+            </div>
+          </div>`).join('');
+      }
+    }
+  } catch(e) {}
+}
+
+function trocarTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.deposito-section,.apostas-section,.saque-section').forEach(s => s.classList.remove('show'));
+  document.getElementById('tab-'+tab).classList.add('show');
+  if (tab === 'apostas') carregarDados();
+}
+
+function selecionarValorDep(v, el) {
+  document.querySelectorAll('.valor-chip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('dep-valor').value = v;
+  _depValor = v;
+}
+
+async function gerarDeposito() {
+  if (!_usuario) { toast('Faça login primeiro', 'err'); return; }
+  const valor = parseFloat(document.getElementById('dep-valor').value) || _depValor;
+  if (valor < 5) { toast('Valor mínimo R$5,00', 'err'); return; }
+
+  const btn = document.querySelector('.btn-gerar');
+  btn.disabled = true; btn.textContent = '⏳ Gerando...';
+
+  try {
+    const r = await fetch(`${BASE}/api/bet/deposito`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        usuario_id: _usuario.id,
+        nome: _usuario.nome,
+        cpf: _usuario.cpf,
+        valor: valor
+      }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      _qrCode = d.qrCode;
+      document.getElementById('qr-code-text').textContent = d.qrCode;
+      const imgBox = document.getElementById('qr-img-box');
+      if (d.qrImage) {
+        imgBox.innerHTML = `<img src="data:image/png;base64,${d.qrImage}" alt="QR Code">`;
+      } else {
+        imgBox.innerHTML = `<div style="color:#555;font-size:12px;padding:20px">QR Code gerado.<br>Use o código abaixo.</div>`;
+      }
+      document.getElementById('qr-box').classList.add('show');
+      // Polling para verificar pagamento
+      if (_pollInterval) clearInterval(_pollInterval);
+      _pollInterval = setInterval(() => verificarPagamento(), 5000);
+    } else {
+      toast(d.error || 'Erro ao gerar QR Code', 'err');
+    }
+  } catch(e) {
+    toast('Erro de conexão', 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = '🔑 Gerar QR Code PIX';
+  }
+}
+
+function copiarQR() {
+  navigator.clipboard.writeText(_qrCode).then(() => toast('✅ Código PIX copiado!')).catch(() => toast('Erro ao copiar', 'err'));
+}
+
+async function verificarPagamento() {
+  if (!_usuario) return;
+  try {
+    const r = await fetch(`${BASE}/api/bet/saldo/${_usuario.id}`);
+    const d = await r.json();
+    if (d.success && d.usuario.saldo > _usuario.saldo) {
+      clearInterval(_pollInterval);
+      _usuario.saldo = d.usuario.saldo;
+      localStorage.setItem('bet_usuario', JSON.stringify(_usuario));
+      document.getElementById('ct-saldo').textContent = _fmt(_usuario.saldo);
+      document.getElementById('qr-box').classList.remove('show');
+      toast(`✅ Depósito confirmado! Saldo: ${_fmt(_usuario.saldo)}`);
+    }
+  } catch(e) {}
+}
+
+async function realizarSaque() {
+  if (!_usuario) { toast('Faça login', 'err'); return; }
+  const valor = parseFloat(document.getElementById('saq-valor').value) || 0;
+  const tipo  = document.getElementById('saq-tipo').value;
+  const chave = document.getElementById('saq-chave').value.trim();
+  if (valor < 20) { toast('Valor mínimo R$20', 'err'); return; }
+  if (!chave) { toast('Informe a chave PIX', 'err'); return; }
+
+  try {
+    const r = await fetch(`${BASE}/api/bet/sacar`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({usuario_id: _usuario.id, valor, chave_pix: chave, tipo_chave: tipo}),
+    });
+    const d = await r.json();
+    if (d.success) {
+      toast(d.msg || '✅ Saque solicitado!');
+      carregarDados();
+    } else {
+      toast(d.error || 'Erro no saque', 'err');
+    }
+  } catch(e) {
+    toast('Erro de conexão', 'err');
+  }
+}
+
+async function fazerLogin() {
+  const nome = document.getElementById('lc-nome').value.trim();
+  const cpf  = document.getElementById('lc-cpf').value.replace(/\D/g,'');
+  if (cpf.length < 11) { toast('CPF inválido (11 dígitos)', 'err'); return; }
+  try {
+    const r = await fetch(`${BASE}/api/bet/login`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({nome, cpf}),
+    });
+    const d = await r.json();
+    if (d.success) {
+      _usuario = d.usuario;
+      localStorage.setItem('bet_usuario', JSON.stringify(_usuario));
+      mostrarContaLogada();
+      carregarDados();
+      toast(`✅ Bem-vindo, ${_usuario.nome}!`);
+    } else {
+      toast(d.error || 'Erro ao entrar', 'err');
+    }
+  } catch(e) {
+    toast('Erro de conexão', 'err');
+  }
+}
+
+function sair() {
+  if (!confirm('Sair da conta?')) return;
+  localStorage.removeItem('bet_usuario');
+  location.reload();
+}
+
+function maskCPF(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/,'$1.$2.$3-$4');
+  else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{0,3})/,'$1.$2.$3');
+  else if (v.length > 3) v = v.replace(/(\d{3})(\d{0,3})/,'$1.$2');
+  el.value = v;
+}
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (type === 'err' ? ' err' : '') + ' show';
+  setTimeout(() => el.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>"""
+
+
+async def route_apostas_page(request):
+    """GET /apostas — página de apostas esportivas"""
+    return web.Response(text=_page_apostas_html(), content_type='text/html', charset='utf-8')
+
+
+async def route_conta_page(request):
+    """GET /conta — página de conta do apostador"""
+    return web.Response(text=_page_conta_html(), content_type='text/html', charset='utf-8')
+
+
 async def main():
     global ASAAS_API_KEY, ASAAS_ENV, ASAAS_BASE_URL
     init_db()
@@ -10179,6 +11272,15 @@ async def main():
     app.router.add_get('/api/bet/jogos',        route_bet_jogos)
     app.router.add_post('/api/bet/deposito',    route_bet_deposito)
     app.router.add_post('/webhook/suitpay',     route_webhook_suitpay)
+    # BET — auth + saldo + apostar + sacar + páginas
+    app.router.add_post('/api/bet/login',       route_bet_login)
+    app.router.add_get('/api/bet/saldo/{usuario_id}', route_bet_saldo)
+    app.router.add_post('/api/bet/apostar',     route_bet_apostar)
+    app.router.add_post('/api/bet/sacar',       route_bet_sacar)
+    app.router.add_get('/apostas',              route_apostas_page)
+    app.router.add_get('/apostas.html',         route_apostas_page)
+    app.router.add_get('/conta',                route_conta_page)
+    app.router.add_get('/conta.html',           route_conta_page)
     app.router.add_get('/', route_home)            # Página principal PaynexBet
     app.router.add_get('/home', route_home)
     app.router.add_get('/index.html', route_index)
