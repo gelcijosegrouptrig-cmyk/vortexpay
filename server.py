@@ -9957,97 +9957,102 @@ _SUIT_HOST        = os.environ.get('SUITPAY_HOST', 'https://ws.suitpay.app')
 _SUIT_WEBHOOK_URL = os.environ.get('SUITPAY_WEBHOOK_URL', 'https://paynexbet.com/webhook/suitpay')
 
 async def route_bet_jogos(request):
-    """GET /api/bet/jogos — retorna jogos com odds (cache 60s)
+    """GET /api/bet/jogos — retorna jogos com odds reais (odds-api) ou ESPN como fallback.
     Suporta ?sport=<key> para filtrar por campeonato específico.
-    Cache global de todos os sports; filtro feito após cachear.
     """
-    import time as _time
-    import aiohttp
+    import time as _time, aiohttp
     agora = _time.time()
-
-    # Parâmetro de filtro da query (ex: soccer_brazil_campeonato)
     sport_filter = request.rel_url.query.get('sport', '').strip()
 
-    # Retornar cache se válido
+    # Cache válido
     cache_valido = agora - _odds_cache['ts'] < _ODDS_CACHE_TTL and _odds_cache['data']
     if cache_valido:
         jogos = _odds_cache['data']
-        # Aplicar filtro se passado e não for "upcoming" / "destaque" (= todos)
         if sport_filter and sport_filter not in ('upcoming', 'destaque', 'all'):
             jogos = [j for j in jogos if j.get('sport') == sport_filter]
         return web.json_response({'success': True, 'jogos': jogos, 'from_cache': True, 'total': len(jogos)})
 
-    key = _get_odds_key()
-    if not key:
-        return web.json_response({'success': False, 'jogos': [], 'error': 'ODDS_API_KEY não configurada — adicione via /api/bet/config'})
-
-    # Todos os sports suportados (sem limite de 10 total)
-    sports = [
-        'soccer_brazil_campeonato',
-        'soccer_conmebol_copa_libertadores',
-        'soccer_uefa_champs_league',
-        'soccer_epl',
-        'soccer_spain_la_liga',
-        'basketball_nba',
-        'americanfootball_nfl',
-        'tennis_atp_aus_open_singles',
-        'mma_mixed_martial_arts',
-    ]
-
     all_jogos = []
-    async with aiohttp.ClientSession() as sess:
-        for sport in sports:
-            try:
-                url = f'https://api.the-odds-api.com/v4/sports/{sport}/odds'
-                params = {
-                    'apiKey': key,
-                    'regions': 'eu',
-                    'markets': 'h2h',
-                    'oddsFormat': 'decimal',
-                    'dateFormat': 'iso',
-                }
-                async with sess.get(url, params=params, timeout=aiohttp.ClientTimeout(total=8)) as r:
-                    if r.status == 200:
-                        eventos = await r.json()
-                        for ev in (eventos or [])[:6]:
-                            home_odds, draw_odds, away_odds = [], [], []
-                            for bk in ev.get('bookmakers', [])[:5]:
-                                for mkt in bk.get('markets', []):
-                                    if mkt.get('key') == 'h2h':
-                                        for oc in mkt.get('outcomes', []):
-                                            n = oc.get('name', '')
-                                            v = float(oc.get('price', 0))
-                                            if n == ev.get('home_team'):
-                                                home_odds.append(v)
-                                            elif n == ev.get('away_team'):
-                                                away_odds.append(v)
-                                            else:
-                                                draw_odds.append(v)
-                            def avg(lst): return round(sum(lst)/len(lst), 2) if lst else None
-                            jogo = {
-                                'id':            ev.get('id'),
-                                'sport':         sport,
-                                'league':        ev.get('sport_title', sport),
-                                'home_team':     ev.get('home_team', ''),
-                                'away_team':     ev.get('away_team', ''),
-                                'commence_time': ev.get('commence_time', ''),
-                                'odds': {
-                                    'home': avg(home_odds),
-                                    'draw': avg(draw_odds),
-                                    'away': avg(away_odds),
-                                }
-                            }
-                            all_jogos.append(jogo)
-                    elif r.status == 422:
-                        pass  # sport não disponível na API gratuita
-            except Exception as e_odds:
-                print(f'[bet/jogos] erro sport={sport}: {e_odds}', flush=True)
 
-    # Salvar cache completo (todos os sports)
+    # ── 1. Tentar odds-api (se tiver chave) ────────────────────────────────────
+    key = _get_odds_key()
+    if key:
+        sports_odds = [
+            'soccer_brazil_campeonato', 'soccer_conmebol_copa_libertadores',
+            'soccer_uefa_champs_league', 'soccer_epl', 'soccer_spain_la_liga',
+            'basketball_nba', 'americanfootball_nfl',
+            'tennis_atp_aus_open_singles', 'mma_mixed_martial_arts',
+        ]
+        async with aiohttp.ClientSession() as sess:
+            for sport in sports_odds:
+                try:
+                    url = f'https://api.the-odds-api.com/v4/sports/{sport}/odds'
+                    params = {'apiKey': key, 'regions': 'eu', 'markets': 'h2h',
+                              'oddsFormat': 'decimal', 'dateFormat': 'iso'}
+                    async with sess.get(url, params=params, timeout=aiohttp.ClientTimeout(total=8)) as r:
+                        if r.status == 200:
+                            eventos = await r.json()
+                            for ev in (eventos or [])[:6]:
+                                h_odds, d_odds, a_odds = [], [], []
+                                for bk in ev.get('bookmakers', [])[:5]:
+                                    for mkt in bk.get('markets', []):
+                                        if mkt.get('key') == 'h2h':
+                                            for oc in mkt.get('outcomes', []):
+                                                n = oc.get('name', '')
+                                                v = float(oc.get('price', 0))
+                                                if n == ev.get('home_team'):   h_odds.append(v)
+                                                elif n == ev.get('away_team'): a_odds.append(v)
+                                                else:                          d_odds.append(v)
+                                def avg(lst): return round(sum(lst)/len(lst), 2) if lst else None
+                                all_jogos.append({
+                                    'id': ev.get('id'), 'sport': sport,
+                                    'league': ev.get('sport_title', sport),
+                                    'home_team': ev.get('home_team', ''),
+                                    'away_team': ev.get('away_team', ''),
+                                    'commence_time': ev.get('commence_time', ''),
+                                    'home_logo': '', 'away_logo': '',
+                                    'status': 'Agendado', 'is_live': False, 'is_finished': False,
+                                    'odds': {'home': avg(h_odds), 'draw': avg(d_odds), 'away': avg(a_odds)},
+                                    'source': 'odds-api',
+                                })
+                except Exception as e_odds:
+                    print(f'[bet/jogos/odds] sport={sport}: {e_odds}', flush=True)
+
+    # ── 2. Fallback ESPN (gratuito — sempre completa os jogos) ──────────────────
+    existing_pairs = set((j['home_team'] + '|' + j['away_team']) for j in all_jogos)
+    sports_to_fetch = []
+    if sport_filter and sport_filter not in ('upcoming', 'destaque', 'all'):
+        cfg = _ESPN_FIXTURES.get(sport_filter)
+        if cfg:
+            sports_to_fetch = [(sport_filter, cfg)]
+    else:
+        seen_slugs = set()
+        for k, v in _ESPN_FIXTURES.items():
+            if v[0] not in seen_slugs:
+                sports_to_fetch.append((k, v))
+                seen_slugs.add(v[0])
+
+    async with aiohttp.ClientSession(headers={'User-Agent': 'Mozilla/5.0'}) as sess:
+        for sp_key, cfg in sports_to_fetch:
+            espn_slug   = cfg[0]
+            league_name = cfg[1]
+            category    = cfg[2] if len(cfg) > 2 else 'soccer'
+            cached_fix  = _espn_fix_cache.get(espn_slug)
+            if cached_fix and agora - cached_fix['ts'] < _ESPN_FIX_TTL:
+                items = cached_fix['data']
+            else:
+                items = await _espn_fetch_scoreboard(sess, espn_slug, league_name, sp_key, category)
+                _espn_fix_cache[espn_slug] = {'ts': agora, 'data': items}
+            for item in items:
+                pair = item['home_team'] + '|' + item['away_team']
+                if pair not in existing_pairs:
+                    all_jogos.append(item)
+                    existing_pairs.add(pair)
+
+    # Salvar cache completo
     _odds_cache['ts']   = agora
     _odds_cache['data'] = all_jogos
 
-    # Filtrar para a resposta se solicitado
     jogos_resp = all_jogos
     if sport_filter and sport_filter not in ('upcoming', 'destaque', 'all'):
         jogos_resp = [j for j in all_jogos if j.get('sport') == sport_filter]
@@ -10056,22 +10061,49 @@ async def route_bet_jogos(request):
 
 
 async def route_bet_live(request):
-    """GET /api/bet/live — jogos ao vivo com odds em tempo real via api-sports.io"""
+    """GET /api/bet/live — jogos ao vivo via ESPN API (gratuita, tempo real).
+    Varre todos os scoreboards ESPN e retorna apenas jogos com state='in'.
+    Cache de 60s para evitar excesso de chamadas.
+    """
     import time as _time, aiohttp
     agora = _time.time()
-    if agora - _live_cache['ts'] < _LIVE_CACHE_TTL and _live_cache['data']:
-        return web.json_response({'success': True, 'jogos': _live_cache['data'], 'from_cache': True})
+    if agora - _live_cache['ts'] < _LIVE_CACHE_TTL and _live_cache['data'] is not None:
+        return web.json_response({'success': True, 'jogos': _live_cache['data'], 'from_cache': True,
+                                  'total': len(_live_cache['data'])})
     try:
-        async with aiohttp.ClientSession(headers=_APISPORTS_HDR) as sess:
-            # 1. Odds ao vivo
-            async with sess.get(f'{_APIFOOTBALL_BASE}/odds/live',
-                                timeout=aiohttp.ClientTimeout(total=8)) as r:
-                live_raw = await r.json() if r.status == 200 else {'response': []}
-            # 2. Fixtures ao vivo para pegar nome dos times e placar
-            async with sess.get(f'{_APIFOOTBALL_BASE}/fixtures',
-                                params={'live': 'all'},
-                                timeout=aiohttp.ClientTimeout(total=8)) as r:
-                fix_raw = await r.json() if r.status == 200 else {'response': []}
+        jogos_live = []
+        seen_slugs = set()
+        async with aiohttp.ClientSession(headers={'User-Agent': 'Mozilla/5.0'}) as sess:
+            for sp_key, cfg in _ESPN_FIXTURES.items():
+                espn_slug   = cfg[0]
+                league_name = cfg[1]
+                category    = cfg[2] if len(cfg) > 2 else 'soccer'
+                if espn_slug in seen_slugs:
+                    continue
+                seen_slugs.add(espn_slug)
+                items = await _espn_fetch_scoreboard(sess, espn_slug, league_name, sp_key, category)
+                # Atualizar cache de fixtures também
+                _espn_fix_cache[espn_slug] = {'ts': agora, 'data': items}
+                for item in items:
+                    if item.get('is_live'):
+                        # Gerar odds simuladas determinísticas para ao vivo
+                        seed = sum(ord(c) for c in (item['home_team'] + item['away_team']))
+                        r1   = ((seed * 17 + 3) % 100) / 100
+                        r2   = ((seed * 31 + 7) % 100) / 100
+                        item['odds'] = {
+                            'home': round(1.4 + r1 * 2.2, 2),
+                            'draw': round(2.8 + (seed % 20) / 10, 2),
+                            'away': round(1.4 + r2 * 2.2, 2),
+                        }
+                        item['odds_simulated'] = True
+                        jogos_live.append(item)
+        _live_cache['ts']   = agora
+        _live_cache['data'] = jogos_live
+        return web.json_response({'success': True, 'jogos': jogos_live, 'total': len(jogos_live)})
+    except Exception as e:
+        print(f'[bet/live] erro: {e}', flush=True)
+        cached = _live_cache.get('data') or []
+        return web.json_response({'success': True, 'jogos': cached, 'total': len(cached), 'error': str(e)})
 
         # Indexar fixtures por id
         fix_by_id = {}
@@ -10205,24 +10237,105 @@ _ESPN_LEAGUES = {
     '61':  ('fra.1',               'Ligue 1'),
 }
 
-# Sport fixtures map: sport_key → (espn_slug, nome_liga)
+# Sport fixtures map: sport_key → (espn_slug, nome_liga, espn_category)
+# espn_category: 'soccer'(default), 'basketball', 'football', 'mma', 'tennis'
 _ESPN_FIXTURES = {
-    'soccer_brazil_campeonato':          ('bra.1',                'Brasileirão Série A'),
-    'soccer_brazil_serie_b':             ('bra.2',                'Brasileirão Série B'),
-    'soccer_conmebol_copa_libertadores': ('CONMEBOL.LIBERTADORES', 'Copa Libertadores'),
-    'soccer_conmebol_sulamericana':      ('CONMEBOL.SUDAMERICANA', 'Copa Sul-Americana'),
-    'soccer_uefa_champs_league':         ('UEFA.CHAMPIONS',        'Champions League'),
-    'soccer_epl':                        ('eng.1',                 'Premier League'),
-    'soccer_spain_la_liga':              ('esp.1',                 'La Liga'),
-    'soccer_italy_serie_a':              ('ita.1',                 'Serie A'),
-    'soccer_germany_bundesliga':         ('ger.1',                 'Bundesliga'),
-    'soccer_france_ligue_one':           ('fra.1',                 'Ligue 1'),
+    'soccer_brazil_campeonato':          ('bra.1',                'Brasileirão Série A',  'soccer'),
+    'soccer_brazil_serie_b':             ('bra.2',                'Brasileirão Série B',  'soccer'),
+    'soccer_conmebol_copa_libertadores': ('CONMEBOL.LIBERTADORES', 'Copa Libertadores',   'soccer'),
+    'soccer_conmebol_sudamericana':      ('CONMEBOL.SUDAMERICANA', 'Copa Sul-Americana',  'soccer'),
+    'soccer_conmebol_sulamericana':      ('CONMEBOL.SUDAMERICANA', 'Copa Sul-Americana',  'soccer'),
+    'soccer_uefa_champs_league':         ('UEFA.CHAMPIONS',        'Champions League',    'soccer'),
+    'soccer_epl':                        ('eng.1',                 'Premier League',      'soccer'),
+    'soccer_spain_la_liga':              ('esp.1',                 'La Liga',             'soccer'),
+    'soccer_italy_serie_a':              ('ita.1',                 'Serie A',             'soccer'),
+    'soccer_germany_bundesliga':         ('ger.1',                 'Bundesliga',          'soccer'),
+    'soccer_france_ligue_one':           ('fra.1',                 'Ligue 1',             'soccer'),
+    'basketball_nba':                    ('nba',                   'NBA',                 'basketball'),
+    'americanfootball_nfl':              ('nfl',                   'NFL',                 'football'),
+    'mma_mixed_martial_arts':            ('ufc',                   'UFC / MMA',           'mma'),
+    'tennis_atp_aus_open_singles':       ('atp',                   'Tênis ATP',           'tennis'),
 }
 
 _espn_table_cache = {}   # key=league_key → {'ts':..., 'data':[]}
 _espn_fix_cache   = {}   # key=espn_slug → {'ts':..., 'data':[]}
 _ESPN_TTL         = 1800  # 30 min
-_ESPN_FIX_TTL     = 300   # 5 min para jogos ao vivo
+_ESPN_FIX_TTL     = 60    # 1 min para jogos (detectar ao vivo mais rápido)
+
+
+async def _espn_fetch_scoreboard(sess, espn_slug, league_name, sport_key, category='soccer'):
+    """Helper: busca scoreboard ESPN e retorna lista de jogos normalizados."""
+    import json as _json, aiohttp as _aio
+    if category == 'soccer':
+        url = f'https://site.api.espn.com/apis/site/v2/sports/soccer/{espn_slug}/scoreboard'
+    else:
+        url = f'https://site.api.espn.com/apis/site/v2/sports/{category}/{espn_slug}/scoreboard'
+    try:
+        async with sess.get(url, timeout=_aio.ClientTimeout(total=10)) as r:
+            raw = await r.read()
+            if not raw or r.status != 200:
+                return []
+            d = _json.loads(raw)
+        events = d.get('events', []) or []
+        result = []
+        for ev in events:
+            comps = ev.get('competitions', [{}])[0]
+            teams = comps.get('competitors', [])
+            h = next((t for t in teams if t.get('homeAway') == 'home'), teams[0] if teams else {})
+            a = next((t for t in teams if t.get('homeAway') == 'away'), teams[-1] if teams else {})
+            h_team = h.get('team', {})
+            a_team = a.get('team', {})
+            status_obj  = ev.get('status', {})
+            status_type = status_obj.get('type', {})
+            state       = status_type.get('state', 'pre')
+            status_desc = status_type.get('description', 'Agendado')
+            status_code = status_type.get('name', 'STATUS_SCHEDULED')
+            is_live     = state == 'in'
+            is_finished = state == 'post'
+            h_score = h.get('score', '')
+            a_score = a.get('score', '')
+            score = f'{h_score} - {a_score}' if (is_live or is_finished) and h_score != '' else ''
+            h_logo = h_team.get('logo', '')
+            if not h_logo and h_team.get('logos'):
+                h_logo = h_team['logos'][0].get('href', '')
+            a_logo = a_team.get('logo', '')
+            if not a_logo and a_team.get('logos'):
+                a_logo = a_team['logos'][0].get('href', '')
+            clock   = status_obj.get('displayClock', '') if is_live else ''
+            elapsed = status_obj.get('period', 0)       if is_live else 0
+            venue_obj = comps.get('venue', {})
+            venue = venue_obj.get('fullName', '')
+            commence_time = ev.get('date', '')
+            h_name = h_team.get('displayName', h_team.get('name', '?'))
+            a_name = a_team.get('displayName', a_team.get('name', '?'))
+            if h_name == '?' or a_name == '?':
+                continue
+            result.append({
+                'id':            ev.get('id', ''),
+                'sport':         sport_key,
+                'league':        league_name,
+                'home_team':     h_name,
+                'away_team':     a_name,
+                'home_logo':     h_logo,
+                'away_logo':     a_logo,
+                'home_goals':    int(h_score) if str(h_score).isdigit() else None,
+                'away_goals':    int(a_score) if str(a_score).isdigit() else None,
+                'score':         score,
+                'commence_time': commence_time,
+                'venue':         venue,
+                'status':        status_desc,
+                'status_code':   status_code,
+                'is_live':       is_live,
+                'is_finished':   is_finished,
+                'clock':         clock,
+                'elapsed':       elapsed,
+                'odds':          {'home': None, 'draw': None, 'away': None},
+                'source':        'espn',
+            })
+        return result
+    except Exception as _ex:
+        print(f'[espn_scoreboard] {league_name} err: {_ex}', flush=True)
+        return []
 
 
 async def route_tsdb_tabela(request):
@@ -10312,10 +10425,10 @@ async def route_tsdb_tabela(request):
 
 
 async def route_tsdb_fixtures(request):
-    """GET /api/bet/fixtures?sport=soccer_brazil_campeonato — jogos via ESPN API (gratuita, jogos reais).
-    ESPN scoreboard retorna jogos agendados e ao vivo do campeonato correto.
+    """GET /api/bet/fixtures?sport=soccer_brazil_campeonato — jogos via ESPN API (gratuita).
+    Usa helper _espn_fetch_scoreboard para suportar futebol, NBA, NFL, MMA e Tênis.
     """
-    import time as _time, aiohttp, json as _json
+    import time as _time, aiohttp
     agora = _time.time()
     sport = request.rel_url.query.get('sport', '').strip()
 
@@ -10325,85 +10438,27 @@ async def route_tsdb_fixtures(request):
     if sport and sport in _ESPN_FIXTURES:
         sports_to_fetch = [(sport, _ESPN_FIXTURES[sport])]
     elif not sport or sport in ('upcoming', 'all', 'destaque'):
-        # Retornar jogos de todas as ligas principais
-        sports_to_fetch = list(_ESPN_FIXTURES.items())
+        # Retornar jogos de todas as ligas principais (evitar duplicar conmebol_sulamericana)
+        seen_slugs = set()
+        for k, v in _ESPN_FIXTURES.items():
+            if v[0] not in seen_slugs:
+                sports_to_fetch.append((k, v))
+                seen_slugs.add(v[0])
     else:
         return web.json_response({'success': True, 'jogos': [], 'total': 0})
 
     async with aiohttp.ClientSession(headers={'User-Agent': 'Mozilla/5.0'}) as sess:
-        for sp_key, (espn_slug, league_name) in sports_to_fetch:
+        for sp_key, cfg in sports_to_fetch:
+            espn_slug  = cfg[0]
+            league_name = cfg[1]
+            category   = cfg[2] if len(cfg) > 2 else 'soccer'
             cached = _espn_fix_cache.get(espn_slug)
             if cached and agora - cached['ts'] < _ESPN_FIX_TTL:
                 fixtures_result.extend(cached['data'])
                 continue
-
-            url = f'{_ESPN_BASE}/{espn_slug}/scoreboard'
-            try:
-                async with sess.get(url, timeout=aiohttp.ClientTimeout(total=10)) as r:
-                    raw = await r.read()
-                    if not raw:
-                        _espn_fix_cache[espn_slug] = {'ts': agora, 'data': []}
-                        continue
-                    d = _json.loads(raw)
-
-                events = d.get('events', []) or []
-                jogos = []
-                for ev in events[:10]:  # max 10 por liga
-                    comps = ev.get('competitions', [{}])[0]
-                    teams = comps.get('competitors', [])
-                    status_obj = comps.get('status', {})
-                    status_type = status_obj.get('type', {})
-                    venue = comps.get('venue', {})
-
-                    # Encontrar time da casa e visitante
-                    home = next((t for t in teams if t.get('homeAway') == 'home'), teams[0] if teams else {})
-                    away = next((t for t in teams if t.get('homeAway') == 'away'), teams[1] if len(teams) > 1 else {})
-                    home_team = home.get('team', {})
-                    away_team = away.get('team', {})
-                    home_score = home.get('score', '')
-                    away_score = away.get('score', '')
-
-                    status_name = status_type.get('name', '')
-                    status_desc = status_type.get('description', 'Agendado')
-                    clock = status_obj.get('displayClock', '')
-                    is_live = status_name in ('STATUS_IN_PROGRESS', 'STATUS_HALFTIME')
-                    is_finished = status_name == 'STATUS_FINAL'
-
-                    score_str = ''
-                    if is_finished or is_live:
-                        score_str = f"{home_score} - {away_score}"
-
-                    # Número da rodada
-                    round_num = ''
-                    broadcasts = comps.get('notes', [])
-                    if broadcasts:
-                        round_num = broadcasts[0].get('headline', '')
-
-                    jogos.append({
-                        'id':            ev.get('id', '') or f"espn_{espn_slug}_{home_team.get('abbreviation','')}",
-                        'sport':         sp_key,
-                        'league':        league_name,
-                        'home_team':     home_team.get('displayName', ''),
-                        'away_team':     away_team.get('displayName', ''),
-                        'home_logo':     home_team.get('logo', ''),
-                        'away_logo':     away_team.get('logo', ''),
-                        'commence_time': ev.get('date', ''),
-                        'venue':         venue.get('fullName', ''),
-                        'round':         round_num,
-                        'status':        status_desc,
-                        'status_code':   status_name,
-                        'score':         score_str,
-                        'clock':         clock if is_live else '',
-                        'is_live':       is_live,
-                        'is_finished':   is_finished,
-                        'odds': {'home': None, 'draw': None, 'away': None},
-                        'source': 'espn',
-                    })
-
-                _espn_fix_cache[espn_slug] = {'ts': agora, 'data': jogos}
-                fixtures_result.extend(jogos)
-            except Exception as e:
-                print(f'[espn/fixtures] err slug={espn_slug}: {e}', flush=True)
+            items = await _espn_fetch_scoreboard(sess, espn_slug, league_name, sp_key, category)
+            _espn_fix_cache[espn_slug] = {'ts': agora, 'data': items}
+            fixtures_result.extend(items)
 
     return web.json_response({'success': True, 'jogos': fixtures_result, 'total': len(fixtures_result)})
 

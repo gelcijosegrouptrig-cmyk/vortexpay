@@ -971,6 +971,7 @@ function navTo(view, extra){
         'americanfootball_nfl':'sb-nfl',
         'mma_mixed_martial_arts':'sb-mma',
         'tennis_atp_aus_open_singles':'sb-tenis',
+        'tennis_atp_australian_open':'sb-tenis',
       };
       setSbActive(sbSportMap[sport]||'sb-destaque');
       carregarJogos(sport);
@@ -1172,6 +1173,7 @@ const _SPORT_LABELS = {
   'basketball_nba':                        { titulo: '🏀 NBA',                    cor: '#fb923c' },
   'americanfootball_nfl':                  { titulo: '🏈 NFL',                    cor: '#34d399' },
   'tennis_atp_aus_open_singles':           { titulo: '🎾 Tênis ATP',              cor: '#fbbf24' },
+  'tennis_atp_australian_open':            { titulo: '🎾 Tênis ATP',              cor: '#fbbf24' },
   'mma_mixed_martial_arts':                { titulo: '🥊 MMA / Boxe',             cor: '#ef4444' },
 };
 
@@ -1596,32 +1598,57 @@ const _LOGOS={
 };
 
 /* ══ AO VIVO ══ */
-async function carregarAoVivo(){
+let _liveRefreshTimer = null;
+async function carregarAoVivo(_silent){
   const lista=document.getElementById('live-lista');
+  if(!_silent) lista.innerHTML='<div class="loading-center" style="grid-column:1/-1"><div class="spinner2"></div>Buscando jogos ao vivo...</div>';
   try{
-    const r=await fetch(BASE+'/api/bet/live');
+    const r=await fetch(BASE+'/api/bet/live?_t='+Date.now());
     const d=await r.json();
     const jogos=d.jogos||[];
     // Atualizar badge na sidebar
     const cnt=document.getElementById('sb-live-cnt');
     if(cnt){cnt.textContent=jogos.length;cnt.style.display=jogos.length?'inline':'none'}
     if(!jogos.length){
-      lista.innerHTML='<div class="loading-center" style="grid-column:1/-1">🔴 Nenhum jogo ao vivo agora. Volte mais tarde.</div>';return;
+      lista.innerHTML='<div class="loading-center" style="grid-column:1/-1">'+
+        '<div style="font-size:36px;margin-bottom:10px">🔴</div>'+
+        '<div style="color:var(--text);font-size:14px;font-weight:700">Nenhum jogo ao vivo agora</div>'+
+        '<div style="color:var(--muted);font-size:12px;margin-top:6px">Os próximos jogos aparecem aqui assim que iniciam</div>'+
+        '<button onclick="carregarAoVivo()" style="margin-top:14px;background:var(--blue);border:none;color:#fff;padding:7px 18px;border-radius:8px;cursor:pointer;font-size:12px">↻ Atualizar</button>'+
+        '</div>';
+      // Reagendar atualização automática
+      clearTimeout(_liveRefreshTimer);
+      _liveRefreshTimer = setTimeout(()=>{if(document.getElementById('view-live')&&document.getElementById('view-live').classList.contains('active'))carregarAoVivo(true);},60000);
+      return;
     }
     lista.innerHTML='';
     jogos.forEach(j=>{
-      const o=j.odds||{};const temEmpate=o.draw!=null;
-      const hL=j.home_logo||getTeamLogo(j.home_team);
-      const aL=j.away_logo||getTeamLogo(j.away_team);
+      const o=j.odds||{};
+      // Tênis e esportes sem empate não têm draw
+      const isSoccer = j.sport && j.sport.startsWith('soccer');
+      const temEmpate = isSoccer && o.draw!=null;
+      const hL=j.home_logo||(typeof getTeamLogo==='function'?getTeamLogo(j.home_team):'');
+      const aL=j.away_logo||(typeof getTeamLogo==='function'?getTeamLogo(j.away_team):'');
       const card=document.createElement('div');
       card.className='live-card2';
+      // Mostrar clock ou período
+      const clockTxt = j.clock ? j.clock : (j.elapsed ? j.elapsed+'°' : '● AO VIVO');
+      // Placar: usar score string ou goals
+      const hGoals = j.home_goals ?? (j.score ? j.score.split('-')[0].trim() : '0');
+      const aGoals = j.away_goals ?? (j.score ? j.score.split('-')[1]?.trim() : '0');
+      const hBadge = hL?'<img class="t-escudo" src="'+hL+'" alt="" onerror="this.style.display=\'none\'">':'<div class="t-ini">'+teamInitials(j.home_team)+'</div>';
+      const aBadge = aL?'<img class="t-escudo" src="'+aL+'" alt="" onerror="this.style.display=\'none\'">':'<div class="t-ini">'+teamInitials(j.away_team)+'</div>';
       card.innerHTML=
-        '<div class="jc-meta"><span class="jc-liga">'+(j.league||'Ao Vivo')+'</span>'+
-        '<span class="live-min">'+j.elapsed+'\''+'</span></div>'+
+        '<div class="jc-meta">'+
+          '<span class="jc-liga" style="color:'+((_SPORT_LABELS[j.sport]||{}).cor||'var(--gold)')+'">'+( j.league||'Ao Vivo')+'</span>'+
+          '<span class="live-min" style="background:#ef4444;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">● '+clockTxt+'</span>'+
+        '</div>'+
         '<div class="jc-times">'+
-        '<div class="time-b">'+(hL?'<img class="t-escudo" src="'+hL+'" alt="">':'<div class="t-ini">'+teamInitials(j.home_team)+'</div>')+'<span class="t-nome">'+j.home_team+'</span></div>'+
-        '<div class="live-score"><span class="ls-n">'+(j.home_goals??0)+'</span><span class="ls-sep">-</span><span class="ls-n">'+(j.away_goals??0)+'</span></div>'+
-        '<div class="time-b away">'+(aL?'<img class="t-escudo" src="'+aL+'" alt="">':'<div class="t-ini">'+teamInitials(j.away_team)+'</div>')+'<span class="t-nome">'+j.away_team+'</span></div></div>'+
+          '<div class="time-b">'+hBadge+'<span class="t-nome">'+j.home_team+'</span></div>'+
+          '<div class="live-score"><span class="ls-n">'+hGoals+'</span><span class="ls-sep">-</span><span class="ls-n">'+aGoals+'</span></div>'+
+          '<div class="time-b away">'+aBadge+'<span class="t-nome">'+j.away_team+'</span></div>'+
+        '</div>'+
+        (j.odds_simulated?'<div style="font-size:9px;color:var(--muted);text-align:center;padding:2px 0 4px">⚡ Odds estimadas</div>':'')+
         '<div class="jc-odds'+(temEmpate?'':' no-draw')+'">'+
         (o.home!=null?'<div class="odd-btn2" onclick="selOdd(\''+j.id+'_l\',\''+j.home_team+'\',\'C\','+o.home+',\''+j.home_team+' × '+j.away_team+'\')"><div class="o-lbl">'+teamShortLabel(j.home_team)+'</div><div class="o-val">'+Number(o.home).toFixed(2)+'</div></div>':'')+
         (temEmpate?'<div class="odd-btn2" onclick="selOdd(\''+j.id+'_l\',\'Empate\',\'X\','+o.draw+',\''+j.home_team+' × '+j.away_team+'\')"><div class="o-lbl">Empate</div><div class="o-val">'+Number(o.draw).toFixed(2)+'</div></div>':'')+
@@ -1629,7 +1656,15 @@ async function carregarAoVivo(){
         '</div>';
       lista.appendChild(card);
     });
-  }catch(e){lista.innerHTML='<div class="loading-center" style="grid-column:1/-1">⚠️ Erro ao carregar jogos ao vivo.</div>'}
+    // Auto-refresh a cada 60s quando ao vivo está ativo
+    clearTimeout(_liveRefreshTimer);
+    _liveRefreshTimer = setTimeout(()=>{
+      const liveView = document.getElementById('view-live');
+      if(liveView && liveView.classList.contains('active')) carregarAoVivo(true);
+    }, 60000);
+  }catch(e){
+    lista.innerHTML='<div class="loading-center" style="grid-column:1/-1">⚠️ Erro ao carregar.<button onclick="carregarAoVivo()" style="background:var(--blue);border:none;color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;margin-left:8px;font-size:12px">Tentar novamente</button></div>';
+  }
 }
 
 /* ══ TABELA ══ */
