@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250427z</title>
+<title>PaynexBet - Painel Admin v20250428a</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250427z';
+  const VER = '20250428a';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -7635,6 +7635,10 @@ async function ppCarregarParceiros() {
               style="padding:5px 10px;background:#0a1a2a;border:1px solid #3b82f666;border-radius:7px;color:#60a5fa;font-size:11px;cursor:pointer;font-weight:600">
               ✏️ Editar
             </button>
+            <button onclick="ppExcluirParceiro('${p.codigo}','${p.nome.replace(/'/g,'')}')"
+              style="padding:5px 10px;background:#1a0a0a;border:1px solid #ef444466;border-radius:7px;color:#f87171;font-size:11px;cursor:pointer;font-weight:600">
+              🗑️ Excluir
+            </button>
           </div>
         </td>
       </tr>
@@ -7853,6 +7857,30 @@ async function ppToggleParceiro(codigo, nome, ativar) {
 
 async function ppDesativarParceiro(codigo, nome) {
   await ppToggleParceiro(codigo, nome, false);
+}
+
+async function ppExcluirParceiro(codigo, nome) {
+  if (!confirm(`🗑️ EXCLUIR PERMANENTEMENTE o parceiro "${nome}" (${codigo})?
+
+⚠️ Esta ação NÃO pode ser desfeita!
+Todos os dados do parceiro serão removidos.`)) return;
+  if (!confirm(`Confirmar exclusão de "${nome}"?
+Digite OK para continuar.`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/pp/parceiros/${encodeURIComponent(codigo)}/excluir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() }
+    });
+    const d = await r.json();
+    if (d.success) {
+      toast('✅ Parceiro excluído com sucesso!', 'success');
+      await ppCarregarParceiros();
+    } else {
+      toast(`❌ Erro: ${d.error || 'desconhecido'}`, 'error');
+    }
+  } catch(e) {
+    toast('❌ Erro: ' + e.message, 'error');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -8589,6 +8617,10 @@ async function pcCarregarParceiros() {
               style="padding:5px 10px;background:#0a1a2a;border:1px solid #3b82f666;border-radius:7px;color:#60a5fa;font-size:11px;cursor:pointer;font-weight:600">
               ✏️ Editar
             </button>
+            <button onclick="pcExcluirParceiro('${p.codigo}','${p.nome.replace(/'/g,'')}')"
+              style="padding:5px 10px;background:#1a0a0a;border:1px solid #ef444466;border-radius:7px;color:#f87171;font-size:11px;cursor:pointer;font-weight:600">
+              🗑️ Excluir
+            </button>
           </div>
         </td>
       </tr>
@@ -8800,6 +8832,30 @@ async function pcToggleParceiro(codigo, nome, ativar) {
 
 async function pcDesativarParceiro(codigo, nome) {
   await pcToggleParceiro(codigo, nome, false);
+}
+
+async function pcExcluirParceiro(codigo, nome) {
+  if (!confirm(`🗑️ EXCLUIR PERMANENTEMENTE o parceiro "${nome}" (${codigo})?
+
+⚠️ Esta ação NÃO pode ser desfeita!
+Todos os dados do parceiro serão removidos.`)) return;
+  if (!confirm(`Confirmar exclusão de "${nome}"?
+Digite OK para continuar.`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/pc/parceiros/${encodeURIComponent(codigo)}/excluir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() }
+    });
+    const d = await r.json();
+    if (d.success) {
+      toast('✅ Parceiro excluído com sucesso!', 'success');
+      await pcCarregarParceiros();
+    } else {
+      toast(`❌ Erro: ${d.error || 'desconhecido'}`, 'error');
+    }
+  } catch(e) {
+    toast('❌ Erro: ' + e.message, 'error');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -9399,6 +9455,11 @@ async function b2CarregarParceiros() {
               style="padding:5px 10px;background:#0a1a2a;border:1px solid #3b82f666;border-radius:7px;color:#60a5fa;font-size:11px;cursor:pointer;font-weight:600">
               ✏️ Editar
             </button>
+            <!-- Excluir -->
+            <button onclick="b2ExcluirParceiro('${p.codigo}','${p.nome.replace(/'/g,'')}')"
+              style="padding:5px 10px;background:#1a0a0a;border:1px solid #ef444466;border-radius:7px;color:#f87171;font-size:11px;cursor:pointer;font-weight:600">
+              🗑️ Excluir
+            </button>
           </div>
         </td>
       </tr>
@@ -9612,6 +9673,30 @@ async function b2ToggleParceiro(codigo, nome, ativar) {
 
 async function b2DesativarParceiro(codigo, nome) {
   await b2ToggleParceiro(codigo, nome, false);
+}
+
+async function b2ExcluirParceiro(codigo, nome) {
+  if (!confirm(`🗑️ EXCLUIR PERMANENTEMENTE o parceiro "${nome}" (${codigo})?
+
+⚠️ Esta ação NÃO pode ser desfeita!
+Todos os dados do parceiro serão removidos.`)) return;
+  if (!confirm(`Confirmar exclusão de "${nome}"?
+Digite OK para continuar.`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/mp2/parceiros/${encodeURIComponent(codigo)}/excluir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() }
+    });
+    const d = await r.json();
+    if (d.success) {
+      toast('✅ Parceiro excluído com sucesso!', 'success');
+      await b2CarregarParceiros();
+    } else {
+      toast(`❌ Erro: ${d.error || 'desconhecido'}`, 'error');
+    }
+  } catch(e) {
+    toast('❌ Erro: ' + e.message, 'error');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -10627,7 +10712,7 @@ function runDebug() {
   const overlay = document.getElementById('debug-overlay');
   overlay.style.display = 'block';
   
-  out.push('=== VERSÃO: 20250427z ===');
+  out.push('=== VERSÃO: 20250428a ===');
   out.push('');
 
   // Estado dos elementos críticos
