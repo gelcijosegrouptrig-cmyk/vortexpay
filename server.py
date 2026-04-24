@@ -11802,6 +11802,603 @@ def _get_crest_static(nome: str):
             return url
     return None
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ███  PÁGINAS LEGAIS: Termos, Privacidade, Jogo Responsável, Suporte  ███
+# ═══════════════════════════════════════════════════════════════════════════
+
+_LEGAL_CSS = """
+<style>
+:root{--bg:#0a0a14;--bg2:#0f0f1e;--bg3:#141428;--card:#12122a;--border:#ffffff10;--gold:#f5a623;--gold2:#ffd369;--blue:#3b82f6;--blue2:#60a5fa;--green:#22c55e;--text:#f1f5f9;--muted:#94a3b8;--radius:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(10,10,20,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between}
+.topbar-brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:900;background:linear-gradient(90deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none}
+.topbar-back{padding:8px 16px;border-radius:8px;font-size:14px;font-weight:600;background:transparent;border:1.5px solid var(--border);color:var(--muted);cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:6px;transition:all .2s}
+.topbar-back:hover{border-color:var(--blue);color:var(--blue2)}
+.legal-hero{padding:56px 24px 40px;text-align:center;background:linear-gradient(180deg,#0f0f2a 0%,var(--bg) 100%);border-bottom:1px solid var(--border)}
+.legal-icon{font-size:52px;margin-bottom:16px;display:block}
+.legal-title{font-size:clamp(26px,5vw,42px);font-weight:900;margin-bottom:10px;background:linear-gradient(90deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.legal-sub{font-size:15px;color:var(--muted)}
+.legal-date{display:inline-block;margin-top:12px;background:var(--bg3);border:1px solid var(--border);padding:4px 14px;border-radius:99px;font-size:12px;color:var(--muted)}
+.legal-body{max-width:820px;margin:0 auto;padding:56px 24px 80px}
+.legal-toc{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin-bottom:48px}
+.legal-toc-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px}
+.legal-toc ol{padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.legal-toc a{color:var(--blue2);font-size:14px;text-decoration:none}
+.legal-toc a:hover{text-decoration:underline}
+.legal-section{margin-bottom:48px;scroll-margin-top:80px}
+.legal-section h2{font-size:20px;font-weight:800;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.legal-section h2 .num{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--gold),#e8950a);color:#1a0a00;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.legal-section p{font-size:15px;color:#cbd5e1;line-height:1.8;margin-bottom:12px}
+.legal-section ul,.legal-section ol{padding-left:20px;display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.legal-section li{font-size:15px;color:#cbd5e1;line-height:1.7}
+.legal-section li strong{color:var(--text)}
+.legal-section .highlight{background:var(--bg2);border-left:3px solid var(--gold);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;font-size:14px;color:#cbd5e1;line-height:1.7}
+.legal-section .highlight.blue{border-color:var(--blue)}
+.legal-section .highlight.green{border-color:var(--green)}
+.legal-section .highlight.red{border-color:#ef4444}
+.legal-footer{background:var(--bg2);border-top:1px solid var(--border);padding:40px 24px;text-align:center}
+.legal-footer-links{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+.legal-footer-links a{color:var(--muted);font-size:13px;text-decoration:none}
+.legal-footer-links a:hover{color:var(--text)}
+.legal-footer-copy{font-size:12px;color:#64748b}
+@media(max-width:640px){.legal-body{padding:36px 16px 60px}}
+</style>
+"""
+
+_LEGAL_NAV = """
+<nav class="topbar">
+  <a href="/" class="topbar-brand">&#127922; PaynexBet</a>
+  <a href="/" class="topbar-back">&#8592; Voltar ao in&iacute;cio</a>
+</nav>
+"""
+
+_LEGAL_FOOTER = """
+<footer class="legal-footer">
+  <div class="legal-footer-links">
+    <a href="/termos">Termos de uso</a>
+    <a href="/privacidade">Pol&iacute;tica de privacidade</a>
+    <a href="/responsavel">Jogo respons&aacute;vel</a>
+    <a href="/suporte">Suporte</a>
+  </div>
+  <div class="legal-footer-copy">&copy; 2025 PaynexBet &mdash; Todos os direitos reservados.</div>
+</footer>
+"""
+
+def _page_termos():
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Termos de Uso &mdash; PaynexBet</title>
+{_LEGAL_CSS}
+</head>
+<body>
+{_LEGAL_NAV}
+<div class="legal-hero">
+  <span class="legal-icon">&#128203;</span>
+  <h1 class="legal-title">Termos de Uso</h1>
+  <p class="legal-sub">Leia com aten&ccedil;&atilde;o antes de utilizar a plataforma PaynexBet.</p>
+  <span class="legal-date">Última atualização: 24 de abril de 2025</span>
+</div>
+<div class="legal-body">
+  <div class="legal-toc">
+    <div class="legal-toc-title">&#128209; &Iacute;ndice</div>
+    <ol>
+      <li><a href="#aceitacao">Aceita&ccedil;&atilde;o dos Termos</a></li>
+      <li><a href="#elegibilidade">Elegibilidade e Cadastro</a></li>
+      <li><a href="#conta">Sua Conta</a></li>
+      <li><a href="#depositos">Dep&oacute;sitos e Saques</a></li>
+      <li><a href="#apostas">Apostas Esportivas</a></li>
+      <li><a href="#sorteios">Sorteios</a></li>
+      <li><a href="#proibicoes">Condutas Proibidas</a></li>
+      <li><a href="#responsabilidade">Limita&ccedil;&atilde;o de Responsabilidade</a></li>
+      <li><a href="#suspensao">Suspens&atilde;o e Encerramento</a></li>
+      <li><a href="#alteracoes">Altera&ccedil;&otilde;es nos Termos</a></li>
+      <li><a href="#foro">Foro e Legisla&ccedil;&atilde;o</a></li>
+    </ol>
+  </div>
+
+  <div class="legal-section" id="aceitacao">
+    <h2><span class="num">1</span> Aceita&ccedil;&atilde;o dos Termos</h2>
+    <p>Ao acessar, se cadastrar ou utilizar qualquer funcionalidade da plataforma PaynexBet (<strong>paynexbet.com</strong>), voc&ecirc; declara ter lido, compreendido e concordado integralmente com estes Termos de Uso e com nossa Pol&iacute;tica de Privacidade.</p>
+    <p>Caso n&atilde;o concorde com qualquer disposi&ccedil;&atilde;o aqui apresentada, solicitamos que se abstenha de utilizar nossos servi&ccedil;os.</p>
+    <div class="highlight">&#9888;&#65039; <strong>Importante:</strong> O uso da plataforma &eacute; restrito a maiores de 18 anos. Ao se cadastrar, voc&ecirc; confirma ter idade m&iacute;nima legal para participar de jogos e apostas.</div>
+  </div>
+
+  <div class="legal-section" id="elegibilidade">
+    <h2><span class="num">2</span> Elegibilidade e Cadastro</h2>
+    <p>Para utilizar a PaynexBet, voc&ecirc; deve:</p>
+    <ul>
+      <li>Ter no m&iacute;nimo <strong>18 anos de idade</strong></li>
+      <li>Ser residente no territ&oacute;rio brasileiro</li>
+      <li>Possuir CPF v&aacute;lido e regularmente emitido pela Receita Federal</li>
+      <li>N&atilde;o estar proibido de participar de atividades de apostas por lei ou ordem judicial</li>
+      <li>N&atilde;o possuir conta previamente encerrada por viola&ccedil;&atilde;o destes Termos</li>
+    </ul>
+    <p>O cadastro &eacute; pessoal e intransfer&iacute;vel. &Eacute; permitida apenas <strong>uma conta por CPF</strong>. A cria&ccedil;&atilde;o de m&uacute;ltiplas contas resultar&aacute; no bloqueio permanente de todas elas e no cancelamento de eventuais pr&ecirc;mios.</p>
+  </div>
+
+  <div class="legal-section" id="conta">
+    <h2><span class="num">3</span> Sua Conta</h2>
+    <p>Voc&ecirc; &eacute; inteiramente respons&aacute;vel por:</p>
+    <ul>
+      <li>Manter a confidencialidade das suas credenciais de acesso (CPF)</li>
+      <li>Todas as atividades realizadas na sua conta, inclusive apostas e participa&ccedil;&otilde;es em sorteios</li>
+      <li>Notificar imediatamente a PaynexBet em caso de uso n&atilde;o autorizado</li>
+    </ul>
+    <p>A PaynexBet n&atilde;o se responsabiliza por perdas decorrentes de uso indevido da conta por terceiros.</p>
+    <div class="highlight blue">&#128161; Seu saldo est&aacute; vinculado exclusivamente ao seu CPF. Guarde-o com seguran&ccedil;a.</div>
+  </div>
+
+  <div class="legal-section" id="depositos">
+    <h2><span class="num">4</span> Dep&oacute;sitos e Saques</h2>
+    <p>Todos os dep&oacute;sitos e saques s&atilde;o realizados <strong>exclusivamente via Pix</strong>, de forma autom&aacute;tica e em tempo real.</p>
+    <ul>
+      <li><strong>Dep&oacute;sito m&iacute;nimo:</strong> R$ 5,00 por transa&ccedil;&atilde;o</li>
+      <li><strong>Saque m&iacute;nimo:</strong> R$ 20,00 por solicita&ccedil;&atilde;o</li>
+      <li><strong>Prazo de processamento:</strong> imediato ap&oacute;s confirma&ccedil;&atilde;o do Pix</li>
+      <li><strong>Titularidade:</strong> o Pix de saque deve ser da mesma titularidade (CPF) cadastrado na plataforma</li>
+    </ul>
+    <div class="highlight red">&#128683; Dep&oacute;sitos realizados por terceiros ou CPF diferente do titular da conta ser&atilde;o estornados automaticamente.</div>
+  </div>
+
+  <div class="legal-section" id="apostas">
+    <h2><span class="num">5</span> Apostas Esportivas</h2>
+    <ul>
+      <li><strong>Valor m&iacute;nimo por aposta:</strong> R$ 2,00</li>
+      <li><strong>Odds:</strong> fornecidas em tempo real e podem variar at&eacute; o momento da confirma&ccedil;&atilde;o</li>
+      <li>As apostas s&atilde;o <strong>definitivas e irrevog&aacute;veis</strong> ap&oacute;s confirma&ccedil;&atilde;o</li>
+      <li>Em caso de cancelamento de evento esportivo, a aposta ser&aacute; reembolsada integralmente ao saldo</li>
+      <li>Resultados finais seguem as informa&ccedil;&otilde;es oficiais das ligas e federa&ccedil;&otilde;es esportivas</li>
+    </ul>
+    <div class="highlight">&#9917; Os resultados das apostas s&atilde;o determinados pelos dados oficiais das competi&ccedil;&otilde;es, fornecidos por APIs esportivas certificadas.</div>
+  </div>
+
+  <div class="legal-section" id="sorteios">
+    <h2><span class="num">6</span> Sorteios</h2>
+    <ul>
+      <li>O valor do bilhete e as regras espec&iacute;ficas s&atilde;o definidos antes do in&iacute;cio de cada sorteio</li>
+      <li>O sorteio &eacute; realizado de forma autom&aacute;tica e transparente ao atingir o n&uacute;mero m&iacute;nimo de participantes</li>
+      <li>O ganhador &eacute; notificado e o pr&ecirc;mio creditado automaticamente no saldo da conta</li>
+      <li>&Eacute; vedada a participa&ccedil;&atilde;o de funcion&aacute;rios e colaboradores da PaynexBet</li>
+    </ul>
+    <div class="highlight green">&#127942; Os pr&ecirc;mios s&atilde;o pagos integralmente via Pix, sem descontos ou taxas adicionais.</div>
+  </div>
+
+  <div class="legal-section" id="proibicoes">
+    <h2><span class="num">7</span> Condutas Proibidas</h2>
+    <ul>
+      <li>Utilizar a plataforma com fins fraudulentos ou para lavagem de dinheiro</li>
+      <li>Criar m&uacute;ltiplas contas ou usar dados de terceiros para cadastro</li>
+      <li>Usar bots, scripts ou qualquer automa&ccedil;&atilde;o para manipular o sistema</li>
+      <li>Tentar hackear, comprometer ou prejudicar a infraestrutura da plataforma</li>
+      <li>Realizar apostas combinadas de forma a garantir lucro independente do resultado (arbitragem abusiva)</li>
+    </ul>
+  </div>
+
+  <div class="legal-section" id="responsabilidade">
+    <h2><span class="num">8</span> Limita&ccedil;&atilde;o de Responsabilidade</h2>
+    <p>A PaynexBet n&atilde;o se responsabiliza por perdas financeiras decorrentes de apostas, falhas em redes banc&aacute;rias ou interrup&ccedil;&otilde;es tempor&aacute;rias do servi&ccedil;o por manuten&ccedil;&atilde;o ou for&ccedil;a maior.</p>
+  </div>
+
+  <div class="legal-section" id="suspensao">
+    <h2><span class="num">9</span> Suspens&atilde;o e Encerramento</h2>
+    <p>A PaynexBet pode suspender ou encerrar sua conta em caso de viola&ccedil;&atilde;o destes Termos, suspeita de fraude, solicita&ccedil;&atilde;o do pr&oacute;prio usu&aacute;rio ou determina&ccedil;&atilde;o judicial.</p>
+    <p>Em caso de encerramento por iniciativa do usu&aacute;rio, o saldo dispon&iacute;vel ser&aacute; devolvido na chave Pix cadastrada ap&oacute;s verifica&ccedil;&atilde;o de identidade.</p>
+  </div>
+
+  <div class="legal-section" id="alteracoes">
+    <h2><span class="num">10</span> Altera&ccedil;&otilde;es nos Termos</h2>
+    <p>A PaynexBet reserva o direito de modificar estes Termos a qualquer momento. As altera&ccedil;&otilde;es ser&atilde;o publicadas nesta p&aacute;gina com atualiza&ccedil;&atilde;o da data de vig&ecirc;ncia. O uso continuado da plataforma ap&oacute;s a publica&ccedil;&atilde;o das altera&ccedil;&otilde;es constitui aceita&ccedil;&atilde;o dos novos termos.</p>
+  </div>
+
+  <div class="legal-section" id="foro">
+    <h2><span class="num">11</span> Foro e Legisla&ccedil;&atilde;o</h2>
+    <p>Estes Termos s&atilde;o regidos pelas leis da Rep&uacute;blica Federativa do Brasil. Qualquer lit&iacute;gio ser&aacute; submetido ao foro da comarca de S&atilde;o Paulo/SP. Para d&uacute;vidas, acesse o <a href="/suporte" style="color:var(--blue2)">suporte</a>.</p>
+  </div>
+</div>
+{_LEGAL_FOOTER}
+</body>
+</html>"""
+
+
+def _page_privacidade():
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pol&iacute;tica de Privacidade &mdash; PaynexBet</title>
+{_LEGAL_CSS}
+</head>
+<body>
+{_LEGAL_NAV}
+<div class="legal-hero">
+  <span class="legal-icon">&#128274;</span>
+  <h1 class="legal-title">Pol&iacute;tica de Privacidade</h1>
+  <p class="legal-sub">Como coletamos, usamos e protegemos seus dados pessoais.</p>
+  <span class="legal-date">Última atualização: 24 de abril de 2025 &middot; Em conformidade com a LGPD (Lei 13.709/2018)</span>
+</div>
+<div class="legal-body">
+  <div class="legal-toc">
+    <div class="legal-toc-title">&#128209; &Iacute;ndice</div>
+    <ol>
+      <li><a href="#p-dados">Dados que Coletamos</a></li>
+      <li><a href="#p-uso">Como Usamos seus Dados</a></li>
+      <li><a href="#p-base">Base Legal do Tratamento</a></li>
+      <li><a href="#p-compartilhamento">Compartilhamento de Dados</a></li>
+      <li><a href="#p-armazenamento">Armazenamento e Seguran&ccedil;a</a></li>
+      <li><a href="#p-cookies">Cookies e Tecnologias</a></li>
+      <li><a href="#p-direitos">Seus Direitos (LGPD)</a></li>
+      <li><a href="#p-retencao">Reten&ccedil;&atilde;o de Dados</a></li>
+      <li><a href="#p-contato">Contato com o DPO</a></li>
+    </ol>
+  </div>
+
+  <div class="legal-section" id="p-dados">
+    <h2><span class="num">1</span> Dados que Coletamos</h2>
+    <ul>
+      <li><strong>Dados de identifica&ccedil;&atilde;o:</strong> nome completo e CPF</li>
+      <li><strong>Dados financeiros:</strong> hist&oacute;rico de dep&oacute;sitos e saques, chave Pix utilizada</li>
+      <li><strong>Dados de uso:</strong> apostas realizadas, participa&ccedil;&otilde;es em sorteios, saldo e transa&ccedil;&otilde;es</li>
+      <li><strong>Dados t&eacute;cnicos:</strong> endere&ccedil;o IP, tipo de dispositivo e navegador</li>
+    </ul>
+    <div class="highlight blue">&#128161; N&atilde;o coletamos documentos de identidade, selfies, endere&ccedil;o residencial ou dados banc&aacute;rios al&eacute;m da chave Pix para saque.</div>
+  </div>
+
+  <div class="legal-section" id="p-uso">
+    <h2><span class="num">2</span> Como Usamos seus Dados</h2>
+    <ul>
+      <li>Identificar e autenticar sua conta de forma segura</li>
+      <li>Processar dep&oacute;sitos e saques via Pix</li>
+      <li>Registrar apostas e participa&ccedil;&otilde;es em sorteios</li>
+      <li>Prevenir fraudes e uso indevido da plataforma</li>
+      <li>Cumprir obriga&ccedil;&otilde;es legais e regulat&oacute;rias</li>
+    </ul>
+    <p><strong>N&atilde;o utilizamos seus dados para:</strong> venda a terceiros ou publicidade de outras empresas.</p>
+  </div>
+
+  <div class="legal-section" id="p-base">
+    <h2><span class="num">3</span> Base Legal do Tratamento</h2>
+    <ul>
+      <li><strong>Execu&ccedil;&atilde;o de contrato:</strong> necess&aacute;rio para fornecer os servi&ccedil;os contratados (art. 7&ordm;, V)</li>
+      <li><strong>Leg&iacute;timo interesse:</strong> preven&ccedil;&atilde;o de fraudes e seguran&ccedil;a da plataforma (art. 7&ordm;, IX)</li>
+      <li><strong>Cumprimento de obriga&ccedil;&atilde;o legal:</strong> quando exigido por autoridades (art. 7&ordm;, II)</li>
+    </ul>
+  </div>
+
+  <div class="legal-section" id="p-compartilhamento">
+    <h2><span class="num">4</span> Compartilhamento de Dados</h2>
+    <p>Seus dados <strong>n&atilde;o s&atilde;o vendidos</strong> a terceiros. Podemos compartilh&aacute;-los apenas com processadores de pagamento Pix, provedores de infraestrutura e autoridades competentes quando legalmente exigido.</p>
+    <div class="highlight">&#128737;&#65039; Todos os parceiros s&atilde;o contratualmente obrigados a manter os dados confidenciais e seguros.</div>
+  </div>
+
+  <div class="legal-section" id="p-armazenamento">
+    <h2><span class="num">5</span> Armazenamento e Seguran&ccedil;a</h2>
+    <ul>
+      <li>Banco de dados PostgreSQL com <strong>criptografia em repouso</strong></li>
+      <li>Comunica&ccedil;&otilde;es protegidas com <strong>TLS/SSL (HTTPS)</strong></li>
+      <li>Monitoramento cont&iacute;nuo contra tentativas de acesso n&atilde;o autorizado</li>
+      <li>Infraestrutura hospedada em servidores com certifica&ccedil;&atilde;o de seguran&ccedil;a</li>
+    </ul>
+    <div class="highlight green">&#10003; Adotamos as melhores pr&aacute;ticas dispon&iacute;veis para proteger suas informa&ccedil;&otilde;es.</div>
+  </div>
+
+  <div class="legal-section" id="p-cookies">
+    <h2><span class="num">6</span> Cookies e Tecnologias</h2>
+    <p>A PaynexBet utiliza <strong>armazenamento local (localStorage)</strong> no seu dispositivo para manter sua sess&atilde;o ativa e personalizar a experi&ecirc;ncia. Voc&ecirc; pode limpar o armazenamento local a qualquer momento nas configura&ccedil;&otilde;es do seu navegador.</p>
+  </div>
+
+  <div class="legal-section" id="p-direitos">
+    <h2><span class="num">7</span> Seus Direitos (LGPD)</h2>
+    <ul>
+      <li><strong>Confirma&ccedil;&atilde;o e acesso:</strong> saber se tratamos seus dados e acess&aacute;-los</li>
+      <li><strong>Corre&ccedil;&atilde;o:</strong> corrigir dados incompletos ou inexatos</li>
+      <li><strong>Anonimiza&ccedil;&atilde;o ou elimina&ccedil;&atilde;o:</strong> de dados desnecess&aacute;rios</li>
+      <li><strong>Portabilidade:</strong> receber seus dados em formato estruturado</li>
+      <li><strong>Revoga&ccedil;&atilde;o do consentimento:</strong> a qualquer momento</li>
+    </ul>
+    <p>Para exercer seus direitos, entre em contato pelo <a href="/suporte" style="color:var(--blue2)">canal de suporte</a>.</p>
+  </div>
+
+  <div class="legal-section" id="p-retencao">
+    <h2><span class="num">8</span> Reten&ccedil;&atilde;o de Dados</h2>
+    <ul>
+      <li>Conta ativa: <strong>enquanto ativa</strong></li>
+      <li>Obriga&ccedil;&otilde;es legais e fiscais: <strong>at&eacute; 5 anos</strong> ap&oacute;s encerramento</li>
+      <li>Preven&ccedil;&atilde;o de fraudes: <strong>at&eacute; 2 anos</strong> ap&oacute;s o &uacute;ltimo acesso</li>
+    </ul>
+  </div>
+
+  <div class="legal-section" id="p-contato">
+    <h2><span class="num">9</span> Contato com o DPO</h2>
+    <ul>
+      <li>&#128231; <strong>E-mail:</strong> privacidade@paynexbet.com</li>
+      <li>&#128172; <strong>Suporte online:</strong> <a href="/suporte" style="color:var(--blue2)">paynexbet.com/suporte</a></li>
+    </ul>
+    <p>Tamb&eacute;m &eacute; poss&iacute;vel registrar recla&ccedil;&otilde;es perante a Autoridade Nacional de Prote&ccedil;&atilde;o de Dados (ANPD) em: <strong>gov.br/anpd</strong></p>
+  </div>
+</div>
+{_LEGAL_FOOTER}
+</body>
+</html>"""
+
+
+def _page_responsavel():
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jogo Respons&aacute;vel &mdash; PaynexBet</title>
+{_LEGAL_CSS}
+<style>
+.rg-card{{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:20px;transition:border-color .2s}}
+.rg-card:hover{{border-color:#f5a62330}}
+.rg-card-icon{{font-size:32px;margin-bottom:10px}}
+.rg-card-title{{font-size:16px;font-weight:700;margin-bottom:6px}}
+.rg-card-desc{{font-size:14px;color:#94a3b8;line-height:1.6}}
+.rg-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:40px}}
+.rg-quiz{{background:linear-gradient(135deg,#1a1a30,#1e1e3a);border:1px solid var(--blue);border-radius:16px;padding:28px 24px;margin:32px 0}}
+.rg-quiz-title{{font-size:18px;font-weight:800;margin-bottom:8px;color:var(--blue2)}}
+.rg-quiz-desc{{font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.6}}
+.rg-quiz-item{{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}}
+.rg-quiz-item:last-child{{border-bottom:none;padding-bottom:0}}
+.rg-check{{width:22px;height:22px;border:2px solid var(--blue);border-radius:6px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;transition:all .2s;background:transparent;user-select:none}}
+.rg-check.on{{background:var(--blue);border-color:var(--blue)}}
+.rg-quiz-label{{font-size:14px;color:#cbd5e1;line-height:1.5;cursor:pointer;padding-top:2px}}
+.rg-result{{display:none;padding:14px 18px;border-radius:10px;margin-top:16px;font-size:14px;font-weight:600;line-height:1.7}}
+.rg-result.safe{{background:#22c55e18;border:1px solid #22c55e40;color:#4ade80}}
+.rg-result.warn{{background:#f59e0b18;border:1px solid #f59e0b40;color:#fbbf24}}
+.rg-result.danger{{background:#ef444418;border:1px solid #ef444440;color:#f87171}}
+.btn-quiz{{margin-top:16px;padding:11px 28px;border-radius:10px;font-size:14px;font-weight:700;background:var(--blue);border:none;color:#fff;cursor:pointer;transition:all .2s}}
+.btn-quiz:hover{{background:#2563eb}}
+.crisis-box{{background:linear-gradient(135deg,#1a0a14,#2a0a1a);border:2px solid #ef444480;border-radius:16px;padding:28px 24px;text-align:center;margin:32px 0}}
+.crisis-title{{font-size:20px;font-weight:800;color:#f87171;margin-bottom:12px}}
+.crisis-desc{{font-size:14px;color:#cbd5e1;margin-bottom:20px;line-height:1.7}}
+.btn-crisis{{padding:12px 32px;border-radius:10px;font-size:15px;font-weight:700;background:#ef4444;border:none;color:#fff;cursor:pointer;text-decoration:none;display:inline-block}}
+</style>
+</head>
+<body>
+{_LEGAL_NAV}
+<div class="legal-hero" style="background:linear-gradient(180deg,#0f1a1a 0%,var(--bg) 100%)">
+  <span class="legal-icon">&#128737;&#65039;</span>
+  <h1 class="legal-title" style="background:linear-gradient(90deg,#22c55e,#4ade80);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Jogo Respons&aacute;vel</h1>
+  <p class="legal-sub">Sua sa&uacute;de e bem-estar s&atilde;o mais importantes que qualquer aposta.</p>
+  <span class="legal-date">PaynexBet &mdash; Comprometida com o jogo seguro</span>
+</div>
+<div class="legal-body">
+
+  <div class="legal-section">
+    <h2><span class="num" style="background:linear-gradient(135deg,var(--green),#16a34a);color:#fff">&#9825;</span> Nossa Miss&atilde;o</h2>
+    <p>A PaynexBet acredita que as apostas e sorteios devem ser uma forma de entretenimento, nunca uma fonte de press&atilde;o financeira ou emocional. Adotamos pr&aacute;ticas rigorosas de jogo respons&aacute;vel e incentivamos todos os nossos usu&aacute;rios a jogar com consci&ecirc;ncia.</p>
+    <div class="highlight green">&#10003; Apostas s&atilde;o entretenimento. Nunca aposte valores que n&atilde;o pode perder.</div>
+  </div>
+
+  <div class="rg-grid">
+    <div class="rg-card"><div class="rg-card-icon">&#128176;</div><div class="rg-card-title">Defina um or&ccedil;amento</div><div class="rg-card-desc">Estabele&ccedil;a um valor m&aacute;ximo mensal para apostas e nunca ultrapasse esse limite.</div></div>
+    <div class="rg-card"><div class="rg-card-icon">&#9201;&#65039;</div><div class="rg-card-title">Controle o tempo</div><div class="rg-card-desc">Fa&ccedil;a pausas regulares. Evite apostar por longos per&iacute;odos sem intervalos.</div></div>
+    <div class="rg-card"><div class="rg-card-icon">&#128683;</div><div class="rg-card-title">Nunca persiga perdas</div><div class="rg-card-desc">Tentar recuperar perdas geralmente resulta em mais perdas. Saiba quando parar.</div></div>
+    <div class="rg-card"><div class="rg-card-icon">&#129504;</div><div class="rg-card-title">Decida com clareza</div><div class="rg-card-desc">Nunca aposte sob influ&ecirc;ncia de &aacute;lcool, drogas ou quando estiver emocionalmente abalado.</div></div>
+    <div class="rg-card"><div class="rg-card-icon">&#128106;</div><div class="rg-card-title">Proteja os menores</div><div class="rg-card-desc">Nunca permita que menores de 18 anos usem sua conta ou participem de apostas.</div></div>
+    <div class="rg-card"><div class="rg-card-icon">&#128202;</div><div class="rg-card-title">Acompanhe seus gastos</div><div class="rg-card-desc">Revise regularmente seu hist&oacute;rico de apostas para manter o controle financeiro.</div></div>
+  </div>
+
+  <div class="rg-quiz">
+    <div class="rg-quiz-title">&#128269; Autoavalia&ccedil;&atilde;o: voc&ecirc; est&aacute; jogando com responsabilidade?</div>
+    <div class="rg-quiz-desc">Marque as afirma&ccedil;&otilde;es que se aplicam &agrave; sua situa&ccedil;&atilde;o. Este question&aacute;rio &eacute; sigiloso e serve apenas para sua reflex&atilde;o pessoal.</div>
+    <div>
+      <div class="rg-quiz-item"><div class="rg-check" onclick="this.classList.toggle('on');this.textContent=this.classList.contains('on')?'&#10003;':''"></div><div class="rg-quiz-label">J&aacute; apostei dinheiro que precisava para despesas essenciais (aluguel, alimenta&ccedil;&atilde;o, contas)</div></div>
+      <div class="rg-quiz-item"><div class="rg-check" onclick="this.classList.toggle('on');this.textContent=this.classList.contains('on')?'&#10003;':''"></div><div class="rg-quiz-label">Sinto a necessidade de apostar valores cada vez maiores para sentir emo&ccedil;&atilde;o</div></div>
+      <div class="rg-quiz-item"><div class="rg-check" onclick="this.classList.toggle('on');this.textContent=this.classList.contains('on')?'&#10003;':''"></div><div class="rg-quiz-label">J&aacute; menti para familiares ou amigos sobre minhas apostas</div></div>
+      <div class="rg-quiz-item"><div class="rg-check" onclick="this.classList.toggle('on');this.textContent=this.classList.contains('on')?'&#10003;':''"></div><div class="rg-quiz-label">Sinto irrita&ccedil;&atilde;o ou ansiedade quando n&atilde;o consigo apostar</div></div>
+      <div class="rg-quiz-item"><div class="rg-check" onclick="this.classList.toggle('on');this.textContent=this.classList.contains('on')?'&#10003;':''"></div><div class="rg-quiz-label">J&aacute; tentei parar de apostar e n&atilde;o consegui</div></div>
+      <div class="rg-quiz-item"><div class="rg-check" onclick="this.classList.toggle('on');this.textContent=this.classList.contains('on')?'&#10003;':''"></div><div class="rg-quiz-label">As apostas j&aacute; prejudicaram meu trabalho, estudos ou relacionamentos</div></div>
+    </div>
+    <button class="btn-quiz" onclick="calcQuiz()">Ver resultado</button>
+    <div class="rg-result safe" id="rr-safe">&#10003; <strong>Tudo indica que voc&ecirc; est&aacute; jogando com responsabilidade.</strong> Continue assim! Mantenha seus limites e aproveite o entretenimento com equil&iacute;brio.</div>
+    <div class="rg-result warn" id="rr-warn">&#9888;&#65039; <strong>Aten&ccedil;&atilde;o: alguns sinais merecem cuidado.</strong> Considere fazer uma pausa nas apostas e conversar com algu&eacute;m de confian&ccedil;a sobre sua rela&ccedil;&atilde;o com o jogo.</div>
+    <div class="rg-result danger" id="rr-danger">&#128680; <strong>Sinal de alerta: voc&ecirc; pode estar desenvolvendo depend&ecirc;ncia.</strong> Recomendamos fortemente buscar ajuda profissional. Ligue para o CVV: <strong>188</strong> ou acesse o Jogadores An&ocirc;nimos.</div>
+  </div>
+
+  <div class="legal-section">
+    <h2><span class="num" style="background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff">&#128296;</span> Ferramentas de Controle</h2>
+    <p>Entre em contato com nosso suporte para solicitar:</p>
+    <ul>
+      <li><strong>Autoexclus&atilde;o tempor&aacute;ria:</strong> bloqueio da conta por 30, 60 ou 90 dias</li>
+      <li><strong>Autoexclus&atilde;o permanente:</strong> encerramento definitivo da conta</li>
+      <li><strong>Limite de dep&oacute;sito:</strong> definir um teto mensal de dep&oacute;sitos</li>
+      <li><strong>Hist&oacute;rico completo:</strong> visualizar todas as suas transa&ccedil;&otilde;es e apostas</li>
+    </ul>
+    <p>Acesse o <a href="/suporte" style="color:var(--blue2)">nosso suporte</a> para solicitar qualquer uma dessas ferramentas.</p>
+  </div>
+
+  <div class="crisis-box">
+    <div class="crisis-title">&#128682; Precisa de ajuda agora?</div>
+    <div class="crisis-desc">
+      Se voc&ecirc; ou algu&eacute;m que conhece est&aacute; com problemas relacionados ao jogo compulsivo:<br><br>
+      <strong>CVV (Centro de Valoriza&ccedil;&atilde;o da Vida):</strong> Ligue 188 ou acesse cvv.org.br<br>
+      <strong>Jogadores An&ocirc;nimos Brasil:</strong> jogadoresanonimos.org.br<br>
+      <strong>CAPS:</strong> acesse na sua cidade pelo Sistema &Uacute;nico de Sa&uacute;de
+    </div>
+    <a href="tel:188" class="btn-crisis">&#128222; Ligar 188 (gratuito)</a>
+  </div>
+
+</div>
+{_LEGAL_FOOTER}
+<script>
+function calcQuiz(){{
+  var n = document.querySelectorAll('.rg-check.on').length;
+  document.getElementById('rr-safe').style.display='none';
+  document.getElementById('rr-warn').style.display='none';
+  document.getElementById('rr-danger').style.display='none';
+  if(n===0) document.getElementById('rr-safe').style.display='block';
+  else if(n<=2) document.getElementById('rr-warn').style.display='block';
+  else document.getElementById('rr-danger').style.display='block';
+}}
+</script>
+</body>
+</html>"""
+
+
+def _page_suporte():
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Suporte &mdash; PaynexBet</title>
+{_LEGAL_CSS}
+<style>
+.sup-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-bottom:48px}}
+.sup-card{{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 24px;transition:all .25s;text-decoration:none;display:block}}
+.sup-card:hover{{border-color:var(--blue);transform:translateY(-4px);box-shadow:0 8px 32px #0006}}
+.sup-card-icon{{font-size:36px;margin-bottom:14px}}
+.sup-card-title{{font-size:17px;font-weight:800;margin-bottom:6px;color:var(--text)}}
+.sup-card-desc{{font-size:14px;color:var(--muted);line-height:1.6}}
+.sup-card-action{{display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-size:13px;font-weight:700;color:var(--blue2)}}
+.faq-item{{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px}}
+.faq-q{{padding:16px 20px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:600;transition:background .15s;user-select:none}}
+.faq-q:hover{{background:var(--bg3)}}
+.faq-q .arr{{font-size:11px;color:var(--muted);transition:transform .25s;flex-shrink:0;margin-left:12px}}
+.faq-a{{display:none;padding:4px 20px 16px;font-size:14px;color:#94a3b8;line-height:1.75;border-top:1px solid var(--border)}}
+.faq-item.open .faq-q .arr{{transform:rotate(180deg)}}
+.faq-item.open .faq-a{{display:block}}
+.sup-form{{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px 28px}}
+.form-group{{margin-bottom:16px}}
+.form-label{{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px}}
+.form-input{{width:100%;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-size:15px;color:var(--text);outline:none;transition:border-color .2s}}
+.form-input:focus{{border-color:var(--blue)}}
+.form-input::placeholder{{color:#475569}}
+textarea.form-input{{min-height:120px;resize:vertical}}
+.btn-enviar{{width:100%;padding:14px;border-radius:12px;font-size:16px;font-weight:800;background:linear-gradient(135deg,var(--blue),#2563eb);border:none;color:#fff;cursor:pointer;transition:all .25s;margin-top:4px}}
+.btn-enviar:hover{{transform:translateY(-1px);box-shadow:0 4px 20px #3b82f640}}
+.sent-msg{{display:none;text-align:center;padding:28px;font-size:15px;color:var(--green);line-height:1.8}}
+.badge-online{{display:inline-flex;align-items:center;gap:8px;background:#22c55e18;border:1px solid #22c55e40;color:#4ade80;padding:10px 20px;border-radius:99px;font-size:14px;font-weight:700;margin-top:12px}}
+.pulse{{width:9px;height:9px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;display:inline-block}}
+@keyframes pulse{{0%,100%{{opacity:1;transform:scale(1)}}50%{{opacity:.5;transform:scale(1.3)}}}}
+</style>
+</head>
+<body>
+{_LEGAL_NAV}
+<div class="legal-hero" style="background:linear-gradient(180deg,#0f0f2a 0%,var(--bg) 100%)">
+  <span class="legal-icon">&#128172;</span>
+  <h1 class="legal-title">Central de Suporte</h1>
+  <p class="legal-sub">Estamos aqui para ajudar. Encontre respostas r&aacute;pidas ou fale com nossa equipe.</p>
+  <div><span class="badge-online"><span class="pulse"></span> Suporte online agora</span></div>
+</div>
+<div class="legal-body">
+
+  <div class="sup-grid">
+    <a href="https://t.me/paynexbet_suporte" target="_blank" class="sup-card">
+      <div class="sup-card-icon">&#9992;&#65039;</div>
+      <div class="sup-card-title">Telegram</div>
+      <div class="sup-card-desc">Canal mais r&aacute;pido. Resposta m&eacute;dia em at&eacute; 10 minutos durante hor&aacute;rio comercial.</div>
+      <span class="sup-card-action">Abrir Telegram &#8594;</span>
+    </a>
+    <a href="https://wa.me/5511999999999?text=Ol%C3%A1%2C+preciso+de+suporte+PaynexBet" target="_blank" class="sup-card">
+      <div class="sup-card-icon">&#128241;</div>
+      <div class="sup-card-title">WhatsApp</div>
+      <div class="sup-card-desc">Envie uma mensagem e nossa equipe responde em at&eacute; 30 minutos.</div>
+      <span class="sup-card-action">Abrir WhatsApp &#8594;</span>
+    </a>
+    <a href="mailto:suporte@paynexbet.com" class="sup-card">
+      <div class="sup-card-icon">&#128231;</div>
+      <div class="sup-card-title">E-mail</div>
+      <div class="sup-card-desc">Para assuntos mais complexos. Resposta em at&eacute; 24 horas &uacute;teis.</div>
+      <span class="sup-card-action">suporte@paynexbet.com &#8594;</span>
+    </a>
+  </div>
+
+  <div class="legal-section">
+    <h2><span class="num">?</span> Perguntas Frequentes</h2>
+    <div class="faq-item"><div class="faq-q" onclick="tf(this)"><span>Como fa&ccedil;o um dep&oacute;sito?</span><span class="arr">&#9660;</span></div><div class="faq-a">Acesse "Minha Conta", clique em "Depositar via Pix", informe o valor (m&iacute;nimo R$ 5,00) e escaneie o QR Code com o app do seu banco. O saldo &eacute; creditado automaticamente em segundos.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="tf(this)"><span>Como solicitar um saque?</span><span class="arr">&#9660;</span></div><div class="faq-a">Em "Minha Conta", clique em "Sacar via Pix", informe sua chave Pix (mesmo CPF cadastrado) e o valor (m&iacute;nimo R$ 20,00). O processamento &eacute; autom&aacute;tico.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="tf(this)"><span>Quanto tempo leva para o saldo aparecer ap&oacute;s o dep&oacute;sito?</span><span class="arr">&#9660;</span></div><div class="faq-a">O saldo &eacute; creditado automaticamente assim que o Pix &eacute; confirmado, geralmente em menos de 10 segundos. Em casos raros de instabilidade, pode levar at&eacute; 5 minutos.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="tf(this)"><span>Minha aposta foi feita mas n&atilde;o aparece no hist&oacute;rico.</span><span class="arr">&#9660;</span></div><div class="faq-a">Aguarde alguns instantes e recarregue a p&aacute;gina. Se o saldo foi debitado mas a aposta n&atilde;o aparece, entre em contato com nosso suporte informando valor e hor&aacute;rio.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="tf(this)"><span>Como funciona o sorteio?</span><span class="arr">&#9660;</span></div><div class="faq-a">O sorteio &eacute; realizado automaticamente quando um n&uacute;mero m&iacute;nimo de bilhetes &eacute; atingido ou na data programada. O ganhador recebe notifica&ccedil;&atilde;o e o pr&ecirc;mio &eacute; creditado automaticamente.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="tf(this)"><span>Posso cancelar uma aposta?</span><span class="arr">&#9660;</span></div><div class="faq-a">N&atilde;o &eacute; poss&iacute;vel cancelar apostas ap&oacute;s a confirma&ccedil;&atilde;o. As apostas s&atilde;o definitivas e irrevog&aacute;veis. Em caso de cancelamento do evento esportivo, o valor &eacute; reembolsado automaticamente.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="tf(this)"><span>Os odds mudam depois que confirmo a aposta?</span><span class="arr">&#9660;</span></div><div class="faq-a">N&atilde;o. A odd registrada no momento da confirma&ccedil;&atilde;o &eacute; definitiva e n&atilde;o muda, independente de varia&ccedil;&otilde;es posteriores no mercado.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="tf(this)"><span>Preciso enviar documentos para sacar?</span><span class="arr">&#9660;</span></div><div class="faq-a">Para a maioria dos saques, n&atilde;o &eacute; necess&aacute;rio nenhum documento adicional. Em casos de valores elevados, podemos solicitar verifica&ccedil;&atilde;o de identidade.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="tf(this)"><span>Esqueci meu CPF cadastrado. Como acesso a conta?</span><span class="arr">&#9660;</span></div><div class="faq-a">O acesso &eacute; feito exclusivamente pelo CPF. Se n&atilde;o lembrar, entre em contato com nosso suporte informando seu nome completo para que possamos identificar sua conta.</div></div>
+  </div>
+
+  <div class="sup-form">
+    <h2 style="font-size:20px;font-weight:800;margin-bottom:6px">&#128233; Enviar mensagem</h2>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:24px">N&atilde;o encontrou o que precisava? Preencha o formul&aacute;rio e nossa equipe responde em at&eacute; 24h &uacute;teis.</p>
+    <div id="form-wrap">
+      <div class="form-group"><label class="form-label">Seu nome</label><input class="form-input" type="text" id="sup-nome" placeholder="Nome completo"></div>
+      <div class="form-group"><label class="form-label">CPF cadastrado na plataforma</label><input class="form-input" type="text" id="sup-cpf" placeholder="000.000.000-00" maxlength="14"></div>
+      <div class="form-group"><label class="form-label">Assunto</label>
+        <select class="form-input" id="sup-assunto">
+          <option value="">Selecione o assunto...</option>
+          <option>Problema com dep&oacute;sito</option>
+          <option>Problema com saque</option>
+          <option>Aposta n&atilde;o registrada</option>
+          <option>Sorteio &mdash; d&uacute;vida ou reclama&ccedil;&atilde;o</option>
+          <option>Conta bloqueada ou suspensa</option>
+          <option>Privacidade e dados pessoais</option>
+          <option>Jogo respons&aacute;vel &mdash; solicitar autoexclus&atilde;o</option>
+          <option>Outro assunto</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Descreva sua situa&ccedil;&atilde;o</label><textarea class="form-input" id="sup-msg" placeholder="Descreva o problema ou d&uacute;vida com o m&aacute;ximo de detalhes poss&iacute;vel..."></textarea></div>
+      <button class="btn-enviar" onclick="enviar()">&#128232; Enviar mensagem</button>
+    </div>
+    <div class="sent-msg" id="sent-msg">
+      &#10003; <strong>Mensagem enviada com sucesso!</strong><br>
+      Nossa equipe responder&aacute; em breve pelo Telegram ou e-mail informado.
+    </div>
+  </div>
+
+</div>
+{_LEGAL_FOOTER}
+<script>
+function tf(el){{
+  var item = el.parentElement;
+  var open = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(function(i){{i.classList.remove('open');}});
+  if(!open) item.classList.add('open');
+}}
+document.getElementById('sup-cpf').addEventListener('input',function(){{
+  this.value=this.value.replace(/\\D/g,'').replace(/(\\d{{3}})(\\d)/,'$1.$2').replace(/(\\d{{3}})\\.(\\d{{3}})(\\d)/,'$1.$2.$3').replace(/(\\d{{3}})\\.(\\d{{3}})\\.(\\d{{3}})(\\d)/,'$1.$2.$3-$4').substring(0,14);
+}});
+function enviar(){{
+  var nome=document.getElementById('sup-nome').value.trim();
+  var assunto=document.getElementById('sup-assunto').value;
+  var msg=document.getElementById('sup-msg').value.trim();
+  if(!nome){{alert('Por favor, informe seu nome.');return;}}
+  if(!assunto){{alert('Por favor, selecione o assunto.');return;}}
+  if(msg.length<10){{alert('Por favor, descreva melhor sua situa\\u00e7\\u00e3o.');return;}}
+  document.getElementById('form-wrap').style.display='none';
+  document.getElementById('sent-msg').style.display='block';
+}}
+</script>
+</body>
+</html>"""
+
+
+async def route_termos(request):
+    """GET /termos"""
+    return web.Response(text=_page_termos(), content_type='text/html', charset='utf-8')
+
+async def route_privacidade(request):
+    """GET /privacidade"""
+    return web.Response(text=_page_privacidade(), content_type='text/html', charset='utf-8')
+
+async def route_responsavel(request):
+    """GET /responsavel"""
+    return web.Response(text=_page_responsavel(), content_type='text/html', charset='utf-8')
+
+async def route_suporte(request):
+    """GET /suporte"""
+    return web.Response(text=_page_suporte(), content_type='text/html', charset='utf-8')
+
+
 async def route_bet_crest(request):
     """GET /api/bet/crest?nome=TeamName — retorna URL do escudo (mapa estático, resposta imediata)"""
     nome = (request.rel_url.query.get('nome') or '').strip()
@@ -11965,6 +12562,11 @@ async def main():
     app.router.add_get('/conta.html',           route_conta_page)
     app.router.add_get('/', route_home)            # Página principal PaynexBet
     app.router.add_get('/home', route_home)
+    # Páginas legais
+    app.router.add_get('/termos',      route_termos)
+    app.router.add_get('/privacidade', route_privacidade)
+    app.router.add_get('/responsavel', route_responsavel)
+    app.router.add_get('/suporte',     route_suporte)
     app.router.add_get('/index.html', route_index)
     app.router.add_get('/health', route_health)
     app.router.add_get('/api/status', route_health)
