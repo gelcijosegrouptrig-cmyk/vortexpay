@@ -4579,13 +4579,17 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260423-mp2-only',
+        'version': 'v20250428c-bet-suitpay',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
         'mp2_ambiente': mp2_ambiente,
         'watchdog': 'ativo',
         'webhook': '/webhook/mp2',
+        # Bet system
+        'bet_routes': ['/apostas', '/conta', '/api/bet/jogos', '/api/bet/deposito', '/webhook/suitpay'],
+        'odds_configurado': bool(os.environ.get('ODDS_API_KEY','')),
+        'suitpay_configurado': bool(os.environ.get('SUITPAY_CI','')),
         # Mantém compatibilidade retroativa
         'telegram': False,
         'telegram_motivo': None,
