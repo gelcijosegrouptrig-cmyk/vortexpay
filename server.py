@@ -9887,10 +9887,8 @@ import hashlib as _hashlib
 
 _odds_cache       = {'ts': 0, 'data': []}
 _ODDS_CACHE_TTL   = 60   # segundos
-_ODDS_API_KEY     = os.environ.get('ODDS_API_KEY', '')
 
 # ── SuitPay: suporte ao formato "CI|CS" numa variável só
-# Se SUITPAY_CI = "1155|nsw9FJ..." e SUITPAY_CS vazio ou igual → separa pelo pipe
 def _suit_parse_keys():
     raw_ci = os.environ.get('SUITPAY_CI', '')
     raw_cs = os.environ.get('SUITPAY_CS', '')
@@ -9899,7 +9897,47 @@ def _suit_parse_keys():
         return parts[0].strip(), parts[1].strip()
     return raw_ci.strip(), raw_cs.strip()
 
-_SUIT_CI, _SUIT_CS = _suit_parse_keys()
+# ── Carregar chaves bet do PostgreSQL (fallback quando Railway não injeta env vars)
+def _bet_load_keys_from_db():
+    """Lê ODDS_API_KEY, SUITPAY_CI, SUITPAY_CS do PostgreSQL configuracoes"""
+    try:
+        if not DATABASE_URL:
+            return {}, {}
+        conn = psycopg2.connect(DATABASE_URL)
+        cur  = conn.cursor()
+        cur.execute("""
+            SELECT chave, valor FROM configuracoes
+            WHERE chave IN ('bet_odds_api_key','bet_suitpay_ci','bet_suitpay_cs')
+        """)
+        rows = {r[0]: r[1] for r in cur.fetchall()}
+        cur.close(); conn.close()
+        return rows
+    except Exception as e:
+        print(f'[bet_load_keys] erro DB: {e}', flush=True)
+        return {}
+
+def _get_odds_key():
+    """Retorna ODDS_API_KEY: env var tem prioridade, depois DB"""
+    k = os.environ.get('ODDS_API_KEY', '').strip()
+    if k:
+        return k
+    db = _bet_load_keys_from_db()
+    return db.get('bet_odds_api_key', '')
+
+def _get_suit_keys():
+    """Retorna (CI, CS): env var tem prioridade, depois DB"""
+    ci, cs = _suit_parse_keys()
+    if ci and cs:
+        return ci, cs
+    db = _bet_load_keys_from_db()
+    db_ci = db.get('bet_suitpay_ci', '')
+    db_cs = db.get('bet_suitpay_cs', '')
+    if '|' in db_ci and (not db_cs or db_cs == db_ci):
+        parts = db_ci.split('|', 1)
+        return parts[0].strip(), parts[1].strip()
+    return db_ci or ci, db_cs or cs
+
+_SUIT_CI, _SUIT_CS = _suit_parse_keys()   # inicialização; funções acima recarregam em runtime
 _SUIT_HOST        = os.environ.get('SUITPAY_HOST', 'https://ws.suitpay.app')
 _SUIT_WEBHOOK_URL = os.environ.get('SUITPAY_WEBHOOK_URL', 'https://paynexbet.com/webhook/suitpay')
 
@@ -9911,9 +9949,9 @@ async def route_bet_jogos(request):
     if agora - _odds_cache['ts'] < _ODDS_CACHE_TTL and _odds_cache['data']:
         return web.json_response({'success': True, 'jogos': _odds_cache['data'], 'from_cache': True})
 
-    key = _ODDS_API_KEY
+    key = _get_odds_key()
     if not key:
-        return web.json_response({'success': False, 'jogos': [], 'error': 'ODDS_API_KEY não configurada'})
+        return web.json_response({'success': False, 'jogos': [], 'error': 'ODDS_API_KEY não configurada — adicione via /api/bet/config'})
 
     # Esportes prioritários: Brasileirão + Libertadores + UEFA + upcoming
     sports = [
@@ -9990,7 +10028,7 @@ async def route_webhook_suitpay(request):
     # 1) Concatenar todos os valores (exceto 'hash') na ORDEM RECEBIDA no JSON
     # 2) Concatenar o ClientSecret (cs) ao final
     # 3) SHA-256 do resultado
-    cs = _SUIT_CS
+    _, cs = _get_suit_keys()
     hash_recv = data.get('hash', '')
     if cs and hash_recv:
         concat = ''.join(str(v) for k, v in data.items() if k != 'hash')
@@ -10068,8 +10106,9 @@ async def route_bet_deposito(request):
 
     if valor < 5:
         return web.json_response({'success': False, 'error': 'Valor mínimo R$5,00'})
-    if not _SUIT_CI or not _SUIT_CS:
-        return web.json_response({'success': False, 'error': 'SuitPay não configurado (falta CI/CS)'})
+    suit_ci, suit_cs = _get_suit_keys()
+    if not suit_ci or not suit_cs:
+        return web.json_response({'success': False, 'error': 'SuitPay não configurado — adicione via /api/bet/config'})
 
     import uuid as _uuid, datetime as _dt
     req_number = f'{usuario_id}_{_uuid.uuid4().hex[:12]}'
@@ -10093,7 +10132,7 @@ async def route_bet_deposito(request):
             async with sess.post(
                 f'{_SUIT_HOST}/v1/gateway/request-qrcode',
                 json=payload,
-                headers={'ci': _SUIT_CI, 'cs': _SUIT_CS, 'Content-Type': 'application/json'},
+                headers={'ci': suit_ci, 'cs': suit_cs, 'Content-Type': 'application/json'},
                 timeout=aiohttp.ClientTimeout(total=15)
             ) as r:
                 resp = await r.json()
@@ -10313,8 +10352,9 @@ async def route_bet_sacar(request):
         return web.json_response({'success': False, 'error': 'Valor mínimo de saque: R$20,00'})
     if not chave_pix:
         return web.json_response({'success': False, 'error': 'Informe sua chave PIX'})
-    if not _SUIT_CI or not _SUIT_CS:
-        return web.json_response({'success': False, 'error': 'Gateway de pagamento não configurado'})
+    suit_ci, suit_cs = _get_suit_keys()
+    if not suit_ci or not suit_cs:
+        return web.json_response({'success': False, 'error': 'Gateway de pagamento não configurado — adicione via /api/bet/config'})
 
     conn = await _bet_db()
     if not conn:
@@ -10354,7 +10394,7 @@ async def route_bet_sacar(request):
             async with sess.post(
                 f'{_SUIT_HOST}/v1/gateway/pix-payment',
                 json=payload_suit,
-                headers={'ci': _SUIT_CI, 'cs': _SUIT_CS, 'Content-Type': 'application/json'},
+                headers={'ci': suit_ci, 'cs': suit_cs, 'Content-Type': 'application/json'},
                 timeout=aiohttp.ClientTimeout(total=15)
             ) as r:
                 resp = await r.json()
@@ -11210,6 +11250,62 @@ function toast(msg, type) {
 </html>"""
 
 
+async def route_bet_config(request):
+    """POST /api/bet/config — salva ODDS_API_KEY e SUITPAY_CI/CS no PostgreSQL
+       Protegido por X-PaynexBet-Secret
+    """
+    secret = request.headers.get('X-PaynexBet-Secret','') or request.headers.get('x-paynexbet-secret','')
+    if secret != WEBHOOK_SECRET:
+        return web.json_response({'ok': False, 'error': 'Não autorizado'}, status=403)
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({'ok': False, 'error': 'JSON inválido'}, status=400)
+
+    if not DATABASE_URL:
+        return web.json_response({'ok': False, 'error': 'DATABASE_URL não configurada'})
+
+    saved = []
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur  = conn.cursor()
+        mapping = {
+            'odds_api_key':  'bet_odds_api_key',
+            'suitpay_ci':    'bet_suitpay_ci',
+            'suitpay_cs':    'bet_suitpay_cs',
+        }
+        for field, chave in mapping.items():
+            val = (body.get(field) or '').strip()
+            if val:
+                cur.execute("""
+                    INSERT INTO configuracoes (chave, valor) VALUES (%s,%s)
+                    ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor
+                """, (chave, val))
+                saved.append(field)
+        conn.commit(); cur.close(); conn.close()
+        return web.json_response({'ok': True, 'saved': saved,
+            'msg': f'✅ {len(saved)} chave(s) salvas no DB. Ativas imediatamente sem redeploy.'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)})
+
+
+async def route_bet_config_get(request):
+    """GET /api/bet/config — retorna status das chaves (sem expor valores)"""
+    secret = request.headers.get('X-PaynexBet-Secret','') or request.headers.get('x-paynexbet-secret','')
+    if secret != WEBHOOK_SECRET:
+        return web.json_response({'ok': False, 'error': 'Não autorizado'}, status=403)
+    odds_key = _get_odds_key()
+    suit_ci, suit_cs = _get_suit_keys()
+    return web.json_response({
+        'ok': True,
+        'odds_api_key': f'{odds_key[:6]}...{odds_key[-4:]}' if len(odds_key) > 10 else ('configurada' if odds_key else 'NÃO CONFIGURADA'),
+        'suitpay_ci':   suit_ci[:4] + '...' if suit_ci else 'NÃO CONFIGURADO',
+        'suitpay_cs':   suit_cs[:6] + '...' if suit_cs else 'NÃO CONFIGURADO',
+        'fonte_odds':   'env' if os.environ.get('ODDS_API_KEY','') else ('db' if odds_key else 'nenhuma'),
+        'fonte_suit':   'env' if os.environ.get('SUITPAY_CI','') else ('db' if suit_ci else 'nenhuma'),
+    })
+
+
 async def route_apostas_page(request):
     """GET /apostas — página de apostas esportivas"""
     return web.Response(text=_page_apostas_html(), content_type='text/html', charset='utf-8')
@@ -11299,6 +11395,8 @@ async def main():
     app.router.add_post('/api/bet/deposito',    route_bet_deposito)
     app.router.add_post('/webhook/suitpay',     route_webhook_suitpay)
     # BET — auth + saldo + apostar + sacar + páginas
+    app.router.add_post('/api/bet/config',      route_bet_config)
+    app.router.add_get('/api/bet/config',       route_bet_config_get)
     app.router.add_post('/api/bet/login',       route_bet_login)
     app.router.add_get('/api/bet/saldo/{usuario_id}', route_bet_saldo)
     app.router.add_post('/api/bet/apostar',     route_bet_apostar)
