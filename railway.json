@@ -2,8 +2,8 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "rebuildTimestamp": "1777045757",
-    "forceBust": "v20250428m-force-1777045757"
+    "rebuildTimestamp": "1777045859",
+    "forceBust": "v20250428m-1777045859"
   },
   "deploy": {
     "startCommand": "bash start.sh",
@@ -12,7 +12,8 @@
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5
   },
-  "_rebuild": "1777045757",
-  "rebuildTimestamp": 1777045757,
-  "forceRebuild": true
+  "_rebuild": "1777045859",
+  "rebuildTimestamp": 1777045859,
+  "forceRebuild": true,
+  "forceBust": "v20250428m-final-1777045859"
 }
