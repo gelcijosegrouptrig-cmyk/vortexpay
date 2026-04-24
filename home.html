@@ -571,27 +571,42 @@ function showMsg(id,msg,isErr){
 /* ── LOGIN ── */
 async function doLogin(){
   const cpf=cleanCPF(document.getElementById('inp-cpf-login').value);
-  if(cpf.length!==11){showMsg('err-login','CPF inválido.',true);return}
+  if(cpf.length!==11){showMsg('err-login','CPF inválido (11 dígitos).',true);return}
   try{
     const r=await fetch(BASE+'/api/bet/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cpf})});
+    if(!r.ok){showMsg('err-login','Erro no servidor ('+r.status+').',true);return}
     const d=await r.json();
+    // API retorna {success, usuario} ou {error}
     if(d.error){showMsg('err-login',d.error,true);return}
-    saveSession(d);renderHeader();closeModal();
-  }catch(e){showMsg('err-login','Erro de conexão.',true)}
+    const user = d.usuario || d;
+    if(!user || !user.id){showMsg('err-login','CPF não encontrado. Crie uma conta.',true);return}
+    saveSession(user);renderHeader();closeModal();
+    showMsg('ok-login','Bem-vindo, '+user.nome.split(' ')[0]+'! ✅',false);
+  }catch(e){
+    console.error('Login error:',e);
+    showMsg('err-login','Falha ao conectar. Verifique sua internet.',true);
+  }
 }
 
 /* ── CADASTRO ── */
 async function doCadastro(){
   const nome=document.getElementById('inp-nome').value.trim();
   const cpf=cleanCPF(document.getElementById('inp-cpf-cad').value);
-  if(!nome){showMsg('err-cad','Informe seu nome.',true);return}
-  if(cpf.length!==11){showMsg('err-cad','CPF inválido.',true);return}
+  if(!nome){showMsg('err-cad','Informe seu nome completo.',true);return}
+  if(cpf.length!==11){showMsg('err-cad','CPF inválido (11 dígitos).',true);return}
   try{
     const r=await fetch(BASE+'/api/bet/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,cpf})});
+    if(!r.ok){showMsg('err-cad','Erro no servidor ('+r.status+').',true);return}
     const d=await r.json();
+    // API retorna {success, usuario} ou {error}
     if(d.error){showMsg('err-cad',d.error,true);return}
-    saveSession(d);renderHeader();closeModal();
-  }catch(e){showMsg('err-cad','Erro de conexão.',true)}
+    const user = d.usuario || d;
+    if(!user || !user.id){showMsg('err-cad','Não foi possível criar a conta.',true);return}
+    saveSession(user);renderHeader();closeModal();
+  }catch(e){
+    console.error('Cadastro error:',e);
+    showMsg('err-cad','Falha ao conectar. Verifique sua internet.',true);
+  }
 }
 
 /* ── CARREGAR JOGOS ── */
