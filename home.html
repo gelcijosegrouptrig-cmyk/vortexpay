@@ -170,11 +170,17 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 .ql-arrow{margin-left:auto;color:var(--muted);font-size:16px}
 
 /* ══ VIEW: APOSTAS embutido ══ */
-.sport-chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px;scrollbar-width:none}
-.sport-chips::-webkit-scrollbar{display:none}
-.sport-chip{flex-shrink:0;background:var(--card);border:1px solid var(--border);
+.sport-chips{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin-bottom:16px;
+  /* sem overflow-x: tudo visível */
+}
+.sport-chip{
+  flex-shrink:0;
+  background:var(--card);border:1px solid var(--border);
   border-radius:999px;padding:7px 16px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;
-  white-space:nowrap;transition:all .15s}
+  white-space:nowrap;transition:all .15s;
+}
 .sport-chip.active{background:#1e3a8a;border-color:var(--blue);color:#fff}
 .jogos-grid{display:grid;grid-template-columns:1fr;gap:10px}
 @media(min-width:700px){.jogos-grid{grid-template-columns:1fr 1fr}}
@@ -230,11 +236,16 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   border-radius:4px;padding:2px 8px;font-size:10px;font-weight:800}
 
 /* ══ VIEW: TABELA ══ */
-.liga-chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none}
-.liga-chips::-webkit-scrollbar{display:none}
-.liga-chip{flex-shrink:0;background:var(--card);border:1px solid var(--border);
+.liga-chips{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin-bottom:14px;
+}
+.liga-chip{
+  flex-shrink:0;
+  background:var(--card);border:1px solid var(--border);
   border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;color:var(--muted);
-  cursor:pointer;white-space:nowrap;transition:all .15s}
+  cursor:pointer;white-space:nowrap;transition:all .15s;
+}
 .liga-chip.active{background:#1e3a8a;border-color:var(--blue);color:#fff}
 .tabela-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .t-head{display:grid;grid-template-columns:32px 1fr 30px 30px 30px 30px 36px 50px;
@@ -473,6 +484,9 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   .tn{font-size:11px}
   .betslip{width:var(--slip)}
   .slip-fab{bottom:18px;right:18px}
+  /* Chips tablet: menores, wrap visível */
+  .sport-chips,.liga-chips{gap:5px;margin-bottom:10px}
+  .sport-chip,.liga-chip{padding:5px 12px;font-size:11px}
 }
 
 /* ══════════════════════════════════════════
@@ -511,9 +525,9 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   .sl{font-size:9px}
   .features-row{grid-template-columns:1fr 1fr}
 
-  /* ── Chips (esportes / ligas) ── */
-  .sport-chips,.liga-chips{padding-bottom:6px;margin-bottom:12px;gap:5px}
-  .sport-chip,.liga-chip{padding:6px 12px;font-size:11px}
+  /* ── Chips — mobile: wrap em 2-3 linhas compactas ── */
+  .sport-chips,.liga-chips{gap:5px;margin-bottom:10px}
+  .sport-chip,.liga-chip{padding:5px 10px;font-size:11px;border-radius:8px}
 
   /* ── Cards de jogos ── */
   .jogos-grid{grid-template-columns:1fr;gap:8px}
