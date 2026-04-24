@@ -11772,47 +11772,13 @@ def _get_crest_static(nome: str):
     return None
 
 async def route_bet_crest(request):
-    """GET /api/bet/crest?nome=TeamName — retorna URL do escudo oficial"""
-    import aiohttp
+    """GET /api/bet/crest?nome=TeamName — retorna URL do escudo (mapa estático, resposta imediata)"""
     nome = (request.rel_url.query.get('nome') or '').strip()
     if not nome:
         return web.json_response({'crest': None})
-    # 1. Verificar mapa estático primeiro (resposta imediata)
+    # Usar mapa estático com matching normalizado (sem chamada externa)
     crest = _get_crest_static(nome)
-    if crest:
-        return web.json_response({'crest': crest})
-    # 2. Se não encontrou, buscar na API do football-data.org
-    FD_TOKEN = '265288a553fd4d3e887f706160b96ec8'
-    headers  = {'X-Auth-Token': FD_TOKEN}
-    competitions = ['BSA', 'CLI', 'CL', 'PL', 'PD', 'FL1', 'BL1', 'SA']
-    try:
-        async with aiohttp.ClientSession() as session:
-            for comp in competitions:
-                try:
-                    url = f'https://api.football-data.org/v4/competitions/{comp}/teams'
-                    async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=4)) as r:
-                        if r.status != 200:
-                            continue
-                        data = await r.json()
-                        for team in data.get('teams', []):
-                            tname = team.get('name', '')
-                            tcrest = team.get('crest') or ''
-                            if tcrest:
-                                _crest_cache_py[tname] = tcrest
-                                # Alias curto sem prefixos
-                                for prefix in ['FC ', 'SC ', 'CA ', 'CR ', 'EC ', 'SE ', 'CD ', 'AC ', 'AS ']:
-                                    if tname.startswith(prefix):
-                                        _crest_cache_py[tname[len(prefix):].strip()] = tcrest
-                        # Tentar match após preencher cache
-                        found = _get_crest_static(nome)
-                        if found:
-                            return web.json_response({'crest': found})
-                except Exception:
-                    continue
-    except Exception:
-        pass
-    _crest_cache_py[nome] = None
-    return web.json_response({'crest': None})
+    return web.json_response({'crest': crest})
 
 
 async def route_bet_dbcheck(request):
