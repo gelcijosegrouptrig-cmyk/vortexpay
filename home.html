@@ -593,11 +593,16 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
     <div class="view" id="view-apostas">
       <div class="sport-chips" id="sport-chips">
         <div class="sport-chip active" data-sport="upcoming" onclick="chipSport(this)">🔥 Em Destaque</div>
-        <div class="sport-chip" data-sport="soccer_brazil_campeonato" onclick="chipSport(this)">🇧🇷 Brasileirão</div>
+        <div class="sport-chip" data-sport="soccer_brazil_campeonato" onclick="chipSport(this)">🇧🇷 Brasileirão A</div>
+        <div class="sport-chip" data-sport="soccer_brazil_serie_b" onclick="chipSport(this)">🇧🇷 Série B</div>
         <div class="sport-chip" data-sport="soccer_conmebol_copa_libertadores" onclick="chipSport(this)">🏆 Libertadores</div>
+        <div class="sport-chip" data-sport="soccer_conmebol_sudamericana" onclick="chipSport(this)">🌎 Sul-Americana</div>
         <div class="sport-chip" data-sport="soccer_uefa_champs_league" onclick="chipSport(this)">⭐ Champions</div>
         <div class="sport-chip" data-sport="soccer_epl" onclick="chipSport(this)">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</div>
         <div class="sport-chip" data-sport="soccer_spain_la_liga" onclick="chipSport(this)">🇪🇸 La Liga</div>
+        <div class="sport-chip" data-sport="soccer_italy_serie_a" onclick="chipSport(this)">🇮🇹 Serie A</div>
+        <div class="sport-chip" data-sport="soccer_germany_bundesliga" onclick="chipSport(this)">🇩🇪 Bundesliga</div>
+        <div class="sport-chip" data-sport="soccer_france_ligue_one" onclick="chipSport(this)">🇫🇷 Ligue 1</div>
         <div class="sport-chip" data-sport="basketball_nba" onclick="chipSport(this)">🏀 NBA</div>
         <div class="sport-chip" data-sport="americanfootball_nfl" onclick="chipSport(this)">🏈 NFL</div>
         <div class="sport-chip" data-sport="mma_mixed_martial_arts" onclick="chipSport(this)">🥊 MMA</div>
@@ -628,16 +633,16 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
     <!-- ══ VIEW: TABELA ══ -->
     <div class="view" id="view-tabela">
       <div class="liga-chips" id="liga-chips">
-        <div class="liga-chip active" data-league="71" data-season="2024" onclick="chipLiga(this)">🇧🇷 Série A</div>
-        <div class="liga-chip" data-league="75" data-season="2024" onclick="chipLiga(this)">🇧🇷 Série B</div>
-        <div class="liga-chip" data-league="13" data-season="2024" onclick="chipLiga(this)">🏆 Libertadores</div>
-        <div class="liga-chip" data-league="11" data-season="2024" onclick="chipLiga(this)">🌎 Sul-Americana</div>
-        <div class="liga-chip" data-league="2" data-season="2024" onclick="chipLiga(this)">⭐ Champions</div>
-        <div class="liga-chip" data-league="39" data-season="2024" onclick="chipLiga(this)">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</div>
-        <div class="liga-chip" data-league="140" data-season="2024" onclick="chipLiga(this)">🇪🇸 La Liga</div>
-        <div class="liga-chip" data-league="135" data-season="2024" onclick="chipLiga(this)">🇮🇹 Serie A</div>
-        <div class="liga-chip" data-league="78" data-season="2024" onclick="chipLiga(this)">🇩🇪 Bundesliga</div>
-        <div class="liga-chip" data-league="61" data-season="2024" onclick="chipLiga(this)">🇫🇷 Ligue 1</div>
+        <div class="liga-chip active" data-league="71" onclick="chipLiga(this)">🇧🇷 Série A</div>
+        <div class="liga-chip" data-league="75" onclick="chipLiga(this)">🇧🇷 Série B</div>
+        <div class="liga-chip" data-league="13" onclick="chipLiga(this)">🏆 Libertadores</div>
+        <div class="liga-chip" data-league="11" onclick="chipLiga(this)">🌎 Sul-Americana</div>
+        <div class="liga-chip" data-league="2" onclick="chipLiga(this)">⭐ Champions</div>
+        <div class="liga-chip" data-league="39" onclick="chipLiga(this)">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</div>
+        <div class="liga-chip" data-league="140" onclick="chipLiga(this)">🇪🇸 La Liga</div>
+        <div class="liga-chip" data-league="135" onclick="chipLiga(this)">🇮🇹 Serie A</div>
+        <div class="liga-chip" data-league="78" onclick="chipLiga(this)">🇩🇪 Bundesliga</div>
+        <div class="liga-chip" data-league="61" onclick="chipLiga(this)">🇫🇷 Ligue 1</div>
       </div>
       <div id="tabela-titulo" style="font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:700"></div>
       <div id="tabela-box">
@@ -965,8 +970,8 @@ function navTo(view, extra){
     case 'tabela':
       showView('tabela');setHnActive('hn-tabela');setSbActive('sb-tabela');
       const chip=document.querySelector('.liga-chip.active');
-      if(chip)carregarTabela(chip.dataset.league,chip.dataset.season||'',chip.textContent.trim());
-      else carregarTabela('71','','🇧🇷 Brasileirão Série A');
+      if(chip)carregarTabela(chip.dataset.league,chip.textContent.trim());
+      else carregarTabela('71','🇧🇷 Brasileirão Série A');
       break;
     case 'sorteio':
       showView('sorteio');setHnActive('hn-sorteios');setSbActive('sb-sorteio');
@@ -1141,17 +1146,22 @@ function irSorteio(){
 
 /* ══ MAPA DE LABELS POR SPORT ══ */
 const _SPORT_LABELS = {
-  'upcoming':                              { titulo: '🔥 Em Destaque',        cor: 'var(--gold)' },
-  'destaque':                              { titulo: '🔥 Em Destaque',        cor: 'var(--gold)' },
-  'soccer_brazil_campeonato':              { titulo: '🇧🇷 Brasileirão Série A', cor: '#22c55e' },
-  'soccer_conmebol_copa_libertadores':     { titulo: '🏆 Copa Libertadores',   cor: '#f5a623' },
-  'soccer_uefa_champs_league':             { titulo: '⭐ Champions League',    cor: '#60a5fa' },
-  'soccer_epl':                            { titulo: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League',      cor: '#a78bfa' },
-  'soccer_spain_la_liga':                  { titulo: '🇪🇸 La Liga',            cor: '#f87171' },
-  'basketball_nba':                        { titulo: '🏀 NBA',                 cor: '#fb923c' },
-  'americanfootball_nfl':                  { titulo: '🏈 NFL',                 cor: '#34d399' },
-  'tennis_atp_aus_open_singles':           { titulo: '🎾 Tênis ATP',           cor: '#fbbf24' },
-  'mma_mixed_martial_arts':                { titulo: '🥊 MMA / Boxe',          cor: '#ef4444' },
+  'upcoming':                              { titulo: '🔥 Em Destaque',           cor: 'var(--gold)' },
+  'destaque':                              { titulo: '🔥 Em Destaque',           cor: 'var(--gold)' },
+  'soccer_brazil_campeonato':              { titulo: '🇧🇷 Brasileirão Série A',   cor: '#22c55e' },
+  'soccer_brazil_serie_b':                 { titulo: '🇧🇷 Brasileirão Série B',   cor: '#16a34a' },
+  'soccer_conmebol_copa_libertadores':     { titulo: '🏆 Copa Libertadores',      cor: '#f5a623' },
+  'soccer_conmebol_sudamericana':          { titulo: '🌎 Copa Sul-Americana',     cor: '#f59e0b' },
+  'soccer_uefa_champs_league':             { titulo: '⭐ Champions League',       cor: '#60a5fa' },
+  'soccer_epl':                            { titulo: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League',         cor: '#a78bfa' },
+  'soccer_spain_la_liga':                  { titulo: '🇪🇸 La Liga',               cor: '#f87171' },
+  'soccer_italy_serie_a':                  { titulo: '🇮🇹 Serie A',               cor: '#4ade80' },
+  'soccer_germany_bundesliga':             { titulo: '🇩🇪 Bundesliga',            cor: '#fb923c' },
+  'soccer_france_ligue_one':               { titulo: '🇫🇷 Ligue 1',               cor: '#38bdf8' },
+  'basketball_nba':                        { titulo: '🏀 NBA',                    cor: '#fb923c' },
+  'americanfootball_nfl':                  { titulo: '🏈 NFL',                    cor: '#34d399' },
+  'tennis_atp_aus_open_singles':           { titulo: '🎾 Tênis ATP',              cor: '#fbbf24' },
+  'mma_mixed_martial_arts':                { titulo: '🥊 MMA / Boxe',             cor: '#ef4444' },
 };
 
 /* ══ APOSTAS ══ */
@@ -1185,10 +1195,11 @@ async function carregarJogos(sport) {
     }
 
     // 2. Se poucos jogos (< 3), buscar mais via TheSportsDB (fixtures sem odds)
-    const sportsFutebol = ['soccer_brazil_campeonato','soccer_conmebol_copa_libertadores',
+    const sportsFutebol = ['soccer_brazil_campeonato','soccer_brazil_serie_b',
+      'soccer_conmebol_copa_libertadores','soccer_conmebol_sudamericana',
       'soccer_uefa_champs_league','soccer_epl','soccer_spain_la_liga',
       'soccer_italy_serie_a','soccer_germany_bundesliga','soccer_france_ligue_one'];
-    if (jogos.length < 3 && (sportsFutebol.includes(sport) || sport === 'upcoming' || sport === 'destaque')) {
+    if (sportsFutebol.includes(sport) || sport === 'upcoming' || sport === 'destaque') {
       try {
         const rf = await fetch(BASE + '/api/bet/fixtures?sport=' + sport);
         const df = await rf.json();
@@ -1213,8 +1224,8 @@ async function carregarJogos(sport) {
     }
     lista.innerHTML = '';
     for (const j of jogos) {
-      const live    = new Date(j.commence_time) < new Date() && j.status !== 'Match Finished' && j.status !== 'FT';
-      const finished = j.status === 'Match Finished' || j.status === 'FT';
+      const live    = j.is_live || (new Date(j.commence_time) < new Date() && !j.is_finished && j.status_code === 'STATUS_IN_PROGRESS');
+      const finished = j.is_finished || j.status === 'Match Finished' || j.status === 'FT' || j.status_code === 'STATUS_FINAL';
       const o       = j.odds || {};
       const temEmpate = o.draw != null;
       const card    = document.createElement('div');
@@ -1600,7 +1611,7 @@ async function carregarAoVivo(){
 function chipLiga(el){
   document.querySelectorAll('.liga-chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
-  carregarTabela(el.dataset.league,el.dataset.season||'',el.textContent.trim());
+  carregarTabela(el.dataset.league,el.textContent.trim());
 }
 function zoneClass(desc){
   if(!desc)return'';
@@ -1614,15 +1625,14 @@ function formDots(form){
   if(!form)return'';
   return form.split('').slice(-5).map(c=>'<span class="fc '+(c==='W'?'W':c==='D'?'D':'L')+'">'+c+'</span>').join('');
 }
-async function carregarTabela(league,season,titulo){
+async function carregarTabela(league,titulo){
   const box=document.getElementById('tabela-box');
   const tit=document.getElementById('tabela-titulo');
   box.innerHTML='<div class="loading-center"><div class="spinner2"></div>Carregando tabela...</div>';
   if(tit)tit.textContent=(titulo||'Tabela').replace(/^[\p{Emoji}\s]+/u,'').trim();
   try{
-    // Usa nova rota TheSportsDB (gratuita, sem key)
-    const qs=season?`league=${league}&season=${season}`:`league=${league}`;
-    const r=await fetch(BASE+'/api/bet/tabela?'+qs);
+    // ESPN API — dados completos (20 times) sem necessidade de season
+    const r=await fetch(BASE+'/api/bet/tabela?league='+league);
     const d=await r.json();
     if(!d.success||!d.standings||!d.standings.length){
       box.innerHTML='<div class="loading-center">⚠️ Dados não disponíveis para esta liga agora.<br><small style="color:var(--muted)">Tente outra liga ou aguarde.</small></div>';return;
@@ -1668,7 +1678,7 @@ async function carregarTabela(league,season,titulo){
       '</div>';
   }catch(e){
     console.warn('[carregarTabela]',e);
-    box.innerHTML='<div class="loading-center">⚠️ Erro ao carregar. <button onclick="carregarTabela(\'' + league + '\',\''+season+'\',\''+titulo+'\')" style="background:var(--blue);border:none;color:#fff;padding:5px 14px;border-radius:8px;cursor:pointer;margin-left:8px">Tentar novamente</button></div>';
+    box.innerHTML='<div class="loading-center">⚠️ Erro ao carregar. <button onclick="carregarTabela(\'' + league + '\',\''+titulo+'\')" style="background:var(--blue);border:none;color:#fff;padding:5px 14px;border-radius:8px;cursor:pointer;margin-left:8px">Tentar novamente</button></div>';
   }
 }
 
