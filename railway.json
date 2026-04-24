@@ -2,13 +2,13 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "rebuildTimestamp": "20260423180000",
-    "forceBust": "feat-bot3-paypix2-20260423180000",
+    "rebuildTimestamp": "20260424124757",
+    "forceBust": "v20250427z-assinatura-parceiro-20260424124757",
     "args": {
-      "REBUILD_TS": "20260423180000",
-      "FORCE_BUST": "feat-bot3-mp3-paypix2-20260423180000"
+      "REBUILD_TS": "20260424124757",
+      "FORCE_BUST": "v20250427z-assinatura-parceiro-20260424124757"
     },
-    "_ts": "20260423180000"
+    "_ts": "20260424124757"
   },
   "deploy": {
     "startCommand": "bash start.sh",
@@ -17,9 +17,9 @@
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5
   },
-  "_rebuild": "20260423180000",
-  "rebuildTimestamp": 1776102118999,
+  "_rebuild": "20260424124757",
+  "rebuildTimestamp": 1777034877300,
   "forceRebuild": true,
-  "bust": "feat-bot3-paypix2-1776102118999",
-  "_forceNew": "20260423180000"
+  "bust": "v20250427z-20260424124757",
+  "_forceNew": "20260424124757"
 }
