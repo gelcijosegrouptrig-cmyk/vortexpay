@@ -4586,10 +4586,14 @@ async def route_health(request):
         'mp2_ambiente': mp2_ambiente,
         'watchdog': 'ativo',
         'webhook': '/webhook/mp2',
-        # Bet system
+        # Bet system — mostra primeiros 6 chars para debug (sem expor chave)
         'bet_routes': ['/apostas', '/conta', '/api/bet/jogos', '/api/bet/deposito', '/webhook/suitpay'],
         'odds_configurado': bool(os.environ.get('ODDS_API_KEY','')),
+        'odds_key_preview': (os.environ.get('ODDS_API_KEY','')[:6] + '...' if os.environ.get('ODDS_API_KEY','') else 'NÃO CONFIGURADA'),
         'suitpay_configurado': bool(os.environ.get('SUITPAY_CI','')),
+        'suitpay_ci_preview': (os.environ.get('SUITPAY_CI','')[:8] + '...' if os.environ.get('SUITPAY_CI','') else 'NÃO CONFIGURADA'),
+        'suit_ci_parsed': _SUIT_CI[:4] + '...' if _SUIT_CI else 'vazio',
+        'suit_cs_parsed': _SUIT_CS[:6] + '...' if _SUIT_CS else 'vazio',
         # Mantém compatibilidade retroativa
         'telegram': False,
         'telegram_motivo': None,
