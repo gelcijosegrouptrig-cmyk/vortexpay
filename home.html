@@ -718,9 +718,14 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
           <div class="msg-box err" id="dep-err"></div>
           <div class="msg-box ok" id="dep-ok"></div>
           <div id="pix-display" style="display:none;margin-top:14px;text-align:center">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Chave Pix Copia e Cola:</div>
-            <div id="pix-key" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;word-break:break-all;color:var(--muted2)"></div>
-            <button onclick="copiarPix()" style="margin-top:8px;background:var(--green);border:none;color:#000;font-weight:700;padding:8px 20px;border-radius:8px;cursor:pointer">📋 Copiar</button>
+            <div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:10px">✅ PIX gerado! Pague no seu banco.</div>
+            <div id="pix-qr-wrap" style="display:none;margin-bottom:12px">
+              <img id="pix-qr-img" src="" alt="QR Code PIX" style="width:180px;height:180px;border-radius:12px;border:3px solid var(--green)">
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Pix Copia e Cola:</div>
+            <div id="pix-key" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;word-break:break-all;color:var(--muted2);text-align:left"></div>
+            <button onclick="copiarPix()" style="margin-top:10px;background:var(--green);border:none;color:#000;font-weight:700;padding:10px 28px;border-radius:8px;cursor:pointer;width:100%;font-size:14px">📋 Copiar código PIX</button>
+            <div id="pix-expira" style="margin-top:8px;font-size:11px;color:var(--muted)"></div>
           </div>
         </div>
         <div class="conta-card">
@@ -1822,24 +1827,60 @@ async function fazerDeposito(){
   const u=loadSession();if(!u){openModal('login');return}
   const val=parseFloat(document.getElementById('dep-valor').value);
   if(!val||val<10){showMsgEl('dep-err','Valor mínimo de depósito é R$ 10,00.',true);return}
+  // Esconder display anterior e mostrar loading
+  document.getElementById('pix-display').style.display='none';
+  showMsgEl('dep-ok','⏳ Gerando PIX...', false);
+  showMsgEl('dep-err','',false);
   try{
+    const body={usuario_id:u.id, valor:val, nome:u.nome||'Cliente'};
+    if(u.cpf) body.cpf=u.cpf; // enviar CPF se disponível na sessão
     const r=await fetch(BASE+'/api/bet/deposito',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({usuario_id:u.id,valor:val})});
+      body:JSON.stringify(body)});
     const d=await r.json();
-    if(d.error){showMsgEl('dep-err',d.error,true);return}
-    if(d.pix_key||d.copia_cola||d.pix||d.codigo){
-      const key=d.pix_key||d.copia_cola||d.pix||d.codigo;
-      document.getElementById('pix-key').textContent=key;
+    showMsgEl('dep-ok','',false);
+    if(!d.success){
+      const msg=d.error||'Erro ao gerar PIX. Tente novamente.';
+      showMsgEl('dep-err',msg,true);
+      return;
+    }
+    // Pegar código copia-e-cola: SuitPay retorna campo 'qrCode'
+    const pixKey=d.qrCode||d.pix_key||d.copia_cola||d.pix||d.codigo||'';
+    // Pegar QR Code base64: SuitPay retorna campo 'qrImage'
+    const qrImg=d.qrImage||d.paymentCodeBase64||d.qrCodeImage||'';
+    if(pixKey){
+      document.getElementById('pix-key').textContent=pixKey;
+      // Exibir QR Code visual se disponível
+      if(qrImg){
+        const imgEl=document.getElementById('pix-qr-img');
+        imgEl.src='data:image/png;base64,'+qrImg;
+        document.getElementById('pix-qr-wrap').style.display='block';
+      } else {
+        document.getElementById('pix-qr-wrap').style.display='none';
+      }
+      // Mostrar expiração
+      if(d.expira){
+        document.getElementById('pix-expira').textContent='Expira em: '+new Date(d.expira).toLocaleString('pt-BR');
+      }
       document.getElementById('pix-display').style.display='block';
-      showMsgEl('dep-ok','PIX gerado! Copie o código abaixo e pague no seu banco.',false);
+      showMsgEl('dep-ok','✅ PIX gerado! Copie o código ou escaneie o QR Code.',false);
     } else {
+      // Fallback: API retornou success mas sem código (raro)
       showMsgEl('dep-ok','Depósito registrado! Aguarde a confirmação.',false);
     }
   }catch(e){showMsgEl('dep-err','Falha ao conectar. Tente novamente.',true)}
 }
 function copiarPix(){
   const key=document.getElementById('pix-key').textContent;
-  navigator.clipboard.writeText(key).then(()=>{showMsgEl('dep-ok','Copiado! ✅',false)}).catch(()=>{showMsgEl('dep-err','Não foi possível copiar.',true)});
+  if(!key){showMsgEl('dep-err','Nenhum PIX gerado ainda.',true);return}
+  navigator.clipboard.writeText(key)
+    .then(()=>{showMsgEl('dep-ok','✅ Copiado! Cole no seu app bancário.',false)})
+    .catch(()=>{
+      // Fallback para browsers sem clipboard API
+      const ta=document.createElement('textarea');
+      ta.value=key;document.body.appendChild(ta);ta.select();
+      document.execCommand('copy');document.body.removeChild(ta);
+      showMsgEl('dep-ok','✅ Copiado!',false);
+    });
 }
 
 /* ══ SAQUE ══ */
