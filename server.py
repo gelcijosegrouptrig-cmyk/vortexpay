@@ -10240,8 +10240,9 @@ async def route_tsdb_tabela(request):
 
     cached = _espn_table_cache.get(cache_key)
     if cached and agora - cached['ts'] < _ESPN_TTL:
-        return web.json_response({'success': True, 'standings': cached['data'],
-                                  'league': league_name, 'from_cache': True})
+        resp = dict(cached['data']) if isinstance(cached['data'], dict) else {'success': True, 'standings': cached['data'], 'league': league_name}
+        resp['from_cache'] = True
+        return web.json_response(resp)
 
     url = f'{_ESPN_STANDINGS_BASE}/{espn_slug}/standings'
     try:
@@ -10252,11 +10253,17 @@ async def route_tsdb_tabela(request):
                     return web.json_response({'success': False, 'standings': [], 'error': 'Sem dados'})
                 d = _json.loads(raw)
 
-        rows = []
-        rank = 1
         children = d.get('children', [])
+        multi_group = len(children) > 1  # Copa tem múltiplos grupos
+
+        grupos = []
+        all_rows = []
+
         for grp in children:
+            grp_name = grp.get('name', '')
             entries = grp.get('standings', {}).get('entries', [])
+            grp_rows = []
+            rank = 1
             for entry in entries:
                 team = entry.get('team', {})
                 stats_list = entry.get('stats', [])
@@ -10268,7 +10275,7 @@ async def route_tsdb_tabela(request):
 
                 gf = int(stats.get('pointsFor', 0) or 0)
                 ga = int(stats.get('pointsAgainst', 0) or 0)
-                rows.append({
+                row = {
                     'rank':    rank,
                     'name':    team.get('displayName', team.get('name', '')),
                     'logo':    logo,
@@ -10282,11 +10289,23 @@ async def route_tsdb_tabela(request):
                     'gd':      gf - ga,
                     'form':    '',
                     'description': '',
-                })
+                }
+                grp_rows.append(row)
+                all_rows.append(row)
                 rank += 1
 
-        _espn_table_cache[cache_key] = {'ts': agora, 'data': rows}
-        return web.json_response({'success': True, 'standings': rows, 'league': league_name})
+            if grp_rows:
+                grupos.append({'name': grp_name, 'rows': grp_rows})
+
+        result_data = {
+            'success': True,
+            'standings': all_rows,
+            'league': league_name,
+            'grupos': grupos if multi_group else [],
+            'has_groups': multi_group,
+        }
+        _espn_table_cache[cache_key] = {'ts': agora, 'data': result_data}
+        return web.json_response(result_data)
     except Exception as e:
         print(f'[espn/tabela] err league={league_param} slug={espn_slug}: {e}', flush=True)
         return web.json_response({'success': False, 'standings': [], 'error': str(e)})

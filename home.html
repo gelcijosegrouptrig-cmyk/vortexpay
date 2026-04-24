@@ -253,6 +253,13 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 .c-form{display:flex;gap:2px;justify-content:flex-end}
 .fc{width:13px;height:13px;border-radius:2px;font-size:7px;font-weight:900;
   display:flex;align-items:center;justify-content:center}
+/* tabela grupos em 2 colunas → 1 coluna em mobile */
+.grupos-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:640px){
+  .grupos-grid{grid-template-columns:1fr}
+  .t-head,.t-row{grid-template-columns:28px 1fr 26px 26px 26px 26px 32px 42px;padding:7px 8px;font-size:11px}
+  .tn{font-size:11px}
+}
 .fc.W{background:#22c55e18;color:var(--green);border:1px solid #22c55e33}
 .fc.D{background:#44444418;color:#777;border:1px solid #44444433}
 .fc.L{background:#ef444418;color:var(--red);border:1px solid #ef444433}
@@ -1637,55 +1644,76 @@ async function carregarTabela(league,titulo){
     if(!d.success||!d.standings||!d.standings.length){
       box.innerHTML='<div class="loading-center">⚠️ Dados não disponíveis para esta liga agora.<br><small style="color:var(--muted)">Tente outra liga ou aguarde.</small></div>';return;
     }
-    const rows=d.standings;
     if(tit)tit.textContent=(d.league||titulo||'Tabela');
-    box.innerHTML='<div class="tabela-wrap">'+
-      '<div class="t-head"><div>#</div><div>Time</div>'+
-      '<div style="text-align:center" title="Jogos">J</div>'+
-      '<div style="text-align:center" title="Vitórias">V</div>'+
-      '<div style="text-align:center" title="Empates">E</div>'+
-      '<div style="text-align:center" title="Derrotas">D</div>'+
-      '<div style="text-align:center" title="Saldo de Gols">SG</div>'+
-      '<div style="text-align:center" title="Pontos"><b>Pts</b></div>'+
-      '</div>'+
-      rows.map((t,i)=>{
-        const rCls=t.rank===1?'p1':t.rank===2?'p2':t.rank===3?'p3':'';
-        // Zonas de classificação inteligente por tamanho da liga
-        let zc='';
-        const n=rows.length;
-        if(n>=20){
-          // Liga grande (20 times): 4 Copa, 2 Europa, 4 rebaixados
-          if(t.rank<=4) zc='z-cl';
-          else if(t.rank<=6) zc='z-el';
-          else if(t.rank>n-4) zc='z-rl';
-        }else if(n>=16){
-          // Liga média (16-19 times): 4 Copa, 2 Europa, 3 rebaixados
-          if(t.rank<=4) zc='z-cl';
-          else if(t.rank<=6) zc='z-el';
-          else if(t.rank>n-3) zc='z-rl';
-        }else if(n>=8){
-          // Copa/Libertadores com grupos: top 2 avançam, 3-4 repescagem
-          if(t.rank<=2) zc='z-cl';
-          else if(t.rank<=4) zc='z-el';
-        }
-        const lo=t.logo?'<img class="tl" src="'+t.logo+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">':'';
-        const sgTxt=(t.gd>=0?'+':'')+t.gd;
-        return'<div class="t-row '+zc+'">'+
-          '<div class="c-rank '+rCls+'">'+t.rank+'</div>'+
-          '<div class="c-team">'+lo+'<span class="tn">'+t.name+'</span></div>'+
-          '<div class="c-n">'+t.played+'</div>'+
-          '<div class="c-n">'+t.won+'</div>'+
-          '<div class="c-n">'+t.draw+'</div>'+
-          '<div class="c-n">'+t.lost+'</div>'+
-          '<div class="c-n">'+sgTxt+'</div>'+
-          '<div class="c-pts">'+t.points+'</div>'+
-          '</div>';
-      }).join('')+'</div>'+
-      '<div style="padding:8px 12px;font-size:10px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap">'+
+    // Função helper para renderizar uma tabela de grupo
+    function renderGrpTable(rows, isGroup){
+      const n=rows.length;
+      return '<div class="tabela-wrap">'+
+        '<div class="t-head"><div>#</div><div>Time</div>'+
+        '<div style="text-align:center" title="Jogos">J</div>'+
+        '<div style="text-align:center" title="Vitórias">V</div>'+
+        '<div style="text-align:center" title="Empates">E</div>'+
+        '<div style="text-align:center" title="Derrotas">D</div>'+
+        '<div style="text-align:center" title="Saldo de Gols">SG</div>'+
+        '<div style="text-align:center" title="Pontos"><b>Pts</b></div>'+
+        '</div>'+
+        rows.map((t)=>{
+          const rCls=t.rank===1?'p1':t.rank===2?'p2':t.rank===3?'p3':'';
+          let zc='';
+          if(isGroup){
+            // Grupos de Copa: top 2 avançam, 3o repescagem
+            if(t.rank<=2) zc='z-cl';
+            else if(t.rank===3) zc='z-el';
+          }else if(n>=20){
+            if(t.rank<=4) zc='z-cl';
+            else if(t.rank<=6) zc='z-el';
+            else if(t.rank>n-4) zc='z-rl';
+          }else if(n>=16){
+            if(t.rank<=4) zc='z-cl';
+            else if(t.rank<=6) zc='z-el';
+            else if(t.rank>n-3) zc='z-rl';
+          }
+          const lo=t.logo?'<img class="tl" src="'+t.logo+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">':'';
+          const sgTxt=(t.gd>=0?'+':'')+t.gd;
+          return'<div class="t-row '+zc+'">'+
+            '<div class="c-rank '+rCls+'">'+t.rank+'</div>'+
+            '<div class="c-team">'+lo+'<span class="tn">'+t.name+'</span></div>'+
+            '<div class="c-n">'+t.played+'</div>'+
+            '<div class="c-n">'+t.won+'</div>'+
+            '<div class="c-n">'+t.draw+'</div>'+
+            '<div class="c-n">'+t.lost+'</div>'+
+            '<div class="c-n">'+sgTxt+'</div>'+
+            '<div class="c-pts">'+t.points+'</div>'+
+            '</div>';
+        }).join('')+'</div>';
+    }
+
+    let html='';
+    if(d.has_groups && d.grupos && d.grupos.length>1){
+      // Exibir grupos separados (Libertadores, Sul-Americana)
+      html+='<div class="grupos-grid">';
+      d.grupos.forEach(g=>{
+        html+='<div>';
+        html+='<div style="font-size:11px;font-weight:700;color:var(--blue2);padding:4px 2px;margin-bottom:4px">'+g.name+'</div>';
+        html+=renderGrpTable(g.rows, true);
+        html+='</div>';
+      });
+      html+='</div>';
+      html+='<div style="padding:8px 12px;font-size:10px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;margin-top:6px">'+
+        '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;margin-right:4px"></span>Avança</span>'+
+        '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:4px"></span>Repescagem</span>'+
+        '</div>';
+    }else{
+      // Liga normal — tabela única
+      const rows=d.standings;
+      html+=renderGrpTable(rows, false);
+      html+='<div style="padding:8px 12px;font-size:10px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap">'+
         '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;margin-right:4px"></span>Classificação para Copa</span>'+
         '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:4px"></span>Zona de Perigo</span>'+
         '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:4px"></span>Rebaixamento</span>'+
-      '</div>';
+        '</div>';
+    }
+    box.innerHTML=html;
   }catch(e){
     console.warn('[carregarTabela]',e);
     box.innerHTML='<div class="loading-center">⚠️ Erro ao carregar. <button onclick="carregarTabela(\'' + league + '\',\''+titulo+'\')" style="background:var(--blue);border:none;color:#fff;padding:5px 14px;border-radius:8px;cursor:pointer;margin-left:8px">Tentar novamente</button></div>';
