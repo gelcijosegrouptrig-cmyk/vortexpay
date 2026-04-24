@@ -4579,7 +4579,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20250428i-fullscreen-grid',
+        'version': 'v20250428j-logos-dbfix',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -10186,15 +10186,23 @@ async def route_bet_deposito(request):
 # ███  BET — Fases 3-7: Apostar / Sacar / Auth / Páginas  ███
 # ═══════════════════════════════════════════════════════════════════════════
 
+# URL de fallback hardcoded para garantir funcionamento
+_BET_DB_URL_FALLBACK = 'postgresql://postgres:EfJgSbrAkQbFlQJWdxIpIZftseKsDVKs@metro.proxy.rlwy.net:53914/railway'
+
 async def _bet_db():
-    """Retorna conexão psycopg2 ou None"""
-    if not DATABASE_URL:
-        return None
-    try:
-        return psycopg2.connect(DATABASE_URL)
-    except Exception as e:
-        print(f'[bet_db] erro: {e}', flush=True)
-        return None
+    """Retorna conexão psycopg2 ou None — tenta DATABASE_URL env var e fallback hardcoded"""
+    # Tenta 1: DATABASE_URL do ambiente (Railway injeta automaticamente)
+    for db_url in [DATABASE_URL, _BET_DB_URL_FALLBACK]:
+        if not db_url:
+            continue
+        try:
+            conn = psycopg2.connect(db_url, connect_timeout=10)
+            conn.autocommit = False
+            return conn
+        except Exception as e:
+            print(f'[bet_db] ERRO ({db_url[:30]}...): {type(e).__name__}: {e}', flush=True)
+    print('[bet_db] ERRO: todas as tentativas de conexão falharam', flush=True)
+    return None
 
 # ── FASE 3: Auth / Login por CPF ──────────────────────────────────────────
 
@@ -10501,9 +10509,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .jogo-liga{font-size:11px;color:#555;flex:1}
 .jogo-hora{font-size:11px;color:#666}
 .live-tag{background:#ef444418;color:#ef4444;border:1px solid #ef444433;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700}
-.jogo-times{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.time-nome{font-size:14px;font-weight:800;color:#fff;max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.placar{font-size:13px;font-weight:700;color:#888;text-align:center}
+.jogo-times{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:6px}
+.time-bloco{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0}
+.time-bloco.away{align-items:flex-end}
+.time-escudo{width:36px;height:36px;border-radius:50%;object-fit:contain;background:#1a1a2e;padding:3px;border:1px solid #ffffff12;flex-shrink:0}
+.time-nome{font-size:13px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center}
+.time-bloco.away .time-nome{text-align:right}
+.placar{font-size:11px;font-weight:700;color:#555;text-align:center;flex-shrink:0;padding:0 4px}
 .jogo-odds{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 .jogo-odds.no-draw{grid-template-columns:1fr 1fr}
 .odd-btn{background:#0d1120;border:1px solid #3b82f622;border-radius:10px;padding:8px 6px;text-align:center;cursor:pointer;transition:all .15s}
@@ -10710,6 +10722,100 @@ function atualizarSaldo() {
   }
 }
 
+// ── Logos dos times ──
+const _LOGOS = {
+  // Brasileirão Série A
+  'Bahia':          'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Esporte_Clube_Bahia_logo.svg/120px-Esporte_Clube_Bahia_logo.svg.png',
+  'Santos':         'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Santos_FC_logo.svg/120px-Santos_FC_logo.svg.png',
+  'Botafogo':       'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Botafogo_de_Futebol_e_Regatas_logo.svg/120px-Botafogo_de_Futebol_e_Regatas_logo.svg.png',
+  'Internacional':  'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Sport_Club_Internacional.svg/120px-Sport_Club_Internacional.svg.png',
+  'Remo':           'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Clube_do_Remo.svg/120px-Clube_do_Remo.svg.png',
+  'Cruzeiro':       'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Cruzeiro_Esporte_Clube_logo.svg/120px-Cruzeiro_Esporte_Clube_logo.svg.png',
+  'Sao Paulo':      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Coat_of_arms_of_S%C3%A3o_Paulo_FC.svg/120px-Coat_of_arms_of_S%C3%A3o_Paulo_FC.svg.png',
+  'São Paulo':      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Coat_of_arms_of_S%C3%A3o_Paulo_FC.svg/120px-Coat_of_arms_of_S%C3%A3o_Paulo_FC.svg.png',
+  'Mirassol':       'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Mirassol_FC.png/120px-Mirassol_FC.png',
+  'Flamengo':       'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Flamengo_logo.svg/120px-Flamengo_logo.svg.png',
+  'Fluminense':     'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Fluminense_logo.svg/120px-Fluminense_logo.svg.png',
+  'Palmeiras':      'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Palmeiras_logo.svg/120px-Palmeiras_logo.svg.png',
+  'Atletico Mineiro': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Atletico_mineiro_galo.png/120px-Atletico_mineiro_galo.png',
+  'Atletico-MG':    'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Atletico_mineiro_galo.png/120px-Atletico_mineiro_galo.png',
+  'Corinthians':    'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Corinthians_logo.png/120px-Corinthians_logo.png',
+  'Gremio':         'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Gr%C3%AAmio_FBPA_logo.svg/120px-Gr%C3%AAmio_FBPA_logo.svg.png',
+  'Grêmio':         'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Gr%C3%AAmio_FBPA_logo.svg/120px-Gr%C3%AAmio_FBPA_logo.svg.png',
+  'Vasco':          'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/CR_Vasco_da_Gama_logo.svg/120px-CR_Vasco_da_Gama_logo.svg.png',
+  'Atletico Goianiense': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Atletico_Goianiense.svg/120px-Atletico_Goianiense.svg.png',
+  'Fortaleza':      'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Fortaleza_EC_escudo.svg/120px-Fortaleza_EC_escudo.svg.png',
+  'Ceara':          'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Ceará_SC_logo.svg/120px-Ceará_SC_logo.svg.png',
+  'Sport':          'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Sport_Club_Recife.svg/120px-Sport_Club_Recife.svg.png',
+  'Juventude':      'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Esporte_Clube_Juventude.svg/120px-Esporte_Clube_Juventude.svg.png',
+  'Red Bull Bragantino': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Red_Bull_Bragantino_logo.svg/120px-Red_Bull_Bragantino_logo.svg.png',
+  'Bragantino':     'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Red_Bull_Bragantino_logo.svg/120px-Red_Bull_Bragantino_logo.svg.png',
+  // Copa Libertadores
+  'Libertad Asuncion': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Club_Libertad_logo.svg/120px-Club_Libertad_logo.svg.png',
+  'Independiente del Valle': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Independiente_del_Valle_logo.svg/120px-Independiente_del_Valle_logo.svg.png',
+  'Lanus':          'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Club_Atlético_Lanús_logo.svg/120px-Club_Atlético_Lanús_logo.svg.png',
+  'LDU Quito':      'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/LDU_de_Quito_logo.svg/120px-LDU_de_Quito_logo.svg.png',
+  'UCV FC':         'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Academia_C%C3%A9sar_Vallejo_logo.svg/120px-Academia_C%C3%A9sar_Vallejo_logo.svg.png',
+  'Rosario Central':'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Rosario_Central_logo.svg/120px-Rosario_Central_logo.svg.png',
+  'Boca Juniors':   'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Club_Atlético_Boca_Juniors_logo.svg/120px-Club_Atlético_Boca_Juniors_logo.svg.png',
+  'River Plate':    'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/River_Plate_crest.svg/120px-River_Plate_crest.svg.png',
+  'Nacional':       'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Club_Nacional_de_Football_logo.svg/120px-Club_Nacional_de_Football_logo.svg.png',
+  'Penarol':        'https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Ca_pe%C3%B1arol.svg/120px-Ca_pe%C3%B1arol.svg.png',
+  // Champions League
+  'Manchester City':  'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Manchester_City_FC_badge.svg/120px-Manchester_City_FC_badge.svg.png',
+  'Real Madrid':      'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Real_Madrid_CF_logo.svg/120px-Real_Madrid_CF_logo.svg.png',
+  'Barcelona':        'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/FC_Barcelona_%28crest%29.svg/120px-FC_Barcelona_%28crest%29.svg.png',
+  'Bayern Munich':    'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/FC_Bayern_München_logo_%282002%E2%80%932017%29.svg/120px-FC_Bayern_München_logo_%282002%E2%80%932017%29.svg.png',
+  'Paris Saint Germain': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Paris_Saint-Germain_F.C..svg/120px-Paris_Saint-Germain_F.C..svg.png',
+  'PSG':              'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Paris_Saint-Germain_F.C..svg/120px-Paris_Saint-Germain_F.C..svg.png',
+  'Atletico Madrid':  'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Atletico_Madrid_2017_logo.svg/120px-Atletico_Madrid_2017_logo.svg.png',
+  'Chelsea':          'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Chelsea_FC.svg/120px-Chelsea_FC.svg.png',
+  'Arsenal':          'https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Arsenal_FC.svg/120px-Arsenal_FC.svg.png',
+  'Liverpool':        'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Liverpool_FC.svg/120px-Liverpool_FC.svg.png',
+  'Juventus':         'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Juventus_FC_2017_logo.svg/120px-Juventus_FC_2017_logo.svg.png',
+  'Inter Milan':      'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/FC_Internazionale_Milano_2021.svg/120px-FC_Internazionale_Milano_2021.svg.png',
+  'AC Milan':         'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Logo_of_AC_Milan.svg/120px-Logo_of_AC_Milan.svg.png',
+  'Borussia Dortmund':'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Borussia_Dortmund_logo.svg/120px-Borussia_Dortmund_logo.svg.png',
+  'Tottenham':        'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Tottenham_Hotspur.svg/120px-Tottenham_Hotspur.svg.png',
+  'Manchester United':'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Manchester_United_FC_crest.svg/120px-Manchester_United_FC_crest.svg.png',
+  // NBA
+  'Los Angeles Lakers':'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Los_Angeles_Lakers_logo.svg/120px-Los_Angeles_Lakers_logo.svg.png',
+  'Golden State Warriors':'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Golden_state_warriors_logo.png/120px-Golden_state_warriors_logo.png',
+  'Boston Celtics':   'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Boston_Celtics.svg/120px-Boston_Celtics.svg.png',
+  'Miami Heat':       'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Miami_Heat_Logo.svg/120px-Miami_Heat_Logo.svg.png',
+};
+
+function getTeamLogo(teamName) {
+  if (!teamName) return null;
+  // Busca exata
+  if (_LOGOS[teamName]) return _LOGOS[teamName];
+  // Busca parcial (case insensitive)
+  const lower = teamName.toLowerCase();
+  for (const [key, url] of Object.entries(_LOGOS)) {
+    if (lower.includes(key.toLowerCase()) || key.toLowerCase().includes(lower.split(' ')[0].toLowerCase())) {
+      return url;
+    }
+  }
+  // Fallback: emoji baseado no nome
+  return null;
+}
+
+function teamInitials(name) {
+  if (!name) return '?';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) return words[0].substring(0,3).toUpperCase();
+  return (words[0][0] + (words[words.length-1][0] || '')).toUpperCase();
+}
+
+function teamBadgeHtml(name, isHome) {
+  const logo = getTeamLogo(name);
+  if (logo) {
+    return `<img class="time-escudo" src="${logo}" alt="${name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <span class="time-initials" style="display:none;width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;font-size:11px;font-weight:900;align-items:center;justify-content:center;flex-shrink:0">${teamInitials(name)}</span>`;
+  }
+  return `<span class="time-initials" style="display:flex;width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;font-size:11px;font-weight:900;align-items:center;justify-content:center;flex-shrink:0">${teamInitials(name)}</span>`;
+}
+
 // ── Jogos / Odds ──
 async function carregarJogos(sport) {
   const lista = document.getElementById('jogos-lista');
@@ -10738,9 +10844,15 @@ async function carregarJogos(sport) {
           ${live ? '<span class="live-tag">● AO VIVO</span>' : `<span class="jogo-hora">${hora}</span>`}
         </div>
         <div class="jogo-times">
-          <span class="time-nome">${j.home_team}</span>
-          <span class="placar">${live ? 'AO VIVO' : 'VS'}</span>
-          <span class="time-nome" style="text-align:right">${j.away_team}</span>
+          <div class="time-bloco">
+            ${teamBadgeHtml(j.home_team, true)}
+            <span class="time-nome">${j.home_team}</span>
+          </div>
+          <span class="placar">${live ? '<span style="color:#ef4444;font-size:12px;font-weight:900">AO VIVO</span>' : 'VS'}</span>
+          <div class="time-bloco away">
+            ${teamBadgeHtml(j.away_team, false)}
+            <span class="time-nome">${j.away_team}</span>
+          </div>
         </div>
         <div class="jogo-odds ${!temEmpate ? 'no-draw' : ''}">
           ${o.home != null ? `<div class="odd-btn" id="odd-${j.id}-casa" onclick="selecionarOdd('${j.id}','${j.home_team}','Casa',${o.home},'${j.home_team} × ${j.away_team}')">
@@ -11391,6 +11503,39 @@ async def route_bet_config(request):
         return web.json_response({'ok': False, 'error': str(e)})
 
 
+async def route_bet_dbcheck(request):
+    """GET /api/bet/dbcheck — diagnóstico de conexão DB"""
+    import time
+    results = []
+    urls_to_try = [
+        ('env_DATABASE_URL', DATABASE_URL),
+        ('fallback_hardcoded', _BET_DB_URL_FALLBACK),
+    ]
+    for label, url in urls_to_try:
+        if not url:
+            results.append({'url': label, 'status': 'vazio'})
+            continue
+        t0 = time.time()
+        try:
+            conn = psycopg2.connect(url, connect_timeout=8)
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM usuarios")
+            cnt_u = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM apostas")
+            cnt_a = cur.fetchone()[0]
+            cur.close(); conn.close()
+            ms = int((time.time()-t0)*1000)
+            results.append({'url': label, 'status': 'ok', 'ms': ms,
+                            'usuarios': cnt_u, 'apostas': cnt_a})
+            break
+        except Exception as e:
+            ms = int((time.time()-t0)*1000)
+            results.append({'url': label, 'status': 'erro', 'ms': ms,
+                            'erro': f'{type(e).__name__}: {str(e)[:120]}'})
+    return web.json_response({'ok': True, 'results': results,
+                              'DATABASE_URL_set': bool(os.environ.get('DATABASE_URL'))})
+
+
 async def route_bet_config_get(request):
     """GET /api/bet/config — retorna status das chaves (sem expor valores)"""
     secret = request.headers.get('X-PaynexBet-Secret','') or request.headers.get('x-paynexbet-secret','')
@@ -11503,6 +11648,7 @@ async def main():
     app.router.add_get('/api/bet/saldo/{usuario_id}', route_bet_saldo)
     app.router.add_post('/api/bet/apostar',     route_bet_apostar)
     app.router.add_post('/api/bet/sacar',       route_bet_sacar)
+    app.router.add_get('/api/bet/dbcheck',      route_bet_dbcheck)
     app.router.add_get('/apostas',              route_apostas_page)
     app.router.add_get('/apostas.html',         route_apostas_page)
     app.router.add_get('/conta',                route_conta_page)
