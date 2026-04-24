@@ -775,6 +775,18 @@ function toggleLoginSenha() {
         🤖 <span>Bot MP2</span>
         <span class="badge" id="badge-bot3" style="background:#555">OFF</span>
       </div> -->
+      <div class="nav-section">Gerenciamento</div>
+      <div class="nav-item" onclick="showTab('campeonatos')">
+        🏆 <span>Campeonatos</span>
+        <span class="badge" id="badge-ligas" style="background:#555">0</span>
+      </div>
+      <div class="nav-item" onclick="showTab('usuarios-mgr')">
+        👥 <span>Usuários</span>
+        <span class="badge" id="badge-users-mgr">0</span>
+      </div>
+      <div class="nav-item" onclick="showTab('config-pagamento')">
+        ⚙️ <span>Config Pagamento</span>
+      </div>
       <div class="nav-section">Desenvolvedores</div>
       <div class="nav-item" onclick="showTab('api')">
         🔌 <span>API & Webhooks</span>
@@ -1112,6 +1124,159 @@ function toggleLoginSenha() {
         <div class="pagination" id="pag-saq"></div>
       </div>
 
+      </div>
+
+      <!-- ═══ CAMPEONATOS ═══ -->
+      <div id="tab-campeonatos" class="tab-content">
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header" style="display:flex;justify-content:space-between;align-items:center">
+            <h3>🏆 Gerenciar Campeonatos / Ligas</h3>
+            <button onclick="loadLigas()" class="refresh-btn">🔄 Atualizar</button>
+          </div>
+          <div style="padding:12px 16px;background:rgba(255,107,53,0.08);border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)">
+            ⚠️ Suspender uma liga oculta seus jogos e impede novas apostas. A API de pagamento define qual gateway processa os depósitos desse campeonato.
+          </div>
+          <div id="ligas-loading" style="padding:32px;text-align:center;color:var(--text2)">
+            <div class="spinner" style="margin:0 auto 12px"></div>Carregando ligas...
+          </div>
+          <div id="ligas-grid" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- ═══ USUÁRIOS GERENCIADOR ═══ -->
+      <div id="tab-usuarios-mgr" class="tab-content">
+        <div class="table-card">
+          <div class="table-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <h3>👥 Gerenciar Usuários</h3>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input id="users-busca" type="text" placeholder="Buscar por nome ou CPF..."
+                style="background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:8px 12px;font-size:13px;width:200px;outline:none"
+                oninput="loadUsuariosMgr()">
+              <button onclick="loadUsuariosMgr()" class="refresh-btn">🔄</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>CPF</th>
+                  <th>Saldo</th>
+                  <th>Apostas</th>
+                  <th>Volume</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="table-usuarios-mgr">
+                <tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:12px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border)">
+            <span id="users-mgr-total" style="color:var(--text2);font-size:12px">— usuários</span>
+            <button onclick="usersPage(-1)" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:#fff;padding:4px 10px;cursor:pointer;font-size:12px">‹ Ant</button>
+            <span id="users-mgr-page" style="color:var(--text2);font-size:12px">Pág 1</span>
+            <button onclick="usersPage(1)" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:#fff;padding:4px 10px;cursor:pointer;font-size:12px">Prox ›</button>
+          </div>
+        </div>
+
+        <!-- Modal Ajuste Saldo -->
+        <div id="modal-ajuste" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:360px;max-width:95vw">
+            <h3 style="margin-bottom:16px">💰 Ajustar Saldo</h3>
+            <p style="color:var(--text2);font-size:13px;margin-bottom:16px" id="modal-user-info">Usuário: —</p>
+            <input type="number" id="modal-ajuste-valor" placeholder="Ex: 50 (crédito) ou -20 (débito)"
+              style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:10px 14px;font-size:14px;margin-bottom:10px;outline:none">
+            <input type="text" id="modal-ajuste-motivo" placeholder="Motivo (ex: Bônus de boas-vindas)"
+              style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:10px 14px;font-size:14px;margin-bottom:16px;outline:none">
+            <div style="display:flex;gap:10px">
+              <button onclick="confirmarAjuste()" style="flex:1;background:linear-gradient(135deg,#ff6b35,#f7931e);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;padding:12px;cursor:pointer">✅ Confirmar</button>
+              <button onclick="fecharModalAjuste()" style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:14px;padding:12px;cursor:pointer">Cancelar</button>
+            </div>
+            <div id="modal-ajuste-msg" style="margin-top:10px;font-size:13px;text-align:center"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ CONFIG PAGAMENTO ═══ -->
+      <div id="tab-config-pagamento" class="tab-content">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="section-grid">
+
+          <!-- SuitPay -->
+          <div class="table-card">
+            <div class="table-header"><h3>💳 SuitPay (PIX Principal)</h3></div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+              <div id="suitpay-status-badge" style="padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(74,222,128,0.1);color:var(--green);border:1px solid rgba(74,222,128,0.2)">
+                🔄 Verificando status...
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">CI Key</label>
+                <input type="text" id="suit-ci" placeholder="Client ID SuitPay"
+                  style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:10px 14px;font-size:13px;outline:none">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">CS Key</label>
+                <input type="text" id="suit-cs" placeholder="Client Secret SuitPay"
+                  style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:10px 14px;font-size:13px;outline:none">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Webhook URL</label>
+                <input type="text" id="suit-webhook" placeholder="https://paynexbet.com/webhook/suitpay"
+                  style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:10px 14px;font-size:13px;outline:none">
+              </div>
+              <button onclick="salvarSuitPay()" style="background:linear-gradient(135deg,#ff6b35,#f7931e);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;padding:12px;cursor:pointer">
+                💾 Salvar SuitPay
+              </button>
+              <div id="suitpay-msg" style="font-size:12px;text-align:center;color:var(--green)"></div>
+            </div>
+          </div>
+
+          <!-- Odds API -->
+          <div class="table-card">
+            <div class="table-header"><h3>📊 The Odds API</h3></div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+              <div id="odds-status-badge" style="padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(74,222,128,0.1);color:var(--green);border:1px solid rgba(74,222,128,0.2)">
+                🔄 Verificando status...
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">API Key (The Odds API)</label>
+                <input type="text" id="odds-key" placeholder="Chave API de odds"
+                  style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:10px 14px;font-size:13px;outline:none">
+              </div>
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;color:var(--text2)">
+                <strong style="color:var(--text)">Como obter:</strong><br>
+                1. Acesse <a href="https://the-odds-api.com" target="_blank" style="color:var(--blue)">the-odds-api.com</a><br>
+                2. Crie uma conta gratuita<br>
+                3. Copie sua API Key
+              </div>
+              <button onclick="salvarOddsKey()" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;padding:12px;cursor:pointer">
+                💾 Salvar Odds API Key
+              </button>
+              <div id="odds-msg" style="font-size:12px;text-align:center;color:var(--green)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resumo de config por liga -->
+        <div class="table-card">
+          <div class="table-header"><h3>🔧 API por Campeonato (Resumo)</h3></div>
+          <div style="padding:12px 16px;font-size:12px;color:var(--text2)">
+            Configure a API de pagamento de cada campeonato na aba <strong style="color:var(--orange)">Campeonatos</strong>.
+            Aqui você vê o resumo atual.
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>Campeonato</th><th>API Pagamento</th><th>Status</th><th>Ação</th></tr>
+              </thead>
+              <tbody id="table-liga-api-resumo">
+                <tr class="loading-row"><td colspan="4"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div id="tab-sistema" class="tab-content">
@@ -5945,22 +6110,28 @@ function showTab(tab) {
     paypixcob: '💳 PayPix-Cob',
     api: '🔌 API & Webhooks',
     bot2: '🤖 Bot Mercado Pago — @paypix_nexbot',
+    campeonatos: '🏆 Campeonatos',
+    'usuarios-mgr': '👥 Usuários',
+    'config-pagamento': '⚙️ Config Pagamento',
   };
   document.getElementById('page-title').textContent = titles[tab] || tab;
   fecharSidebar();
   if (tab === 'api') { initApiTab(); }
-  if (tab === 'depositos') loadDepositos();          // Sempre recarrega ao abrir aba
-  if (tab === 'saques') loadSaques();                // Sempre recarrega ao abrir aba
+  if (tab === 'depositos') loadDepositos();
+  if (tab === 'saques') loadSaques();
   if (tab === 'sorteio') carregarSorteioAdmin();
   if (tab === 'paypix') carregarPaypixAdmin();
   if (tab === 'paypixcob') carregarPaypixCobAdmin();
   if (tab === 'bot2') carregarBot2Admin();
   if (tab === 'bot3') carregarBot3Admin();
   if (tab === 'sistema') loadHealth();
+  if (tab === 'campeonatos') loadLigas();
+  if (tab === 'usuarios-mgr') loadUsuariosMgr();
+  if (tab === 'config-pagamento') { loadConfigPagamento(); loadLigaApiResumo(); }
 }
 
 function tabName(tab) {
-  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api', bot2:'mercado pago', bot3:'bot mp2', paypix:'paypix', paypixcob:'paypix-cob' };
+  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api', bot2:'mercado pago', bot3:'bot mp2', paypix:'paypix', paypixcob:'paypix-cob', campeonatos:'campeonato', 'usuarios-mgr':'usuários', 'config-pagamento':'config' };
   return map[tab] || tab;
 }
 
@@ -5982,6 +6153,309 @@ function toast(msg, type = 'success') {
   t.className = 'show ' + type;
   setTimeout(() => t.classList.remove('show'), 3000);
 }
+
+// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// CAMPEONATOS (LIGAS)
+// ═══════════════════════════════════════════════
+// Secret dinâmico (usa sessionStorage igual ao resto do admin)
+const ADMIN_SECRET = () => sessionStorage.getItem('vp_secret') || '';
+
+async function loadLigas() {
+  const grid = document.getElementById('ligas-grid');
+  const loading = document.getElementById('ligas-loading');
+  if (!grid) return;
+  loading.style.display = 'block'; grid.style.display = 'none';
+  try {
+    const r = await fetch('/api/admin/ligas', { headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() } });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    document.getElementById('badge-ligas').textContent = d.ligas.length;
+    const suspensas = d.ligas.filter(l => l.suspensa).length;
+    grid.innerHTML = d.ligas.map(l => `
+      <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);${l.suspensa ? 'background:rgba(248,113,113,0.05)' : ''}">
+        <div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px">${l.nome}</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--text2)">${l.categoria.toUpperCase()}</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;${l.suspensa ? 'background:rgba(248,113,113,0.2);color:#f87171' : 'background:rgba(74,222,128,0.2);color:#4ade80'}">${l.suspensa ? '⛔ Suspensa' : '✅ Ativa'}</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(96,165,250,0.2);color:var(--blue)">💳 ${l.api_pagamento}</span>
+            ${l.nota ? `<span style="font-size:11px;color:var(--yellow)">📝 ${l.nota}</span>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="api-sel-${l.key}" onchange="trocarApiLiga('${l.key}', this.value)"
+            style="background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:6px 8px;font-size:12px;cursor:pointer">
+            <option value="suitpay" ${l.api_pagamento==='suitpay'?'selected':''}>💳 SuitPay</option>
+            <option value="asaas" ${l.api_pagamento==='asaas'?'selected':''}>🟢 Asaas</option>
+            <option value="manual" ${l.api_pagamento==='manual'?'selected':''}>🔧 Manual</option>
+          </select>
+        </div>
+        <div>
+          <button onclick="toggleSuspenderLiga('${l.key}', ${!l.suspensa})"
+            style="padding:8px 14px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;${l.suspensa ? 'background:rgba(74,222,128,0.2);color:#4ade80' : 'background:rgba(248,113,113,0.2);color:#f87171'}">
+            ${l.suspensa ? '▶ Ativar' : '⛔ Suspender'}
+          </button>
+        </div>
+      </div>
+    `).join('') + `<div style="padding:12px 16px;font-size:12px;color:var(--text2)">
+      Total: ${d.ligas.length} ligas — Suspensas: <span style="color:#f87171;font-weight:700">${suspensas}</span> — Ativas: <span style="color:#4ade80;font-weight:700">${d.ligas.length - suspensas}</span>
+    </div>`;
+    loading.style.display = 'none'; grid.style.display = 'block';
+  } catch(e) {
+    loading.innerHTML = `<div style="color:var(--red)">❌ Erro: ${e.message}</div>`;
+  }
+}
+
+async function toggleSuspenderLiga(key, suspender) {
+  try {
+    const r = await fetch('/api/admin/ligas/suspender', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ liga_key: key, suspensa: suspender })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToastAdmin(d.msg, suspender ? 'red' : 'green');
+      loadLigas();
+    } else {
+      showToastAdmin('Erro: ' + d.error, 'red');
+    }
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+async function trocarApiLiga(key, api) {
+  try {
+    const r = await fetch('/api/admin/ligas/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ liga_key: key, api_pagamento: api })
+    });
+    const d = await r.json();
+    if (d.ok) showToastAdmin(`✅ API de ${key} → ${api}`, 'green');
+    else showToastAdmin('Erro: ' + d.error, 'red');
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+function showToastAdmin(msg, cor='green') {
+  let t = document.getElementById('toast-admin');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast-admin';
+    t.style.cssText = 'position:fixed;bottom:80px;right:20px;z-index:99999;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;max-width:320px;transition:opacity 0.3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = cor === 'green' ? '#16a34a' : cor === 'red' ? '#dc2626' : '#d97706';
+  t.style.color = '#fff';
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
+// ═══════════════════════════════════════════════
+// USUÁRIOS GERENCIADOR
+// ═══════════════════════════════════════════════
+let _usersMgrPage = 0;
+let _usersMgrAjusteId = null;
+
+async function loadUsuariosMgr() {
+  const busca = document.getElementById('users-busca')?.value || '';
+  const limit = 20;
+  const offset = _usersMgrPage * limit;
+  const tbody = document.getElementById('table-usuarios-mgr');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>';
+  try {
+    const params = new URLSearchParams({ limit, offset, secret: ADMIN_SECRET() });
+    if (busca) params.set('busca', busca);
+    const r = await fetch(`/api/admin/usuarios?${params}`);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    document.getElementById('badge-users-mgr').textContent = d.total;
+    document.getElementById('users-mgr-total').textContent = `${d.total} usuários`;
+    document.getElementById('users-mgr-page').textContent = `Pág ${_usersMgrPage + 1}`;
+    if (!d.usuarios.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text2)">Nenhum usuário encontrado</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.usuarios.map(u => `
+      <tr>
+        <td><span style="font-size:12px;color:var(--text2)">#${u.id}</span></td>
+        <td><strong>${u.nome || '—'}</strong></td>
+        <td><span style="font-size:11px;color:var(--text2)">${formatarCPF(u.cpf)}</span></td>
+        <td><span style="color:var(--green);font-weight:700">R$${u.saldo.toFixed(2)}</span></td>
+        <td><span style="color:var(--text2)">${u.total_apostas}</span></td>
+        <td><span style="color:var(--text2)">R$${u.volume_apostado.toFixed(2)}</span></td>
+        <td><span style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;${u.suspendido ? 'background:rgba(248,113,113,0.2);color:#f87171' : 'background:rgba(74,222,128,0.2);color:#4ade80'}">${u.suspendido ? '⛔ Suspenso' : '✅ Ativo'}</span></td>
+        <td>
+          <div style="display:flex;gap:4px">
+            <button onclick="abrirModalAjuste(${u.id}, '${(u.nome||'').replace(/'/g,"\\'")}', ${u.saldo})"
+              style="padding:4px 8px;background:rgba(255,107,53,0.2);border:1px solid rgba(255,107,53,0.4);border-radius:6px;color:#ff6b35;font-size:11px;cursor:pointer">💰</button>
+            <button onclick="suspenderUsuario(${u.id}, ${!u.suspendido})"
+              style="padding:4px 8px;background:${u.suspendido ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'};border:1px solid ${u.suspendido ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)'};border-radius:6px;color:${u.suspendido ? '#4ade80' : '#f87171'};font-size:11px;cursor:pointer">
+              ${u.suspendido ? '▶' : '⛔'}
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--red)">❌ ${e.message}</td></tr>`;
+  }
+}
+
+function usersPage(dir) {
+  _usersMgrPage = Math.max(0, _usersMgrPage + dir);
+  loadUsuariosMgr();
+}
+
+function formatarCPF(cpf) {
+  if (!cpf) return '—';
+  const n = cpf.replace(/\D/g,'');
+  if (n.length === 11) return n.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  return cpf;
+}
+
+function abrirModalAjuste(id, nome, saldo) {
+  _usersMgrAjusteId = id;
+  document.getElementById('modal-user-info').textContent = `Usuário #${id}: ${nome} — Saldo atual: R$${saldo.toFixed(2)}`;
+  document.getElementById('modal-ajuste-valor').value = '';
+  document.getElementById('modal-ajuste-motivo').value = '';
+  document.getElementById('modal-ajuste-msg').textContent = '';
+  const m = document.getElementById('modal-ajuste');
+  m.style.display = 'flex';
+}
+
+function fecharModalAjuste() {
+  document.getElementById('modal-ajuste').style.display = 'none';
+  _usersMgrAjusteId = null;
+}
+
+async function confirmarAjuste() {
+  const ajuste = parseFloat(document.getElementById('modal-ajuste-valor').value);
+  const motivo = document.getElementById('modal-ajuste-motivo').value.trim() || 'Ajuste manual admin';
+  const msgEl = document.getElementById('modal-ajuste-msg');
+  if (!_usersMgrAjusteId || isNaN(ajuste) || ajuste === 0) {
+    msgEl.textContent = '⚠️ Informe um valor válido (positivo para crédito, negativo para débito)';
+    msgEl.style.color = '#f87171'; return;
+  }
+  try {
+    msgEl.textContent = '⏳ Processando...'; msgEl.style.color = 'var(--text2)';
+    const r = await fetch('/api/admin/usuarios/ajustar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ usuario_id: _usersMgrAjusteId, ajuste, motivo })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      msgEl.textContent = `✅ Novo saldo: R$${d.saldo_novo.toFixed(2)}`;
+      msgEl.style.color = '#4ade80';
+      showToastAdmin(`✅ Saldo ajustado: ${d.nome} → R$${d.saldo_novo.toFixed(2)}`, 'green');
+      setTimeout(() => { fecharModalAjuste(); loadUsuariosMgr(); }, 1500);
+    } else {
+      msgEl.textContent = '❌ ' + d.error; msgEl.style.color = '#f87171';
+    }
+  } catch(e) { msgEl.textContent = '❌ ' + e.message; msgEl.style.color = '#f87171'; }
+}
+
+async function suspenderUsuario(id, suspender) {
+  try {
+    const r = await fetch('/api/admin/usuarios/suspender', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ usuario_id: id, suspendido: suspender })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToastAdmin(d.msg, suspender ? 'red' : 'green');
+      loadUsuariosMgr();
+    } else showToastAdmin('Erro: ' + d.error, 'red');
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+// ═══════════════════════════════════════════════
+// CONFIG PAGAMENTO
+// ═══════════════════════════════════════════════
+async function loadConfigPagamento() {
+  try {
+    const r = await fetch('/api/bet/config', { headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() } });
+    const d = await r.json();
+    if (!d.ok) return;
+    const suitBadge = document.getElementById('suitpay-status-badge');
+    const oddsBadge = document.getElementById('odds-status-badge');
+    if (suitBadge) {
+      const ok = d.suitpay_ci && d.suitpay_ci !== 'NÃO CONFIGURADO';
+      suitBadge.textContent = ok ? `✅ Configurada (${d.suitpay_ci})` : '⚠️ Não configurada';
+      suitBadge.style.background = ok ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)';
+      suitBadge.style.color = ok ? 'var(--green)' : 'var(--red)';
+      suitBadge.style.borderColor = ok ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)';
+    }
+    if (oddsBadge) {
+      const ok = d.odds_api_key && d.odds_api_key !== 'NÃO CONFIGURADA';
+      oddsBadge.textContent = ok ? `✅ Configurada (${d.odds_api_key})` : '⚠️ Não configurada';
+      oddsBadge.style.background = ok ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)';
+      oddsBadge.style.color = ok ? 'var(--green)' : 'var(--red)';
+      oddsBadge.style.borderColor = ok ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)';
+    }
+  } catch(e) { console.log('config err', e); }
+}
+
+async function salvarSuitPay() {
+  const ci = document.getElementById('suit-ci').value.trim();
+  const cs = document.getElementById('suit-cs').value.trim();
+  const msg = document.getElementById('suitpay-msg');
+  if (!ci || !cs) { msg.textContent = '⚠️ CI e CS são obrigatórios'; msg.style.color = '#f87171'; return; }
+  try {
+    msg.textContent = '⏳ Salvando...'; msg.style.color = 'var(--text2)';
+    const r = await fetch('/api/bet/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ suitpay_ci: ci, suitpay_cs: cs })
+    });
+    const d = await r.json();
+    if (d.ok) { msg.textContent = '✅ SuitPay salva!'; msg.style.color = '#4ade80'; loadConfigPagamento(); }
+    else { msg.textContent = '❌ ' + d.error; msg.style.color = '#f87171'; }
+  } catch(e) { msg.textContent = '❌ ' + e.message; msg.style.color = '#f87171'; }
+}
+
+async function salvarOddsKey() {
+  const key = document.getElementById('odds-key').value.trim();
+  const msg = document.getElementById('odds-msg');
+  if (!key) { msg.textContent = '⚠️ Informe a API Key'; msg.style.color = '#f87171'; return; }
+  try {
+    msg.textContent = '⏳ Salvando...'; msg.style.color = 'var(--text2)';
+    const r = await fetch('/api/bet/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ odds_api_key: key })
+    });
+    const d = await r.json();
+    if (d.ok) { msg.textContent = '✅ Odds API Key salva!'; msg.style.color = '#4ade80'; loadConfigPagamento(); }
+    else { msg.textContent = '❌ ' + d.error; msg.style.color = '#f87171'; }
+  } catch(e) { msg.textContent = '❌ ' + e.message; msg.style.color = '#f87171'; }
+}
+
+async function loadLigaApiResumo() {
+  const tbody = document.getElementById('table-liga-api-resumo');
+  if (!tbody) return;
+  try {
+    const r = await fetch('/api/admin/ligas', { headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() } });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    tbody.innerHTML = d.ligas.map(l => `
+      <tr>
+        <td><span style="font-size:13px">${l.nome}</span></td>
+        <td><span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(96,165,250,0.2);color:var(--blue)">💳 ${l.api_pagamento}</span></td>
+        <td><span style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;${l.suspensa ? 'background:rgba(248,113,113,0.2);color:#f87171' : 'background:rgba(74,222,128,0.2);color:#4ade80'}">${l.suspensa ? '⛔ Suspensa' : '✅ Ativa'}</span></td>
+        <td><button onclick="showTab('campeonatos')" style="padding:4px 10px;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.3);border-radius:6px;color:#ff6b35;font-size:11px;cursor:pointer">✏️ Editar</button></td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--red)">❌ ${e.message}</td></tr>`;
+  }
+}
+
+
 
 // ═══════════════════════════════════════════════
 //  LOAD ALL

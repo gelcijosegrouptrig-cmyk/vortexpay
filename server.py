@@ -3760,6 +3760,289 @@ async def route_patch_admin_html(request):
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
 
+# ═══════════════════════════════════════════════════════════════════
+# ADMIN - GERENCIADOR DE CAMPEONATOS (LIGAS)
+# ═══════════════════════════════════════════════════════════════════
+
+# Mapa completo de ligas gerenciáveis
+_ADMIN_LIGAS_MAP = {
+    'soccer_brazil_campeonato':          {'nome': '🇧🇷 Brasileirão Série A', 'espn': 'bra.1',                  'categoria': 'soccer'},
+    'soccer_brazil_serie_b':             {'nome': '🇧🇷 Série B',             'espn': 'bra.2',                  'categoria': 'soccer'},
+    'soccer_conmebol_copa_libertadores': {'nome': '🏆 Libertadores',          'espn': 'CONMEBOL.LIBERTADORES',  'categoria': 'soccer'},
+    'soccer_conmebol_sudamericana':      {'nome': '🌎 Sul-Americana',         'espn': 'CONMEBOL.SUDAMERICANA',  'categoria': 'soccer'},
+    'soccer_uefa_champs_league':         {'nome': '⭐ Champions League',      'espn': 'UEFA.CHAMPIONS',         'categoria': 'soccer'},
+    'soccer_epl':                        {'nome': '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League',   'espn': 'eng.1',                  'categoria': 'soccer'},
+    'soccer_spain_la_liga':              {'nome': '🇪🇸 La Liga',              'espn': 'esp.1',                  'categoria': 'soccer'},
+    'soccer_italy_serie_a':              {'nome': '🇮🇹 Serie A',              'espn': 'ita.1',                  'categoria': 'soccer'},
+    'soccer_germany_bundesliga':         {'nome': '🇩🇪 Bundesliga',           'espn': 'ger.1',                  'categoria': 'soccer'},
+    'soccer_france_ligue_one':           {'nome': '🇫🇷 Ligue 1',              'espn': 'fra.1',                  'categoria': 'soccer'},
+    'basketball_nba':                    {'nome': '🏀 NBA',                   'espn': 'nba',                    'categoria': 'basketball'},
+    'americanfootball_nfl':              {'nome': '🏈 NFL',                   'espn': 'nfl',                    'categoria': 'football'},
+    'mma_mixed_martial_arts':            {'nome': '🥊 MMA / UFC',             'espn': 'ufc',                    'categoria': 'mma'},
+}
+
+def _admin_auth(request):
+    """Verifica autenticação admin via header ou query param."""
+    auth = (request.headers.get('X-PaynexBet-Secret','') or
+            request.headers.get('x-paynexbet-secret','') or
+            request.rel_url.query.get('secret',''))
+    return auth == WEBHOOK_SECRET
+
+def _admin_db_connect():
+    """Conecta ao PostgreSQL para operações admin."""
+    import psycopg2 as _pg2
+    url = DATABASE_URL or _BET_DB_URL_FALLBACK
+    return _pg2.connect(url)
+
+def _admin_get_liga_config(liga_key):
+    """Retorna config salva da liga no DB (suspensa, api_pagamento)."""
+    try:
+        conn = _admin_db_connect()
+        cur = conn.cursor()
+        chave = f'liga_cfg_{liga_key}'
+        cur.execute("SELECT valor FROM configuracoes WHERE chave=%s", (chave,))
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if row:
+            import json as _j
+            return _j.loads(row[0])
+    except Exception:
+        pass
+    return {}
+
+def _admin_save_liga_config(liga_key, cfg):
+    """Salva config da liga no DB."""
+    import json as _j
+    conn = _admin_db_connect()
+    cur = conn.cursor()
+    chave = f'liga_cfg_{liga_key}'
+    val = _j.dumps(cfg)
+    cur.execute("""
+        INSERT INTO configuracoes (chave, valor)
+        VALUES (%s, %s)
+        ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor
+    """, (chave, val))
+    conn.commit(); cur.close(); conn.close()
+
+async def route_admin_ligas_list(request):
+    """GET /api/admin/ligas — lista todas as ligas com status e config."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    ligas = []
+    for key, info in _ADMIN_LIGAS_MAP.items():
+        cfg = _admin_get_liga_config(key)
+        ligas.append({
+            'key': key,
+            'nome': info['nome'],
+            'categoria': info['categoria'],
+            'espn': info['espn'],
+            'suspensa': cfg.get('suspensa', False),
+            'api_pagamento': cfg.get('api_pagamento', 'suitpay'),
+            'odds_habilitadas': cfg.get('odds_habilitadas', True),
+            'nota': cfg.get('nota', ''),
+        })
+    return web.json_response({'ok': True, 'ligas': ligas})
+
+async def route_admin_ligas_suspender(request):
+    """POST /api/admin/ligas/suspender — suspende ou ativa uma liga."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        liga_key = body.get('liga_key', '')
+        suspensa = bool(body.get('suspensa', False))
+        if liga_key not in _ADMIN_LIGAS_MAP:
+            return web.json_response({'ok': False, 'error': 'Liga não encontrada'}, status=400)
+        cfg = _admin_get_liga_config(liga_key)
+        cfg['suspensa'] = suspensa
+        _admin_save_liga_config(liga_key, cfg)
+        status = 'SUSPENSA' if suspensa else 'ATIVA'
+        print(f'[admin/ligas] {liga_key} → {status}', flush=True)
+        return web.json_response({'ok': True, 'liga_key': liga_key, 'suspensa': suspensa,
+                                  'msg': f'Liga {_ADMIN_LIGAS_MAP[liga_key]["nome"]} → {status}'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+async def route_admin_ligas_config(request):
+    """POST /api/admin/ligas/config — configura api_pagamento, odds, nota de uma liga."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        liga_key = body.get('liga_key', '')
+        if liga_key not in _ADMIN_LIGAS_MAP:
+            return web.json_response({'ok': False, 'error': 'Liga não encontrada'}, status=400)
+        cfg = _admin_get_liga_config(liga_key)
+        if 'api_pagamento' in body:
+            cfg['api_pagamento'] = body['api_pagamento']  # 'suitpay' | 'asaas' | 'manual'
+        if 'odds_habilitadas' in body:
+            cfg['odds_habilitadas'] = bool(body['odds_habilitadas'])
+        if 'nota' in body:
+            cfg['nota'] = str(body['nota'])[:200]
+        _admin_save_liga_config(liga_key, cfg)
+        return web.json_response({'ok': True, 'liga_key': liga_key, 'config': cfg})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# ADMIN - GERENCIADOR DE USUÁRIOS
+# ═══════════════════════════════════════════════════════════════════
+
+async def route_admin_usuarios_list(request):
+    """GET /api/admin/usuarios — lista usuários com saldo, apostas, status."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        busca = request.rel_url.query.get('busca', '').strip()
+        limit = int(request.rel_url.query.get('limit', 50))
+        offset = int(request.rel_url.query.get('offset', 0))
+        conn = _admin_db_connect()
+        cur = conn.cursor()
+        # Contar total
+        if busca:
+            cur.execute("""
+                SELECT COUNT(*) FROM usuarios
+                WHERE nome ILIKE %s OR cpf ILIKE %s
+            """, (f'%{busca}%', f'%{busca}%'))
+        else:
+            cur.execute("SELECT COUNT(*) FROM usuarios")
+        total = cur.fetchone()[0]
+        # Listar usuários com contagem de apostas
+        if busca:
+            cur.execute("""
+                SELECT u.id, u.nome, u.cpf, u.saldo,
+                       COALESCE(u.suspendido, false) as suspendido,
+                       COUNT(a.id) as total_apostas,
+                       COALESCE(SUM(CASE WHEN a.status='WON' THEN 1 ELSE 0 END),0) as apostas_won,
+                       COALESCE(SUM(a.valor),0) as volume_apostado
+                FROM usuarios u
+                LEFT JOIN apostas a ON a.usuario_id = u.id
+                WHERE u.nome ILIKE %s OR u.cpf ILIKE %s
+                GROUP BY u.id, u.nome, u.cpf, u.saldo, u.suspendido
+                ORDER BY u.id DESC LIMIT %s OFFSET %s
+            """, (f'%{busca}%', f'%{busca}%', limit, offset))
+        else:
+            cur.execute("""
+                SELECT u.id, u.nome, u.cpf, u.saldo,
+                       COALESCE(u.suspendido, false) as suspendido,
+                       COUNT(a.id) as total_apostas,
+                       COALESCE(SUM(CASE WHEN a.status='WON' THEN 1 ELSE 0 END),0) as apostas_won,
+                       COALESCE(SUM(a.valor),0) as volume_apostado
+                FROM usuarios u
+                LEFT JOIN apostas a ON a.usuario_id = u.id
+                GROUP BY u.id, u.nome, u.cpf, u.saldo, u.suspendido
+                ORDER BY u.id DESC LIMIT %s OFFSET %s
+            """, (limit, offset))
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        usuarios = []
+        for r in rows:
+            usuarios.append({
+                'id': r[0], 'nome': r[1] or '',
+                'cpf': r[2] or '',
+                'saldo': float(r[3] or 0),
+                'suspendido': bool(r[4]),
+                'total_apostas': int(r[5] or 0),
+                'apostas_won': int(r[6] or 0),
+                'volume_apostado': float(r[7] or 0),
+            })
+        return web.json_response({'ok': True, 'total': total, 'usuarios': usuarios})
+    except Exception as e:
+        # Tentar sem coluna suspendido (retrocompatibilidade)
+        try:
+            conn = _admin_db_connect()
+            cur = conn.cursor()
+            busca = request.rel_url.query.get('busca', '').strip()
+            if busca:
+                cur.execute("""
+                    SELECT u.id, u.nome, u.cpf, u.saldo, false,
+                           COUNT(a.id), COALESCE(SUM(a.valor),0)
+                    FROM usuarios u LEFT JOIN apostas a ON a.usuario_id=u.id
+                    WHERE u.nome ILIKE %s OR u.cpf ILIKE %s
+                    GROUP BY u.id ORDER BY u.id DESC LIMIT 50
+                """, (f'%{busca}%', f'%{busca}%'))
+            else:
+                cur.execute("""
+                    SELECT u.id, u.nome, u.cpf, u.saldo, false,
+                           COUNT(a.id), COALESCE(SUM(a.valor),0)
+                    FROM usuarios u LEFT JOIN apostas a ON a.usuario_id=u.id
+                    GROUP BY u.id ORDER BY u.id DESC LIMIT 50
+                """)
+            rows = cur.fetchall()
+            cur.execute("SELECT COUNT(*) FROM usuarios"); total = cur.fetchone()[0]
+            cur.close(); conn.close()
+            usuarios = [{'id':r[0],'nome':r[1]or'','cpf':r[2]or'','saldo':float(r[3]or 0),
+                         'suspendido':bool(r[4]),'total_apostas':int(r[5]or 0),
+                         'apostas_won':0,'volume_apostado':float(r[6]or 0)} for r in rows]
+            return web.json_response({'ok': True, 'total': total, 'usuarios': usuarios})
+        except Exception as e2:
+            return web.json_response({'ok': False, 'error': str(e2)}, status=500)
+
+async def route_admin_usuarios_ajustar(request):
+    """POST /api/admin/usuarios/ajustar — ajusta saldo de um usuário (crédito ou débito)."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        usuario_id = int(body.get('usuario_id', 0))
+        ajuste = float(body.get('ajuste', 0))
+        motivo = str(body.get('motivo', 'Ajuste manual admin'))[:200]
+        if not usuario_id:
+            return web.json_response({'ok': False, 'error': 'usuario_id obrigatório'}, status=400)
+        conn = _admin_db_connect()
+        cur = conn.cursor()
+        cur.execute("SELECT id, nome, saldo FROM usuarios WHERE id=%s", (usuario_id,))
+        user = cur.fetchone()
+        if not user:
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': 'Usuário não encontrado'}, status=404)
+        novo_saldo = float(user[2] or 0) + ajuste
+        if novo_saldo < 0:
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': f'Saldo insuficiente (atual: R${user[2]:.2f})'}, status=400)
+        cur.execute("UPDATE usuarios SET saldo=%s WHERE id=%s", (novo_saldo, usuario_id))
+        conn.commit(); cur.close(); conn.close()
+        print(f'[admin/usuarios] ID {usuario_id} ({user[1]}) ajuste={ajuste:+.2f} → saldo={novo_saldo:.2f} | {motivo}', flush=True)
+        return web.json_response({'ok': True, 'usuario_id': usuario_id, 'nome': user[1],
+                                  'saldo_anterior': float(user[2] or 0), 'saldo_novo': novo_saldo,
+                                  'ajuste': ajuste, 'motivo': motivo})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+async def route_admin_usuarios_suspender(request):
+    """POST /api/admin/usuarios/suspender — suspende ou ativa conta de usuário."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        usuario_id = int(body.get('usuario_id', 0))
+        suspendido = bool(body.get('suspendido', False))
+        if not usuario_id:
+            return web.json_response({'ok': False, 'error': 'usuario_id obrigatório'}, status=400)
+        conn = _admin_db_connect()
+        cur = conn.cursor()
+        # Adicionar coluna se não existir
+        try:
+            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS suspendido BOOLEAN DEFAULT false")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+        cur.execute("SELECT id, nome FROM usuarios WHERE id=%s", (usuario_id,))
+        user = cur.fetchone()
+        if not user:
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': 'Usuário não encontrado'}, status=404)
+        cur.execute("UPDATE usuarios SET suspendido=%s WHERE id=%s", (suspendido, usuario_id))
+        conn.commit(); cur.close(); conn.close()
+        status = 'SUSPENSO' if suspendido else 'ATIVO'
+        print(f'[admin/usuarios] ID {usuario_id} ({user[1]}) → {status}', flush=True)
+        return web.json_response({'ok': True, 'usuario_id': usuario_id, 'nome': user[1],
+                                  'suspendido': suspendido, 'msg': f'Conta {status}'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
 async def route_asaas_status(request):
     """GET /api/asaas/status - Verifica se Asaas está configurado e operacional"""
 
@@ -13792,6 +14075,14 @@ async def main():
     app.router.add_post('/api/admin/patch-sorteio-html', route_patch_sorteio_html)
     app.router.add_post('/api/admin/patch-paypix-html', route_patch_paypix_html)
     app.router.add_post('/api/admin/patch-admin-html',  route_patch_admin_html)
+    # Campeonatos / Ligas
+    app.router.add_get('/api/admin/ligas',              route_admin_ligas_list)
+    app.router.add_post('/api/admin/ligas/suspender',   route_admin_ligas_suspender)
+    app.router.add_post('/api/admin/ligas/config',      route_admin_ligas_config)
+    # Usuários
+    app.router.add_get('/api/admin/usuarios',           route_admin_usuarios_list)
+    app.router.add_post('/api/admin/usuarios/ajustar',  route_admin_usuarios_ajustar)
+    app.router.add_post('/api/admin/usuarios/suspender',route_admin_usuarios_suspender)
 
     runner = web.AppRunner(app)
     await runner.setup()
