@@ -9893,6 +9893,12 @@ _APIFOOTBALL_KEY  = '9f32a39147f38ec092f55c39abb14517'
 _APIFOOTBALL_BASE = 'https://v3.football.api-sports.io'
 _live_cache       = {'ts': 0, 'data': []}          # /odds/live — cache 30s
 _LIVE_CACHE_TTL   = 30
+
+# ── Apify Live Cache ─────────────────────────────────────────────────────────
+_APIFY_TOKEN      = os.environ.get('APIFY_TOKEN', '')  # Configurar via Railway vars ou apify_config DB
+_APIFY_ACTOR_ID   = 'rdOwbSNd2e3a5nTug'   # FlashScore Scraper Live (93k runs)
+_APIFY_INTERVAL   = 120                    # segundos entre execuções (2 min)
+_apify_live_cache = {'ts': 0, 'jogos': [], 'run_id': None, 'status': 'idle'}
 _pred_cache       = {}                              # fixture_id → prediction
 _PRED_CACHE_TTL   = 3600                            # 1 hora
 _standings_cache  = {'ts': 0, 'data': {}}          # league_id → standings
@@ -10061,16 +10067,53 @@ async def route_bet_jogos(request):
 
 
 async def route_bet_live(request):
-    """GET /api/bet/live — jogos ao vivo via ESPN API (gratuita, tempo real).
-    Varre todos os scoreboards ESPN e retorna apenas jogos com state='in'.
-    Cache de 60s para evitar excesso de chamadas.
-    """
-    import time as _time, aiohttp
+    """GET /api/bet/live — jogos ao vivo via Apify FlashScore (cache DB) + fallback ESPN."""
+    import time as _time
     agora = _time.time()
-    if agora - _live_cache['ts'] < _LIVE_CACHE_TTL and _live_cache['data'] is not None:
-        return web.json_response({'success': True, 'jogos': _live_cache['data'], 'from_cache': True,
-                                  'total': len(_live_cache['data'])})
+
+    # 1) Tentar cache em memória (< 60s)
+    if agora - _apify_live_cache['ts'] < 60 and _apify_live_cache['jogos']:
+        return web.json_response({
+            'success': True,
+            'jogos': _apify_live_cache['jogos'],
+            'total': len(_apify_live_cache['jogos']),
+            'source': 'apify_mem',
+            'updated_at': _apify_live_cache['ts']
+        })
+
+    # 2) Tentar cache no banco PostgreSQL
     try:
+        import psycopg2 as _pg2, json as _json
+        _db_url = DATABASE_URL or _BET_DB_URL_FALLBACK
+        _conn = _pg2.connect(_db_url, connect_timeout=5)
+        _cur  = _conn.cursor()
+        _cur.execute("SELECT jogos, total, updated_at FROM live_cache WHERE id=1")
+        row = _cur.fetchone()
+        _cur.close(); _conn.close()
+        if row:
+            jogos_db  = row[0] if isinstance(row[0], list) else _json.loads(row[0] or '[]')
+            total_db  = row[1] or 0
+            updated   = row[2]
+            import datetime as _dt
+            age = ((_dt.datetime.now(_dt.timezone.utc) - updated.replace(tzinfo=_dt.timezone.utc)).total_seconds()
+                   if updated else 9999)
+            # Cache do DB válido por 5 minutos
+            if age < 300 and jogos_db:
+                _apify_live_cache['ts']    = agora
+                _apify_live_cache['jogos'] = jogos_db
+                return web.json_response({
+                    'success': True,
+                    'jogos': jogos_db,
+                    'total': total_db,
+                    'source': 'apify_db',
+                    'age_seconds': int(age)
+                })
+    except Exception as e_db:
+        print(f'[live] erro DB: {e_db}', flush=True)
+
+    # 3) Fallback: ESPN ao vivo (síncrono, rápido)
+    try:
+        import aiohttp
         jogos_live = []
         seen_slugs = set()
         async with aiohttp.ClientSession(headers={'User-Agent': 'Mozilla/5.0'}) as sess:
@@ -10082,11 +10125,8 @@ async def route_bet_live(request):
                     continue
                 seen_slugs.add(espn_slug)
                 items = await _espn_fetch_scoreboard(sess, espn_slug, league_name, sp_key, category)
-                # Atualizar cache de fixtures também
-                _espn_fix_cache[espn_slug] = {'ts': agora, 'data': items}
                 for item in items:
                     if item.get('is_live'):
-                        # Gerar odds simuladas determinísticas para ao vivo
                         seed = sum(ord(c) for c in (item['home_team'] + item['away_team']))
                         r1   = ((seed * 17 + 3) % 100) / 100
                         r2   = ((seed * 31 + 7) % 100) / 100
@@ -10096,14 +10136,14 @@ async def route_bet_live(request):
                             'away': round(1.4 + r2 * 2.2, 2),
                         }
                         item['odds_simulated'] = True
+                        item['source'] = 'espn'
                         jogos_live.append(item)
         _live_cache['ts']   = agora
         _live_cache['data'] = jogos_live
-        return web.json_response({'success': True, 'jogos': jogos_live, 'total': len(jogos_live)})
+        return web.json_response({'success': True, 'jogos': jogos_live, 'total': len(jogos_live), 'source': 'espn'})
     except Exception as e:
-        print(f'[bet/live] erro: {e}', flush=True)
-        cached = _live_cache.get('data') or []
-        return web.json_response({'success': True, 'jogos': cached, 'total': len(cached), 'error': str(e)})
+        print(f'[bet/live] erro ESPN fallback: {e}', flush=True)
+        return web.json_response({'success': True, 'jogos': [], 'total': 0, 'source': 'none', 'error': str(e)})
 
         # Indexar fixtures por id
         fix_by_id = {}
@@ -13828,6 +13868,146 @@ async def main():
         print('✅ [recorrente] Job automático de cobranças agendado (6h)', flush=True)
     except Exception as e_rec:
         print(f'⚠️ [recorrente] Erro ao iniciar job: {e_rec}', flush=True)
+
+    # ── Worker Apify: FlashScore ao vivo a cada 2 minutos ───────────────────────
+    async def _apify_live_worker():
+        """Chama Apify FlashScore Scraper Live a cada 2 min e salva no DB."""
+        import aiohttp, json as _json, time as _t
+        await asyncio.sleep(10)  # aguarda servidor estabilizar
+        print('[apify] Worker ao vivo iniciado (intervalo: 2 min)', flush=True)
+
+        while True:
+            try:
+                # Obter token: env var > banco de dados
+                apify_tok = os.environ.get('APIFY_TOKEN', '') or _APIFY_TOKEN
+                if not apify_tok:
+                    try:
+                        import psycopg2 as _pg2
+                        _db_url = DATABASE_URL or _BET_DB_URL_FALLBACK
+                        _conn = _pg2.connect(_db_url, connect_timeout=5)
+                        _cur  = _conn.cursor()
+                        _cur.execute("SELECT value FROM apify_config WHERE key='APIFY_TOKEN'")
+                        _row = _cur.fetchone()
+                        _cur.close(); _conn.close()
+                        if _row:
+                            apify_tok = _row[0]
+                    except Exception as e_tok:
+                        print(f'[apify] Erro ler token do DB: {e_tok}', flush=True)
+
+                if not apify_tok:
+                    print('[apify] ⚠️ Token não configurado. Configure APIFY_TOKEN no Railway.', flush=True)
+                    await asyncio.sleep(_APIFY_INTERVAL)
+                    continue
+
+                # ── Disparar execução do actor ──
+                async with aiohttp.ClientSession() as sess:
+                    run_url = f'https://api.apify.com/v2/acts/{_APIFY_ACTOR_ID}/runs?token={apify_tok}'
+                    async with sess.post(run_url,
+                                         json={'maxItems': 50},
+                                         timeout=aiohttp.ClientTimeout(total=15)) as r:
+                        run_data = (await r.json()).get('data', {})
+                    run_id = run_data.get('id')
+                    if not run_id:
+                        raise Exception(f'Run ID não retornado: {run_data}')
+                    print(f'[apify] Run iniciado: {run_id}', flush=True)
+
+                    # ── Aguardar conclusão (máx 90s) ──
+                    for _ in range(18):
+                        await asyncio.sleep(5)
+                        status_url = f'https://api.apify.com/v2/acts/{_APIFY_ACTOR_ID}/runs/{run_id}?token={apify_tok}'
+                        async with sess.get(status_url, timeout=aiohttp.ClientTimeout(total=10)) as rs:
+                            run_status = (await rs.json()).get('data', {}).get('status', '')
+                        if run_status in ('SUCCEEDED', 'FAILED', 'ABORTED', 'TIMED-OUT'):
+                            break
+
+                    if run_status != 'SUCCEEDED':
+                        raise Exception(f'Run terminou com status: {run_status}')
+
+                    # ── Ler dataset ──
+                    dataset_url = (f'https://api.apify.com/v2/acts/{_APIFY_ACTOR_ID}/runs/{run_id}'
+                                   f'/dataset/items?token={apify_tok}&limit=200&clean=true')
+                    async with sess.get(dataset_url, timeout=aiohttp.ClientTimeout(total=15)) as rd:
+                        raw_items = await rd.json()
+
+                # ── Normalizar itens do FlashScore ──
+                jogos = []
+                for item in (raw_items if isinstance(raw_items, list) else []):
+                    sport     = (item.get('sport') or item.get('sportType') or '').lower()
+                    home      = item.get('homeTeam') or item.get('home_team') or item.get('homeName', '')
+                    away      = item.get('awayTeam') or item.get('away_team') or item.get('awayName', '')
+                    h_score   = item.get('homeScore') or item.get('home_score') or item.get('homeGoals')
+                    a_score   = item.get('awayScore') or item.get('away_score') or item.get('awayGoals')
+                    elapsed   = item.get('elapsed') or item.get('minute') or item.get('clock', '')
+                    league    = item.get('league') or item.get('leagueName') or item.get('tournament', 'Ao Vivo')
+                    status    = (item.get('status') or item.get('matchStatus') or 'live').lower()
+                    h_logo    = item.get('homeLogo') or item.get('home_logo', '')
+                    a_logo    = item.get('awayLogo') or item.get('away_logo', '')
+
+                    if not home or not away:
+                        continue
+                    # Filtrar só jogos em andamento
+                    if status in ('finished', 'ft', 'ended', 'postponed', 'cancelled'):
+                        continue
+
+                    # Odds simuladas determinísticas
+                    seed = sum(ord(c) for c in (home + away))
+                    r1   = ((seed * 17 + 3) % 100) / 100
+                    r2   = ((seed * 31 + 7) % 100) / 100
+
+                    jogos.append({
+                        'id':           item.get('id') or f'{home}_{away}',
+                        'home_team':    home,
+                        'away_team':    away,
+                        'home_logo':    h_logo,
+                        'away_logo':    a_logo,
+                        'home_goals':   h_score,
+                        'away_goals':   a_score,
+                        'elapsed':      elapsed,
+                        'league':       league,
+                        'sport':        sport or 'soccer',
+                        'is_live':      True,
+                        'status':       'live',
+                        'source':       'flashscore',
+                        'odds': {
+                            'home': round(1.4 + r1 * 2.2, 2),
+                            'draw': round(2.8 + (seed % 20) / 10, 2),
+                            'away': round(1.4 + r2 * 2.2, 2),
+                        },
+                        'odds_simulated': True,
+                    })
+
+                print(f'[apify] ✅ {len(jogos)} jogos ao vivo normalizados', flush=True)
+
+                # ── Salvar no banco PostgreSQL ──
+                try:
+                    import psycopg2 as _pg2
+                    _db_url = DATABASE_URL or _BET_DB_URL_FALLBACK
+                    _conn = _pg2.connect(_db_url, connect_timeout=5)
+                    _cur  = _conn.cursor()
+                    _cur.execute("""
+                        UPDATE live_cache
+                        SET jogos=%s, total=%s, updated_at=NOW(), source='flashscore'
+                        WHERE id=1
+                    """, (_json.dumps(jogos, ensure_ascii=False), len(jogos)))
+                    _conn.commit(); _cur.close(); _conn.close()
+                    print(f'[apify] DB atualizado: {len(jogos)} jogos', flush=True)
+                except Exception as e_db:
+                    print(f'[apify] Erro salvar DB: {e_db}', flush=True)
+
+                # ── Atualizar cache em memória ──
+                _apify_live_cache['ts']     = _t.time()
+                _apify_live_cache['jogos']  = jogos
+                _apify_live_cache['run_id'] = run_id
+                _apify_live_cache['status'] = 'idle'
+
+            except Exception as e_worker:
+                print(f'[apify] ❌ Erro no worker: {e_worker}', flush=True)
+                _apify_live_cache['status'] = 'error'
+
+            # Aguardar 2 minutos para próxima execução
+            await asyncio.sleep(_APIFY_INTERVAL)
+
+    asyncio.create_task(_apify_live_worker())
 
     # ── Warm-up do cache ESPN (pré-carrega tabelas para evitar erro no primeiro acesso) ──
     async def _warmup_espn_cache():
