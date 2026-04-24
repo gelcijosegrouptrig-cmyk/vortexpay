@@ -10307,10 +10307,12 @@ async def route_tsdb_fixtures(request):
                         continue
                     d = __import__('json').loads(raw)
                 events = d.get('events', []) or []
-                # Filtrar apenas eventos da liga correta (evita retornos errados)
+                # Filtrar apenas eventos da liga correta (evita retornos errados da TheSportsDB)
                 valid = [e for e in events if str(e.get('idLeague','')) == str(tsdb_lid)]
                 if not valid:
-                    valid = events[:10]  # fallback
+                    # TheSportsDB retornou jogos de outra liga — ignorar
+                    _tsdb_fix_cache[tsdb_lid] = {'ts': agora, 'data': []}
+                    continue
                 jogos = []
                 for ev in valid[:8]:
                     jogos.append({
