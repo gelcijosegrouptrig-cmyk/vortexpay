@@ -7307,6 +7307,30 @@ async def route_mp2_parceiros_deletar(request):
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
 
+async def route_mp2_parceiros_excluir(request):
+    """POST /api/mp2/parceiros/{codigo}/excluir - Remove permanentemente o parceiro."""
+
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        codigo = request.match_info.get('codigo', '')
+        if not codigo:
+            return web.json_response({'success': False, 'error': 'Código obrigatório'})
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("DELETE FROM mp2_parceiros WHERE codigo = %s RETURNING id", (codigo,))
+        deleted = cur.fetchone()
+        conn.commit(); cur.close(); conn.close()
+        if not deleted:
+            return web.json_response({'success': False, 'error': 'Parceiro não encontrado'})
+        return web.json_response({'success': True, 'deleted': codigo})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
 async def route_mp2_parceiros_editar(request):
     """PATCH /api/mp2/parceiros/{codigo} - Edita parceiro: nome, chave_pix, tipo_chave, comissao_pct, ativo."""
 
@@ -8042,6 +8066,30 @@ async def route_mp3_parceiros_deletar(request):
         cur.execute("UPDATE mp3_parceiros SET ativo=FALSE WHERE codigo=%s", (codigo,))
         conn.commit(); cur.close(); conn.close()
         return web.json_response({'success': True, 'msg': f'Parceiro {codigo} desativado'})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
+async def route_mp3_parceiros_excluir(request):
+    """POST /api/mp3/parceiros/{codigo}/excluir - Remove permanentemente o parceiro Bot3."""
+
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        codigo = request.match_info.get('codigo', '')
+        if not codigo:
+            return web.json_response({'success': False, 'error': 'Código obrigatório'})
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute("DELETE FROM mp3_parceiros WHERE codigo = %s RETURNING id", (codigo,))
+        deleted = cur.fetchone()
+        conn.commit(); cur.close(); conn.close()
+        if not deleted:
+            return web.json_response({'success': False, 'error': 'Parceiro não encontrado'})
+        return web.json_response({'success': True, 'deleted': codigo})
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
@@ -9822,6 +9870,237 @@ async def route_exportar_csv(request):
         return web.Response(text=f'Erro: {e}', status=500)
 
 # ─── MAIN ─────────────────────────────────────────────────
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ███  BET — Apostas Esportivas (The Odds API + SuitPay)  ███
+# ═══════════════════════════════════════════════════════════════════════════
+
+import hashlib as _hashlib
+
+_odds_cache       = {'ts': 0, 'data': []}
+_ODDS_CACHE_TTL   = 60   # segundos
+_ODDS_API_KEY     = os.environ.get('ODDS_API_KEY', '')
+_SUIT_CI          = os.environ.get('SUITPAY_CI', '')
+_SUIT_CS          = os.environ.get('SUITPAY_CS', '')
+_SUIT_HOST        = os.environ.get('SUITPAY_HOST', 'https://ws.suitpay.app')
+_SUIT_WEBHOOK_URL = os.environ.get('SUITPAY_WEBHOOK_URL', 'https://paynexbet.com/webhook/suitpay')
+
+async def route_bet_jogos(request):
+    """GET /api/bet/jogos — retorna jogos com odds (cache 60s)"""
+    import time as _time
+    agora = _time.time()
+    # Retornar cache se válido
+    if agora - _odds_cache['ts'] < _ODDS_CACHE_TTL and _odds_cache['data']:
+        return web.json_response({'success': True, 'jogos': _odds_cache['data'], 'from_cache': True})
+
+    key = _ODDS_API_KEY
+    if not key:
+        return web.json_response({'success': False, 'jogos': [], 'error': 'ODDS_API_KEY não configurada'})
+
+    # Esportes prioritários: Brasileirão + Libertadores + UEFA + upcoming
+    sports = [
+        'soccer_brazil_campeonato',
+        'soccer_conmebol_copa_libertadores',
+        'soccer_uefa_champs_league',
+        'soccer_epl',
+        'upcoming',
+    ]
+
+    all_jogos = []
+    async with aiohttp.ClientSession() as sess:
+        for sport in sports:
+            if len(all_jogos) >= 10:
+                break
+            try:
+                url = f'https://api.the-odds-api.com/v4/sports/{sport}/odds'
+                params = {
+                    'apiKey': key,
+                    'regions': 'eu',
+                    'markets': 'h2h',
+                    'oddsFormat': 'decimal',
+                    'dateFormat': 'iso',
+                }
+                async with sess.get(url, params=params, timeout=aiohttp.ClientTimeout(total=8)) as r:
+                    if r.status == 200:
+                        eventos = await r.json()
+                        for ev in (eventos or [])[:4]:
+                            # Pegar as melhores odds disponíveis (média dos bookmakers)
+                            home_odds, draw_odds, away_odds = [], [], []
+                            for bk in ev.get('bookmakers', [])[:5]:
+                                for mkt in bk.get('markets', []):
+                                    if mkt.get('key') == 'h2h':
+                                        for oc in mkt.get('outcomes', []):
+                                            n = oc.get('name', '')
+                                            v = float(oc.get('price', 0))
+                                            if n == ev.get('home_team'):
+                                                home_odds.append(v)
+                                            elif n == ev.get('away_team'):
+                                                away_odds.append(v)
+                                            else:
+                                                draw_odds.append(v)
+                            def avg(lst): return round(sum(lst)/len(lst), 2) if lst else None
+                            jogo = {
+                                'id':           ev.get('id'),
+                                'sport':        sport,
+                                'league':       ev.get('sport_title', sport),
+                                'home_team':    ev.get('home_team', ''),
+                                'away_team':    ev.get('away_team', ''),
+                                'commence_time': ev.get('commence_time', ''),
+                                'odds': {
+                                    'home': avg(home_odds),
+                                    'draw': avg(draw_odds),
+                                    'away': avg(away_odds),
+                                }
+                            }
+                            all_jogos.append(jogo)
+            except Exception as e_odds:
+                print(f'[bet/jogos] erro sport={sport}: {e_odds}', flush=True)
+
+    _odds_cache['ts']   = agora
+    _odds_cache['data'] = all_jogos
+    return web.json_response({'success': True, 'jogos': all_jogos, 'total': len(all_jogos)})
+
+
+async def route_webhook_suitpay(request):
+    """POST /webhook/suitpay — recebe notificação de pagamento da SuitPay"""
+    try:
+        data = await request.json()
+    except Exception:
+        return web.json_response({'ok': False, 'error': 'JSON inválido'}, status=400)
+
+    # Validar hash SHA-256
+    cs = _SUIT_CS
+    if cs:
+        campos_ordenados = ['idTransaction','typeTransaction','statusTransaction',
+                            'value','payerName','payerTaxId','paymentDate',
+                            'paymentCode','requestNumber']
+        concat = ''.join(str(data.get(c, '')) for c in campos_ordenados if c in data)
+        concat += cs
+        hash_calc = _hashlib.sha256(concat.encode()).hexdigest()
+        hash_recv = data.get('hash', '')
+        if hash_recv and hash_recv != hash_calc:
+            print(f'[webhook/suitpay] hash inválido! recv={hash_recv} calc={hash_calc}', flush=True)
+            return web.json_response({'ok': False, 'error': 'hash inválido'}, status=403)
+
+    status     = data.get('statusTransaction', '')
+    valor      = float(data.get('value', 0))
+    req_number = data.get('requestNumber', '')
+    id_tx      = data.get('idTransaction', '')
+
+    print(f'[webhook/suitpay] status={status} valor={valor} req={req_number}', flush=True)
+
+    if status == 'PAID_OUT' and DATABASE_URL:
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            cur  = conn.cursor()
+            # Buscar usuário pelo requestNumber (formato: userid_uuid)
+            cur.execute("""
+                UPDATE depositos_suit
+                SET status='PAID', pago_em=NOW(), id_transaction=%s
+                WHERE request_number=%s AND status='PENDING'
+                RETURNING usuario_id, valor
+            """, (id_tx, req_number))
+            row = cur.fetchone()
+            if row:
+                usuario_id, valor_db = row
+                # Creditar saldo
+                cur.execute("""
+                    UPDATE usuarios SET saldo = saldo + %s WHERE id = %s
+                """, (valor_db, usuario_id))
+                conn.commit()
+                print(f'[webhook/suitpay] ✅ Saldo +{valor_db} para usuario {usuario_id}', flush=True)
+            else:
+                # Tentar como deposito de apostas esportivas genérico
+                cur.execute("""
+                    UPDATE depositos_suit SET status='PAID', pago_em=NOW()
+                    WHERE request_number=%s
+                """, (req_number,))
+                conn.commit()
+                print(f'[webhook/suitpay] ℹ️ req_number {req_number} marcado como PAID (sem usuario vinculado)', flush=True)
+            cur.close()
+            conn.close()
+        except Exception as e_db:
+            print(f'[webhook/suitpay] erro DB: {e_db}', flush=True)
+
+    elif status == 'CHARGEBACK':
+        print(f'[webhook/suitpay] ⚠️ CHARGEBACK id_tx={id_tx}', flush=True)
+
+    return web.json_response({'ok': True})
+
+
+async def route_bet_deposito(request):
+    """POST /api/bet/deposito — gera QR Code PIX via SuitPay"""
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({'success': False, 'error': 'JSON inválido'}, status=400)
+
+    valor      = float(body.get('valor', 0))
+    usuario_id = body.get('usuario_id', '')
+    nome       = body.get('nome', 'Cliente')
+    cpf        = body.get('cpf', '')
+
+    if valor < 5:
+        return web.json_response({'success': False, 'error': 'Valor mínimo R$5,00'})
+    if not _SUIT_CI or not _SUIT_CS:
+        return web.json_response({'success': False, 'error': 'SuitPay não configurado (falta CI/CS)'})
+
+    import uuid as _uuid, datetime as _dt
+    req_number = f'{usuario_id}_{_uuid.uuid4().hex[:12]}'
+    due_date   = (_dt.datetime.utcnow() + _dt.timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S')
+
+    payload = {
+        'requestNumber': req_number,
+        'dueDate':       due_date,
+        'amount':        valor,
+        'shippingAmount': 0,
+        'usernameCheckout': nome,
+        'callbackUrl':   _SUIT_WEBHOOK_URL,
+        'client': {
+            'name':      nome,
+            'taxNumber': cpf or '00000000000',
+        }
+    }
+
+    try:
+        async with aiohttp.ClientSession() as sess:
+            async with sess.post(
+                f'{_SUIT_HOST}/v1/gateway/request-qrcode',
+                json=payload,
+                headers={'ci': _SUIT_CI, 'cs': _SUIT_CS, 'Content-Type': 'application/json'},
+                timeout=aiohttp.ClientTimeout(total=15)
+            ) as r:
+                resp = await r.json()
+    except Exception as e_suit:
+        return web.json_response({'success': False, 'error': f'Erro SuitPay: {e_suit}'})
+
+    if not resp.get('success'):
+        return web.json_response({'success': False, 'error': resp.get('message', 'Erro desconhecido SuitPay')})
+
+    # Salvar deposito pendente no banco
+    if DATABASE_URL:
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            cur  = conn.cursor()
+            cur.execute("""
+                INSERT INTO depositos_suit (request_number, usuario_id, valor, status, criado_em)
+                VALUES (%s, %s, %s, 'PENDING', NOW())
+                ON CONFLICT (request_number) DO NOTHING
+            """, (req_number, usuario_id, valor))
+            conn.commit(); cur.close(); conn.close()
+        except Exception as e_db:
+            print(f'[bet/deposito] erro DB: {e_db}', flush=True)
+
+    return web.json_response({
+        'success':    True,
+        'qrCode':     resp.get('paymentCode', ''),
+        'qrImage':    resp.get('qrCodeImage', ''),
+        'requestNumber': req_number,
+        'valor':      valor,
+        'expira':     due_date,
+    })
+
+
 async def main():
     global ASAAS_API_KEY, ASAAS_ENV, ASAAS_BASE_URL
     init_db()
@@ -9896,6 +10175,10 @@ async def main():
             return web.json_response({'success': False, 'error': str(e), 'traceback': tb})
     app.router.add_post('/api/debug/pix', route_debug_pix)
 
+    # ── BET: Apostas Esportivas ──
+    app.router.add_get('/api/bet/jogos',        route_bet_jogos)
+    app.router.add_post('/api/bet/deposito',    route_bet_deposito)
+    app.router.add_post('/webhook/suitpay',     route_webhook_suitpay)
     app.router.add_get('/', route_home)            # Página principal PaynexBet
     app.router.add_get('/home', route_home)
     app.router.add_get('/index.html', route_index)
@@ -9960,6 +10243,7 @@ async def main():
     app.router.add_get('/api/mp2/parceiros',                route_mp2_parceiros_listar)
     app.router.add_post('/api/mp2/parceiros',               route_mp2_parceiros_criar)
     app.router.add_delete('/api/mp2/parceiros/{codigo}',    route_mp2_parceiros_deletar)
+    app.router.add_post('/api/mp2/parceiros/{codigo}/excluir', route_mp2_parceiros_excluir)
     app.router.add_patch('/api/mp2/parceiros/{codigo}',     route_mp2_parceiros_editar)
     app.router.add_get('/api/mp2/comissoes',                route_mp2_comissoes_listar)
     app.router.add_post('/api/mp2/comissoes/pagar',         route_mp2_comissoes_pagar_manual)
@@ -9975,6 +10259,7 @@ async def main():
     app.router.add_get('/api/pp/parceiros',                 route_mp2_parceiros_listar)
     app.router.add_post('/api/pp/parceiros',                route_mp2_parceiros_criar)
     app.router.add_delete('/api/pp/parceiros/{codigo}',     route_mp2_parceiros_deletar)
+    app.router.add_post('/api/pp/parceiros/{codigo}/excluir',  route_mp2_parceiros_excluir)
     app.router.add_patch('/api/pp/parceiros/{codigo}',      route_mp2_parceiros_editar)
     app.router.add_get('/api/pp/comissoes',                 route_mp2_comissoes_listar)
     app.router.add_post('/api/pp/comissoes/pagar',          route_mp2_comissoes_pagar_manual)
@@ -9992,6 +10277,7 @@ async def main():
     app.router.add_get('/api/pc/parceiros',                 route_mp2_parceiros_listar)
     app.router.add_post('/api/pc/parceiros',                route_mp2_parceiros_criar)
     app.router.add_delete('/api/pc/parceiros/{codigo}',     route_mp2_parceiros_deletar)
+    app.router.add_post('/api/pc/parceiros/{codigo}/excluir',  route_mp2_parceiros_excluir)
     app.router.add_patch('/api/pc/parceiros/{codigo}',      route_mp2_parceiros_editar)
     app.router.add_get('/api/pc/comissoes',                 route_mp2_comissoes_listar)
     app.router.add_post('/api/pc/comissoes/pagar',          route_mp2_comissoes_pagar_manual)
@@ -10017,6 +10303,7 @@ async def main():
     app.router.add_get('/api/mp3/parceiros',                route_mp3_parceiros_listar)
     app.router.add_post('/api/mp3/parceiros',               route_mp3_parceiros_criar)
     app.router.add_delete('/api/mp3/parceiros/{codigo}',    route_mp3_parceiros_deletar)
+    app.router.add_post('/api/mp3/parceiros/{codigo}/excluir', route_mp3_parceiros_excluir)
     app.router.add_patch('/api/mp3/parceiros/{codigo}',     route_mp3_parceiros_editar)
     app.router.add_get('/api/mp3/comissoes',                route_mp3_comissoes_listar)
     # ── MP3 — Rotas públicas (paypix2) ──────────────────────────────────────────────
