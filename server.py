@@ -4579,7 +4579,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20250428n-crests-db-fix',
+        'version': 'v20250428n-crests-pix-fix',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -10109,6 +10109,23 @@ async def route_bet_deposito(request):
     usuario_id = body.get('usuario_id', '')
     nome       = body.get('nome', 'Cliente')
     cpf_raw    = re.sub(r'\D', '', body.get('cpf', ''))  # apenas dígitos
+
+    # Se CPF não fornecido no body, buscar no banco pelo usuario_id
+    if not cpf_raw and usuario_id:
+        try:
+            import psycopg2 as _pg2
+            _db_url = DATABASE_URL or _BET_DB_URL_FALLBACK
+            if _db_url:
+                _conn = _pg2.connect(_db_url)
+                _cur  = _conn.cursor()
+                _cur.execute("SELECT cpf, nome FROM usuarios WHERE id=%s", (usuario_id,))
+                _row = _cur.fetchone()
+                if _row:
+                    cpf_raw = re.sub(r'\D', '', _row[0] or '')
+                    nome = nome if nome != 'Cliente' else (_row[1] or nome)
+                _cur.close(); _conn.close()
+        except Exception as e_cpf:
+            print(f'[bet/deposito] erro ao buscar CPF: {e_cpf}', flush=True)
 
     # Formatar CPF no padrão que SuitPay aceita: NNN.NNN.NNN-NN
     def _fmt_cpf(c):
