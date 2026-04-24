@@ -4579,7 +4579,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20250428d-bet-db-priority',
+        'version': 'v20250428e-suitpay-endpoint-fix',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -10124,19 +10124,17 @@ async def route_bet_deposito(request):
         'requestNumber': req_number,
         'dueDate':       due_date,
         'amount':        valor,
-        'shippingAmount': 0,
-        'usernameCheckout': nome,
         'callbackUrl':   _SUIT_WEBHOOK_URL,
         'client': {
-            'name':      nome,
-            'taxNumber': cpf or '00000000000',
+            'name':     nome,
+            'document': cpf or '00000000000',  # SuitPay usa 'document', não 'taxNumber'
         }
     }
 
     try:
         async with aiohttp.ClientSession() as sess:
             async with sess.post(
-                f'{_SUIT_HOST}/v1/gateway/request-qrcode',
+                f'{_SUIT_HOST}/api/v1/gateway/request-qrcode',  # endpoint correto conforme SDK oficial
                 json=payload,
                 headers={'ci': suit_ci, 'cs': suit_cs, 'Content-Type': 'application/json'},
                 timeout=aiohttp.ClientTimeout(total=15)
@@ -10399,7 +10397,7 @@ async def route_bet_sacar(request):
     try:
         async with aiohttp.ClientSession() as sess:
             async with sess.post(
-                f'{_SUIT_HOST}/v1/gateway/pix-payment',
+                f'{_SUIT_HOST}/api/v1/gateway/pix-payment',  # endpoint correto (prefixo api/)
                 json=payload_suit,
                 headers={'ci': suit_ci, 'cs': suit_cs, 'Content-Type': 'application/json'},
                 timeout=aiohttp.ClientTimeout(total=15)
