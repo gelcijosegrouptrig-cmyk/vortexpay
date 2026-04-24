@@ -2,13 +2,13 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "rebuildTimestamp": "20260424140550",
-    "forceBust": "v20250428d-bet-odds-fix-20260424140550",
+    "rebuildTimestamp": "1777039883",
+    "forceBust": "v20250428d-FORCE-1777039883",
     "args": {
-      "REBUILD_TS": "20260424140550",
-      "FORCE_BUST": "v20250428d-bet-odds-fix-20260424140550"
+      "REBUILD_TS": "1777039883",
+      "FORCE_BUST": "FORCE-FULL-REBUILD-1777039883"
     },
-    "_ts": "20260424140550"
+    "_ts": "1777039883"
   },
   "deploy": {
     "startCommand": "bash start.sh",
@@ -17,9 +17,9 @@
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5
   },
-  "_rebuild": "20260424140550",
-  "rebuildTimestamp": 1777039550139,
+  "_rebuild": "1777039883",
+  "rebuildTimestamp": 1777039883030,
   "forceRebuild": true,
-  "bust": "v20250428d-20260424140550",
-  "_forceNew": "20260424140550"
+  "bust": "FULL-1777039883",
+  "_forceNew": "1777039883"
 }

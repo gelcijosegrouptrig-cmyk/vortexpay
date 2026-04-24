@@ -15,3 +15,4 @@ export ASAAS_ENV="${ASAAS_ENV:-production}"
 
 echo "Iniciando servidor..."
 python3 server.py
+
