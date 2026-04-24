@@ -183,6 +183,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   cursor:pointer;transition:border-color .2s}
 .jogo-card:hover{border-color:#3b82f633}
 .jogo-card.live-c{border-left:3px solid var(--red)}
+.jogo-card.finished-c{opacity:0.85}
 .jc-meta{display:flex;align-items:center;gap:6px;margin-bottom:8px}
 .jc-liga{font-size:11px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .jc-hora{font-size:11px;color:#555}
@@ -1212,11 +1213,12 @@ async function carregarJogos(sport) {
     }
     lista.innerHTML = '';
     for (const j of jogos) {
-      const live    = new Date(j.commence_time) < new Date();
+      const live    = new Date(j.commence_time) < new Date() && j.status !== 'Match Finished' && j.status !== 'FT';
+      const finished = j.status === 'Match Finished' || j.status === 'FT';
       const o       = j.odds || {};
       const temEmpate = o.draw != null;
       const card    = document.createElement('div');
-      card.className = 'jogo-card' + (live ? ' live-c' : '');
+      card.className = 'jogo-card' + (live ? ' live-c' : '') + (finished ? ' finished-c' : '');
       const hora    = j.commence_time ? new Date(j.commence_time).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
       const hLogo   = j.home_logo || getTeamLogo?.(j.home_team);
       const aLogo   = j.away_logo || getTeamLogo?.(j.away_team);
@@ -1238,8 +1240,11 @@ async function carregarJogos(sport) {
       card.innerHTML =
         '<div class="jc-meta">' +
           '<span class="jc-liga" style="color:' + ligaColor + ';font-weight:700">' + (j.league || j.sport) + '</span>' +
-          (live ? '<span class="live-tag">● AO VIVO</span>' : '<span class="jc-hora">' + hora + '</span>') +
+          (live ? '<span class="live-tag">● AO VIVO</span>' :
+           finished ? '<span style="font-size:10px;color:var(--muted);background:#ffffff10;padding:2px 6px;border-radius:10px">✓ Encerrado</span>' :
+           '<span class="jc-hora">' + hora + '</span>') +
         '</div>' +
+        (finished && j.score ? '<div style="text-align:center;font-size:18px;font-weight:900;color:var(--text);padding:8px 0 4px">' + j.score + '</div>' : '') +
         '<div class="jc-times">' +
           '<div class="time-b">' + hBadge + '<span class="t-nome">' + j.home_team + '</span></div>' +
           '<span class="t-vs">' + (live ? '<span style="color:var(--red);font-size:10px;font-weight:900">AO VIVO</span>' : 'VS') + '</span>' +
