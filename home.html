@@ -3,610 +3,874 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-<meta name="theme-color" content="#0a0a0f">
-<meta name="description" content="PaynexBet — Sorteios, Apostas Esportivas e Prêmios reais via Pix!">
 <title>PaynexBet — Sorteios & Apostas Esportivas</title>
+<meta name="description" content="Aposte nos seus times favoritos e participe de sorteios com prêmios reais via Pix. Plataforma 100% automática e segura.">
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{
-  --gold:#FFD700;--gold2:#FFA500;--green:#00d68f;--blue:#3b82f6;--purple:#8b5cf6;
-  --bg:#0a0a0f;--card:#111118;--card2:#13131e;
-  --fs-hero:clamp(24px,5.5vw,42px);
-  --fs-title:clamp(18px,4vw,28px);
-  --fs-sub:clamp(13px,2.5vw,17px);
-  --fs-btn:clamp(14px,2.8vw,17px);
-  --fs-body:clamp(12px,1.8vw,15px);
-  --fs-small:clamp(10px,1.5vw,12px);
-  --fs-prize:clamp(30px,8vw,64px);
-  --pad-x:clamp(14px,4vw,40px);
-  --max-w:560px;
-}
-html{scroll-behavior:smooth}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:#fff;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  :root {
+    --bg:       #0a0a14;
+    --bg2:      #0f0f1e;
+    --bg3:      #141428;
+    --card:     #12122a;
+    --border:   #ffffff10;
+    --gold:     #f5a623;
+    --gold2:    #ffd369;
+    --blue:     #3b82f6;
+    --blue2:    #60a5fa;
+    --green:    #22c55e;
+    --purple:   #8b5cf6;
+    --text:     #f1f5f9;
+    --muted:    #94a3b8;
+    --radius:   14px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-/* PARTÍCULAS */
-#particles{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden}
-.particle{position:absolute;border-radius:50%;animation:float linear infinite;opacity:.2}
-@keyframes float{0%{transform:translateY(100vh) scale(0)}100%{transform:translateY(-80px) scale(1);opacity:0}}
+  /* ── TOPBAR ── */
+  .topbar {
+    position: sticky; top:0; z-index:100;
+    background: rgba(10,10,20,0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .topbar-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 20px; font-weight: 900; letter-spacing: -0.5px;
+    background: linear-gradient(90deg, var(--gold), var(--gold2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    text-decoration: none;
+  }
+  .topbar-brand span.icon { font-size: 22px; -webkit-text-fill-color: initial; }
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
+  .btn-entrar {
+    padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    background: transparent; border: 1.5px solid var(--blue); color: var(--blue2);
+    cursor: pointer; transition: all .2s;
+  }
+  .btn-entrar:hover { background: var(--blue); color: #fff; }
+  .btn-cadastrar {
+    padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 700;
+    background: linear-gradient(135deg, var(--gold), #e8950a);
+    border: none; color: #1a0a00; cursor: pointer; transition: all .2s;
+  }
+  .btn-cadastrar:hover { transform: translateY(-1px); box-shadow: 0 4px 20px #f5a62340; }
 
-/* WRAPPER */
-.page{position:relative;z-index:1;max-width:var(--max-w);margin:0 auto;padding:0 var(--pad-x) clamp(30px,8vw,60px)}
+  /* ── HERO ── */
+  .hero {
+    position: relative; overflow: hidden;
+    min-height: calc(100vh - 60px);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; text-align: center;
+    padding: 60px 24px 80px;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% -10%, #3b82f618 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, #f5a62310 0%, transparent 50%),
+      radial-gradient(ellipse 50% 50% at 20% 70%, #8b5cf610 0%, transparent 50%);
+    z-index: 0;
+  }
+  .hero-grid {
+    position: absolute; inset: 0; z-index: 0; opacity: 0.03;
+    background-image: linear-gradient(var(--text) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--text) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+  .hero-content { position: relative; z-index: 1; max-width: 780px; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #22c55e18; border: 1px solid #22c55e40;
+    color: var(--green); padding: 6px 16px; border-radius: 99px;
+    font-size: 13px; font-weight: 600; margin-bottom: 28px;
+  }
+  .pulse { width:8px; height:8px; border-radius:50%; background:var(--green);
+    animation: pulse 1.5s infinite; display:inline-block; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
 
-/* HERO */
-.hero{text-align:center;padding:clamp(20px,5vw,36px) var(--pad-x) clamp(16px,3.5vw,24px);background:radial-gradient(ellipse at 50% 0%,#FFD70018 0%,transparent 65%);position:relative;z-index:1;max-width:var(--max-w);margin:0 auto}
-.logo-icon{font-size:clamp(40px,10vw,60px);display:block;animation:pulse 2.5s ease-in-out infinite;filter:drop-shadow(0 0 20px #FFD70088);margin-bottom:4px}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
-.logo-name{font-size:var(--fs-hero);font-weight:900;letter-spacing:-1px;background:linear-gradient(135deg,var(--gold),var(--gold2),#fff8dc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1}
-.logo-sub{font-size:var(--fs-small);color:#777;letter-spacing:3px;text-transform:uppercase;margin-top:3px;margin-bottom:12px}
-.badge-online{display:inline-flex;align-items:center;gap:5px;background:#00d68f12;border:1px solid #00d68f44;border-radius:999px;padding:5px 14px;font-size:var(--fs-small);color:var(--green);font-weight:700;margin-bottom:12px}
-.dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:blink 1.4s ease-in-out infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.hero-tags{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-bottom:12px}
-.hero-tags span{background:#ffffff0c;border:1px solid #ffffff12;border-radius:999px;padding:4px 12px;font-size:var(--fs-small);color:#bbb;font-weight:500;white-space:nowrap}
-.hero-title{font-size:var(--fs-title);font-weight:900;line-height:1.25;margin-bottom:8px;word-break:break-word}
-.hero-title .hl{color:var(--gold)}
-.hero-title .hl-blue{color:var(--blue)}
-.hero-desc{font-size:var(--fs-body);color:#777;line-height:1.6;margin-bottom:18px}
+  .hero-logo {
+    width: 88px; height: 88px; margin: 0 auto 24px;
+    background: linear-gradient(135deg, #1e1e3a, #2a2a50);
+    border: 2px solid var(--gold);
+    border-radius: 24px; display: flex; align-items: center; justify-content: center;
+    font-size: 44px; box-shadow: 0 0 40px #f5a62330;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
 
-/* BOTÕES */
-.btn-main{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;font-size:var(--fs-btn);font-weight:900;padding:clamp(13px,3vw,16px) clamp(24px,5vw,40px);border-radius:14px;text-decoration:none;border:none;cursor:pointer;box-shadow:0 4px 24px #FFD70044;transition:transform .15s;width:100%;max-width:360px;white-space:nowrap}
-.btn-main:active{transform:scale(.97)}
-.btn-main.blue{background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;box-shadow:0 4px 20px #3b82f633;margin-top:8px}
-.btn-main.secondary{background:linear-gradient(135deg,#1a6b3c,#00a86b);color:#fff;box-shadow:0 4px 20px #00d68f33;margin-top:8px}
-.btn-row{display:flex;flex-direction:column;align-items:center;gap:0}
+  .hero-title {
+    font-size: clamp(32px, 6vw, 56px);
+    font-weight: 900; line-height: 1.1; margin-bottom: 16px;
+    letter-spacing: -1px;
+  }
+  .hero-title .gold { background: linear-gradient(90deg, var(--gold), var(--gold2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .hero-title .blue { background: linear-gradient(90deg, var(--blue), var(--blue2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 
-/* DIVIDER */
-.divider{display:flex;align-items:center;gap:8px;padding:clamp(14px,3.5vw,20px) 0 clamp(10px,2.5vw,14px)}
-.divider::before,.divider::after{content:'';flex:1;height:1px;background:#ffffff08}
-.divider span{font-size:var(--fs-small);color:#555;white-space:nowrap;text-transform:uppercase;letter-spacing:1px}
+  .hero-sub {
+    font-size: 17px; color: var(--muted); max-width: 520px; margin: 0 auto 36px;
+    line-height: 1.6;
+  }
 
-/* PRIZE CARD */
-.prize-card{background:linear-gradient(135deg,#1a1200,#251a00);border:2px solid #FFD70066;border-radius:18px;padding:clamp(18px,4vw,28px) clamp(14px,3.5vw,24px);text-align:center;margin-bottom:10px;position:relative;overflow:hidden}
-.prize-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,#FFD70010,transparent 70%);pointer-events:none}
-.prize-label{font-size:var(--fs-small);color:#888;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px}
-.prize-value{font-size:clamp(32px,10vw,72px);font-weight:900;color:var(--gold);line-height:1.05;word-break:break-word;overflow-wrap:anywhere;text-shadow:0 0 40px #FFD70055}
-.prize-sub{font-size:var(--fs-small);color:#888;margin-top:8px}
-.prize-num-card{background:var(--card);border:1px solid #FFD70022;border-radius:12px;padding:clamp(12px,3vw,18px) clamp(10px,3vw,14px);text-align:center;display:flex;align-items:center;justify-content:center;gap:12px}
-.prize-num-val{font-size:clamp(22px,6vw,32px);font-weight:900;color:var(--gold)}
-.prize-num-lbl{font-size:var(--fs-body);color:#777;text-align:left;line-height:1.4}
+  .hero-chips {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 40px;
+  }
+  .chip {
+    background: var(--bg3); border: 1px solid var(--border);
+    padding: 8px 16px; border-radius: 99px; font-size: 13px; color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
 
-/* ══════════════════════════════════
-   SEÇÃO APOSTAS ESPORTIVAS
-══════════════════════════════════ */
-.apostas-hero{background:linear-gradient(135deg,#0a0f1a,#0d1526);border:1.5px solid #3b82f633;border-radius:18px;padding:clamp(16px,4vw,24px);position:relative;overflow:hidden;margin-bottom:10px}
-.apostas-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,#3b82f610,transparent 70%);pointer-events:none}
-.apostas-title{font-size:clamp(16px,4vw,22px);font-weight:900;color:#fff;margin-bottom:4px}
-.apostas-title span{color:var(--blue)}
-.apostas-sub{font-size:var(--fs-body);color:#666;margin-bottom:14px;line-height:1.5}
+  /* ── HERO BTNS ── */
+  .hero-btns { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+  .btn-hero-primary {
+    padding: 16px 36px; border-radius: 12px; font-size: 17px; font-weight: 800;
+    background: linear-gradient(135deg, var(--gold), #e8950a);
+    border: none; color: #1a0a00; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 4px 30px #f5a62340;
+    transition: all .25s; text-decoration: none;
+  }
+  .btn-hero-primary:hover { transform: translateY(-3px); box-shadow: 0 8px 40px #f5a62350; }
+  .btn-hero-secondary {
+    padding: 16px 36px; border-radius: 12px; font-size: 17px; font-weight: 800;
+    background: linear-gradient(135deg, var(--blue), #2563eb);
+    border: none; color: #fff; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 4px 30px #3b82f630;
+    transition: all .25s; text-decoration: none;
+  }
+  .btn-hero-secondary:hover { transform: translateY(-3px); box-shadow: 0 8px 40px #3b82f650; }
 
-/* Cards de jogos ao vivo */
-.jogos-grid{display:flex;flex-direction:column;gap:8px}
-.jogo-card{background:#0d1120;border:1px solid #3b82f622;border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;transition:border-color .2s}
-.jogo-card:hover{border-color:#3b82f655}
-.jogo-card.live{border-left:3px solid #ef4444}
-.jogo-teams{flex:1;min-width:0}
-.jogo-league{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;display:flex;align-items:center;gap:5px}
-.live-badge{background:#ef444418;color:#ef4444;border:1px solid #ef444433;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;animation:blink-red 1.2s ease-in-out infinite}
-@keyframes blink-red{0%,100%{opacity:1}50%{opacity:.4}}
-.jogo-nome{font-size:clamp(12px,3vw,14px);font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.jogo-odds{display:flex;gap:5px;flex-shrink:0}
-.odd-btn{background:#111827;border:1px solid #3b82f633;border-radius:8px;padding:5px 8px;text-align:center;min-width:48px;cursor:pointer;transition:all .15s}
-.odd-btn:hover,.odd-btn.sel{background:#1e3a8a;border-color:#3b82f6}
-.odd-btn .odd-label{font-size:9px;color:#666;display:block}
-.odd-btn .odd-val{font-size:clamp(12px,3vw,14px);font-weight:900;color:var(--blue)}
-.odd-btn.sel .odd-val{color:#fff}
+  /* ── STATS BAR ── */
+  .stats-bar {
+    background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    padding: 20px 24px;
+    display: flex; justify-content: center; gap: 0; flex-wrap: wrap;
+  }
+  .stat-item {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 8px 32px; border-right: 1px solid var(--border);
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-val { font-size: 22px; font-weight: 900; color: var(--gold2); }
+  .stat-lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
 
-/* Carrinho de apostas */
-.bet-slip{background:#0d1a0d;border:1.5px solid #22c55e33;border-radius:14px;padding:14px;margin-top:10px;display:none}
-.bet-slip.visible{display:block}
-.bet-slip-title{font-size:13px;font-weight:700;color:#4ade80;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.bet-item{background:#0a140a;border:1px solid #22c55e22;border-radius:8px;padding:10px;margin-bottom:8px}
-.bet-item-game{font-size:11px;color:#666;margin-bottom:2px}
-.bet-item-sel{font-size:13px;font-weight:700;color:#4ade80}
-.bet-item-odd{font-size:11px;color:#22c55e}
-.bet-valor-row{display:flex;gap:8px;align-items:center;margin-top:10px}
-.bet-valor-input{flex:1;background:#0a0a14;border:1px solid #22c55e33;border-radius:8px;padding:8px 10px;color:#fff;font-size:14px;font-weight:700}
-.bet-retorno{font-size:11px;color:#555;margin-top:6px}
-.bet-retorno span{color:#4ade80;font-weight:700}
+  /* ── SECTIONS ── */
+  .section { padding: 72px 24px; max-width: 1100px; margin: 0 auto; }
+  .section-title {
+    text-align: center; font-size: clamp(24px, 4vw, 36px);
+    font-weight: 900; margin-bottom: 12px;
+  }
+  .section-sub { text-align: center; color: var(--muted); font-size: 16px; margin-bottom: 48px; }
 
-/* PASSOS */
-.steps{display:flex;flex-direction:column;gap:8px}
-.step-card{background:var(--card);border:1px solid #ffffff0c;border-radius:12px;padding:clamp(12px,3vw,16px);display:flex;align-items:flex-start;gap:12px}
-.step-num{flex-shrink:0;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px;box-shadow:0 2px 10px #FFD70044}
-.step-num.blue{background:linear-gradient(135deg,#1e3a8a,#3b82f6);box-shadow:0 2px 10px #3b82f644}
-.step-body{flex:1;min-width:0}
-.step-body h3{font-size:clamp(13px,3vw,16px);font-weight:800;margin-bottom:4px;color:#fff}
-.step-body p{font-size:var(--fs-body);color:#777;line-height:1.55;word-break:break-word}
-.badge-tag{display:inline-block;margin-top:6px;font-size:var(--fs-small);font-weight:700;padding:3px 10px;border-radius:999px}
-.bg{background:#00d68f18;color:var(--green);border:1px solid #00d68f33}
-.by{background:#FFD70018;color:var(--gold);border:1px solid #FFD70033}
-.br{background:#ff4d4d18;color:#ff6b6b;border:1px solid #ff4d4d33}
-.bb{background:#3b82f618;color:var(--blue);border:1px solid #3b82f633}
+  /* ── FEATURES GRID ── */
+  .features-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;
+  }
+  .feature-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px 24px;
+    transition: all .25s; cursor: default;
+  }
+  .feature-card:hover { border-color: #f5a62330; transform: translateY(-4px); box-shadow: 0 8px 32px #0004; }
+  .feature-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; margin-bottom: 16px;
+  }
+  .feature-icon.gold { background: #f5a62315; border: 1px solid #f5a62330; }
+  .feature-icon.blue { background: #3b82f615; border: 1px solid #3b82f630; }
+  .feature-icon.green { background: #22c55e15; border: 1px solid #22c55e30; }
+  .feature-icon.purple { background: #8b5cf615; border: 1px solid #8b5cf630; }
+  .feature-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+  .feature-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
 
-/* POR QUE */
-.why-box{background:linear-gradient(135deg,#0e0e15,#13131c);border:1.5px solid #FFD70020;border-radius:14px;padding:clamp(14px,3.5vw,20px)}
-.why-list{display:flex;flex-direction:column;gap:10px}
-.why-item{display:flex;align-items:center;gap:10px;font-size:var(--fs-body);color:#ccc;font-weight:500;line-height:1.4}
-.why-item .ic{font-size:clamp(14px,3.5vw,17px);flex-shrink:0}
+  /* ── PREMIO CARD ── */
+  .premio-banner {
+    background: linear-gradient(135deg, #1a1a30, #1e1e3a);
+    border: 1px solid var(--gold);
+    border-radius: 20px; padding: 40px 32px;
+    text-align: center; position: relative; overflow: hidden;
+    box-shadow: 0 0 60px #f5a62318;
+  }
+  .premio-banner::before {
+    content:''; position:absolute; top:-40px; left:50%; transform:translateX(-50%);
+    width:200px; height:200px; border-radius:50%;
+    background: radial-gradient(circle, #f5a62320 0%, transparent 70%);
+  }
+  .premio-label { font-size: 12px; text-transform:uppercase; letter-spacing:2px; color:var(--gold); font-weight:700; margin-bottom:12px; }
+  .premio-val {
+    font-size: clamp(42px, 8vw, 72px); font-weight: 900; line-height: 1;
+    background: linear-gradient(90deg, var(--gold), var(--gold2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 16px;
+  }
+  .premio-info { color: var(--muted); font-size: 15px; margin-bottom: 28px; }
+  .btn-participar {
+    padding: 15px 40px; border-radius: 12px; font-size: 16px; font-weight: 800;
+    background: linear-gradient(135deg, var(--gold), #e8950a);
+    border: none; color: #1a0a00; cursor: pointer; transition: all .25s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-participar:hover { transform: translateY(-2px); box-shadow: 0 6px 30px #f5a62440; }
 
-/* CRONOGRAMA */
-.crono-box{background:var(--card2);border:1.5px solid #8b5cf622;border-radius:16px;overflow:hidden}
-.crono-header{background:linear-gradient(135deg,#1a0a2e,#2d1b4e);padding:14px 18px;border-bottom:1px solid #8b5cf622}
-.crono-header-title{font-size:clamp(14px,3.5vw,17px);font-weight:900;color:#a78bfa}
-.crono-header-sub{font-size:var(--fs-small);color:#666;margin-top:3px}
-.crono-fase{border-bottom:1px solid #ffffff06}
-.crono-fase:last-child{border-bottom:none}
-.crono-fase-header{display:flex;align-items:center;gap:10px;padding:12px 18px;cursor:pointer;user-select:none}
-.crono-fase-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0}
-.crono-fase-info{flex:1}
-.crono-fase-title{font-size:clamp(12px,3vw,14px);font-weight:800;color:#fff}
-.crono-fase-meta{font-size:var(--fs-small);color:#666;margin-top:1px}
-.crono-fase-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;flex-shrink:0}
-.crono-fase-body{padding:0 18px 14px 56px;display:none}
-.crono-fase-body.open{display:block}
-.crono-task{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:var(--fs-body);color:#999;line-height:1.55}
-.crono-task .tk{flex-shrink:0;margin-top:1px}
-.crono-task b{color:#ccc}
-.crono-task code{background:#ffffff0a;border:1px solid #ffffff10;border-radius:4px;padding:1px 6px;font-size:11px;color:#a78bfa;font-family:monospace}
+  /* ── COMO FUNCIONA ── */
+  .steps { display:flex; flex-direction:column; gap:0; position:relative; }
+  .steps::before {
+    content:''; position:absolute; left:27px; top:0; bottom:0;
+    width:2px; background:linear-gradient(180deg, var(--gold)40, var(--blue)40, transparent);
+    z-index:0;
+  }
+  .step {
+    display:flex; gap:20px; align-items:flex-start; position:relative; z-index:1;
+    padding:0 0 32px 0;
+  }
+  .step:last-child { padding-bottom:0; }
+  .step-num {
+    width:56px; height:56px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; font-weight:900; border:2px solid;
+  }
+  .step-num.s1 { background:#f5a62318; border-color:var(--gold); color:var(--gold); }
+  .step-num.s2 { background:#3b82f618; border-color:var(--blue); color:var(--blue2); }
+  .step-num.s3 { background:#22c55e18; border-color:var(--green); color:var(--green); }
+  .step-num.s4 { background:#8b5cf618; border-color:var(--purple); color:var(--purple); }
+  .step-body { padding-top:12px; }
+  .step-title { font-size:17px; font-weight:700; margin-bottom:6px; }
+  .step-desc { font-size:14px; color:var(--muted); line-height:1.6; }
 
-/* URGÊNCIA */
-.urgency{background:linear-gradient(135deg,#160900,#211000);border:1.5px solid #FFD70033;border-radius:14px;padding:clamp(14px,4vw,20px);text-align:center}
-.urgency-title{font-size:clamp(14px,3.5vw,17px);font-weight:900;color:var(--gold);margin-bottom:10px}
-.urgency-items{display:flex;flex-direction:column;gap:8px}
-.urgency-item{font-size:var(--fs-body);color:#bbb;line-height:1.5}
+  /* ── TRUST ── */
+  .trust-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
+  .trust-item {
+    background:var(--bg3); border:1px solid var(--border); border-radius:12px;
+    padding:20px; text-align:center;
+  }
+  .trust-icon { font-size:28px; margin-bottom:8px; }
+  .trust-title { font-size:14px; font-weight:700; margin-bottom:4px; }
+  .trust-desc { font-size:12px; color:var(--muted); }
 
-/* CTA FINAL */
-.cta-final{padding:clamp(14px,4vw,22px) 0 6px;text-align:center}
-.cta-final p{font-size:var(--fs-body);color:#555;margin-bottom:10px}
+  /* ── FOOTER ── */
+  .footer {
+    background:var(--bg2); border-top:1px solid var(--border);
+    padding:40px 24px 30px;
+  }
+  .footer-inner { max-width:900px; margin:0 auto; text-align:center; }
+  .footer-brand {
+    font-size:22px; font-weight:900; margin-bottom:8px;
+    background:linear-gradient(90deg,var(--gold),var(--gold2));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .footer-sub { font-size:13px; color:var(--muted); margin-bottom:20px; }
+  .footer-links { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-bottom:24px; }
+  .footer-links a { color:var(--muted); font-size:13px; text-decoration:none; }
+  .footer-links a:hover { color:var(--text); }
+  .footer-copy { font-size:12px; color:#64748b; }
 
-/* FOOTER */
-.footer{text-align:center;padding:clamp(16px,4vw,24px) var(--pad-x) clamp(28px,8vw,44px);font-size:var(--fs-small);color:#252525;position:relative;z-index:1}
+  /* ── MODAL CADASTRO/LOGIN ── */
+  .modal-overlay {
+    position:fixed; inset:0; z-index:1000;
+    background:rgba(0,0,0,.7); backdrop-filter:blur(8px);
+    display:none; align-items:center; justify-content:center; padding:16px;
+  }
+  .modal-overlay.open { display:flex; }
+  .modal-box {
+    background:var(--bg2); border:1px solid var(--border);
+    border-radius:20px; width:100%; max-width:440px;
+    padding:32px 28px; position:relative;
+    box-shadow:0 20px 80px rgba(0,0,0,.6);
+    animation: slideUp .3s ease;
+  }
+  @keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  .modal-close {
+    position:absolute; top:16px; right:16px;
+    background:var(--bg3); border:1px solid var(--border);
+    width:32px; height:32px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; color:var(--muted); font-size:18px; line-height:1;
+  }
+  .modal-close:hover { color:var(--text); }
+  .modal-logo { text-align:center; margin-bottom:24px; }
+  .modal-logo-icon {
+    width:60px; height:60px; border-radius:16px; margin:0 auto 12px;
+    background:linear-gradient(135deg,#1e1e3a,#2a2a50);
+    border:2px solid var(--gold); display:flex; align-items:center;
+    justify-content:center; font-size:28px;
+  }
+  .modal-logo-title {
+    font-size:20px; font-weight:900;
+    background:linear-gradient(90deg,var(--gold),var(--gold2));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .modal-tabs { display:flex; margin-bottom:24px; border-radius:10px; overflow:hidden; border:1px solid var(--border); }
+  .modal-tab {
+    flex:1; padding:10px; text-align:center; font-size:14px; font-weight:700;
+    cursor:pointer; background:transparent; color:var(--muted); border:none;
+    transition:all .2s;
+  }
+  .modal-tab.active { background:linear-gradient(135deg,var(--blue),#2563eb); color:#fff; }
 
-/* TABLET */
-@media(min-width:600px){
-  :root{--max-w:600px}
-  .jogo-odds{gap:7px}
-  .odd-btn{min-width:56px;padding:6px 10px}
-}
-/* DESKTOP */
-@media(min-width:900px){
-  :root{--max-w:700px}
-  .steps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .step-card:last-child{grid-column:1/-1}
-  .why-list{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
-}
-/* PEQUENOS */
-@media(max-width:360px){
-  :root{--pad-x:12px}
-  .prize-value{font-size:clamp(26px,9vw,40px)}
-  .logo-name{font-size:clamp(22px,8vw,30px)}
-  .hero-tags span{padding:3px 9px;font-size:10px}
-  .jogo-card{flex-wrap:wrap}
-  .jogo-odds{width:100%;justify-content:space-between}
-}
+  .form-group { margin-bottom:16px; }
+  .form-label { display:block; font-size:13px; font-weight:600; color:var(--muted); margin-bottom:6px; }
+  .form-input {
+    width:100%; background:var(--bg3); border:1.5px solid var(--border);
+    border-radius:10px; padding:12px 14px; font-size:15px; color:var(--text);
+    transition:border-color .2s; outline:none;
+  }
+  .form-input:focus { border-color:var(--blue); }
+  .form-input::placeholder { color:#475569; }
+  .form-input-icon { position:relative; }
+  .form-input-icon .form-input { padding-left:40px; }
+  .form-input-icon .input-icon {
+    position:absolute; left:13px; top:50%; transform:translateY(-50%);
+    font-size:16px; color:#475569; pointer-events:none;
+  }
+
+  .btn-submit {
+    width:100%; padding:14px; border-radius:12px; font-size:16px; font-weight:800;
+    background:linear-gradient(135deg,var(--blue),#2563eb);
+    border:none; color:#fff; cursor:pointer; transition:all .25s; margin-top:8px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn-submit:hover { transform:translateY(-1px); box-shadow:0 4px 20px #3b82f640; }
+  .btn-submit:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+
+  .btn-submit-gold {
+    width:100%; padding:14px; border-radius:12px; font-size:16px; font-weight:800;
+    background:linear-gradient(135deg,var(--gold),#e8950a);
+    border:none; color:#1a0a00; cursor:pointer; transition:all .25s; margin-top:8px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn-submit-gold:hover { transform:translateY(-1px); box-shadow:0 4px 20px #f5a62340; }
+  .btn-submit-gold:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+
+  .divider { text-align:center; color:var(--muted); font-size:12px; margin:14px 0; position:relative; }
+  .divider::before,.divider::after {
+    content:''; position:absolute; top:50%; width:38%; height:1px;
+    background:var(--border);
+  }
+  .divider::before { left:0; } .divider::after { right:0; }
+
+  .modal-alt { text-align:center; font-size:13px; color:var(--muted); margin-top:16px; }
+  .modal-alt a { color:var(--blue2); text-decoration:none; font-weight:600; cursor:pointer; }
+  .modal-alt a:hover { text-decoration:underline; }
+
+  .alert { padding:12px 14px; border-radius:10px; font-size:13px; margin-bottom:14px; display:none; }
+  .alert.show { display:block; }
+  .alert-error { background:#ef44441a; border:1px solid #ef444440; color:#f87171; }
+  .alert-success { background:#22c55e1a; border:1px solid #22c55e40; color:#4ade80; }
+
+  .cpf-mask { letter-spacing:.5px; }
+
+  /* ── USER LOGGED AREA ── */
+  .user-chip {
+    display:flex; align-items:center; gap:8px;
+    background:var(--bg3); border:1px solid var(--border);
+    padding:6px 14px 6px 8px; border-radius:99px; cursor:pointer;
+    font-size:13px;
+  }
+  .user-chip-avatar {
+    width:28px; height:28px; border-radius:50%;
+    background:linear-gradient(135deg,var(--blue),var(--purple));
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; color:#fff; flex-shrink:0;
+  }
+  .user-chip-name { font-weight:600; color:var(--text); }
+  .user-chip-saldo { color:var(--gold2); font-weight:700; }
+
+  .user-dropdown {
+    position:absolute; top:56px; right:16px; z-index:200;
+    background:var(--bg2); border:1px solid var(--border);
+    border-radius:14px; padding:8px; min-width:200px;
+    box-shadow:0 8px 40px rgba(0,0,0,.4);
+    display:none;
+  }
+  .user-dropdown.open { display:block; }
+  .ud-item {
+    padding:10px 14px; border-radius:10px; cursor:pointer;
+    font-size:14px; display:flex; align-items:center; gap:10px;
+    transition:background .15s;
+  }
+  .ud-item:hover { background:var(--bg3); }
+  .ud-sep { height:1px; background:var(--border); margin:4px 0; }
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:640px) {
+    .topbar { padding:0 16px; }
+    .stat-item { padding:8px 16px; }
+    .stat-val { font-size:18px; }
+    .steps::before { left:22px; }
+    .step-num { width:46px; height:46px; font-size:16px; }
+    .premio-banner { padding:28px 20px; }
+    .modal-box { padding:24px 18px; }
+    .btn-entrar { padding:7px 14px; font-size:13px; }
+    .btn-cadastrar { padding:7px 14px; font-size:13px; }
+  }
 </style>
 </head>
 <body>
 
-<div id="particles"></div>
-
-<!-- HERO -->
-<section class="hero">
-  <span class="logo-icon">🎰</span>
-  <div class="logo-name">PaynexBet</div>
-  <div class="logo-sub">Sorteios & Apostas Esportivas</div>
-
-  <div class="badge-online"><span class="dot"></span>Sistema online agora</div>
-
-  <div class="hero-tags">
-    <span>💰 Prêmios reais no Pix</span>
-    <span>⚽ Apostas esportivas</span>
-    <span>⚡ 100% automático</span>
+<!-- ── TOPBAR ── -->
+<nav class="topbar">
+  <a href="/" class="topbar-brand">
+    <span class="icon">🎰</span> PaynexBet
+  </a>
+  <!-- Ações: login/cadastro ou user chip -->
+  <div class="topbar-actions" id="topbar-actions">
+    <button class="btn-entrar" onclick="openModal('login')">Entrar</button>
+    <button class="btn-cadastrar" onclick="openModal('cadastro')">Criar conta</button>
   </div>
 
-  <h1 class="hero-title">
-    Sorteios <span class="hl">e apostas</span><br><span class="hl-blue">num só lugar!</span>
-  </h1>
-  <p class="hero-desc">
-    Deposite via Pix, concorra a prêmios nos sorteios e aposte nos seus times favoritos com odds em tempo real!
-  </p>
+  <!-- Dropdown logado -->
+  <div class="user-dropdown" id="user-dropdown">
+    <div class="ud-item" onclick="goTo('/apostas')">⚽ Apostas Esportivas</div>
+    <div class="ud-item" onclick="goTo('/sorteio')">🎲 Sorteios</div>
+    <div class="ud-item" onclick="goTo('/conta')">💰 Minha Conta</div>
+    <div class="ud-sep"></div>
+    <div class="ud-item" style="color:#ef4444" onclick="logout()">🚪 Sair</div>
+  </div>
+</nav>
 
-  <div class="btn-row">
-    <a href="/sorteio" class="btn-main">🎲 Participar do Sorteio</a>
-    <a href="/apostas" class="btn-main blue">⚽ Apostar Agora</a>
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-badge"><span class="pulse"></span> Sistema online agora</div>
+    <div class="hero-logo">🎰</div>
+    <h1 class="hero-title">
+      <span class="gold">Sorteios</span> &amp; <span class="blue">Apostas</span><br>
+      num só lugar!
+    </h1>
+    <p class="hero-sub">
+      Deposite via Pix, concorra a prêmios nos sorteios e aposte nos seus times favoritos com odds em tempo real.
+    </p>
+    <div class="hero-chips">
+      <span class="chip">🏆 Prêmios reais no Pix</span>
+      <span class="chip">⚽ Apostas esportivas</span>
+      <span class="chip">⚡ 100% automático</span>
+      <span class="chip">🔒 Ambiente seguro</span>
+    </div>
+    <div class="hero-btns">
+      <button class="btn-hero-primary" onclick="heroAction('sorteio')">🎲 Participar do Sorteio</button>
+      <button class="btn-hero-secondary" onclick="heroAction('apostas')">⚽ Apostar Agora</button>
+    </div>
   </div>
 </section>
 
-<div class="page">
-
-  <!-- ══ SEÇÃO SORTEIO ══ -->
-  <div class="divider"><span>🏆 Prêmio atual do sorteio</span></div>
-
-  <div class="prize-card">
-    <div class="prize-label">🏆 Prêmio estimado</div>
-    <div class="prize-value" id="s-premio">--</div>
-    <div class="prize-sub">💸 Valor exato enviado via Pix ao ganhador</div>
+<!-- ── STATS BAR ── -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <span class="stat-val" id="stat-premio">R$ 750</span>
+    <span class="stat-lbl">Prêmio atual</span>
   </div>
-
-  <div class="prize-num-card">
-    <div class="prize-num-val" id="s-valor-num">R$5</div>
-    <div class="prize-num-lbl">Por número<br>da sorte</div>
+  <div class="stat-item">
+    <span class="stat-val" id="stat-jogos">+48</span>
+    <span class="stat-lbl">Jogos ao vivo</span>
   </div>
-
-  <!-- ══ SEÇÃO APOSTAS ESPORTIVAS ══ -->
-  <div id="apostas" class="divider"><span>⚽ Apostas Esportivas</span></div>
-
-  <div class="apostas-hero">
-    <div class="apostas-title">Apostas em tempo real <span>ao vivo</span></div>
-    <div class="apostas-sub">Odds atualizadas dos maiores campeonatos. Deposite via Pix e aposte nos seus times favoritos!</div>
-
-    <!-- Jogos ao vivo / próximos -->
-    <div class="jogos-grid" id="jogos-container">
-      <!-- Skeleton loader -->
-      <div class="jogo-card" style="opacity:.4">
-        <div class="jogo-teams">
-          <div class="jogo-league"><span>⏳</span> Carregando jogos...</div>
-          <div class="jogo-nome">Aguardando odds...</div>
-        </div>
-        <div class="jogo-odds">
-          <div class="odd-btn"><span class="odd-label">—</span><span class="odd-val">—</span></div>
-          <div class="odd-btn"><span class="odd-label">—</span><span class="odd-val">—</span></div>
-          <div class="odd-btn"><span class="odd-label">—</span><span class="odd-val">—</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Carrinho de apostas -->
-    <div class="bet-slip" id="bet-slip">
-      <div class="bet-slip-title">🎯 Sua seleção</div>
-      <div id="bet-items"></div>
-      <div class="bet-valor-row">
-        <input class="bet-valor-input" type="number" id="bet-valor" placeholder="R$ Valor da aposta" min="5" step="1">
-        <a href="/conta" class="btn-main" style="max-width:130px;margin:0;font-size:13px;padding:9px 14px">💰 Depositar</a>
-      </div>
-      <div class="bet-retorno" id="bet-retorno">Retorno potencial: <span>R$ 0,00</span></div>
-    </div>
+  <div class="stat-item">
+    <span class="stat-val">Pix</span>
+    <span class="stat-lbl">Pagamento</span>
   </div>
-
-  <!-- COMO FUNCIONA -->
-  <div class="divider"><span>🎯 Como Funciona?</span></div>
-
-  <div class="steps">
-    <div class="step-card">
-      <div class="step-num">1</div>
-      <div class="step-body">
-        <h3>Deposite via Pix</h3>
-        <p>Gere o QR Code em segundos. Saldo cai automaticamente na sua conta.</p>
-        <span class="badge-tag bg">Instantâneo</span>
-      </div>
-    </div>
-    <div class="step-card">
-      <div class="step-num blue">2</div>
-      <div class="step-body">
-        <h3>Escolha sua aposta</h3>
-        <p>Odds em tempo real de futebol, basquete, tênis e muito mais. Clique e aposte.</p>
-        <span class="badge-tag bb">Odds ao vivo</span>
-      </div>
-    </div>
-    <div class="step-card">
-      <div class="step-num">3</div>
-      <div class="step-body">
-        <h3>Receba seus ganhos</h3>
-        <p>🏆 Ganhou? O valor cai automaticamente no seu Pix!</p>
-        <span class="badge-tag br">🔥 Automático</span>
-      </div>
-    </div>
+  <div class="stat-item">
+    <span class="stat-val">24/7</span>
+    <span class="stat-lbl">Suporte</span>
   </div>
-
-  <!-- ══ CRONOGRAMA TÉCNICO ══ -->
-  <div class="divider"><span>🗺️ Cronograma de Desenvolvimento</span></div>
-
-  <div class="crono-box">
-    <div class="crono-header">
-      <div class="crono-header-title">🚀 Roadmap Técnico — PaynexBet Apostas</div>
-      <div class="crono-header-sub">SuitPay (PIX) + The Odds API + PostgreSQL · ~14 dias</div>
-    </div>
-
-    <!-- FASE 1 -->
-    <div class="crono-fase">
-      <div class="crono-fase-header" onclick="toggleFase(this)">
-        <div class="crono-fase-num" style="background:#22c55e22;color:#4ade80">1</div>
-        <div class="crono-fase-info">
-          <div class="crono-fase-title">📦 Banco de Dados & Variáveis</div>
-          <div class="crono-fase-meta">Dias 1–2 · Fundação do sistema</div>
-        </div>
-        <div class="crono-fase-badge" style="background:#22c55e18;color:#4ade80;border:1px solid #22c55e33">Dia 1–2</div>
-      </div>
-      <div class="crono-fase-body">
-        <div class="crono-task"><span class="tk">✅</span><span>Criar tabelas <b>usuarios</b> (id, nome, cpf, email, saldo, criado_em)</span></div>
-        <div class="crono-task"><span class="tk">✅</span><span>Criar tabela <b>apostas</b> (id, usuario_id, jogo_id, selecao, odd, valor, status, resultado)</span></div>
-        <div class="crono-task"><span class="tk">✅</span><span>Criar tabela <b>depositos_suit</b> (id_transaction, usuario_id, valor, status, pago_em)</span></div>
-        <div class="crono-task"><span class="tk">✅</span><span>Adicionar variáveis na Railway: <code>SUITPAY_CI</code> <code>SUITPAY_CS</code> <code>ODDS_API_KEY</code></span></div>
-        <div class="crono-task"><span class="tk">✅</span><span>Token SuitPay já disponível: <code>1154|coPg0X33peh...</code></span></div>
-        <div class="crono-task"><span class="tk">✅</span><span>Odds API Key: <code>já configurada</code> · host: <code>api.the-odds-api.com</code></span></div>
-      </div>
-    </div>
-
-    <!-- FASE 2 -->
-    <div class="crono-fase">
-      <div class="crono-fase-header" onclick="toggleFase(this)">
-        <div class="crono-fase-num" style="background:#3b82f622;color:#60a5fa">2</div>
-        <div class="crono-fase-info">
-          <div class="crono-fase-title">💳 Integração SuitPay (Depósito PIX)</div>
-          <div class="crono-fase-meta">Dias 3–5 · Fluxo de pagamento</div>
-        </div>
-        <div class="crono-fase-badge" style="background:#3b82f618;color:#60a5fa;border:1px solid #3b82f633">Dia 3–5</div>
-      </div>
-      <div class="crono-fase-body">
-        <div class="crono-task"><span class="tk">🔧</span><span>Rota <code>POST /api/bet/deposito</code> → chama SuitPay <code>/v1/gateway/request-qrcode</code></span></div>
-        <div class="crono-task"><span class="tk">🔧</span><span>Payload SuitPay: <code>requestNumber</code> (ID único), <code>dueDate</code>, <code>amount</code>, <code>callbackUrl</code></span></div>
-        <div class="crono-task"><span class="tk">🔧</span><span>Headers obrigatórios: <code>ci: CLIENT_ID</code> e <code>cs: CLIENT_SECRET</code></span></div>
-        <div class="crono-task"><span class="tk">🔧</span><span>Salvar <b>deposito pendente</b> no banco com <code>status=PENDING</code></span></div>
-        <div class="crono-task"><span class="tk">🔧</span><span>Retornar <code>qrCode</code> (copia-e-cola) e <code>qrCodeImage</code> (base64) ao frontend</span></div>
-        <div class="crono-task"><span class="tk">🔧</span><span>Host produção: <code>https://ws.suitpay.app</code> · sandbox: <code>https://sandbox.ws.suitpay.app</code></span></div>
-      </div>
-    </div>
-
-    <!-- FASE 3 — WEBHOOK (crítico) -->
-    <div class="crono-fase">
-      <div class="crono-fase-header" onclick="toggleFase(this)">
-        <div class="crono-fase-num" style="background:#ef444422;color:#f87171">3</div>
-        <div class="crono-fase-info">
-          <div class="crono-fase-title">🔔 Webhook SuitPay (⚠️ CRÍTICO)</div>
-          <div class="crono-fase-meta">Dias 5–6 · Saldo sobe automático</div>
-        </div>
-        <div class="crono-fase-badge" style="background:#ef444418;color:#f87171;border:1px solid #ef444433">CRÍTICO</div>
-      </div>
-      <div class="crono-fase-body">
-        <div class="crono-task"><span class="tk">🔴</span><span>Criar rota <code>POST /webhook/suitpay</code> na Railway</span></div>
-        <div class="crono-task"><span class="tk">🔴</span><span>Payload recebido: <code>idTransaction, statusTransaction, value, payerName, payerTaxId, requestNumber, hash</code></span></div>
-        <div class="crono-task"><span class="tk">🔴</span><span><b>Validar hash SHA-256</b>: concatenar todos os valores + <code>CLIENT_SECRET</code>, comparar com campo <code>hash</code></span></div>
-        <div class="crono-task"><span class="tk">🔴</span><span>Se <code>statusTransaction == "PAID_OUT"</code> → <code>UPDATE usuarios SET saldo = saldo + value</code></span></div>
-        <div class="crono-task"><span class="tk">🔴</span><span>Marcar depósito como <code>status=PAID</code> no banco e gravar <code>pago_em=NOW()</code></span></div>
-        <div class="crono-task"><span class="tk">🔴</span><span>IP confiável SuitPay: <code>3.132.137.46</code> (validar origem)</span></div>
-        <div class="crono-task"><span class="tk">🔴</span><span>Registrar webhook no painel SuitPay: URL = <code>https://paynexbet.com/webhook/suitpay</code></span></div>
-      </div>
-    </div>
-
-    <!-- FASE 4 -->
-    <div class="crono-fase">
-      <div class="crono-fase-header" onclick="toggleFase(this)">
-        <div class="crono-fase-num" style="background:#f59e0b22;color:#fbbf24">4</div>
-        <div class="crono-fase-info">
-          <div class="crono-fase-title">⚽ Odds API (Jogos & Cotações)</div>
-          <div class="crono-fase-meta">Dias 7–9 · Feed de esportes</div>
-        </div>
-        <div class="crono-fase-badge" style="background:#f59e0b18;color:#fbbf24;border:1px solid #f59e0b33">Dia 7–9</div>
-      </div>
-      <div class="crono-fase-body">
-        <div class="crono-task"><span class="tk">⚽</span><span>Rota <code>GET /api/bet/jogos</code> → busca <code>https://api.the-odds-api.com/v4/sports/{sport}/odds</code></span></div>
-        <div class="crono-task"><span class="tk">⚽</span><span>Parâmetros: <code>apiKey=ODDS_API_KEY&regions=eu&markets=h2h&oddsFormat=decimal</code></span></div>
-        <div class="crono-task"><span class="tk">⚽</span><span>Esportes foco: <code>soccer_brazil_campeonato</code> (Brasileirão), <code>soccer_uefa_champs_league</code>, <code>basketball_nba</code></span></div>
-        <div class="crono-task"><span class="tk">⚽</span><span>Cache de 60s no servidor (evitar gastar créditos) → <code>x-requests-remaining</code> no header</span></div>
-        <div class="crono-task"><span class="tk">⚽</span><span>Buscar scores ao vivo: <code>GET /v4/sports/{sport}/scores?apiKey=...</code></span></div>
-        <div class="crono-task"><span class="tk">⚽</span><span>Estrutura resposta: <code>id, home_team, away_team, commence_time, bookmakers[].markets[].outcomes[]</code></span></div>
-      </div>
-    </div>
-
-    <!-- FASE 5 -->
-    <div class="crono-fase">
-      <div class="crono-fase-header" onclick="toggleFase(this)">
-        <div class="crono-fase-num" style="background:#8b5cf622;color:#a78bfa">5</div>
-        <div class="crono-fase-info">
-          <div class="crono-fase-title">🎯 Sistema de Apostas</div>
-          <div class="crono-fase-meta">Dias 9–11 · Lógica do jogo</div>
-        </div>
-        <div class="crono-fase-badge" style="background:#8b5cf618;color:#a78bfa;border:1px solid #8b5cf633">Dia 9–11</div>
-      </div>
-      <div class="crono-fase-body">
-        <div class="crono-task"><span class="tk">🎯</span><span>Rota <code>POST /api/bet/apostar</code>: verifica <code>usuario.saldo >= valor_aposta</code></span></div>
-        <div class="crono-task"><span class="tk">🎯</span><span>Se saldo OK: <code>UPDATE usuarios SET saldo = saldo - valor</code> + INSERT em <code>apostas</code></span></div>
-        <div class="crono-task"><span class="tk">🎯</span><span>Rota <code>GET /api/bet/minhas-apostas</code>: lista apostas do usuário com status</span></div>
-        <div class="crono-task"><span class="tk">🎯</span><span>Job agendado (cron a cada 5min): busca scores finalizados, resolve apostas ganhas/perdidas</span></div>
-        <div class="crono-task"><span class="tk">🎯</span><span>Se ganhou: <code>UPDATE saldo += valor * odd</code> + notificação via WhatsApp/Telegram</span></div>
-      </div>
-    </div>
-
-    <!-- FASE 6 -->
-    <div class="crono-fase">
-      <div class="crono-fase-header" onclick="toggleFase(this)">
-        <div class="crono-fase-num" style="background:#06b6d422;color:#22d3ee">6</div>
-        <div class="crono-fase-info">
-          <div class="crono-fase-title">💸 Saque via PIX (SuitPay Cash-out)</div>
-          <div class="crono-fase-meta">Dias 11–13 · Pagamento ao usuário</div>
-        </div>
-        <div class="crono-fase-badge" style="background:#06b6d418;color:#22d3ee;border:1px solid #06b6d433">Dia 11–13</div>
-      </div>
-      <div class="crono-fase-body">
-        <div class="crono-task"><span class="tk">💸</span><span>Rota <code>POST /api/bet/sacar</code>: validar saldo, chave PIX e valor mínimo R$20</span></div>
-        <div class="crono-task"><span class="tk">💸</span><span>Chamar SuitPay <code>POST /v1/gateway/pix-payment</code> com chave PIX do usuário</span></div>
-        <div class="crono-task"><span class="tk">💸</span><span>Webhook Cash-out recebe <code>PAID_OUT</code> ou <code>CANCELED</code> → atualiza status do saque</span></div>
-        <div class="crono-task"><span class="tk">💸</span><span>Se <code>CANCELED</code>: devolver saldo ao usuário automaticamente</span></div>
-      </div>
-    </div>
-
-    <!-- FASE 7 -->
-    <div class="crono-fase">
-      <div class="crono-fase-header" onclick="toggleFase(this)">
-        <div class="crono-fase-num" style="background:#ec489922;color:#f472b6">7</div>
-        <div class="crono-fase-info">
-          <div class="crono-fase-title">🖥️ Frontend & Deploy Final</div>
-          <div class="crono-fase-meta">Dias 13–14 · Entrega e testes</div>
-        </div>
-        <div class="crono-fase-badge" style="background:#ec489918;color:#f472b6;border:1px solid #ec489933">Dia 13–14</div>
-      </div>
-      <div class="crono-fase-body">
-        <div class="crono-task"><span class="tk">🖥️</span><span>Página <code>/apostas</code>: lista jogos ao vivo, seleção de odds, carrinho de apostas</span></div>
-        <div class="crono-task"><span class="tk">🖥️</span><span>Página <code>/conta</code>: saldo, histórico de apostas, depósito, saque</span></div>
-        <div class="crono-task"><span class="tk">🖥️</span><span>Autenticação via CPF + código SMS/WhatsApp (sem senha)</span></div>
-        <div class="crono-task"><span class="tk">🖥️</span><span>Testes: depósito real R$5 → confirmar saldo → apostar → aguardar resultado</span></div>
-        <div class="crono-task"><span class="tk">🖥️</span><span>Deploy Railway + domínio <code>paynexbet.com</code> apontado</span></div>
-      </div>
-    </div>
-  </div><!-- /crono-box -->
-
-  <!-- POR QUE -->
-  <div class="divider"><span>🔥 Por que PaynexBet?</span></div>
-
-  <div class="why-box">
-    <div class="why-list">
-      <div class="why-item"><span class="ic">✅</span>Depósito e saque via Pix instantâneo</div>
-      <div class="why-item"><span class="ic">✅</span>Odds ao vivo de 70+ bookmakers</div>
-      <div class="why-item"><span class="ic">✅</span>Sorteios + apostas no mesmo saldo</div>
-      <div class="why-item"><span class="ic">✅</span>Resultado automático 24h por dia</div>
-      <div class="why-item"><span class="ic">✅</span>Plataforma 100% nacional em BRL</div>
-    </div>
-  </div>
-
-  <!-- CTA FINAL -->
-  <div class="cta-final">
-    <p>👉 Junte-se a quem já está ganhando</p>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:0">
-      <a href="/sorteio" class="btn-main">🚀 Participar do Sorteio</a>
-      <a href="/apostas" class="btn-main blue">⚽ Ver Apostas Ao Vivo</a>
-    </div>
-  </div>
-
 </div>
 
-<!-- FOOTER -->
+<!-- ── FEATURES ── -->
+<div class="section">
+  <h2 class="section-title">Por que escolher a <span style="background:linear-gradient(90deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">PaynexBet</span>?</h2>
+  <p class="section-sub">A plataforma mais completa para quem quer diversão e prêmios reais.</p>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon gold">🏆</div>
+      <div class="feature-title">Prêmios em Dinheiro</div>
+      <div class="feature-desc">Concorra a prêmios reais nos sorteios semanais e receba diretamente na sua chave Pix.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon blue">⚽</div>
+      <div class="feature-title">Apostas Esportivas</div>
+      <div class="feature-desc">Odds em tempo real para Brasileirão, Libertadores, Champions League, Premier League e mais.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon green">⚡</div>
+      <div class="feature-title">Pix Instantâneo</div>
+      <div class="feature-desc">Depósito e saque via Pix, processados automaticamente em segundos, 24 horas por dia.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon purple">🔒</div>
+      <div class="feature-title">100% Seguro</div>
+      <div class="feature-desc">Plataforma criptografada com autenticação por CPF, garantindo a segurança dos seus dados.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PRÊMIO ATUAL ── -->
+<div style="padding:0 24px 72px; max-width:700px; margin:0 auto;">
+  <h2 class="section-title">🏆 Prêmio Atual do Sorteio</h2>
+  <p class="section-sub">Próximo sorteio em breve — participe agora!</p>
+  <div class="premio-banner">
+    <div class="premio-label">🏆 Prêmio estimado</div>
+    <div class="premio-val" id="premio-display">R$ 750,00</div>
+    <div class="premio-info">Bilhetes a partir de R$ 10,00 via Pix</div>
+    <button class="btn-participar" onclick="heroAction('sorteio')">🎲 Quero Participar</button>
+  </div>
+</div>
+
+<!-- ── COMO FUNCIONA ── -->
+<div class="section" style="padding-top:0">
+  <h2 class="section-title">Como funciona?</h2>
+  <p class="section-sub">Em apenas 4 passos simples você está pronto para jogar.</p>
+  <div style="max-width:560px; margin:0 auto;">
+    <div class="steps">
+      <div class="step">
+        <div class="step-num s1">1</div>
+        <div class="step-body">
+          <div class="step-title">Crie sua conta</div>
+          <div class="step-desc">Cadastre-se com seu nome e CPF. Rápido, gratuito e 100% seguro. Nenhum dado extra necessário.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num s2">2</div>
+        <div class="step-body">
+          <div class="step-title">Deposite via Pix</div>
+          <div class="step-desc">Gere um QR Code Pix, pague pelo app do banco e o saldo cai na sua carteira instantaneamente.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num s3">3</div>
+        <div class="step-body">
+          <div class="step-title">Escolha sua diversão</div>
+          <div class="step-desc">Participe do sorteio comprando bilhetes ou aposte nos seus times favoritos com odds ao vivo.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num s4">4</div>
+        <div class="step-body">
+          <div class="step-title">Receba seus prêmios</div>
+          <div class="step-desc">Ganhou? Solicite o saque e receba diretamente na sua chave Pix em minutos.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CONFIANÇA ── -->
+<div style="background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:56px 24px;">
+  <div class="section" style="padding:0; max-width:900px">
+    <h2 class="section-title">Sua segurança é prioridade</h2>
+    <p class="section-sub" style="margin-bottom:36px;">Infraestrutura robusta para proteger seus dados e dinheiro.</p>
+    <div class="trust-grid">
+      <div class="trust-item"><div class="trust-icon">🔐</div><div class="trust-title">Dados criptografados</div><div class="trust-desc">Seus dados pessoais protegidos com criptografia de ponta</div></div>
+      <div class="trust-item"><div class="trust-icon">⚡</div><div class="trust-title">Pix em segundos</div><div class="trust-desc">Transações processadas automaticamente 24/7</div></div>
+      <div class="trust-item"><div class="trust-icon">🛡️</div><div class="trust-title">Sem taxas ocultas</div><div class="trust-desc">Saques e depósitos sem cobranças extras</div></div>
+      <div class="trust-item"><div class="trust-icon">📞</div><div class="trust-title">Suporte ativo</div><div class="trust-desc">Equipe disponível para te ajudar sempre que precisar</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CTA FINAL ── -->
+<div style="padding:80px 24px; text-align:center; background:var(--bg);">
+  <div style="max-width:600px; margin:0 auto;">
+    <h2 style="font-size:clamp(28px,5vw,42px); font-weight:900; margin-bottom:16px;">
+      Pronto para <span style="background:linear-gradient(90deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">ganhar</span>?
+    </h2>
+    <p style="color:var(--muted); font-size:17px; margin-bottom:36px; line-height:1.6;">
+      Crie sua conta agora mesmo. É grátis, rápido e você já pode começar a jogar hoje!
+    </p>
+    <button class="btn-hero-primary" style="margin:0 auto; font-size:18px; padding:18px 48px;" onclick="openModal('cadastro')">
+      🚀 Criar conta grátis
+    </button>
+  </div>
+</div>
+
+<!-- ── FOOTER ── -->
 <footer class="footer">
-  <div>🎰 <strong>PaynexBet</strong> — Sorteios & Apostas Esportivas</div>
-  <div style="margin-top:6px">
-    <a href="/sorteio" style="color:#444;text-decoration:none">🎲 Sorteio</a>
-    &nbsp;·&nbsp;
-    <a href="/apostas" style="color:#444;text-decoration:none">⚽ Apostas</a>
+  <div class="footer-inner">
+    <div class="footer-brand">🎰 PaynexBet</div>
+    <div class="footer-sub">Sorteios & Apostas Esportivas</div>
+    <div class="footer-links">
+      <a href="#">Termos de uso</a>
+      <a href="#">Política de privacidade</a>
+      <a href="#">Jogo responsável</a>
+      <a href="#">Suporte</a>
+    </div>
+    <div class="footer-copy">© 2025 PaynexBet — Todos os direitos reservados. +18. Jogue com responsabilidade.</div>
   </div>
 </footer>
 
-<script>
-// ── Partículas ──────────────────────────────────────────────
-(function(){
-  const c=document.getElementById('particles');
-  if(!c)return;
-  const cols=['#FFD700','#FFA500','#00d68f','#3b82f6','#8b5cf6'];
-  for(let i=0;i<14;i++){
-    const el=document.createElement('div');
-    el.className='particle';
-    const s=Math.random()*3+2;
-    el.style.cssText=`width:${s}px;height:${s}px;background:${cols[Math.floor(Math.random()*cols.length)]};left:${Math.random()*100}%;animation-duration:${Math.random()*14+10}s;animation-delay:${Math.random()*8}s;`;
-    c.appendChild(el);
-  }
-})();
+<!-- ── MODAL CADASTRO / LOGIN ── -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-logo">
+      <div class="modal-logo-icon">🎰</div>
+      <div class="modal-logo-title">PaynexBet</div>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="tab-cadastro" onclick="switchTab('cadastro')">✨ Criar conta</button>
+      <button class="modal-tab"        id="tab-login"    onclick="switchTab('login')">🔑 Entrar</button>
+    </div>
 
-// ── Cronograma toggle ───────────────────────────────────────
-function toggleFase(header){
-  const body=header.nextElementSibling;
-  const isOpen=body.classList.contains('open');
-  document.querySelectorAll('.crono-fase-body').forEach(b=>b.classList.remove('open'));
-  if(!isOpen) body.classList.add('open');
-}
-// Abrir fase 3 (Webhook) por padrão
-document.addEventListener('DOMContentLoaded',()=>{
-  const fases=document.querySelectorAll('.crono-fase-body');
-  if(fases[2]) fases[2].classList.add('open');
-});
+    <!-- ALERTA -->
+    <div class="alert alert-error"   id="modal-alert-err"></div>
+    <div class="alert alert-success" id="modal-alert-ok"></div>
 
-// ── Prêmio do sorteio ────────────────────────────────────────
-(async function(){
-  try{
-    const r=await fetch('/api/sorteio/info');
-    const d=await r.json();
-    const s=d.sorteio||{};
-    const p=parseFloat(s.premio_manual!=null?s.premio_manual:(s.premio_estimado_total||0))||0;
-    const vp=parseFloat(s.valor_por_numero||5);
-    const _fmt=(n)=>'R$ '+Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-    const elP=document.getElementById('s-premio');
-    if(elP){
-      elP.textContent=_fmt(p);
-      const len=elP.textContent.length;
-      if(len>14)elP.style.fontSize='clamp(20px,6vw,40px)';
-      else if(len>11)elP.style.fontSize='clamp(24px,7.5vw,52px)';
-      else if(len>9)elP.style.fontSize='clamp(28px,9vw,58px)';
-    }
-    const elV=document.getElementById('s-valor-num');
-    if(elV)elV.textContent='R$ '+vp.toFixed(0);
-  }catch(e){}
-})();
-
-// ── Odds ao vivo (The Odds API via /api/bet/jogos) ───────────
-const _selecoes=[];
-const _fmt2=(n)=>'R$ '+Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-
-async function carregarJogos(){
-  const container=document.getElementById('jogos-container');
-  try{
-    const r=await fetch('/api/bet/jogos');
-    const d=await r.json();
-    const jogos=(d.jogos||[]).slice(0,6);
-    if(!jogos.length){
-      container.innerHTML='<div style="text-align:center;color:#555;font-size:13px;padding:20px">⚽ Nenhum jogo disponível agora. Tente mais tarde.</div>';
-      return;
-    }
-    container.innerHTML='';
-    jogos.forEach(j=>{
-      const live=new Date(j.commence_time)<new Date();
-      const odds=j.odds||{home:null,draw:null,away:null};
-      const card=document.createElement('div');
-      card.className='jogo-card'+(live?' live':'');
-      card.innerHTML=`
-        <div class="jogo-teams">
-          <div class="jogo-league">
-            ${live?'<span class="live-badge">● AO VIVO</span>':''}
-            <span>${j.league||'Futebol'}</span>
-          </div>
-          <div class="jogo-nome">${j.home_team} × ${j.away_team}</div>
+    <!-- FORM CADASTRO -->
+    <form id="form-cadastro" onsubmit="submitCadastro(event)" autocomplete="off">
+      <div class="form-group">
+        <label class="form-label">Seu nome completo</label>
+        <div class="form-input-icon">
+          <span class="input-icon">👤</span>
+          <input class="form-input" type="text" id="cad-nome" placeholder="Ex: João da Silva" required minlength="3">
         </div>
-        <div class="jogo-odds">
-          ${odds.home!=null?`<div class="odd-btn" onclick="selecionarOdd('${j.id}','${j.home_team}','Casa',${odds.home},'${j.home_team} × ${j.away_team}')"><span class="odd-label">Casa</span><span class="odd-val">${odds.home.toFixed(2)}</span></div>`:''}
-          ${odds.draw!=null?`<div class="odd-btn" onclick="selecionarOdd('${j.id}','Empate','X',${odds.draw},'${j.home_team} × ${j.away_team}')"><span class="odd-label">Empate</span><span class="odd-val">${odds.draw.toFixed(2)}</span></div>`:''}
-          ${odds.away!=null?`<div class="odd-btn" onclick="selecionarOdd('${j.id}','${j.away_team}','Fora',${odds.away},'${j.home_team} × ${j.away_team}')"><span class="odd-label">Fora</span><span class="odd-val">${odds.away.toFixed(2)}</span></div>`:''}
-        </div>`;
-      container.appendChild(card);
-    });
-  }catch(e){
-    container.innerHTML='<div style="text-align:center;color:#555;font-size:13px;padding:20px">⚽ Odds temporariamente indisponíveis. Em breve online!</div>';
+      </div>
+      <div class="form-group">
+        <label class="form-label">CPF</label>
+        <div class="form-input-icon">
+          <span class="input-icon">🪪</span>
+          <input class="form-input cpf-mask" type="text" id="cad-cpf" placeholder="000.000.000-00" maxlength="14" required>
+        </div>
+      </div>
+      <button class="btn-submit-gold" type="submit" id="btn-cad">
+        <span>🎉 Criar minha conta</span>
+      </button>
+      <div class="modal-alt">Já tem conta? <a onclick="switchTab('login')">Entrar agora</a></div>
+    </form>
+
+    <!-- FORM LOGIN -->
+    <form id="form-login" onsubmit="submitLogin(event)" autocomplete="off" style="display:none">
+      <div class="form-group">
+        <label class="form-label">CPF</label>
+        <div class="form-input-icon">
+          <span class="input-icon">🪪</span>
+          <input class="form-input cpf-mask" type="text" id="log-cpf" placeholder="000.000.000-00" maxlength="14" required>
+        </div>
+      </div>
+      <button class="btn-submit" type="submit" id="btn-log">
+        <span>🔑 Acessar minha conta</span>
+      </button>
+      <div class="modal-alt">Não tem conta? <a onclick="switchTab('cadastro')">Cadastre-se grátis</a></div>
+    </form>
+  </div>
+</div>
+
+<script>
+const BASE = '';
+
+/* ──────────── UTILS ──────────── */
+function fmtCPF(v) {
+  return v.replace(/\D/g,'').replace(/(\d{3})(\d)/,'$1.$2')
+          .replace(/(\d{3})\.(\d{3})(\d)/,'$1.$2.$3')
+          .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/,'$1.$2.$3-$4').substring(0,14);
+}
+function rawCPF(v) { return v.replace(/\D/g,''); }
+function validCPF(c) { return rawCPF(c).length === 11; }
+
+document.querySelectorAll('.cpf-mask').forEach(el => {
+  el.addEventListener('input', () => { el.value = fmtCPF(el.value); });
+});
+
+function showAlert(type, msg) {
+  document.getElementById('modal-alert-err').className = 'alert alert-error';
+  document.getElementById('modal-alert-ok').className  = 'alert alert-success';
+  if (type === 'error') {
+    const el = document.getElementById('modal-alert-err');
+    el.textContent = msg; el.classList.add('show');
+  } else {
+    const el = document.getElementById('modal-alert-ok');
+    el.textContent = msg; el.classList.add('show');
+  }
+}
+function clearAlerts() {
+  document.getElementById('modal-alert-err').className = 'alert alert-error';
+  document.getElementById('modal-alert-ok').className  = 'alert alert-success';
+}
+
+/* ──────────── MODAL ──────────── */
+function openModal(tab) {
+  clearAlerts();
+  switchTab(tab || 'cadastro');
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeModalOutside(e) { if (e.target === document.getElementById('modal')) closeModal(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function switchTab(tab) {
+  document.getElementById('form-cadastro').style.display = tab === 'cadastro' ? '' : 'none';
+  document.getElementById('form-login').style.display    = tab === 'login'    ? '' : 'none';
+  document.getElementById('tab-cadastro').className = 'modal-tab' + (tab==='cadastro'?' active':'');
+  document.getElementById('tab-login').className    = 'modal-tab' + (tab==='login'   ?' active':'');
+  clearAlerts();
+}
+
+/* ──────────── SESSION ──────────── */
+function saveSession(user) {
+  localStorage.setItem('pnb_user', JSON.stringify(user));
+}
+function loadSession() {
+  try { return JSON.parse(localStorage.getItem('pnb_user')); } catch(e) { return null; }
+}
+function clearSession() { localStorage.removeItem('pnb_user'); }
+
+/* ──────────── TOPBAR ──────────── */
+function renderTopbar() {
+  const user = loadSession();
+  const el = document.getElementById('topbar-actions');
+  if (user) {
+    const initials = user.nome ? user.nome.trim().split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase() : '?';
+    const saldo = Number(user.saldo || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+    el.innerHTML = `
+      <div class="user-chip" onclick="toggleDropdown()">
+        <div class="user-chip-avatar">${initials}</div>
+        <span class="user-chip-name">${user.nome.split(' ')[0]}</span>
+        <span class="user-chip-saldo">${saldo}</span>
+        <span style="color:var(--muted);font-size:10px">▾</span>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <button class="btn-entrar" onclick="openModal('login')">Entrar</button>
+      <button class="btn-cadastrar" onclick="openModal('cadastro')">Criar conta</button>`;
   }
 }
 
-function selecionarOdd(jogoId,time,tipo,odd,jogo){
-  const slip=document.getElementById('bet-slip');
-  const items=document.getElementById('bet-items');
-  // Remover seleção anterior do mesmo jogo
-  const idx=_selecoes.findIndex(s=>s.jogoId===jogoId);
-  if(idx>=0) _selecoes.splice(idx,1);
-  _selecoes.push({jogoId,time,tipo,odd,jogo});
-  // Atualizar botões visuais
-  document.querySelectorAll('.odd-btn').forEach(b=>{
-    if(b.onclick&&b.onclick.toString().includes(`'${jogoId}'`)){
-      b.classList.remove('sel');
-      if(b.onclick.toString().includes(`'${tipo}'`)) b.classList.add('sel');
-    }
-  });
-  // Renderizar slip
-  items.innerHTML=_selecoes.map(s=>`
-    <div class="bet-item">
-      <div class="bet-item-game">${s.jogo}</div>
-      <div class="bet-item-sel">${s.time} (${s.tipo})</div>
-      <div class="bet-item-odd">Odd: ${s.odd.toFixed(2)}</div>
-    </div>`).join('');
-  slip.classList.add('visible');
-  atualizarRetorno();
+function toggleDropdown() {
+  const dd = document.getElementById('user-dropdown');
+  dd.classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.user-chip') && !e.target.closest('.user-dropdown'))
+    document.getElementById('user-dropdown').classList.remove('open');
+});
+
+function logout() {
+  clearSession();
+  renderTopbar();
+  document.getElementById('user-dropdown').classList.remove('open');
 }
 
-function atualizarRetorno(){
-  const val=parseFloat(document.getElementById('bet-valor').value)||0;
-  const totalOdd=_selecoes.reduce((acc,s)=>acc*s.odd,1);
-  const retorno=val*totalOdd;
-  document.getElementById('bet-retorno').innerHTML=`Retorno potencial: <span>${_fmt2(retorno)}</span>`;
+function goTo(path) {
+  const user = loadSession();
+  if (!user) { openModal('login'); return; }
+  window.location.href = path;
 }
-document.addEventListener('DOMContentLoaded',()=>{
-  const inp=document.getElementById('bet-valor');
-  if(inp) inp.addEventListener('input',atualizarRetorno);
-  carregarJogos();
-  // Atualizar odds a cada 60s
-  setInterval(carregarJogos,60000);
-});
+
+/* ──────────── HERO BUTTONS ──────────── */
+function heroAction(dest) {
+  const user = loadSession();
+  if (!user) {
+    openModal('cadastro');
+    return;
+  }
+  if (dest === 'sorteio') window.location.href = '/sorteio';
+  else window.location.href = '/apostas';
+}
+
+/* ──────────── CADASTRO ──────────── */
+async function submitCadastro(e) {
+  e.preventDefault();
+  clearAlerts();
+  const nome = document.getElementById('cad-nome').value.trim();
+  const cpf  = rawCPF(document.getElementById('cad-cpf').value);
+  if (!nome || nome.length < 3) { showAlert('error','❌ Nome deve ter ao menos 3 caracteres.'); return; }
+  if (!validCPF(cpf)) { showAlert('error','❌ CPF inválido. Digite os 11 dígitos.'); return; }
+
+  const btn = document.getElementById('btn-cad');
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳ Criando conta...</span>';
+
+  try {
+    const res = await fetch(`${BASE}/api/bet/login`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({nome, cpf})
+    });
+    const d = await res.json();
+    if (d.success) {
+      saveSession(d.usuario);
+      showAlert('success', `🎉 Bem-vindo, ${d.usuario.nome.split(' ')[0]}! Conta criada com sucesso.`);
+      setTimeout(() => {
+        closeModal();
+        renderTopbar();
+      }, 1400);
+    } else {
+      showAlert('error', '❌ ' + (d.error || 'Erro ao criar conta. Tente novamente.'));
+    }
+  } catch(err) {
+    showAlert('error', '❌ Erro de conexão. Verifique sua internet.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>🎉 Criar minha conta</span>';
+  }
+}
+
+/* ──────────── LOGIN ──────────── */
+async function submitLogin(e) {
+  e.preventDefault();
+  clearAlerts();
+  const cpf = rawCPF(document.getElementById('log-cpf').value);
+  if (!validCPF(cpf)) { showAlert('error','❌ CPF inválido. Digite os 11 dígitos.'); return; }
+
+  const btn = document.getElementById('btn-log');
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳ Verificando...</span>';
+
+  try {
+    const res = await fetch(`${BASE}/api/bet/login`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({cpf})
+    });
+    const d = await res.json();
+    if (d.success) {
+      saveSession(d.usuario);
+      showAlert('success', `✅ Bem-vindo de volta, ${d.usuario.nome ? d.usuario.nome.split(' ')[0] : 'usuário'}!`);
+      setTimeout(() => {
+        closeModal();
+        renderTopbar();
+      }, 1200);
+    } else {
+      showAlert('error', '❌ CPF não encontrado. Crie sua conta primeiro.');
+    }
+  } catch(err) {
+    showAlert('error', '❌ Erro de conexão. Verifique sua internet.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>🔑 Acessar minha conta</span>';
+  }
+}
+
+/* ──────────── CARREGA PRÊMIO ──────────── */
+async function carregarPremio() {
+  try {
+    const r = await fetch(`${BASE}/api/sorteio/status`);
+    const d = await r.json();
+    if (d && d.premio_estimado) {
+      const val = Number(d.premio_estimado).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+      document.getElementById('premio-display').textContent = val;
+      document.getElementById('stat-premio').textContent =
+        'R$ ' + Math.round(d.premio_estimado).toLocaleString('pt-BR');
+    }
+  } catch(e) {}
+}
+
+/* ──────────── INIT ──────────── */
+renderTopbar();
+carregarPremio();
 </script>
 </body>
 </html>

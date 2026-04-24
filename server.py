@@ -10225,7 +10225,10 @@ async def _bet_db():
 # ── FASE 3: Auth / Login por CPF ──────────────────────────────────────────
 
 async def route_bet_login(request):
-    """POST /api/bet/login — login/cadastro por CPF"""
+    """POST /api/bet/login — login/cadastro por CPF
+    - Se vier nome: cadastro (cria ou retorna existente, atualizando nome se vazio)
+    - Se só CPF: login (retorna usuário existente ou erro se não encontrado)
+    """
     try:
         body = await request.json()
     except Exception:
@@ -10243,16 +10246,26 @@ async def route_bet_login(request):
 
     try:
         cur = conn.cursor()
-        # Upsert: cria ou retorna usuário existente
-        cur.execute("""
-            INSERT INTO usuarios (cpf, nome)
-            VALUES (%s, %s)
-            ON CONFLICT (cpf) DO UPDATE SET nome = CASE
-                WHEN usuarios.nome IS NULL OR usuarios.nome='' THEN EXCLUDED.nome
-                ELSE usuarios.nome END
-            RETURNING id, nome, cpf, saldo
-        """, (cpf, nome or f'Apostador {cpf[-4:]}'))
+
+        if nome:
+            # ── CADASTRO: Upsert — cria ou retorna existente, atualizando nome se vazio
+            cur.execute("""
+                INSERT INTO usuarios (cpf, nome, saldo)
+                VALUES (%s, %s, 0)
+                ON CONFLICT (cpf) DO UPDATE SET nome = CASE
+                    WHEN usuarios.nome IS NULL OR usuarios.nome='' THEN EXCLUDED.nome
+                    ELSE usuarios.nome END
+                RETURNING id, nome, cpf, saldo
+            """, (cpf, nome))
+        else:
+            # ── LOGIN: só CPF — busca usuário existente
+            cur.execute("SELECT id, nome, cpf, saldo FROM usuarios WHERE cpf=%s", (cpf,))
+
         row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return web.json_response({'success': False, 'error': 'CPF não encontrado. Crie sua conta primeiro.'})
+
         conn.commit()
         cur.close(); conn.close()
         return web.json_response({
@@ -10260,7 +10273,8 @@ async def route_bet_login(request):
             'usuario': {'id': row[0], 'nome': row[1], 'cpf': row[2], 'saldo': float(row[3] or 0)}
         })
     except Exception as e:
-        conn.close()
+        try: conn.close()
+        except: pass
         return web.json_response({'success': False, 'error': str(e)})
 
 
