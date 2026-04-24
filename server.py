@@ -4579,7 +4579,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20250428k-psycopg2-fix',
+        'version': 'v20250428l-crests-official',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -10513,7 +10513,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .jogo-times{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:6px}
 .time-bloco{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0}
 .time-bloco.away{align-items:flex-end}
-.time-escudo{width:36px;height:36px;border-radius:50%;object-fit:contain;background:#1a1a2e;padding:3px;border:1px solid #ffffff12;flex-shrink:0}
+.time-escudo{width:40px;height:40px;border-radius:50%;object-fit:contain;background:#1e2035;padding:4px;border:1.5px solid #ffffff15;flex-shrink:0}
+.time-initials{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1.5px solid #3b82f633}
 .time-nome{font-size:13px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center}
 .time-bloco.away .time-nome{text-align:right}
 .placar{font-size:11px;font-weight:700;color:#555;text-align:center;flex-shrink:0;padding:0 4px}
@@ -10723,98 +10724,201 @@ function atualizarSaldo() {
   }
 }
 
-// ── Logos dos times ──
+// ── Crests oficiais football-data.org (https://crests.football-data.org/{id}.png) ──
 const _LOGOS = {
-  // Brasileirão Série A
-  'Bahia':          'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Esporte_Clube_Bahia_logo.svg/120px-Esporte_Clube_Bahia_logo.svg.png',
-  'Santos':         'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Santos_FC_logo.svg/120px-Santos_FC_logo.svg.png',
-  'Botafogo':       'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Botafogo_de_Futebol_e_Regatas_logo.svg/120px-Botafogo_de_Futebol_e_Regatas_logo.svg.png',
-  'Internacional':  'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Sport_Club_Internacional.svg/120px-Sport_Club_Internacional.svg.png',
-  'Remo':           'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Clube_do_Remo.svg/120px-Clube_do_Remo.svg.png',
-  'Cruzeiro':       'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Cruzeiro_Esporte_Clube_logo.svg/120px-Cruzeiro_Esporte_Clube_logo.svg.png',
-  'Sao Paulo':      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Coat_of_arms_of_S%C3%A3o_Paulo_FC.svg/120px-Coat_of_arms_of_S%C3%A3o_Paulo_FC.svg.png',
-  'São Paulo':      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Coat_of_arms_of_S%C3%A3o_Paulo_FC.svg/120px-Coat_of_arms_of_S%C3%A3o_Paulo_FC.svg.png',
-  'Mirassol':       'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Mirassol_FC.png/120px-Mirassol_FC.png',
-  'Flamengo':       'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Flamengo_logo.svg/120px-Flamengo_logo.svg.png',
-  'Fluminense':     'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Fluminense_logo.svg/120px-Fluminense_logo.svg.png',
-  'Palmeiras':      'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Palmeiras_logo.svg/120px-Palmeiras_logo.svg.png',
-  'Atletico Mineiro': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Atletico_mineiro_galo.png/120px-Atletico_mineiro_galo.png',
-  'Atletico-MG':    'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Atletico_mineiro_galo.png/120px-Atletico_mineiro_galo.png',
-  'Corinthians':    'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Corinthians_logo.png/120px-Corinthians_logo.png',
-  'Gremio':         'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Gr%C3%AAmio_FBPA_logo.svg/120px-Gr%C3%AAmio_FBPA_logo.svg.png',
-  'Grêmio':         'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Gr%C3%AAmio_FBPA_logo.svg/120px-Gr%C3%AAmio_FBPA_logo.svg.png',
-  'Vasco':          'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/CR_Vasco_da_Gama_logo.svg/120px-CR_Vasco_da_Gama_logo.svg.png',
-  'Atletico Goianiense': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Atletico_Goianiense.svg/120px-Atletico_Goianiense.svg.png',
-  'Fortaleza':      'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Fortaleza_EC_escudo.svg/120px-Fortaleza_EC_escudo.svg.png',
-  'Ceara':          'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Ceará_SC_logo.svg/120px-Ceará_SC_logo.svg.png',
-  'Sport':          'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Sport_Club_Recife.svg/120px-Sport_Club_Recife.svg.png',
-  'Juventude':      'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Esporte_Clube_Juventude.svg/120px-Esporte_Clube_Juventude.svg.png',
-  'Red Bull Bragantino': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Red_Bull_Bragantino_logo.svg/120px-Red_Bull_Bragantino_logo.svg.png',
-  'Bragantino':     'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Red_Bull_Bragantino_logo.svg/120px-Red_Bull_Bragantino_logo.svg.png',
-  // Copa Libertadores
-  'Libertad Asuncion': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Club_Libertad_logo.svg/120px-Club_Libertad_logo.svg.png',
-  'Independiente del Valle': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Independiente_del_Valle_logo.svg/120px-Independiente_del_Valle_logo.svg.png',
-  'Lanus':          'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Club_Atlético_Lanús_logo.svg/120px-Club_Atlético_Lanús_logo.svg.png',
-  'LDU Quito':      'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/LDU_de_Quito_logo.svg/120px-LDU_de_Quito_logo.svg.png',
-  'UCV FC':         'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Academia_C%C3%A9sar_Vallejo_logo.svg/120px-Academia_C%C3%A9sar_Vallejo_logo.svg.png',
-  'Rosario Central':'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Rosario_Central_logo.svg/120px-Rosario_Central_logo.svg.png',
-  'Boca Juniors':   'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Club_Atlético_Boca_Juniors_logo.svg/120px-Club_Atlético_Boca_Juniors_logo.svg.png',
-  'River Plate':    'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/River_Plate_crest.svg/120px-River_Plate_crest.svg.png',
-  'Nacional':       'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Club_Nacional_de_Football_logo.svg/120px-Club_Nacional_de_Football_logo.svg.png',
-  'Penarol':        'https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Ca_pe%C3%B1arol.svg/120px-Ca_pe%C3%B1arol.svg.png',
-  // Champions League
-  'Manchester City':  'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Manchester_City_FC_badge.svg/120px-Manchester_City_FC_badge.svg.png',
-  'Real Madrid':      'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Real_Madrid_CF_logo.svg/120px-Real_Madrid_CF_logo.svg.png',
-  'Barcelona':        'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/FC_Barcelona_%28crest%29.svg/120px-FC_Barcelona_%28crest%29.svg.png',
-  'Bayern Munich':    'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/FC_Bayern_München_logo_%282002%E2%80%932017%29.svg/120px-FC_Bayern_München_logo_%282002%E2%80%932017%29.svg.png',
-  'Paris Saint Germain': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Paris_Saint-Germain_F.C..svg/120px-Paris_Saint-Germain_F.C..svg.png',
-  'PSG':              'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Paris_Saint-Germain_F.C..svg/120px-Paris_Saint-Germain_F.C..svg.png',
-  'Atletico Madrid':  'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Atletico_Madrid_2017_logo.svg/120px-Atletico_Madrid_2017_logo.svg.png',
-  'Chelsea':          'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Chelsea_FC.svg/120px-Chelsea_FC.svg.png',
-  'Arsenal':          'https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Arsenal_FC.svg/120px-Arsenal_FC.svg.png',
-  'Liverpool':        'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Liverpool_FC.svg/120px-Liverpool_FC.svg.png',
-  'Juventus':         'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Juventus_FC_2017_logo.svg/120px-Juventus_FC_2017_logo.svg.png',
-  'Inter Milan':      'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/FC_Internazionale_Milano_2021.svg/120px-FC_Internazionale_Milano_2021.svg.png',
-  'AC Milan':         'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Logo_of_AC_Milan.svg/120px-Logo_of_AC_Milan.svg.png',
-  'Borussia Dortmund':'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Borussia_Dortmund_logo.svg/120px-Borussia_Dortmund_logo.svg.png',
-  'Tottenham':        'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Tottenham_Hotspur.svg/120px-Tottenham_Hotspur.svg.png',
-  'Manchester United':'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Manchester_United_FC_crest.svg/120px-Manchester_United_FC_crest.svg.png',
-  // NBA
-  'Los Angeles Lakers':'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Los_Angeles_Lakers_logo.svg/120px-Los_Angeles_Lakers_logo.svg.png',
-  'Golden State Warriors':'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Golden_state_warriors_logo.png/120px-Golden_state_warriors_logo.png',
-  'Boston Celtics':   'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Boston_Celtics.svg/120px-Boston_Celtics.svg.png',
-  'Miami Heat':       'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Miami_Heat_Logo.svg/120px-Miami_Heat_Logo.svg.png',
+  // ── Brasileirão Série A ──
+  'EC Bahia':              'https://crests.football-data.org/1777.png',
+  'Bahia':                 'https://crests.football-data.org/1777.png',
+  'Santos FC':             'https://crests.football-data.org/6685.png',
+  'Santos':                'https://crests.football-data.org/6685.png',
+  'Botafogo FR':           'https://crests.football-data.org/1770.png',
+  'Botafogo':              'https://crests.football-data.org/1770.png',
+  'SC Internacional':      'https://crests.football-data.org/6684.png',
+  'Internacional':         'https://crests.football-data.org/6684.png',
+  'Clube do Remo':         'https://crests.football-data.org/4287.png',
+  'Remo':                  'https://crests.football-data.org/4287.png',
+  'Cruzeiro EC':           'https://crests.football-data.org/1771.png',
+  'Cruzeiro':              'https://crests.football-data.org/1771.png',
+  'São Paulo FC':          'https://crests.football-data.org/1776.png',
+  'Sao Paulo':             'https://crests.football-data.org/1776.png',
+  'São Paulo':             'https://crests.football-data.org/1776.png',
+  'Mirassol FC':           'https://crests.football-data.org/4364.png',
+  'Mirassol':              'https://crests.football-data.org/4364.png',
+  'CR Flamengo':           'https://crests.football-data.org/1783.png',
+  'Flamengo':              'https://crests.football-data.org/1783.png',
+  'Fluminense FC':         'https://crests.football-data.org/1765.png',
+  'Fluminense':            'https://crests.football-data.org/1765.png',
+  'SE Palmeiras':          'https://crests.football-data.org/1769.png',
+  'Palmeiras':             'https://crests.football-data.org/1769.png',
+  'CA Mineiro':            'https://crests.football-data.org/1766.png',
+  'Atletico Mineiro':      'https://crests.football-data.org/1766.png',
+  'Atlético Mineiro':      'https://crests.football-data.org/1766.png',
+  'SC Corinthians Paulista':'https://crests.football-data.org/1779.png',
+  'Corinthians':           'https://crests.football-data.org/1779.png',
+  'Grêmio FBPA':           'https://crests.football-data.org/1767.png',
+  'Gremio':                'https://crests.football-data.org/1767.png',
+  'Grêmio':                'https://crests.football-data.org/1767.png',
+  'CR Vasco da Gama':      'https://crests.football-data.org/1780.png',
+  'Vasco da Gama':         'https://crests.football-data.org/1780.png',
+  'Vasco':                 'https://crests.football-data.org/1780.png',
+  'CA Paranaense':         'https://crests.football-data.org/1768.png',
+  'Athletico Paranaense':  'https://crests.football-data.org/1768.png',
+  'RB Bragantino':         'https://crests.football-data.org/4286.png',
+  'Red Bull Bragantino':   'https://crests.football-data.org/4286.png',
+  'Bragantino':            'https://crests.football-data.org/4286.png',
+  'EC Vitória':            'https://crests.football-data.org/1782.png',
+  'Vitória':               'https://crests.football-data.org/1782.png',
+  // ── Copa Libertadores ──
+  'Club Libertad Asuncion':'https://crests.football-data.org/9379.png',
+  'Libertad Asuncion':     'https://crests.football-data.org/9379.png',
+  'Libertad':              'https://crests.football-data.org/9379.png',
+  'CAR Independiente del Valle': 'https://crests.football-data.org/6989.png',
+  'Independiente del Valle': 'https://crests.football-data.org/6989.png',
+  'CA Lanús':              'https://crests.football-data.org/2066.png',
+  'Lanus':                 'https://crests.football-data.org/2066.png',
+  'LDU de Quito':          'https://crests.football-data.org/4528.png',
+  'LDU Quito':             'https://crests.football-data.org/4528.png',
+  'CA Rosario Central':    'https://crests.football-data.org/2070.png',
+  'Rosario Central':       'https://crests.football-data.org/2070.png',
+  'CA Boca Juniors':       'https://crests.football-data.org/2061.png',
+  'Boca Juniors':          'https://crests.football-data.org/2061.png',
+  'CA Peñarol':            'https://crests.football-data.org/5184.png',
+  'Penarol':               'https://crests.football-data.org/5184.png',
+  'Club Nacional de Football': 'https://crests.football-data.org/7055.png',
+  'Nacional':              'https://crests.football-data.org/7055.png',
+  'CS Independiente Rivadavia': 'https://crests.football-data.org/2052.png',
+  'Club Bolívar':          'https://crests.football-data.org/4261.png',
+  'Barcelona SC':          'https://crests.football-data.org/4520.png',
+  'Club Guaraní':          'https://crests.football-data.org/7868.png',
+  'Club Cerro Porteño':    'https://crests.football-data.org/9373.png',
+  'CA Platense':           'https://crests.football-data.org/7580.png',
+  'Estudiantes de La Plata':'https://crests.football-data.org/2051.png',
+  'Universidad Central de Venezuela FC': 'https://crests.football-data.org/9357.png',
+  'UCV FC':                'https://crests.football-data.org/9357.png',
+  // ── UEFA Champions League ──
+  'Real Madrid CF':        'https://crests.football-data.org/86.png',
+  'Real Madrid':           'https://crests.football-data.org/86.png',
+  'FC Barcelona':          'https://crests.football-data.org/81.png',
+  'Barcelona':             'https://crests.football-data.org/81.png',
+  'FC Bayern München':     'https://crests.football-data.org/5.png',
+  'Bayern Munich':         'https://crests.football-data.org/5.png',
+  'Bayern München':        'https://crests.football-data.org/5.png',
+  'Paris Saint-Germain FC':'https://crests.football-data.org/524.png',
+  'Paris Saint Germain':   'https://crests.football-data.org/524.png',
+  'PSG':                   'https://crests.football-data.org/524.png',
+  'Club Atlético de Madrid':'https://crests.football-data.org/78.png',
+  'Atletico Madrid':       'https://crests.football-data.org/78.png',
+  'Atlético Madrid':       'https://crests.football-data.org/78.png',
+  'Chelsea FC':            'https://crests.football-data.org/61.png',
+  'Chelsea':               'https://crests.football-data.org/61.png',
+  'Arsenal FC':            'https://crests.football-data.org/57.png',
+  'Arsenal':               'https://crests.football-data.org/57.png',
+  'Liverpool FC':          'https://crests.football-data.org/64.png',
+  'Liverpool':             'https://crests.football-data.org/64.png',
+  'Manchester City FC':    'https://crests.football-data.org/65.png',
+  'Manchester City':       'https://crests.football-data.org/65.png',
+  'Manchester United FC':  'https://crests.football-data.org/66.png',
+  'Manchester United':     'https://crests.football-data.org/66.png',
+  'Tottenham Hotspur FC':  'https://crests.football-data.org/73.png',
+  'Tottenham':             'https://crests.football-data.org/73.png',
+  'Juventus FC':           'https://crests.football-data.org/109.png',
+  'Juventus':              'https://crests.football-data.org/109.png',
+  'FC Internazionale Milano': 'https://crests.football-data.org/108.png',
+  'Inter Milan':           'https://crests.football-data.org/108.png',
+  'Internazionale':        'https://crests.football-data.org/108.png',
+  'Borussia Dortmund':     'https://crests.football-data.org/4.png',
+  'Bayer 04 Leverkusen':   'https://crests.football-data.org/3.png',
+  'Leverkusen':            'https://crests.football-data.org/3.png',
+  'Eintracht Frankfurt':   'https://crests.football-data.org/19.png',
+  'Atalanta BC':           'https://crests.football-data.org/102.png',
+  'SSC Napoli':            'https://crests.football-data.org/113.png',
+  'Napoli':                'https://crests.football-data.org/113.png',
+  'AFC Ajax':              'https://crests.football-data.org/678.png',
+  'Ajax':                  'https://crests.football-data.org/678.png',
+  'PSV':                   'https://crests.football-data.org/674.png',
+  'Sporting Clube de Portugal': 'https://crests.football-data.org/498.png',
+  'Sporting CP':           'https://crests.football-data.org/498.png',
+  'Sport Lisboa e Benfica':'https://crests.football-data.org/1903.png',
+  'Benfica':               'https://crests.football-data.org/1903.png',
+  'Olympique de Marseille':'https://crests.football-data.org/516.png',
+  'Marseille':             'https://crests.football-data.org/516.png',
+  'AS Monaco FC':          'https://crests.football-data.org/548.png',
+  'Monaco':                'https://crests.football-data.org/548.png',
+  'Galatasaray SK':        'https://crests.football-data.org/610.png',
+  'Galatasaray':           'https://crests.football-data.org/610.png',
+  // ── Premier League ──
+  'Aston Villa FC':        'https://crests.football-data.org/58.png',
+  'Aston Villa':           'https://crests.football-data.org/58.png',
+  'Everton FC':            'https://crests.football-data.org/62.png',
+  'Everton':               'https://crests.football-data.org/62.png',
+  'Fulham FC':             'https://crests.football-data.org/63.png',
+  'Fulham':                'https://crests.football-data.org/63.png',
+  'Newcastle United FC':   'https://crests.football-data.org/67.png',
+  'Newcastle':             'https://crests.football-data.org/67.png',
+  'Wolverhampton Wanderers FC': 'https://crests.football-data.org/76.png',
+  'Wolves':                'https://crests.football-data.org/76.png',
+  'Nottingham Forest FC':  'https://crests.football-data.org/351.png',
+  'Nottingham Forest':     'https://crests.football-data.org/351.png',
+  'Crystal Palace FC':     'https://crests.football-data.org/354.png',
+  'Crystal Palace':        'https://crests.football-data.org/354.png',
+  'Brighton & Hove Albion FC': 'https://crests.football-data.org/397.png',
+  'Brighton':              'https://crests.football-data.org/397.png',
+  'West Ham United FC':    'https://crests.football-data.org/563.png',
+  'West Ham':              'https://crests.football-data.org/563.png',
+  'Brentford FC':          'https://crests.football-data.org/402.png',
+  'Brentford':             'https://crests.football-data.org/402.png',
 };
+
+// Cache dinâmico de crests buscados via API
+const _crestCache = {};
+
+async function fetchCrestDynamic(teamName) {
+  if (_crestCache[teamName]) return _crestCache[teamName];
+  try {
+    const r = await fetch(`/api/bet/crest?nome=${encodeURIComponent(teamName)}`);
+    const d = await r.json();
+    if (d.crest) { _crestCache[teamName] = d.crest; return d.crest; }
+  } catch(e) {}
+  return null;
+}
 
 function getTeamLogo(teamName) {
   if (!teamName) return null;
-  // Busca exata
+  // 1. Busca exata
   if (_LOGOS[teamName]) return _LOGOS[teamName];
-  // Busca parcial (case insensitive)
-  const lower = teamName.toLowerCase();
+  // 2. Busca parcial — normaliza acentos e case
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const lower = norm(teamName);
   for (const [key, url] of Object.entries(_LOGOS)) {
-    if (lower.includes(key.toLowerCase()) || key.toLowerCase().includes(lower.split(' ')[0].toLowerCase())) {
-      return url;
-    }
+    const k = norm(key);
+    if (lower === k || lower.includes(k) || k.includes(lower.split(' ')[0])) return url;
   }
-  // Fallback: emoji baseado no nome
   return null;
 }
 
 function teamInitials(name) {
   if (!name) return '?';
-  const words = name.trim().split(/\s+/);
+  const words = name.trim().replace(/^(FC|SC|CA|CR|CD|EC|SE|RB|AA|AC|AS|CF|SD|FK)\s/i,'').split(/\s+/);
   if (words.length === 1) return words[0].substring(0,3).toUpperCase();
-  return (words[0][0] + (words[words.length-1][0] || '')).toUpperCase();
+  return (words[0][0] + (words[words.length-1][0]||'')).toUpperCase();
 }
 
-function teamBadgeHtml(name, isHome) {
+function teamBadgeHtml(name) {
   const logo = getTeamLogo(name);
+  const initials = teamInitials(name);
+  const fallback = `<span class="time-initials">${initials}</span>`;
   if (logo) {
-    return `<img class="time-escudo" src="${logo}" alt="${name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-            <span class="time-initials" style="display:none;width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;font-size:11px;font-weight:900;align-items:center;justify-content:center;flex-shrink:0">${teamInitials(name)}</span>`;
+    return `<img class="time-escudo" src="${logo}" alt="${name}"
+              onerror="this.replaceWith(document.createRange().createContextualFragment('<span class=\\"time-initials\\">${initials}</span>'))">`;
   }
-  return `<span class="time-initials" style="display:flex;width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;font-size:11px;font-weight:900;align-items:center;justify-content:center;flex-shrink:0">${teamInitials(name)}</span>`;
+  // Busca dinâmica via API em background
+  const uid = 'crest_' + Math.random().toString(36).substr(2,6);
+  setTimeout(async () => {
+    const url = await fetchCrestDynamic(name);
+    const el = document.getElementById(uid);
+    if (el && url) el.outerHTML = `<img class="time-escudo" src="${url}" alt="${name}" onerror="this.style.display='none'">`;
+  }, 0);
+  return `<span class="time-initials" id="${uid}">${initials}</span>`;
 }
 
 // ── Jogos / Odds ──
@@ -11504,8 +11608,51 @@ async def route_bet_config(request):
         return web.json_response({'ok': False, 'error': str(e)})
 
 
-async def route_bet_dbcheck(request):
-    """GET /api/bet/dbcheck — diagnóstico de conexão DB"""
+# ── Cache de crests football-data.org ──
+_crest_cache_py = {}
+
+async def route_bet_crest(request):
+    """GET /api/bet/crest?nome=TeamName — busca escudo via football-data.org"""
+    import aiohttp
+    nome = (request.rel_url.query.get('nome') or '').strip()
+    if not nome:
+        return web.json_response({'crest': None})
+    # Checar cache
+    if nome in _crest_cache_py:
+        return web.json_response({'crest': _crest_cache_py[nome]})
+
+    FD_TOKEN = '265288a553fd4d3e887f706160b96ec8'
+    headers  = {'X-Auth-Token': FD_TOKEN}
+
+    # Tentar buscar nas competições principais
+    competitions = ['BSA','BSB','CLI','CL','PL','PD','FL1','BL1','SA']
+    async with aiohttp.ClientSession() as session:
+        for comp in competitions:
+            try:
+                url = f'https://api.football-data.org/v4/competitions/{comp}/teams'
+                async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as r:
+                    if r.status != 200: continue
+                    data = await r.json()
+                    for team in data.get('teams', []):
+                        tname = team.get('name','')
+                        crest = team.get('crest') or ''
+                        if crest:
+                            _crest_cache_py[tname] = crest
+                            # Alias sem prefixos (FC, SC, etc)
+                            short = tname.replace('FC ','').replace('SC ','').replace('CA ','').replace('CR ','').replace('EC ','').strip()
+                            if short != tname: _crest_cache_py[short] = crest
+                        # Match exato ou parcial
+                        if nome.lower() in tname.lower() or tname.lower() in nome.lower():
+                            if crest:
+                                _crest_cache_py[nome] = crest
+                                return web.json_response({'crest': crest})
+            except Exception:
+                continue
+    _crest_cache_py[nome] = None
+    return web.json_response({'crest': None})
+
+
+async def route_bet_dbcheck(request):    """GET /api/bet/dbcheck — diagnóstico de conexão DB"""
     import time, psycopg2 as _pg2
     results = []
     urls_to_try = [
@@ -11650,6 +11797,7 @@ async def main():
     app.router.add_post('/api/bet/apostar',     route_bet_apostar)
     app.router.add_post('/api/bet/sacar',       route_bet_sacar)
     app.router.add_get('/api/bet/dbcheck',      route_bet_dbcheck)
+    app.router.add_get('/api/bet/crest',        route_bet_crest)
     app.router.add_get('/apostas',              route_apostas_page)
     app.router.add_get('/apostas.html',         route_apostas_page)
     app.router.add_get('/conta',                route_conta_page)
