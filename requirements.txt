@@ -24,3 +24,4 @@ python-telegram-bot==20.7
 # force-rebuild Mon Apr 13 04:24:55 UTC 2026
 # force-rebuild 20260415154132
 # force-rebuild-20260415154820
+# v20250428n-syntaxfix-crests-login-apostar
