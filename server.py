@@ -852,11 +852,13 @@ def load_bot_pix_html():
             import psycopg2 as _pg
             _c = _pg.connect(DATABASE_URL, connect_timeout=3)
             _cur = _c.cursor()
-            _cur.execute("SELECT valor FROM configuracoes WHERE chave='bot_pix_html_patch'")
-            _row = _cur.fetchone()
+            # Tenta a chave principal (_patch) e também a chave legada (sem _patch)
+            _cur.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('bot_pix_html_patch','bot_pix_html') ORDER BY (chave='bot_pix_html_patch') DESC")
+            rows = _cur.fetchall()
             _c.close()
-            if _row and _row[0] and len(_row[0]) > 1000:
-                return _row[0]
+            for _chave, _val in rows:
+                if _val and len(_val) > 1000:
+                    return _val
     except Exception:
         pass
     if os.path.exists('bot_pix.html'):
