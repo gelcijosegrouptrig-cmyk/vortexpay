@@ -12382,21 +12382,37 @@ function enviar(){{
 </html>"""
 
 
+def _load_legal_page(chave, fallback_fn):
+    """Carrega página legal do banco (deploy instantâneo) ou usa função fallback."""
+    try:
+        if DATABASE_URL:
+            import psycopg2 as _pg
+            _c = _pg.connect(DATABASE_URL, connect_timeout=3)
+            _cur = _c.cursor()
+            _cur.execute("SELECT valor FROM configuracoes WHERE chave=%s", (chave,))
+            _row = _cur.fetchone()
+            _c.close()
+            if _row and _row[0] and len(_row[0]) > 500:
+                return _row[0]
+    except Exception:
+        pass
+    return fallback_fn()
+
 async def route_termos(request):
     """GET /termos"""
-    return web.Response(text=_page_termos(), content_type='text/html', charset='utf-8')
+    return web.Response(text=_load_legal_page('termos_html', _page_termos), content_type='text/html', charset='utf-8')
 
 async def route_privacidade(request):
     """GET /privacidade"""
-    return web.Response(text=_page_privacidade(), content_type='text/html', charset='utf-8')
+    return web.Response(text=_load_legal_page('privacidade_html', _page_privacidade), content_type='text/html', charset='utf-8')
 
 async def route_responsavel(request):
     """GET /responsavel"""
-    return web.Response(text=_page_responsavel(), content_type='text/html', charset='utf-8')
+    return web.Response(text=_load_legal_page('responsavel_html', _page_responsavel), content_type='text/html', charset='utf-8')
 
 async def route_suporte(request):
     """GET /suporte"""
-    return web.Response(text=_page_suporte(), content_type='text/html', charset='utf-8')
+    return web.Response(text=_load_legal_page('suporte_html', _page_suporte), content_type='text/html', charset='utf-8')
 
 
 async def route_bet_crest(request):
