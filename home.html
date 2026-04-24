@@ -1650,13 +1650,23 @@ async function carregarTabela(league,titulo){
       '</div>'+
       rows.map((t,i)=>{
         const rCls=t.rank===1?'p1':t.rank===2?'p2':t.rank===3?'p3':'';
-        // Zonas de classificação automática
+        // Zonas de classificação inteligente por tamanho da liga
         let zc='';
-        if(rows.length>=4){
-          const pct=t.rank/rows.length;
+        const n=rows.length;
+        if(n>=20){
+          // Liga grande (20 times): 4 Copa, 2 Europa, 4 rebaixados
           if(t.rank<=4) zc='z-cl';
           else if(t.rank<=6) zc='z-el';
-          else if(t.rank>=rows.length-3) zc='z-rl';
+          else if(t.rank>n-4) zc='z-rl';
+        }else if(n>=16){
+          // Liga média (16-19 times): 4 Copa, 2 Europa, 3 rebaixados
+          if(t.rank<=4) zc='z-cl';
+          else if(t.rank<=6) zc='z-el';
+          else if(t.rank>n-3) zc='z-rl';
+        }else if(n>=8){
+          // Copa/Libertadores com grupos: top 2 avançam, 3-4 repescagem
+          if(t.rank<=2) zc='z-cl';
+          else if(t.rank<=4) zc='z-el';
         }
         const lo=t.logo?'<img class="tl" src="'+t.logo+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">':'';
         const sgTxt=(t.gd>=0?'+':'')+t.gd;
