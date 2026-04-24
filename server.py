@@ -9945,6 +9945,7 @@ _SUIT_WEBHOOK_URL = os.environ.get('SUITPAY_WEBHOOK_URL', 'https://paynexbet.com
 async def route_bet_jogos(request):
     """GET /api/bet/jogos — retorna jogos com odds (cache 60s)"""
     import time as _time
+    import aiohttp
     agora = _time.time()
     # Retornar cache se válido
     if agora - _odds_cache['ts'] < _ODDS_CACHE_TTL and _odds_cache['data']:
@@ -10095,6 +10096,7 @@ async def route_webhook_suitpay(request):
 
 async def route_bet_deposito(request):
     """POST /api/bet/deposito — gera QR Code PIX via SuitPay"""
+    import aiohttp
     try:
         body = await request.json()
     except Exception:
@@ -10337,6 +10339,7 @@ async def route_bet_apostar(request):
 
 async def route_bet_sacar(request):
     """POST /api/bet/sacar — saque via SuitPay PIX"""
+    import aiohttp
     try:
         body = await request.json()
     except Exception:
