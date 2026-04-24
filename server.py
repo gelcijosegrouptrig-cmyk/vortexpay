@@ -4579,7 +4579,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20250428f-suitpay-cpf-format',
+        'version': 'v20250428g-suitpay-full',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -10153,8 +10153,10 @@ async def route_bet_deposito(request):
     except Exception as e_suit:
         return web.json_response({'success': False, 'error': f'Erro SuitPay: {e_suit}'})
 
-    if not resp.get('success'):
-        return web.json_response({'success': False, 'error': resp.get('message', 'Erro desconhecido SuitPay')})
+    # SuitPay retorna response='OK' e idTransaction quando sucesso (não 'success': true)
+    suit_ok = resp.get('response') == 'OK' or resp.get('success') or bool(resp.get('idTransaction'))
+    if not suit_ok:
+        return web.json_response({'success': False, 'error': resp.get('message', resp.get('response', 'Erro desconhecido SuitPay'))})
 
     # Salvar deposito pendente no banco
     if DATABASE_URL:
@@ -10173,7 +10175,7 @@ async def route_bet_deposito(request):
     return web.json_response({
         'success':    True,
         'qrCode':     resp.get('paymentCode', ''),
-        'qrImage':    resp.get('qrCodeImage', ''),
+        'qrImage':    resp.get('paymentCodeBase64', resp.get('qrCodeImage', '')),  # SuitPay usa paymentCodeBase64
         'requestNumber': req_number,
         'valor':      valor,
         'expira':     due_date,
