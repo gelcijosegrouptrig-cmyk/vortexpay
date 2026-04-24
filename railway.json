@@ -2,8 +2,8 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "rebuildTimestamp": "1777041927",
-    "forceBust": "v20250428g-suitpay-full-1777041927",
+    "rebuildTimestamp": "1777042467",
+    "forceBust": "v20250428h-fullwidth-1777042467",
     "args": {
       "REBUILD_TS": "1777039883",
       "FORCE_BUST": "FORCE-FULL-REBUILD-1777039883"

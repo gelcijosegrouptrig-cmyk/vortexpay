@@ -4579,7 +4579,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20250428g-suitpay-full',
+        'version': 'v20250428h-fullwidth-layout',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -10465,8 +10465,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .saldo-badge{background:#00d68f14;border:1px solid #22c55e33;border-radius:8px;padding:4px 12px;font-size:13px;font-weight:700;color:#4ade80}
 .btn-conta{background:#1e3a8a;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none}
 
-/* MAIN */
-.main{max-width:680px;margin:0 auto;padding:14px 14px 80px}
+/* LAYOUT FULL-WIDTH */
+.page-layout{display:flex;min-height:calc(100vh - 52px);width:100%}
+.main{flex:1;min-width:0;padding:14px 20px 80px;width:100%}
+@media(min-width:1024px){
+  .page-layout{gap:0}
+  .main{padding:20px 32px 24px}
+  .bet-slip-sidebar{width:340px;flex-shrink:0;background:#0d0d16;border-left:1px solid #ffffff0c;padding:16px;height:calc(100vh - 52px);position:sticky;top:52px;overflow-y:auto;display:flex;flex-direction:column}
+}
 
 /* FILTROS ESPORTES */
 .sport-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
@@ -10478,7 +10484,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .secao-titulo{font-size:12px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .live-dot{width:6px;height:6px;background:#ef4444;border-radius:50%;animation:blink 1.2s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.jogos-lista{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.jogos-lista{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:20px}
+@media(min-width:1024px){.jogos-lista{grid-template-columns:1fr 1fr}}
 .jogo-card{background:var(--card);border:1px solid #ffffff0c;border-radius:14px;padding:14px;cursor:pointer;transition:border-color .2s}
 .jogo-card:hover{border-color:#3b82f633}
 .jogo-card.live{border-left:3px solid #ef4444}
@@ -10497,7 +10504,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .odd-val{font-size:15px;font-weight:900;color:var(--blue)}
 .odd-btn.sel .odd-val{color:#fff}
 
-/* CARRINHO FIXO */
+/* CARRINHO FIXO — mobile: barra inferior | desktop: coluna lateral */
 .bet-slip-bar{position:fixed;bottom:0;left:0;right:0;background:#0d1a0d;border-top:1px solid #22c55e33;z-index:200;transition:max-height .3s;max-height:56px;overflow:hidden}
 .bet-slip-bar.open{max-height:90vh;overflow:auto}
 .bet-slip-toggle{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer}
@@ -10521,6 +10528,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .bs-retorno{font-size:12px;color:#555;margin-top:8px;text-align:right}
 .bs-retorno span{color:#4ade80;font-weight:700;font-size:14px}
 .bs-btn-apostar{width:100%;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:10px;padding:14px;color:#000;font-size:15px;font-weight:900;cursor:pointer;margin-top:10px}
+/* Sidebar desktop */
+.bet-slip-sidebar{display:none}
+.sidebar-title{font-size:14px;font-weight:900;color:#4ade80;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.sidebar-empty{color:#555;font-size:13px;text-align:center;padding:30px 0}
+.sidebar-items{flex:1;overflow-y:auto;margin-bottom:12px}
+.sidebar-footer{border-top:1px solid #22c55e22;padding-top:12px}
+@media(min-width:1024px){
+  .bet-slip-bar{display:none !important}
+  .bet-slip-sidebar{display:flex;flex-direction:column;width:320px;flex-shrink:0;background:#0d0d16;border-left:1px solid #ffffff0c;padding:20px 16px;height:calc(100vh - 52px);position:sticky;top:52px;overflow-y:auto}
+  .main{padding-bottom:24px}
+}
 
 /* LOGIN MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;align-items:flex-end;justify-content:center}
@@ -10543,7 +10561,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .spinner{width:20px;height:20px;border:2px solid #333;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-@media(min-width:600px){.bet-slip-bar{max-width:680px;left:50%;transform:translateX(-50%);border-radius:16px 16px 0 0}}
+@media(min-width:600px) and (max-width:1023px){.bet-slip-bar{border-radius:16px 16px 0 0}}
 </style>
 </head>
 <body>
@@ -10557,6 +10575,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </header>
 
+<div class="page-layout">
 <div class="main">
   <!-- Filtros de esporte -->
   <div class="sport-tabs" id="sport-tabs">
@@ -10572,7 +10591,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="jogos-lista" id="jogos-lista">
     <div class="loading-spinner"><div class="spinner"></div> Carregando jogos...</div>
   </div>
-</div>
+</div><!-- /main -->
+
+<!-- SIDEBAR CARRINHO (desktop ≥1024px) -->
+<aside class="bet-slip-sidebar" id="bet-slip-sidebar">
+  <div class="sidebar-title">
+    <span id="sidebar-count" style="background:#22c55e;color:#000;border-radius:50%;width:22px;height:22px;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">0</span>
+    🎯 Minha Aposta
+  </div>
+  <div class="sidebar-items" id="sidebar-items">
+    <div class="sidebar-empty" id="sidebar-empty">Clique nas odds para adicionar apostas</div>
+  </div>
+  <div class="sidebar-footer" id="sidebar-footer" style="display:none">
+    <div style="font-size:11px;color:#666;margin-bottom:6px">Odd total: <strong id="sidebar-odd-total" style="color:#4ade80">—</strong></div>
+    <input class="bs-input" type="number" id="sidebar-valor" placeholder="R$ valor" min="2" step="1" oninput="calcRetorno()" style="width:100%;margin-bottom:8px">
+    <div class="bs-chips">
+      <div class="bs-chip" onclick="setValor(5)">R$5</div>
+      <div class="bs-chip" onclick="setValor(10)">R$10</div>
+      <div class="bs-chip" onclick="setValor(20)">R$20</div>
+      <div class="bs-chip" onclick="setValor(50)">R$50</div>
+      <div class="bs-chip" onclick="setValor(100)">R$100</div>
+    </div>
+    <div class="bs-retorno" style="margin-bottom:10px">Retorno potencial: <span id="sidebar-retorno">R$ 0,00</span></div>
+    <button class="bs-btn-apostar" onclick="confirmarAposta()">🎯 Confirmar Aposta</button>
+  </div>
+</aside>
+
+</div><!-- /page-layout -->
 
 <!-- CARRINHO (bet slip) -->
 <div class="bet-slip-bar" id="bet-slip-bar">
@@ -10734,22 +10779,9 @@ function selecionarOdd(jogoId, time, tipo, odd, jogo) {
 }
 
 function renderSlip() {
-  const bar = document.getElementById('bet-slip-bar');
-  const count = document.getElementById('slip-count');
-  const oddTot = document.getElementById('slip-odd-total');
-  const items = document.getElementById('slip-items');
-  const body = document.getElementById('slip-body');
-
-  count.textContent = _selecoes.length;
+  const count = _selecoes.length;
   const totalOdd = _selecoes.reduce((a, s) => a * s.odd, 1);
-  oddTot.textContent = _selecoes.length ? `Odd total: ${totalOdd.toFixed(2)}` : 'Sem seleções';
-
-  if (!_selecoes.length) {
-    bar.classList.remove('open');
-    body.style.display = 'none';
-    return;
-  }
-  items.innerHTML = _selecoes.map(s => `
+  const itemsHtml = _selecoes.map(s => `
     <div class="bs-item">
       <div class="bs-item-info">
         <div class="bs-item-jogo">${s.jogo}</div>
@@ -10758,6 +10790,29 @@ function renderSlip() {
       </div>
       <button class="bs-item-remove" onclick="removerSelecao('${s.jogoId}')">×</button>
     </div>`).join('');
+
+  // ── Mobile: barra inferior ──
+  const bar    = document.getElementById('bet-slip-bar');
+  const cntEl  = document.getElementById('slip-count');
+  const oddEl  = document.getElementById('slip-odd-total');
+  const itmEl  = document.getElementById('slip-items');
+  const body   = document.getElementById('slip-body');
+  if (cntEl) cntEl.textContent = count;
+  if (oddEl) oddEl.textContent = count ? `Odd total: ${totalOdd.toFixed(2)}` : 'Sem seleções';
+  if (itmEl) itmEl.innerHTML = itemsHtml;
+  if (!count && bar) { bar.classList.remove('open'); if(body) body.style.display='none'; }
+
+  // ── Desktop: sidebar lateral ──
+  const sCount   = document.getElementById('sidebar-count');
+  const sOdd     = document.getElementById('sidebar-odd-total');
+  const sItems   = document.getElementById('sidebar-items');
+  const sEmpty   = document.getElementById('sidebar-empty');
+  const sFooter  = document.getElementById('sidebar-footer');
+  if (sCount) sCount.textContent = count;
+  if (sOdd)   sOdd.textContent = count ? totalOdd.toFixed(2) : '—';
+  if (sItems) sItems.innerHTML = count ? itemsHtml : '<div class="sidebar-empty">Clique nas odds para adicionar apostas</div>';
+  if (sFooter) sFooter.style.display = count ? 'block' : 'none';
+
   calcRetorno();
 }
 
@@ -10775,14 +10830,23 @@ function toggleSlip() {
 }
 
 function setValor(v) {
-  document.getElementById('slip-valor').value = v;
+  const mEl = document.getElementById('slip-valor');
+  const sEl = document.getElementById('sidebar-valor');
+  if (mEl) mEl.value = v;
+  if (sEl) sEl.value = v;
   calcRetorno();
 }
 
 function calcRetorno() {
-  const v = parseFloat(document.getElementById('slip-valor').value) || 0;
+  const mEl = document.getElementById('slip-valor');
+  const sEl = document.getElementById('sidebar-valor');
+  const v = parseFloat((mEl && mEl.value) || (sEl && sEl.value) || 0) || 0;
   const totalOdd = _selecoes.reduce((a, s) => a * s.odd, 1);
-  document.getElementById('slip-retorno').textContent = _fmt(v * totalOdd);
+  const ret = _fmt(v * totalOdd);
+  const rEl = document.getElementById('slip-retorno');
+  const srEl = document.getElementById('sidebar-retorno');
+  if (rEl)  rEl.textContent  = ret;
+  if (srEl) srEl.textContent = ret;
 }
 
 // ── Apostar ──
@@ -10790,7 +10854,9 @@ async function confirmarAposta() {
   if (!_selecoes.length) { toast('Selecione pelo menos uma aposta', 'err'); return; }
   if (!_usuario) { abrirLogin(); return; }
 
-  const valor = parseFloat(document.getElementById('slip-valor').value) || 0;
+  const mEl  = document.getElementById('slip-valor');
+  const sEl  = document.getElementById('sidebar-valor');
+  const valor = parseFloat((mEl && mEl.value) || (sEl && sEl.value) || 0) || 0;
   if (valor < 2) { toast('Valor mínimo: R$ 2,00', 'err'); return; }
 
   const totalOdd = _selecoes.reduce((a, s) => a * s.odd, 1);
@@ -10819,7 +10885,8 @@ async function confirmarAposta() {
       atualizarSaldo();
       _selecoes = [];
       renderSlip();
-      document.getElementById('slip-valor').value = '';
+      if (document.getElementById('slip-valor')) document.getElementById('slip-valor').value = '';
+      if (document.getElementById('sidebar-valor')) document.getElementById('sidebar-valor').value = '';
     } else {
       if (d.error && d.error.includes('Saldo insuficiente')) {
         toast('Saldo insuficiente! Deposite para continuar.', 'err');
