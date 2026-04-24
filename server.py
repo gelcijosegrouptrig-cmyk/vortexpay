@@ -9888,6 +9888,17 @@ import hashlib as _hashlib
 _odds_cache       = {'ts': 0, 'data': []}
 _ODDS_CACHE_TTL   = 60   # segundos
 
+# ── API-Football (api-sports.io) ─────────────────────────────────────────────
+_APIFOOTBALL_KEY  = '9f32a39147f38ec092f55c39abb14517'
+_APIFOOTBALL_BASE = 'https://v3.football.api-sports.io'
+_live_cache       = {'ts': 0, 'data': []}          # /odds/live — cache 30s
+_LIVE_CACHE_TTL   = 30
+_pred_cache       = {}                              # fixture_id → prediction
+_PRED_CACHE_TTL   = 3600                            # 1 hora
+_standings_cache  = {'ts': 0, 'data': {}}          # league_id → standings
+_STANDINGS_TTL    = 1800                            # 30 min
+_APISPORTS_HDR    = {'x-apisports-key': _APIFOOTBALL_KEY}
+
 # ── SuitPay: suporte ao formato "CI|CS" numa variável só
 def _suit_parse_keys():
     raw_ci = os.environ.get('SUITPAY_CI', '')
@@ -10020,6 +10031,192 @@ async def route_bet_jogos(request):
     _odds_cache['ts']   = agora
     _odds_cache['data'] = all_jogos
     return web.json_response({'success': True, 'jogos': all_jogos, 'total': len(all_jogos)})
+
+
+async def route_bet_live(request):
+    """GET /api/bet/live — jogos ao vivo com odds em tempo real via api-sports.io"""
+    import time as _time, aiohttp
+    agora = _time.time()
+    if agora - _live_cache['ts'] < _LIVE_CACHE_TTL and _live_cache['data']:
+        return web.json_response({'success': True, 'jogos': _live_cache['data'], 'from_cache': True})
+    try:
+        async with aiohttp.ClientSession(headers=_APISPORTS_HDR) as sess:
+            # 1. Odds ao vivo
+            async with sess.get(f'{_APIFOOTBALL_BASE}/odds/live',
+                                timeout=aiohttp.ClientTimeout(total=8)) as r:
+                live_raw = await r.json() if r.status == 200 else {'response': []}
+            # 2. Fixtures ao vivo para pegar nome dos times e placar
+            async with sess.get(f'{_APIFOOTBALL_BASE}/fixtures',
+                                params={'live': 'all'},
+                                timeout=aiohttp.ClientTimeout(total=8)) as r:
+                fix_raw = await r.json() if r.status == 200 else {'response': []}
+
+        # Indexar fixtures por id
+        fix_by_id = {}
+        for f in fix_raw.get('response', []):
+            fid = f.get('fixture', {}).get('id')
+            if fid:
+                fix_by_id[fid] = f
+
+        jogos = []
+        for item in live_raw.get('response', []):
+            fid = item.get('fixture', {}).get('id')
+            fix = fix_by_id.get(fid, {})
+            teams = fix.get('teams', {})
+            goals = fix.get('goals', {})
+            status = fix.get('fixture', {}).get('status', {})
+            league = fix.get('league', {})
+
+            home_name = teams.get('home', {}).get('name', f"Time {item.get('teams',{}).get('home',{}).get('id','?')}")
+            away_name = teams.get('away', {}).get('name', f"Time {item.get('teams',{}).get('away',{}).get('id','?')}")
+            home_logo = teams.get('home', {}).get('logo', '')
+            away_logo = teams.get('away', {}).get('logo', '')
+            home_goals = goals.get('home')
+            away_goals = goals.get('away')
+            elapsed    = status.get('elapsed', 0) or item.get('fixture', {}).get('status', {}).get('elapsed', 0)
+            league_name = league.get('name', 'Ao Vivo')
+            league_logo = league.get('logo', '')
+
+            # Extrair odds do mercado "Fulltime Result" (id 59) ou 1X2
+            home_odd = away_odd = draw_odd = None
+            for mkt in item.get('odds', []):
+                mkt_id = mkt.get('id')
+                mkt_name = mkt.get('name', '').lower()
+                if mkt_id in (1, 59) or 'fulltime' in mkt_name or 'match winner' in mkt_name or '1x2' in mkt_name:
+                    for v in mkt.get('values', []):
+                        val = v.get('value', '')
+                        odd_f = float(v.get('odd', 0) or 0)
+                        suspended = v.get('suspended', False)
+                        if suspended or odd_f <= 1.0:
+                            continue
+                        if val in ('Home', '1'):
+                            home_odd = odd_f
+                        elif val in ('Draw', 'X'):
+                            draw_odd = odd_f
+                        elif val in ('Away', '2'):
+                            away_odd = odd_f
+                    if home_odd:
+                        break
+
+            if not home_odd:
+                continue  # pular jogos sem mercado 1X2 disponível
+
+            jogos.append({
+                'id':          fid,
+                'fixture_id':  fid,
+                'home_team':   home_name,
+                'away_team':   away_name,
+                'home_logo':   home_logo,
+                'away_logo':   away_logo,
+                'home_goals':  home_goals,
+                'away_goals':  away_goals,
+                'elapsed':     elapsed,
+                'league':      league_name,
+                'league_logo': league_logo,
+                'odds': {
+                    'home': round(home_odd, 2) if home_odd else None,
+                    'draw': round(draw_odd, 2) if draw_odd else None,
+                    'away': round(away_odd, 2) if away_odd else None,
+                }
+            })
+
+        _live_cache['ts']   = agora
+        _live_cache['data'] = jogos
+        return web.json_response({'success': True, 'jogos': jogos, 'total': len(jogos)})
+    except Exception as e:
+        print(f'[bet/live] erro: {e}', flush=True)
+        return web.json_response({'success': False, 'jogos': [], 'error': str(e)})
+
+
+async def route_bet_predictions(request):
+    """GET /api/bet/predictions?fixture=ID — previsão IA para um fixture"""
+    import time as _time, aiohttp
+    fixture_id = request.rel_url.query.get('fixture', '')
+    if not fixture_id:
+        return web.json_response({'error': 'fixture obrigatório'}, status=400)
+    agora = _time.time()
+    cached = _pred_cache.get(fixture_id)
+    if cached and agora - cached['ts'] < _PRED_CACHE_TTL:
+        return web.json_response({'success': True, 'prediction': cached['data']})
+    try:
+        async with aiohttp.ClientSession(headers=_APISPORTS_HDR) as sess:
+            async with sess.get(f'{_APIFOOTBALL_BASE}/predictions',
+                                params={'fixture': fixture_id},
+                                timeout=aiohttp.ClientTimeout(total=8)) as r:
+                d = await r.json() if r.status == 200 else {}
+        resp = d.get('response', [])
+        if not resp:
+            return web.json_response({'success': False, 'error': 'sem dados'})
+        pred = resp[0].get('predictions', {})
+        teams = resp[0].get('teams', {})
+        result = {
+            'winner':    pred.get('winner', {}).get('name'),
+            'advice':    pred.get('advice', ''),
+            'percent':   pred.get('percent', {}),
+            'under_over': pred.get('under_over'),
+            'home_form': teams.get('home', {}).get('last_5', {}).get('form', ''),
+            'away_form': teams.get('away', {}).get('last_5', {}).get('form', ''),
+            'home_name': teams.get('home', {}).get('name', ''),
+            'away_name': teams.get('away', {}).get('name', ''),
+        }
+        _pred_cache[fixture_id] = {'ts': agora, 'data': result}
+        return web.json_response({'success': True, 'prediction': result})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_bet_standings(request):
+    """GET /api/bet/standings?league=71&season=2024 — tabela de classificação"""
+    import time as _time, aiohttp
+    agora = _time.time()
+    league = request.rel_url.query.get('league', '71')
+    season = request.rel_url.query.get('season', '2024')
+    cache_key = f'{league}_{season}'
+    cached = _standings_cache['data'].get(cache_key)
+    if cached and agora - _standings_cache['ts'] < _STANDINGS_TTL:
+        return web.json_response({'success': True, 'standings': cached})
+    try:
+        async with aiohttp.ClientSession(headers=_APISPORTS_HDR) as sess:
+            async with sess.get(f'{_APIFOOTBALL_BASE}/standings',
+                                params={'league': league, 'season': season},
+                                timeout=aiohttp.ClientTimeout(total=8)) as r:
+                d = await r.json() if r.status == 200 else {}
+        resp = d.get('response', [])
+        if not resp:
+            return web.json_response({'success': False, 'standings': [], 'error': d.get('errors', '')})
+        lg = resp[0].get('league', {})
+        rows = lg.get('standings', [[]])[0]
+        data = []
+        for t in rows:
+            tm = t.get('team', {})
+            all_ = t.get('all', {})
+            data.append({
+                'rank':     t.get('rank'),
+                'team_id':  tm.get('id'),
+                'name':     tm.get('name', ''),
+                'logo':     tm.get('logo', ''),
+                'points':   t.get('points'),
+                'played':   all_.get('played', 0),
+                'won':      all_.get('win', 0),
+                'draw':     all_.get('draw', 0),
+                'lost':     all_.get('lose', 0),
+                'gf':       all_.get('goals', {}).get('for', 0),
+                'ga':       all_.get('goals', {}).get('against', 0),
+                'gd':       t.get('goalsDiff', 0),
+                'form':     t.get('form', ''),
+                'description': t.get('description', ''),
+            })
+        _standings_cache['data'][cache_key] = data
+        _standings_cache['ts'] = agora
+        return web.json_response({'success': True, 'standings': data,
+                                  'league': lg.get('name', ''), 'logo': lg.get('logo', '')})
+    except Exception as e:
+        return web.json_response({'success': False, 'standings': [], 'error': str(e)})
+
+
+async def route_tabela_page(request):
+    """GET /tabela — página de classificação (tabela de times)"""
+    return web.Response(text=_page_tabela_html(), content_type='text/html', charset='utf-8')
 
 
 async def route_webhook_suitpay(request):
@@ -10485,6 +10682,198 @@ async def route_bet_sacar(request):
 
 # ── FASE 7: Páginas HTML /apostas e /conta ─────────────────────────────────
 
+def _page_tabela_html():
+    return r"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0f">
+<title>PaynexBet — Tabela de Classificação</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--gold:#FFD700;--blue:#3b82f6;--green:#22c55e;--red:#ef4444;--bg:#0a0a0f;--card:#111118;--card2:#13131e}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#fff;min-height:100vh}
+.topbar{background:#0d0d16;border-bottom:1px solid #ffffff0c;padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-logo{font-size:20px;font-weight:900;background:linear-gradient(135deg,#FFD700,#FFA500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none}
+.topbar-nav{display:flex;gap:8px;align-items:center}
+.nav-link{color:#aaa;text-decoration:none;font-size:13px;font-weight:600;padding:5px 10px;border-radius:8px;transition:all .15s}
+.nav-link:hover,.nav-link.active{background:#1e3a8a;color:#fff}
+.page{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+/* Liga tabs */
+.liga-tabs{display:flex;gap:8px;overflow-x:auto;margin-bottom:20px;padding-bottom:4px;scrollbar-width:none}
+.liga-tabs::-webkit-scrollbar{display:none}
+.liga-tab{flex-shrink:0;display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid #ffffff10;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;color:#888;cursor:pointer;transition:all .15s;white-space:nowrap}
+.liga-tab img{width:18px;height:18px;object-fit:contain}
+.liga-tab.active{background:#1e3a8a;border-color:#3b82f6;color:#fff}
+/* Tabela */
+.tabela-wrap{background:var(--card);border:1px solid #ffffff0c;border-radius:14px;overflow:hidden}
+.tabela-header{display:grid;grid-template-columns:36px 1fr 36px 36px 36px 36px 36px 40px 60px;gap:0;padding:10px 12px;border-bottom:1px solid #ffffff0c;font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+@media(max-width:600px){
+  .tabela-header{grid-template-columns:28px 1fr 28px 28px 28px 28px 28px 36px 50px;padding:8px 8px}
+  .col-gd,.col-jg{display:none}
+}
+.tabela-row{display:grid;grid-template-columns:36px 1fr 36px 36px 36px 36px 36px 40px 60px;gap:0;padding:10px 12px;border-bottom:1px solid #ffffff06;align-items:center;transition:background .15s}
+.tabela-row:hover{background:#ffffff04}
+.tabela-row:last-child{border-bottom:none}
+@media(max-width:600px){
+  .tabela-row{grid-template-columns:28px 1fr 28px 28px 28px 28px 28px 36px 50px;padding:8px 8px}
+}
+.col-rank{font-size:12px;font-weight:700;color:#555;text-align:center}
+.col-rank.pos1{color:var(--gold)}
+.col-rank.pos2{color:#aaa}
+.col-rank.pos3{color:#cd7f32}
+.col-team{display:flex;align-items:center;gap:8px;min-width:0}
+.team-logo{width:24px;height:24px;object-fit:contain;flex-shrink:0}
+.team-name{font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-ini{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.col-num{font-size:12px;font-weight:700;color:#ccc;text-align:center}
+.col-pts{font-size:14px;font-weight:900;color:var(--blue);text-align:center}
+.col-form{display:flex;gap:2px;justify-content:flex-end}
+.form-c{width:14px;height:14px;border-radius:3px;font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.form-c.W{background:#22c55e22;color:#22c55e;border:1px solid #22c55e44}
+.form-c.D{background:#55555522;color:#888;border:1px solid #55555544}
+.form-c.L{background:#ef444422;color:#ef4444;border:1px solid #ef444444}
+/* Zone colors */
+.tabela-row.zone-cl{border-left:3px solid #3b82f6}
+.tabela-row.zone-el{border-left:3px solid #22c55e}
+.tabela-row.zone-rl{border-left:3px solid #ef4444}
+/* Legend */
+.legend{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:#666}
+.legend-dot{width:10px;height:10px;border-radius:2px}
+.secao-titulo{font-size:12px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;margin-top:4px}
+.loading-msg{text-align:center;padding:40px 20px;color:#555}
+.spinner{width:28px;height:28px;border:3px solid #ffffff0c;border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<nav class="topbar">
+  <a class="topbar-logo" href="/">PaynexBet</a>
+  <div class="topbar-nav">
+    <a class="nav-link" href="/apostas">⚽ Apostas</a>
+    <a class="nav-link active" href="/tabela">🏆 Tabela</a>
+    <a class="nav-link" href="/conta">👤 Conta</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="liga-tabs" id="liga-tabs">
+    <div class="liga-tab active" data-league="71" data-season="2024" onclick="trocarLiga(this)">🇧🇷 Brasileirão Série A</div>
+    <div class="liga-tab" data-league="75" data-season="2024" onclick="trocarLiga(this)">🇧🇷 Série B</div>
+    <div class="liga-tab" data-league="13" data-season="2024" onclick="trocarLiga(this)">🏆 Libertadores</div>
+    <div class="liga-tab" data-league="11" data-season="2024" onclick="trocarLiga(this)">🌎 Sul-Americana</div>
+    <div class="liga-tab" data-league="2" data-season="2024" onclick="trocarLiga(this)">⭐ Champions League</div>
+    <div class="liga-tab" data-league="39" data-season="2024" onclick="trocarLiga(this)">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</div>
+    <div class="liga-tab" data-league="140" data-season="2024" onclick="trocarLiga(this)">🇪🇸 La Liga</div>
+    <div class="liga-tab" data-league="135" data-season="2024" onclick="trocarLiga(this)">🇮🇹 Serie A</div>
+    <div class="liga-tab" data-league="78" data-season="2024" onclick="trocarLiga(this)">🇩🇪 Bundesliga</div>
+    <div class="liga-tab" data-league="61" data-season="2024" onclick="trocarLiga(this)">🇫🇷 Ligue 1</div>
+  </div>
+
+  <div class="secao-titulo" id="tabela-titulo">Brasileirão Série A 2024</div>
+
+  <div id="tabela-container">
+    <div class="loading-msg"><div class="spinner"></div>Carregando tabela...</div>
+  </div>
+
+  <div class="legend" id="tabela-legend" style="display:none">
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> Libertadores</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> Sul-Americana</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Rebaixamento</div>
+  </div>
+</div>
+
+<script>
+const BASE = '';
+
+function trocarLiga(el) {
+  document.querySelectorAll('.liga-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const league = el.dataset.league;
+  const season = el.dataset.season;
+  carregarTabela(league, season, el.textContent.trim());
+}
+
+function zoneClass(desc) {
+  if (!desc) return '';
+  const d = desc.toLowerCase();
+  if (d.includes('libertadores') || d.includes('champions') || d.includes('promotion')) return 'zone-cl';
+  if (d.includes('sul-americana') || d.includes('europa') || d.includes('play')) return 'zone-el';
+  if (d.includes('rebaixamento') || d.includes('relegation')) return 'zone-rl';
+  return '';
+}
+
+function formDots(form) {
+  if (!form) return '';
+  return form.split('').slice(-5).map(c => {
+    const cls = c === 'W' ? 'W' : c === 'D' ? 'D' : 'L';
+    return `<span class="form-c ${cls}">${c}</span>`;
+  }).join('');
+}
+
+async function carregarTabela(league, season, titulo) {
+  const container = document.getElementById('tabela-container');
+  const tituloEl = document.getElementById('tabela-titulo');
+  const legend = document.getElementById('tabela-legend');
+  container.innerHTML = '<div class="loading-msg"><div class="spinner"></div>Carregando tabela...</div>';
+  legend.style.display = 'none';
+  if (tituloEl) tituloEl.textContent = titulo + ' ' + season;
+  try {
+    const r = await fetch(`${BASE}/api/bet/standings?league=${league}&season=${season}`);
+    const d = await r.json();
+    if (!d.success || !d.standings || !d.standings.length) {
+      container.innerHTML = '<div class="loading-msg">⚠️ Dados não disponíveis para esta liga.</div>';
+      return;
+    }
+    const rows = d.standings;
+    legend.style.display = 'flex';
+    container.innerHTML = `
+      <div class="tabela-wrap">
+        <div class="tabela-header">
+          <div style="text-align:center">#</div>
+          <div>Time</div>
+          <div class="col-jg" style="text-align:center" title="Jogos">J</div>
+          <div style="text-align:center" title="Vitórias">V</div>
+          <div style="text-align:center" title="Empates">E</div>
+          <div style="text-align:center" title="Derrotas">D</div>
+          <div class="col-gd" style="text-align:center" title="Saldo de gols">SG</div>
+          <div style="text-align:center" title="Pontos">Pts</div>
+          <div style="text-align:right" title="Forma (últimos 5)">Forma</div>
+        </div>
+        ${rows.map(t => {
+          const rankCls = t.rank === 1 ? 'pos1' : t.rank === 2 ? 'pos2' : t.rank === 3 ? 'pos3' : '';
+          const zone = zoneClass(t.description || '');
+          const logoHtml = t.logo
+            ? `<img class="team-logo" src="${t.logo}" alt="" onerror="this.style.display='none';">`
+            : `<div class="team-ini">${(t.name||'?').substring(0,2).toUpperCase()}</div>`;
+          return `
+          <div class="tabela-row ${zone}">
+            <div class="col-rank ${rankCls}">${t.rank}</div>
+            <div class="col-team">${logoHtml}<span class="team-name">${t.name}</span></div>
+            <div class="col-num col-jg">${t.played}</div>
+            <div class="col-num">${t.won}</div>
+            <div class="col-num">${t.draw}</div>
+            <div class="col-num">${t.lost}</div>
+            <div class="col-num col-gd">${t.gd >= 0 ? '+' : ''}${t.gd}</div>
+            <div class="col-pts">${t.points}</div>
+            <div class="col-form">${formDots(t.form)}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  } catch(e) {
+    container.innerHTML = '<div class="loading-msg">⚠️ Erro ao carregar. Tente novamente.</div>';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  carregarTabela('71', '2024', 'Brasileirão Série A');
+});
+</script>
+</body>
+</html>"""
+
 def _page_apostas_html():
     return r"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -10557,6 +10946,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .odd-val{font-size:15px;font-weight:900;color:var(--blue)}
 .odd-btn.sel .odd-val{color:#fff}
 
+/* PLACAR AO VIVO */
+.placar-live{display:flex;align-items:center;gap:6px;flex-shrink:0;padding:0 8px}
+.placar-num{font-size:22px;font-weight:900;color:#fff;line-height:1}
+.placar-sep{font-size:16px;color:#444;font-weight:700}
+
+/* BARRA DE PREVISÃO IA */
+.pred-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;margin:8px 0 4px;gap:1px}
+.pred-home{background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700;min-width:16px}
+.pred-draw{background:#555;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700;min-width:12px}
+.pred-away{background:#ef4444;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700;min-width:16px}
+.pred-advice{font-size:10px;color:#888;margin-bottom:8px;font-style:italic}
+
 /* CARRINHO FIXO — mobile: barra inferior | desktop: coluna lateral */
 .bet-slip-bar{position:fixed;bottom:0;left:0;right:0;background:#0d1a0d;border-top:1px solid #22c55e33;z-index:200;transition:max-height .3s;max-height:56px;overflow:hidden}
 .bet-slip-bar.open{max-height:90vh;overflow:auto}
@@ -10626,6 +11027,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <header class="topbar">
   <a href="/" class="topbar-logo">🎰 PaynexBet</a>
   <div class="topbar-right">
+    <a href="/tabela" style="background:#1e3a8a;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-size:12px;font-weight:700;text-decoration:none">🏆 Tabela</a>
     <div class="saldo-badge" id="saldo-display">💰 R$ 0,00</div>
     <a href="/conta" class="btn-conta" id="btn-conta-link">👤 Conta</a>
   </div>
@@ -10652,6 +11054,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="secao-titulo"><span class="live-dot"></span> Jogos disponíveis</div>
   <div class="jogos-lista" id="jogos-lista">
     <div class="loading-spinner"><div class="spinner"></div> Carregando jogos...</div>
+  </div>
+
+  <!-- SEÇÃO AO VIVO (api-sports.io) -->
+  <div id="sec-live" style="display:none">
+    <div class="secao-titulo" style="margin-top:8px">
+      <span class="live-dot"></span>
+      <span style="color:#ef4444;font-weight:800">AO VIVO AGORA</span>
+      <span style="font-size:10px;color:#555;font-weight:400;margin-left:4px">atualiza a cada 30s</span>
+    </div>
+    <div class="jogos-lista" id="jogos-live"></div>
   </div>
 </div><!-- /main -->
 
@@ -10734,6 +11146,10 @@ let _sportAtual = 'upcoming';
 document.addEventListener('DOMContentLoaded', () => {
   atualizarSaldo();
   carregarJogos(_sportAtual);
+  carregarAoVivo();
+  // Atualizar ao vivo a cada 30s
+  if (_liveInterval) clearInterval(_liveInterval);
+  _liveInterval = setInterval(carregarAoVivo, 30000);
 });
 
 function atualizarSaldo() {
@@ -10755,149 +11171,160 @@ function atualizarSaldo() {
   }
 }
 
-// ── Crests oficiais football-data.org (https://crests.football-data.org/{id}.png) ──
+// ── Logos oficiais media.api-sports.io (alta qualidade, cobertura mundial) ──
 const _LOGOS = {
-  // ── Brasileirão Série A ──
-  'EC Bahia':              'https://crests.football-data.org/1777.png',
-  'Bahia':                 'https://crests.football-data.org/1777.png',
-  'Santos FC':             'https://crests.football-data.org/6685.png',
-  'Santos':                'https://crests.football-data.org/6685.png',
-  'Botafogo FR':           'https://crests.football-data.org/1770.png',
-  'Botafogo':              'https://crests.football-data.org/1770.png',
-  'SC Internacional':      'https://crests.football-data.org/6684.png',
-  'Internacional':         'https://crests.football-data.org/6684.png',
-  'Clube do Remo':         'https://crests.football-data.org/4287.png',
-  'Remo':                  'https://crests.football-data.org/4287.png',
-  'Cruzeiro EC':           'https://crests.football-data.org/1771.png',
-  'Cruzeiro':              'https://crests.football-data.org/1771.png',
-  'São Paulo FC':          'https://crests.football-data.org/1776.png',
-  'Sao Paulo':             'https://crests.football-data.org/1776.png',
-  'São Paulo':             'https://crests.football-data.org/1776.png',
-  'Mirassol FC':           'https://crests.football-data.org/4364.png',
-  'Mirassol':              'https://crests.football-data.org/4364.png',
-  'CR Flamengo':           'https://crests.football-data.org/1783.png',
-  'Flamengo':              'https://crests.football-data.org/1783.png',
-  'Fluminense FC':         'https://crests.football-data.org/1765.png',
-  'Fluminense':            'https://crests.football-data.org/1765.png',
-  'SE Palmeiras':          'https://crests.football-data.org/1769.png',
-  'Palmeiras':             'https://crests.football-data.org/1769.png',
-  'CA Mineiro':            'https://crests.football-data.org/1766.png',
-  'Atletico Mineiro':      'https://crests.football-data.org/1766.png',
-  'Atlético Mineiro':      'https://crests.football-data.org/1766.png',
-  'SC Corinthians Paulista':'https://crests.football-data.org/1779.png',
-  'Corinthians':           'https://crests.football-data.org/1779.png',
-  'Grêmio FBPA':           'https://crests.football-data.org/1767.png',
-  'Gremio':                'https://crests.football-data.org/1767.png',
-  'Grêmio':                'https://crests.football-data.org/1767.png',
-  'CR Vasco da Gama':      'https://crests.football-data.org/1780.png',
-  'Vasco da Gama':         'https://crests.football-data.org/1780.png',
-  'Vasco':                 'https://crests.football-data.org/1780.png',
-  'CA Paranaense':         'https://crests.football-data.org/1768.png',
-  'Athletico Paranaense':  'https://crests.football-data.org/1768.png',
-  'RB Bragantino':         'https://crests.football-data.org/4286.png',
-  'Red Bull Bragantino':   'https://crests.football-data.org/4286.png',
-  'Bragantino':            'https://crests.football-data.org/4286.png',
-  'EC Vitória':            'https://crests.football-data.org/1782.png',
-  'Vitória':               'https://crests.football-data.org/1782.png',
+  // ── Brasileirão Série A (IDs oficiais api-sports) ──
+  'EC Bahia':              'https://media.api-sports.io/football/teams/118.png',
+  'Bahia':                 'https://media.api-sports.io/football/teams/118.png',
+  'SC Internacional':      'https://media.api-sports.io/football/teams/119.png',
+  'Internacional':         'https://media.api-sports.io/football/teams/119.png',
+  'Botafogo FR':           'https://media.api-sports.io/football/teams/120.png',
+  'Botafogo':              'https://media.api-sports.io/football/teams/120.png',
+  'SE Palmeiras':          'https://media.api-sports.io/football/teams/121.png',
+  'Palmeiras':             'https://media.api-sports.io/football/teams/121.png',
+  'Fluminense FC':         'https://media.api-sports.io/football/teams/124.png',
+  'Fluminense':            'https://media.api-sports.io/football/teams/124.png',
+  'São Paulo FC':          'https://media.api-sports.io/football/teams/126.png',
+  'Sao Paulo':             'https://media.api-sports.io/football/teams/126.png',
+  'São Paulo':             'https://media.api-sports.io/football/teams/126.png',
+  'CR Flamengo':           'https://media.api-sports.io/football/teams/127.png',
+  'Flamengo':              'https://media.api-sports.io/football/teams/127.png',
+  'Grêmio FBPA':           'https://media.api-sports.io/football/teams/130.png',
+  'Gremio':                'https://media.api-sports.io/football/teams/130.png',
+  'Grêmio':                'https://media.api-sports.io/football/teams/130.png',
+  'SC Corinthians Paulista':'https://media.api-sports.io/football/teams/131.png',
+  'Corinthians':           'https://media.api-sports.io/football/teams/131.png',
+  'CR Vasco da Gama':      'https://media.api-sports.io/football/teams/133.png',
+  'Vasco da Gama':         'https://media.api-sports.io/football/teams/133.png',
+  'Vasco':                 'https://media.api-sports.io/football/teams/133.png',
+  'CA Paranaense':         'https://media.api-sports.io/football/teams/134.png',
+  'Athletico Paranaense':  'https://media.api-sports.io/football/teams/134.png',
+  'Atletico Paranaense':   'https://media.api-sports.io/football/teams/134.png',
+  'Cruzeiro EC':           'https://media.api-sports.io/football/teams/135.png',
+  'Cruzeiro':              'https://media.api-sports.io/football/teams/135.png',
+  'EC Vitória':            'https://media.api-sports.io/football/teams/136.png',
+  'Vitória':               'https://media.api-sports.io/football/teams/136.png',
+  'Vitoria':               'https://media.api-sports.io/football/teams/136.png',
+  'Criciúma EC':           'https://media.api-sports.io/football/teams/140.png',
+  'Criciuma':              'https://media.api-sports.io/football/teams/140.png',
+  'Atletico Goianiense':   'https://media.api-sports.io/football/teams/144.png',
+  'Atlético Goianiense':   'https://media.api-sports.io/football/teams/144.png',
+  'Juventude':             'https://media.api-sports.io/football/teams/152.png',
+  'Fortaleza EC':          'https://media.api-sports.io/football/teams/154.png',
+  'Fortaleza':             'https://media.api-sports.io/football/teams/154.png',
+  'RB Bragantino':         'https://media.api-sports.io/football/teams/794.png',
+  'Red Bull Bragantino':   'https://media.api-sports.io/football/teams/794.png',
+  'Bragantino':            'https://media.api-sports.io/football/teams/794.png',
+  'Atletico-MG':           'https://media.api-sports.io/football/teams/1062.png',
+  'CA Mineiro':            'https://media.api-sports.io/football/teams/1062.png',
+  'Atletico Mineiro':      'https://media.api-sports.io/football/teams/1062.png',
+  'Atlético Mineiro':      'https://media.api-sports.io/football/teams/1062.png',
+  'Cuiabá EC':             'https://media.api-sports.io/football/teams/1193.png',
+  'Cuiaba':                'https://media.api-sports.io/football/teams/1193.png',
+  // ── Série B / outros times brasileiros ──
+  'Santos FC':             'https://media.api-sports.io/football/teams/137.png',
+  'Santos':                'https://media.api-sports.io/football/teams/137.png',
+  'Clube do Remo':         'https://media.api-sports.io/football/teams/18309.png',
+  'Remo':                  'https://media.api-sports.io/football/teams/18309.png',
+  'Mirassol FC':           'https://media.api-sports.io/football/teams/20006.png',
+  'Mirassol':              'https://media.api-sports.io/football/teams/20006.png',
   // ── Copa Libertadores ──
-  'Club Libertad Asuncion':'https://crests.football-data.org/9379.png',
-  'Libertad Asuncion':     'https://crests.football-data.org/9379.png',
-  'Libertad':              'https://crests.football-data.org/9379.png',
-  'CAR Independiente del Valle': 'https://crests.football-data.org/6989.png',
-  'Independiente del Valle': 'https://crests.football-data.org/6989.png',
-  'CA Lanús':              'https://crests.football-data.org/2066.png',
-  'Lanus':                 'https://crests.football-data.org/2066.png',
-  'LDU de Quito':          'https://crests.football-data.org/4528.png',
-  'LDU Quito':             'https://crests.football-data.org/4528.png',
-  'CA Rosario Central':    'https://crests.football-data.org/2070.png',
-  'Rosario Central':       'https://crests.football-data.org/2070.png',
-  'CA Boca Juniors':       'https://crests.football-data.org/2061.png',
-  'Boca Juniors':          'https://crests.football-data.org/2061.png',
-  'CA Peñarol':            'https://crests.football-data.org/5184.png',
-  'Penarol':               'https://crests.football-data.org/5184.png',
-  'Club Nacional de Football': 'https://crests.football-data.org/7055.png',
-  'Nacional':              'https://crests.football-data.org/7055.png',
-  'CS Independiente Rivadavia': 'https://crests.football-data.org/2052.png',
-  'Club Bolívar':          'https://crests.football-data.org/4261.png',
-  'Barcelona SC':          'https://crests.football-data.org/4520.png',
-  'Club Guaraní':          'https://crests.football-data.org/7868.png',
-  'Club Cerro Porteño':    'https://crests.football-data.org/9373.png',
-  'CA Platense':           'https://crests.football-data.org/7580.png',
-  'Estudiantes de La Plata':'https://crests.football-data.org/2051.png',
-  'Universidad Central de Venezuela FC': 'https://crests.football-data.org/9357.png',
-  'UCV FC':                'https://crests.football-data.org/9357.png',
+  'Club Libertad Asuncion':'https://media.api-sports.io/football/teams/1843.png',
+  'Libertad Asuncion':     'https://media.api-sports.io/football/teams/1843.png',
+  'Libertad':              'https://media.api-sports.io/football/teams/1843.png',
+  'CAR Independiente del Valle': 'https://media.api-sports.io/football/teams/1952.png',
+  'Independiente del Valle': 'https://media.api-sports.io/football/teams/1952.png',
+  'CA Lanús':              'https://media.api-sports.io/football/teams/468.png',
+  'Lanus':                 'https://media.api-sports.io/football/teams/468.png',
+  'LDU de Quito':          'https://media.api-sports.io/football/teams/1937.png',
+  'LDU Quito':             'https://media.api-sports.io/football/teams/1937.png',
+  'CA Rosario Central':    'https://media.api-sports.io/football/teams/462.png',
+  'Rosario Central':       'https://media.api-sports.io/football/teams/462.png',
+  'CA Boca Juniors':       'https://media.api-sports.io/football/teams/405.png',
+  'Boca Juniors':          'https://media.api-sports.io/football/teams/405.png',
+  'CA Peñarol':            'https://media.api-sports.io/football/teams/1938.png',
+  'Penarol':               'https://media.api-sports.io/football/teams/1938.png',
+  'Nacional':              'https://media.api-sports.io/football/teams/2016.png',
+  'Club Nacional de Football': 'https://media.api-sports.io/football/teams/2016.png',
+  'CA River Plate':        'https://media.api-sports.io/football/teams/442.png',
+  'River Plate':           'https://media.api-sports.io/football/teams/442.png',
+  'Club Bolívar':          'https://media.api-sports.io/football/teams/1899.png',
+  'Barcelona SC':          'https://media.api-sports.io/football/teams/1961.png',
+  'Club Guaraní':          'https://media.api-sports.io/football/teams/1847.png',
+  'Club Cerro Porteño':    'https://media.api-sports.io/football/teams/1840.png',
+  'Estudiantes de La Plata':'https://media.api-sports.io/football/teams/451.png',
   // ── UEFA Champions League ──
-  'Real Madrid CF':        'https://crests.football-data.org/86.png',
-  'Real Madrid':           'https://crests.football-data.org/86.png',
-  'FC Barcelona':          'https://crests.football-data.org/81.png',
-  'Barcelona':             'https://crests.football-data.org/81.png',
-  'FC Bayern München':     'https://crests.football-data.org/5.png',
-  'Bayern Munich':         'https://crests.football-data.org/5.png',
-  'Bayern München':        'https://crests.football-data.org/5.png',
-  'Paris Saint-Germain FC':'https://crests.football-data.org/524.png',
-  'Paris Saint Germain':   'https://crests.football-data.org/524.png',
-  'PSG':                   'https://crests.football-data.org/524.png',
-  'Club Atlético de Madrid':'https://crests.football-data.org/78.png',
-  'Atletico Madrid':       'https://crests.football-data.org/78.png',
-  'Atlético Madrid':       'https://crests.football-data.org/78.png',
-  'Chelsea FC':            'https://crests.football-data.org/61.png',
-  'Chelsea':               'https://crests.football-data.org/61.png',
-  'Arsenal FC':            'https://crests.football-data.org/57.png',
-  'Arsenal':               'https://crests.football-data.org/57.png',
-  'Liverpool FC':          'https://crests.football-data.org/64.png',
-  'Liverpool':             'https://crests.football-data.org/64.png',
-  'Manchester City FC':    'https://crests.football-data.org/65.png',
-  'Manchester City':       'https://crests.football-data.org/65.png',
-  'Manchester United FC':  'https://crests.football-data.org/66.png',
-  'Manchester United':     'https://crests.football-data.org/66.png',
-  'Tottenham Hotspur FC':  'https://crests.football-data.org/73.png',
-  'Tottenham':             'https://crests.football-data.org/73.png',
-  'Juventus FC':           'https://crests.football-data.org/109.png',
-  'Juventus':              'https://crests.football-data.org/109.png',
-  'FC Internazionale Milano': 'https://crests.football-data.org/108.png',
-  'Inter Milan':           'https://crests.football-data.org/108.png',
-  'Internazionale':        'https://crests.football-data.org/108.png',
-  'Borussia Dortmund':     'https://crests.football-data.org/4.png',
-  'Bayer 04 Leverkusen':   'https://crests.football-data.org/3.png',
-  'Leverkusen':            'https://crests.football-data.org/3.png',
-  'Eintracht Frankfurt':   'https://crests.football-data.org/19.png',
-  'Atalanta BC':           'https://crests.football-data.org/102.png',
-  'SSC Napoli':            'https://crests.football-data.org/113.png',
-  'Napoli':                'https://crests.football-data.org/113.png',
-  'AFC Ajax':              'https://crests.football-data.org/678.png',
-  'Ajax':                  'https://crests.football-data.org/678.png',
-  'PSV':                   'https://crests.football-data.org/674.png',
-  'Sporting Clube de Portugal': 'https://crests.football-data.org/498.png',
-  'Sporting CP':           'https://crests.football-data.org/498.png',
-  'Sport Lisboa e Benfica':'https://crests.football-data.org/1903.png',
-  'Benfica':               'https://crests.football-data.org/1903.png',
-  'Olympique de Marseille':'https://crests.football-data.org/516.png',
-  'Marseille':             'https://crests.football-data.org/516.png',
-  'AS Monaco FC':          'https://crests.football-data.org/548.png',
-  'Monaco':                'https://crests.football-data.org/548.png',
-  'Galatasaray SK':        'https://crests.football-data.org/610.png',
-  'Galatasaray':           'https://crests.football-data.org/610.png',
+  'Real Madrid CF':        'https://media.api-sports.io/football/teams/541.png',
+  'Real Madrid':           'https://media.api-sports.io/football/teams/541.png',
+  'FC Barcelona':          'https://media.api-sports.io/football/teams/529.png',
+  'Barcelona':             'https://media.api-sports.io/football/teams/529.png',
+  'FC Bayern München':     'https://media.api-sports.io/football/teams/157.png',
+  'Bayern Munich':         'https://media.api-sports.io/football/teams/157.png',
+  'Bayern München':        'https://media.api-sports.io/football/teams/157.png',
+  'Paris Saint-Germain FC':'https://media.api-sports.io/football/teams/85.png',
+  'Paris Saint Germain':   'https://media.api-sports.io/football/teams/85.png',
+  'PSG':                   'https://media.api-sports.io/football/teams/85.png',
+  'Club Atlético de Madrid':'https://media.api-sports.io/football/teams/530.png',
+  'Atletico Madrid':       'https://media.api-sports.io/football/teams/530.png',
+  'Atlético Madrid':       'https://media.api-sports.io/football/teams/530.png',
+  'Chelsea FC':            'https://media.api-sports.io/football/teams/49.png',
+  'Chelsea':               'https://media.api-sports.io/football/teams/49.png',
+  'Arsenal FC':            'https://media.api-sports.io/football/teams/42.png',
+  'Arsenal':               'https://media.api-sports.io/football/teams/42.png',
+  'Liverpool FC':          'https://media.api-sports.io/football/teams/40.png',
+  'Liverpool':             'https://media.api-sports.io/football/teams/40.png',
+  'Manchester City FC':    'https://media.api-sports.io/football/teams/50.png',
+  'Manchester City':       'https://media.api-sports.io/football/teams/50.png',
+  'Manchester United FC':  'https://media.api-sports.io/football/teams/33.png',
+  'Manchester United':     'https://media.api-sports.io/football/teams/33.png',
+  'Tottenham Hotspur FC':  'https://media.api-sports.io/football/teams/47.png',
+  'Tottenham':             'https://media.api-sports.io/football/teams/47.png',
+  'Juventus FC':           'https://media.api-sports.io/football/teams/496.png',
+  'Juventus':              'https://media.api-sports.io/football/teams/496.png',
+  'FC Internazionale Milano': 'https://media.api-sports.io/football/teams/505.png',
+  'Inter Milan':           'https://media.api-sports.io/football/teams/505.png',
+  'Internazionale':        'https://media.api-sports.io/football/teams/505.png',
+  'Borussia Dortmund':     'https://media.api-sports.io/football/teams/165.png',
+  'Bayer 04 Leverkusen':   'https://media.api-sports.io/football/teams/168.png',
+  'Leverkusen':            'https://media.api-sports.io/football/teams/168.png',
+  'Eintracht Frankfurt':   'https://media.api-sports.io/football/teams/169.png',
+  'Atalanta BC':           'https://media.api-sports.io/football/teams/499.png',
+  'SSC Napoli':            'https://media.api-sports.io/football/teams/492.png',
+  'Napoli':                'https://media.api-sports.io/football/teams/492.png',
+  'AFC Ajax':              'https://media.api-sports.io/football/teams/194.png',
+  'Ajax':                  'https://media.api-sports.io/football/teams/194.png',
+  'PSV':                   'https://media.api-sports.io/football/teams/197.png',
+  'Sporting Clube de Portugal': 'https://media.api-sports.io/football/teams/228.png',
+  'Sporting CP':           'https://media.api-sports.io/football/teams/228.png',
+  'Sport Lisboa e Benfica':'https://media.api-sports.io/football/teams/211.png',
+  'Benfica':               'https://media.api-sports.io/football/teams/211.png',
+  'Olympique de Marseille':'https://media.api-sports.io/football/teams/81.png',
+  'Marseille':             'https://media.api-sports.io/football/teams/81.png',
+  'AS Monaco FC':          'https://media.api-sports.io/football/teams/91.png',
+  'Monaco':                'https://media.api-sports.io/football/teams/91.png',
+  'Galatasaray SK':        'https://media.api-sports.io/football/teams/206.png',
+  'Galatasaray':           'https://media.api-sports.io/football/teams/206.png',
   // ── Premier League ──
-  'Aston Villa FC':        'https://crests.football-data.org/58.png',
-  'Aston Villa':           'https://crests.football-data.org/58.png',
-  'Everton FC':            'https://crests.football-data.org/62.png',
-  'Everton':               'https://crests.football-data.org/62.png',
-  'Fulham FC':             'https://crests.football-data.org/63.png',
-  'Fulham':                'https://crests.football-data.org/63.png',
-  'Newcastle United FC':   'https://crests.football-data.org/67.png',
-  'Newcastle':             'https://crests.football-data.org/67.png',
-  'Wolverhampton Wanderers FC': 'https://crests.football-data.org/76.png',
-  'Wolves':                'https://crests.football-data.org/76.png',
-  'Nottingham Forest FC':  'https://crests.football-data.org/351.png',
-  'Nottingham Forest':     'https://crests.football-data.org/351.png',
-  'Crystal Palace FC':     'https://crests.football-data.org/354.png',
-  'Crystal Palace':        'https://crests.football-data.org/354.png',
-  'Brighton & Hove Albion FC': 'https://crests.football-data.org/397.png',
-  'Brighton':              'https://crests.football-data.org/397.png',
-  'West Ham United FC':    'https://crests.football-data.org/563.png',
-  'West Ham':              'https://crests.football-data.org/563.png',
-  'Brentford FC':          'https://crests.football-data.org/402.png',
-  'Brentford':             'https://crests.football-data.org/402.png',
+  'Aston Villa FC':        'https://media.api-sports.io/football/teams/66.png',
+  'Aston Villa':           'https://media.api-sports.io/football/teams/66.png',
+  'Everton FC':            'https://media.api-sports.io/football/teams/45.png',
+  'Everton':               'https://media.api-sports.io/football/teams/45.png',
+  'Fulham FC':             'https://media.api-sports.io/football/teams/36.png',
+  'Fulham':                'https://media.api-sports.io/football/teams/36.png',
+  'Newcastle United FC':   'https://media.api-sports.io/football/teams/34.png',
+  'Newcastle':             'https://media.api-sports.io/football/teams/34.png',
+  'Wolverhampton Wanderers FC': 'https://media.api-sports.io/football/teams/39.png',
+  'Wolves':                'https://media.api-sports.io/football/teams/39.png',
+  'Nottingham Forest FC':  'https://media.api-sports.io/football/teams/65.png',
+  'Nottingham Forest':     'https://media.api-sports.io/football/teams/65.png',
+  'Crystal Palace FC':     'https://media.api-sports.io/football/teams/52.png',
+  'Crystal Palace':        'https://media.api-sports.io/football/teams/52.png',
+  'Brighton & Hove Albion FC': 'https://media.api-sports.io/football/teams/51.png',
+  'Brighton':              'https://media.api-sports.io/football/teams/51.png',
+  'West Ham United FC':    'https://media.api-sports.io/football/teams/48.png',
+  'West Ham':              'https://media.api-sports.io/football/teams/48.png',
+  'Brentford FC':          'https://media.api-sports.io/football/teams/55.png',
+  'Brentford':             'https://media.api-sports.io/football/teams/55.png',
 };
 
 // Cache dinâmico de crests buscados via API
@@ -10996,6 +11423,74 @@ document.addEventListener('error', function(e) {
   }
 }, true);
 
+// ── Jogos AO VIVO (api-sports) ──────────────────────────────────────────────
+let _liveInterval = null;
+
+async function carregarAoVivo() {
+  const sec = document.getElementById('sec-live');
+  const lista = document.getElementById('jogos-live');
+  if (!sec || !lista) return;
+  try {
+    const r = await fetch(`${BASE}/api/bet/live`);
+    const d = await r.json();
+    const jogos = d.jogos || [];
+    if (!jogos.length) {
+      sec.style.display = 'none';
+      return;
+    }
+    sec.style.display = '';
+    lista.innerHTML = '';
+    jogos.forEach(j => {
+      const o = j.odds || {};
+      const temEmpate = o.draw != null;
+      const homeLogo = j.home_logo || getTeamLogo(j.home_team);
+      const awayLogo = j.away_logo || getTeamLogo(j.away_team);
+      const card = document.createElement('div');
+      card.className = 'jogo-card live';
+      card.dataset.id = j.id;
+      card.innerHTML = `
+        <div class="jogo-meta">
+          <span class="jogo-liga">${j.league || 'Ao Vivo'}</span>
+          <span class="live-tag"><span class="live-dot"></span> ${j.elapsed || 0}'</span>
+        </div>
+        <div class="jogo-times">
+          <div class="time-bloco">
+            ${homeLogo
+              ? '<img class="time-escudo" src="'+homeLogo+'" alt="" data-ini="'+teamInitials(j.home_team)+'" data-crest="1">'
+              : '<span class="time-initials">'+teamInitials(j.home_team)+'</span>'}
+            <span class="time-nome">${j.home_team}</span>
+          </div>
+          <div class="placar-live">
+            <span class="placar-num">${j.home_goals ?? 0}</span>
+            <span class="placar-sep">-</span>
+            <span class="placar-num">${j.away_goals ?? 0}</span>
+          </div>
+          <div class="time-bloco away">
+            ${awayLogo
+              ? '<img class="time-escudo" src="'+awayLogo+'" alt="" data-ini="'+teamInitials(j.away_team)+'" data-crest="1">'
+              : '<span class="time-initials">'+teamInitials(j.away_team)+'</span>'}
+            <span class="time-nome">${j.away_team}</span>
+          </div>
+        </div>
+        <div class="jogo-odds ${!temEmpate ? 'no-draw' : ''}">
+          ${o.home != null ? `<div class="odd-btn" id="odd-${j.id}-casa" onclick="selecionarOdd('${j.id}_live','${j.home_team}','Casa',${o.home},'${j.home_team} × ${j.away_team}')">
+            <div class="odd-lbl">${teamShortLabel(j.home_team)}</div>
+            <div class="odd-val">${Number(o.home).toFixed(2)}</div></div>` : ''}
+          ${temEmpate ? `<div class="odd-btn" id="odd-${j.id}-empate" onclick="selecionarOdd('${j.id}_live','Empate','X',${o.draw},'${j.home_team} × ${j.away_team}')">
+            <div class="odd-lbl">Empate</div>
+            <div class="odd-val">${Number(o.draw).toFixed(2)}</div></div>` : ''}
+          ${o.away != null ? `<div class="odd-btn" id="odd-${j.id}-fora" onclick="selecionarOdd('${j.id}_live','${j.away_team}','Fora',${o.away},'${j.home_team} × ${j.away_team}')">
+            <div class="odd-lbl">${teamShortLabel(j.away_team)}</div>
+            <div class="odd-val">${Number(o.away).toFixed(2)}</div></div>` : ''}
+        </div>`;
+      lista.appendChild(card);
+    });
+  } catch(e) {
+    const sec = document.getElementById('sec-live');
+    if (sec) sec.style.display = 'none';
+  }
+}
+
 // ── Jogos / Odds ──
 async function carregarJogos(sport) {
   const lista = document.getElementById('jogos-lista');
@@ -11009,7 +11504,7 @@ async function carregarJogos(sport) {
       return;
     }
     lista.innerHTML = '';
-    jogos.forEach(j => {
+    for (const j of jogos) {
       const live = new Date(j.commence_time) < new Date();
       const o = j.odds || {};
       const temEmpate = o.draw != null;
@@ -11018,6 +11513,28 @@ async function carregarJogos(sport) {
       const hora = j.commence_time
         ? new Date(j.commence_time).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
         : '';
+
+      // Buscar previsão em background
+      let predHtml = '';
+      try {
+        const pr = await fetch(`${BASE}/api/bet/predictions?fixture=${j.id}`);
+        const pd = await pr.json();
+        if (pd.success && pd.prediction) {
+          const p = pd.prediction;
+          const pct = p.percent || {};
+          const winPct = pct.away && p.winner === j.away_team ? pct.away
+                       : pct.home && p.winner === j.home_team ? pct.home
+                       : pct.draw || '';
+          const winLabel = p.winner || 'Empate';
+          predHtml = `<div class="pred-bar">
+            <span class="pred-home" style="width:${pct.home||'33%'}">${pct.home||'33%'}</span>
+            <span class="pred-draw" style="width:${pct.draw||'33%'}">${pct.draw||'34%'}</span>
+            <span class="pred-away" style="width:${pct.away||'33%'}">${pct.away||'33%'}</span>
+          </div>
+          <div class="pred-advice">🤖 ${p.advice || 'Favorito: '+winLabel}</div>`;
+        }
+      } catch(ep) {}
+
       card.innerHTML = `
         <div class="jogo-meta">
           <span class="jogo-liga">${j.league || j.sport}</span>
@@ -11025,15 +11542,16 @@ async function carregarJogos(sport) {
         </div>
         <div class="jogo-times">
           <div class="time-bloco">
-            ${teamBadgeHtml(j.home_team, true)}
+            ${teamBadgeHtml(j.home_team)}
             <span class="time-nome">${j.home_team}</span>
           </div>
           <span class="placar">${live ? '<span style="color:#ef4444;font-size:12px;font-weight:900">AO VIVO</span>' : 'VS'}</span>
           <div class="time-bloco away">
-            ${teamBadgeHtml(j.away_team, false)}
+            ${teamBadgeHtml(j.away_team)}
             <span class="time-nome">${j.away_team}</span>
           </div>
         </div>
+        ${predHtml}
         <div class="jogo-odds ${!temEmpate ? 'no-draw' : ''}">
           ${o.home != null ? `<div class="odd-btn" id="odd-${j.id}-casa" onclick="selecionarOdd('${j.id}','${j.home_team}','Casa',${o.home},'${j.home_team} × ${j.away_team}')">
             <div class="odd-lbl">${teamShortLabel(j.home_team)}</div>
@@ -11046,7 +11564,7 @@ async function carregarJogos(sport) {
             <div class="odd-val">${Number(o.away).toFixed(2)}</div></div>` : ''}
         </div>`;
       lista.appendChild(card);
-    });
+    }
   } catch(e) {
     lista.innerHTML = '<div class="loading-spinner">⚠️ Erro ao carregar jogos. Tentando novamente...</div>';
     setTimeout(() => carregarJogos(sport), 5000);
@@ -12605,6 +13123,9 @@ async def main():
 
     # ── BET: Apostas Esportivas ──
     app.router.add_get('/api/bet/jogos',        route_bet_jogos)
+    app.router.add_get('/api/bet/live',         route_bet_live)
+    app.router.add_get('/api/bet/predictions',  route_bet_predictions)
+    app.router.add_get('/api/bet/standings',    route_bet_standings)
     app.router.add_post('/api/bet/deposito',    route_bet_deposito)
     app.router.add_post('/webhook/suitpay',     route_webhook_suitpay)
     # BET — auth + saldo + apostar + sacar + páginas
@@ -12618,6 +13139,8 @@ async def main():
     app.router.add_get('/api/bet/crest',        route_bet_crest)
     app.router.add_get('/apostas',              route_apostas_page)
     app.router.add_get('/apostas.html',         route_apostas_page)
+    app.router.add_get('/tabela',               route_tabela_page)
+    app.router.add_get('/tabela.html',          route_tabela_page)
     app.router.add_get('/conta',                route_conta_page)
     app.router.add_get('/conta.html',           route_conta_page)
     app.router.add_get('/', route_home)            # Página principal PaynexBet
