@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>PaynexBet - Painel Admin v20250428a</title>
+<title>PaynexBet - Painel Admin v20250428b</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -700,7 +700,7 @@
 <script>
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250428a';
+  const VER = '20250428b';
   if (sessionStorage.getItem('adminVer') !== VER) {
     // Preservar senha antes do reload
     const savedSecret = sessionStorage.getItem('vp_secret');
@@ -789,6 +789,9 @@ function toggleLoginSenha() {
         <div class="dot" id="tg-dot"></div>
         <span id="tg-status">Verificando MP...</span>
       </div>
+      <button onclick="adminLogout()" style="margin-top:10px;width:100%;padding:8px 0;background:#1a0a0a;border:1px solid #ef444466;border-radius:8px;color:#f87171;font-size:13px;cursor:pointer;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px">
+        🚪 Sair
+      </button>
     </div>
   </aside>
 
@@ -5818,6 +5821,13 @@ const poll = setInterval(async () => {
 //  CONFIGURAÇÃO
 // ═══════════════════════════════════════════════
 const SECRET = () => sessionStorage.getItem('vp_secret') || '';
+
+function adminLogout() {
+  if (!confirm('Deseja sair do painel admin?')) return;
+  sessionStorage.removeItem('vp_secret');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('admin-screen').style.display = 'none';
+}
 const BASE = window.location.origin;
 
 let allDepositos = [];
@@ -10699,107 +10709,6 @@ function botModoChange() {
 
 </script>
 
-<!-- DEBUG PANEL - REMOVER APÓS DIAGNÓSTICO -->
-<div id="debug-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:99999;padding:20px;overflow:auto;font-family:monospace;font-size:13px;color:#0f0">
-  <button onclick="document.getElementById('debug-overlay').style.display='none'" style="position:fixed;top:10px;right:10px;background:red;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px">✕ Fechar</button>
-  <h2 style="color:#ff0;margin-bottom:16px">🔍 DIAGNÓSTICO BOT2</h2>
-  <div id="debug-output" style="white-space:pre-wrap"></div>
-</div>
-<button onclick="runDebug()" style="position:fixed;bottom:20px;right:20px;background:#f59e0b;color:#000;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-weight:800;z-index:9999;font-size:14px">🔍 DEBUG</button>
-<script>
-function runDebug() {
-  const out = [];
-  const overlay = document.getElementById('debug-overlay');
-  overlay.style.display = 'block';
-  
-  out.push('=== VERSÃO: 20250428a ===');
-  out.push('');
-
-  // Estado dos elementos críticos
-  const ids = ['admin-screen','login-screen','tab-bot2','tab-depositos','tab-saques','tab-dashboard'];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) { out.push(id + ': NAO EXISTE'); return; }
-    const cs = window.getComputedStyle(el);
-    out.push(id + ':');
-    out.push('  display=' + cs.display + ' | height=' + cs.height);
-    out.push('  class=' + el.className);
-    out.push('');
-  });
-
-  // Cards col-body do bot2
-  out.push('=== CARDS BOT2 (col-body-b2-*) ===');
-  ['b2-status','b2-config','b2-parceiros','b2-cfg-pagamento','b2-stats','b2-saques'].forEach(id => {
-    const el = document.getElementById('col-body-' + id);
-    if (!el) { out.push('col-body-' + id + ': NAO EXISTE'); return; }
-    const cs = window.getComputedStyle(el);
-    out.push('col-body-' + id + ':');
-    out.push('  maxHeight=' + cs.maxHeight + ' | height=' + cs.height + ' | opacity=' + cs.opacity);
-    out.push('  class=' + el.className);
-    out.push('');
-  });
-
-  // Badges
-  out.push('=== BADGES MENU ===');
-  ['badge-dep','badge-saq','badge-bot2'].forEach(id => {
-    const el = document.getElementById(id);
-    out.push(id + ': ' + (el ? el.textContent : 'NAO EXISTE'));
-  });
-  out.push('');
-
-  // Dados em memória
-  out.push('=== DADOS CARREGADOS ===');
-  out.push('allDepositos.length=' + (typeof allDepositos !== 'undefined' ? allDepositos.length : 'undef'));
-  out.push('allSaques.length=' + (typeof allSaques !== 'undefined' ? allSaques.length : 'undef'));
-  out.push('');
-
-  // Cards resumo depósitos
-  out.push('=== RESUMO DEPOSITOS ===');
-  ['dep-res-total','dep-res-pendentes','dep-res-confirmados','dep-res-val-recebido','dep-res-val-pendente'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) out.push(id + ': ' + el.textContent);
-  });
-  out.push('');
-
-  // sessionStorage
-  out.push('=== SESSION ===');
-  out.push('  vp_secret=' + (sessionStorage.getItem("vp_secret") ? "SET(***)" : "NULL"));
-  out.push('  adminVer=' + sessionStorage.getItem("adminVer"));
-  out.push('');
-  
-  // Layout
-  const main = document.querySelector('.main');
-  if (main) {
-    const cs = window.getComputedStyle(main);
-    out.push('.main: marginLeft=' + cs.marginLeft + ' | width=' + cs.width);
-  }
-  const content = document.querySelector('.content');
-  if (content) {
-    const cs = window.getComputedStyle(content);
-    out.push('.content: height=' + cs.height + ' | overflow=' + cs.overflow);
-  }
-  out.push('');
-  out.push('Window: ' + window.innerWidth + 'x' + window.innerHeight);
-  
-  // Teste de fetch rápido
-  out.push('');
-  out.push('=== FETCH TEST ===');
-  out.push('Aguardando teste... (atualiza em 3s)');
-  document.getElementById('debug-output').textContent = out.join('\n');
-  
-  // Fazer fetch de teste assíncrono
-  Promise.all([
-    fetch(BASE + '/api/mp2/depositos?secret=' + encodeURIComponent(SECRET())).then(r => r.json()).catch(e => ({erro: e.message})),
-    fetch(BASE + '/api/saques?secret=' + encodeURIComponent(SECRET())).then(r => r.json()).catch(e => ({erro: e.message})),
-    fetch(BASE + '/api/stats?secret=' + encodeURIComponent(SECRET())).then(r => r.json()).catch(e => ({erro: e.message})),
-  ]).then(([dep, saq, stats]) => {
-    out.pop(); out.pop();
-    out.push('=== FETCH TEST ===');
-    out.push('/api/mp2/depositos: total=' + (dep.resumo?.total ?? dep.erro ?? '?') + ' pendentes=' + (dep.resumo?.pendentes ?? '?'));
-    out.push('/api/saques: total=' + (saq.resumo?.total ?? saq.erro ?? '?') + ' pendentes=' + (saq.resumo?.pendentes ?? '?'));
-    out.push('/api/stats: dep.pendentes=' + (stats.depositos?.pendentes ?? stats.erro ?? '?'));
-    document.getElementById('debug-output').textContent = out.join('\n');
-  });
 }
 </script>
 
