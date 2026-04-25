@@ -10245,6 +10245,360 @@ _SUIT_CI, _SUIT_CS = _suit_parse_keys()   # inicialização; funções acima rec
 _SUIT_HOST        = os.environ.get('SUITPAY_HOST', 'https://ws.suitpay.app')
 _SUIT_WEBHOOK_URL = os.environ.get('SUITPAY_WEBHOOK_URL', 'https://paynexbet.com/webhook/suitpay')
 
+# ═══════════════════════════════════════════════════════════════════
+# SISTEMA DE MARGEM DE LUCRO NAS ODDS
+# ═══════════════════════════════════════════════════════════════════
+_margem_cache = {}        # liga_key → margem_pct (cache em memória)
+_margem_cache_ts = 0.0   # timestamp do último refresh
+
+def _get_margem_liga(liga_key: str) -> float:
+    """Retorna margem (%) configurada para uma liga. Default 7%."""
+    import time as _t
+    global _margem_cache, _margem_cache_ts
+    # Recarregar do DB a cada 60s
+    if _t.time() - _margem_cache_ts > 60:
+        try:
+            import psycopg2 as _pg2
+            url = DATABASE_URL or _BET_DB_URL_FALLBACK
+            conn = _pg2.connect(url)
+            cur = conn.cursor()
+            cur.execute("SELECT liga_key, margem_pct FROM bet_margem_ligas WHERE ativa=true")
+            _margem_cache = {r[0]: float(r[1]) for r in cur.fetchall()}
+            cur.close(); conn.close()
+            _margem_cache_ts = _t.time()
+        except Exception as _e:
+            print(f'[margem] erro ao carregar DB: {_e}', flush=True)
+    # Busca específica → fallback upcoming → fallback 7%
+    return _margem_cache.get(liga_key) or _margem_cache.get('upcoming') or 7.0
+
+def _aplicar_margem_odds(odds: dict, liga_key: str) -> tuple:
+    """
+    Aplica margem de overround nas odds.
+    Retorna (odds_com_margem, margem_pct_usada).
+    Fórmula: prob_imp = 1/odd; prob_ajust = prob_imp * (1 + margem/100);
+             odd_final = 1 / prob_ajust
+    """
+    margem_pct = _get_margem_liga(liga_key)
+    if margem_pct <= 0:
+        return odds, 0.0
+
+    fator = 1.0 + (margem_pct / 100.0)
+    resultado = {}
+    for k, v in odds.items():
+        if v is None or v <= 1.0:
+            resultado[k] = v
+        else:
+            nova_odd = round(v / fator, 2)
+            resultado[k] = max(nova_odd, 1.01)  # nunca abaixo de 1.01
+    return resultado, margem_pct
+
+def _salvar_margens_db(margens: dict):
+    """Salva dict {liga_key: margem_pct} no PostgreSQL."""
+    import psycopg2 as _pg2
+    url = DATABASE_URL or _BET_DB_URL_FALLBACK
+    conn = _pg2.connect(url)
+    cur = conn.cursor()
+    for liga_key, pct in margens.items():
+        cur.execute("""
+            INSERT INTO bet_margem_ligas (liga_key, margem_pct, ativa, updated_at)
+            VALUES (%s, %s, true, NOW())
+            ON CONFLICT (liga_key) DO UPDATE
+            SET margem_pct=EXCLUDED.margem_pct, updated_at=NOW()
+        """, (liga_key, float(pct)))
+    conn.commit(); cur.close(); conn.close()
+    global _margem_cache_ts
+    _margem_cache_ts = 0.0  # forçar reload
+
+# ─── Rotas Admin: Margem ──────────────────────────────────────────────────────
+async def route_admin_margem_get(request):
+    """GET /api/admin/bet/margem — lista margens por liga."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = _admin_db_connect()
+        cur = conn.cursor()
+        cur.execute("SELECT liga_key, margem_pct, ativa, updated_at FROM bet_margem_ligas ORDER BY liga_key")
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        ligas_info = []
+        for r in rows:
+            info = _ADMIN_LIGAS_MAP.get(r[0], {})
+            ligas_info.append({
+                'liga_key': r[0],
+                'nome': info.get('nome', r[0]),
+                'margem_pct': float(r[1]),
+                'ativa': bool(r[2]),
+                'updated_at': r[3].strftime('%d/%m/%Y %H:%M') if r[3] else '',
+            })
+        return web.json_response({'ok': True, 'ligas': ligas_info})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+async def route_admin_margem_set(request):
+    """POST /api/admin/bet/margem — define margem % para uma ou mais ligas."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        # Aceita {liga_key, margem_pct} ou {margens: {key: pct, ...}}
+        if 'margens' in body:
+            margens = {k: float(v) for k, v in body['margens'].items()}
+        else:
+            liga_key = body.get('liga_key', '')
+            margem_pct = float(body.get('margem_pct', 7))
+            if not liga_key:
+                return web.json_response({'ok': False, 'error': 'liga_key obrigatório'}, status=400)
+            margens = {liga_key: margem_pct}
+        # Validar 0–50%
+        for k, v in margens.items():
+            if not (0 <= v <= 50):
+                return web.json_response({'ok': False, 'error': f'Margem {v}% inválida — use entre 0% e 50%'}, status=400)
+        _salvar_margens_db(margens)
+        print(f'[admin/margem] Margens salvas: {margens}', flush=True)
+        return web.json_response({'ok': True, 'saved': list(margens.keys()),
+                                  'msg': f'✅ {len(margens)} margem(ns) salva(s) — ativas imediatamente'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+# ─── Rotas Admin: Dashboard financeiro de apostas ─────────────────────────────
+async def route_admin_bet_dashboard(request):
+    """GET /api/admin/bet/dashboard — GGR, volume, apostas por status."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = _admin_db_connect()
+        cur = conn.cursor()
+        # Totais por status
+        cur.execute("""
+            SELECT status,
+                   COUNT(*) as qtd,
+                   COALESCE(SUM(valor),0) as total_apostado,
+                   COALESCE(SUM(retorno_potencial),0) as total_potencial
+            FROM apostas GROUP BY status
+        """)
+        por_status = {r[0]: {'qtd': r[1], 'apostado': float(r[2]), 'potencial': float(r[3])}
+                      for r in cur.fetchall()}
+        # GGR = total apostado (LOST+pendente encerrado) - total pago (WON)
+        cur.execute("SELECT COALESCE(SUM(valor),0) FROM apostas")
+        total_apostado = float(cur.fetchone()[0])
+        cur.execute("SELECT COALESCE(SUM(retorno_potencial),0) FROM apostas WHERE status='WON'")
+        total_pago_won = float(cur.fetchone()[0])
+        cur.execute("SELECT COALESCE(SUM(valor),0) FROM apostas WHERE status='LOST'")
+        total_perdido_casa = float(cur.fetchone()[0])  # o que a casa ganhou
+        ggr = total_perdido_casa - total_pago_won + total_perdido_casa  # simplificado
+        ggr = total_perdido_casa  # lost → foi para a casa
+        # Por liga (últimos 30 dias)
+        cur.execute("""
+            SELECT COALESCE(league_key,'outros'), COUNT(*), COALESCE(SUM(valor),0),
+                   COALESCE(SUM(CASE WHEN status='LOST' THEN valor ELSE 0 END),0) as lucro,
+                   COALESCE(SUM(CASE WHEN status='WON' THEN retorno_potencial ELSE 0 END),0) as pago
+            FROM apostas
+            WHERE criado_em >= NOW() - INTERVAL '30 days'
+            GROUP BY league_key ORDER BY SUM(valor) DESC LIMIT 15
+        """)
+        por_liga = [{'liga': r[0], 'qtd': r[1], 'apostado': float(r[2]),
+                     'lucro_bruto': float(r[3]), 'pago_won': float(r[4])} for r in cur.fetchall()]
+        # Depósitos
+        cur.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM depositos_suit WHERE status='PAID'")
+        dep = cur.fetchone()
+        # Saques
+        cur.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM saques WHERE status='PAGO'")
+        saq = cur.fetchone()
+        # Últimas apostas pendentes
+        cur.execute("""
+            SELECT a.id, u.nome, a.jogo_nome, a.selecao, a.odd, a.valor,
+                   a.retorno_potencial, a.status, a.criado_em, a.league_key
+            FROM apostas a LEFT JOIN usuarios u ON u.id=a.usuario_id
+            ORDER BY a.criado_em DESC LIMIT 20
+        """)
+        ultimas = []
+        for r in cur.fetchall():
+            ultimas.append({
+                'id': r[0], 'usuario': r[1] or '?', 'jogo': r[2] or '', 'selecao': r[3] or '',
+                'odd': float(r[4] or 0), 'valor': float(r[5] or 0),
+                'retorno': float(r[6] or 0), 'status': r[7],
+                'data': r[8].strftime('%d/%m %H:%M') if r[8] else '',
+                'liga': r[9] or '',
+            })
+        cur.close(); conn.close()
+        return web.json_response({
+            'ok': True,
+            'por_status': por_status,
+            'total_apostado': total_apostado,
+            'total_pago_won': total_pago_won,
+            'ggr': total_perdido_casa,   # lucro real da casa
+            'risco_atual': por_status.get('pendente', {}).get('potencial', 0),
+            'depositos': {'qtd': dep[0], 'total': float(dep[1])},
+            'saques': {'qtd': saq[0] if saq else 0, 'total': float(saq[1]) if saq else 0},
+            'por_liga': por_liga,
+            'ultimas_apostas': ultimas,
+        })
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+# ─── Resolução de apostas ──────────────────────────────────────────────────────
+async def route_admin_bet_resolver(request):
+    """POST /api/admin/bet/resolver — resolve aposta manualmente (WON/LOST/cancelada)."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        aposta_id = int(body.get('aposta_id', 0))
+        resultado = body.get('resultado', '').upper()  # 'WON' | 'LOST' | 'CANCELADA'
+        if not aposta_id or resultado not in ('WON', 'LOST', 'CANCELADA'):
+            return web.json_response({'ok': False, 'error': 'aposta_id e resultado (WON/LOST/CANCELADA) obrigatórios'}, status=400)
+        conn = _admin_db_connect()
+        cur = conn.cursor()
+        cur.execute("SELECT id, usuario_id, valor, retorno_potencial, status FROM apostas WHERE id=%s", (aposta_id,))
+        aposta = cur.fetchone()
+        if not aposta:
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': 'Aposta não encontrada'}, status=404)
+        if aposta[4] not in ('pendente',):
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': f'Aposta já resolvida: {aposta[4]}'}, status=400)
+        usuario_id = aposta[1]
+        valor_apostado = float(aposta[2])
+        retorno = float(aposta[3])
+        # Atualizar status da aposta
+        cur.execute("""
+            UPDATE apostas SET status=%s, resultado=%s, resolvido_em=NOW()
+            WHERE id=%s
+        """, (resultado, resultado, aposta_id))
+        credito = 0.0
+        if resultado == 'WON':
+            cur.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (retorno, usuario_id))
+            credito = retorno
+        elif resultado == 'CANCELADA':
+            cur.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (valor_apostado, usuario_id))
+            credito = valor_apostado
+        conn.commit(); cur.close(); conn.close()
+        msg_credito = f' | R${credito:.2f} creditado' if credito > 0 else ''
+        print(f'[admin/resolver] Aposta #{aposta_id} → {resultado}{msg_credito}', flush=True)
+        return web.json_response({'ok': True, 'aposta_id': aposta_id, 'resultado': resultado,
+                                  'credito': credito, 'msg': f'Aposta #{aposta_id} → {resultado}{msg_credito}'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+async def route_admin_bet_resolver_auto(request):
+    """POST /api/admin/bet/resolver-auto — tenta resolver todas pendentes via ESPN."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    resolved = await _auto_resolver_apostas_pendentes()
+    return web.json_response({'ok': True, 'resolved': resolved})
+
+async def _auto_resolver_apostas_pendentes():
+    """Worker: busca apostas pendentes e tenta resolver pelo placar final ESPN."""
+    import aiohttp, datetime as _dt
+    resolved_count = 0
+    try:
+        conn = _admin_db_connect()
+        cur = conn.cursor()
+        # Só apostas com mais de 2h (tempo para jogo terminar)
+        cur.execute("""
+            SELECT id, usuario_id, jogo_id, jogo_nome, selecao, odd, valor, retorno_potencial, league_key
+            FROM apostas
+            WHERE status='pendente'
+            AND criado_em < NOW() - INTERVAL '2 hours'
+            LIMIT 50
+        """)
+        pendentes = cur.fetchall()
+        cur.close(); conn.close()
+
+        if not pendentes:
+            return 0
+
+        async with aiohttp.ClientSession(headers={'User-Agent': 'PaynexBet/1.0'}) as sess:
+            for ap in pendentes:
+                ap_id, user_id, jogo_id, jogo_nome, selecao, odd, valor, retorno, liga_key = ap
+                valor = float(valor); retorno = float(retorno)
+                resultado = await _verificar_resultado_espn(sess, jogo_id, jogo_nome, selecao, liga_key)
+                if resultado in ('WON', 'LOST'):
+                    conn2 = _admin_db_connect()
+                    cur2 = conn2.cursor()
+                    cur2.execute("""
+                        UPDATE apostas SET status=%s, resultado=%s, resolvido_em=NOW()
+                        WHERE id=%s AND status='pendente'
+                    """, (resultado, resultado, ap_id))
+                    if resultado == 'WON':
+                        cur2.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (retorno, user_id))
+                        print(f'[auto-resolver] ✅ Aposta #{ap_id} WON → R${retorno:.2f} creditado a user {user_id}', flush=True)
+                    else:
+                        print(f'[auto-resolver] ❌ Aposta #{ap_id} LOST — R${valor:.2f} retido', flush=True)
+                    conn2.commit(); cur2.close(); conn2.close()
+                    resolved_count += 1
+    except Exception as e:
+        print(f'[auto-resolver] erro: {e}', flush=True)
+    return resolved_count
+
+async def _verificar_resultado_espn(sess, jogo_id, jogo_nome, selecao, liga_key):
+    """
+    Verifica resultado de um jogo no ESPN scoreboard.
+    Retorna 'WON', 'LOST' ou None (jogo ainda não finalizado).
+    """
+    import aiohttp
+    try:
+        # Determinar categoria ESPN
+        cat = 'soccer'
+        if liga_key and 'nba' in liga_key: cat = 'basketball'
+        elif liga_key and 'nfl' in liga_key: cat = 'football'
+        elif liga_key and 'mma' in liga_key: cat = 'mma'
+        # Buscar fixture ESPN pelo jogo_nome (fallback: buscar em todas as ligas)
+        cfg = _ESPN_FIXTURES.get(liga_key or '')
+        if not cfg:
+            return None
+        espn_slug, league_name, category = cfg
+        if cat == 'soccer':
+            url = f'https://site.api.espn.com/apis/site/v2/sports/soccer/{espn_slug}/scoreboard'
+        else:
+            url = f'https://site.api.espn.com/apis/site/v2/sports/{category}/{espn_slug}/scoreboard'
+        async with sess.get(url, timeout=aiohttp.ClientTimeout(total=8)) as r:
+            if r.status != 200: return None
+            data = await r.json(content_type=None)
+        eventos = data.get('events', [])
+        for ev in eventos:
+            comp = ev.get('competitions', [{}])[0]
+            status_type = comp.get('status', {}).get('type', {})
+            completed = status_type.get('completed', False)
+            if not completed: continue  # jogo não encerrado
+            # Tentar pelo ID
+            ev_id = str(ev.get('id', ''))
+            if jogo_id and str(jogo_id) == ev_id:
+                return _extrair_resultado_competidor(comp, selecao)
+            # Tentar pelo nome do jogo
+            nome_ev = ev.get('name', ev.get('shortName', ''))
+            if jogo_nome and (jogo_nome.lower() in nome_ev.lower() or nome_ev.lower() in jogo_nome.lower()):
+                return _extrair_resultado_competidor(comp, selecao)
+    except Exception as e:
+        print(f'[verificar-resultado] err: {e}', flush=True)
+    return None
+
+def _extrair_resultado_competidor(comp, selecao):
+    """
+    Dado um competition ESPN finalizado, determina se a seleção apostada ganhou.
+    selecao: 'home' | 'away' | 'draw' | nome do time
+    """
+    competidores = comp.get('competitors', [])
+    if len(competidores) < 2: return None
+    home = next((c for c in competidores if c.get('homeAway') == 'home'), None)
+    away = next((c for c in competidores if c.get('homeAway') == 'away'), None)
+    if not home or not away: return None
+    try:
+        score_h = int(home.get('score', 0) or 0)
+        score_a = int(away.get('score', 0) or 0)
+    except Exception: return None
+    winner = 'home' if score_h > score_a else ('away' if score_a > score_h else 'draw')
+    sel = (selecao or '').lower()
+    home_name = (home.get('team', {}).get('displayName') or home.get('team', {}).get('name') or '').lower()
+    away_name = (away.get('team', {}).get('displayName') or away.get('team', {}).get('name') or '').lower()
+    if sel in ('home', '1', 'casa') or (home_name and sel in home_name) or (home_name and home_name in sel):
+        return 'WON' if winner == 'home' else 'LOST'
+    elif sel in ('away', '2', 'fora') or (away_name and sel in away_name) or (away_name and away_name in sel):
+        return 'WON' if winner == 'away' else 'LOST'
+    elif sel in ('draw', 'x', 'empate'):
+        return 'WON' if winner == 'draw' else 'LOST'
+    return None
+
 async def route_bet_jogos(request):
     """GET /api/bet/jogos — retorna jogos com odds reais (odds-api) ou ESPN como fallback.
     Suporta ?sport=<key> para filtrar por campeonato específico.
@@ -10293,6 +10647,8 @@ async def route_bet_jogos(request):
                                                 elif n == ev.get('away_team'): a_odds.append(v)
                                                 else:                          d_odds.append(v)
                                 def avg(lst): return round(sum(lst)/len(lst), 2) if lst else None
+                                odds_bruta = {'home': avg(h_odds), 'draw': avg(d_odds), 'away': avg(a_odds)}
+                                odds_com_margem, margem_pct = _aplicar_margem_odds(odds_bruta, sport)
                                 all_jogos.append({
                                     'id': ev.get('id'), 'sport': sport,
                                     'league': ev.get('sport_title', sport),
@@ -10301,7 +10657,9 @@ async def route_bet_jogos(request):
                                     'commence_time': ev.get('commence_time', ''),
                                     'home_logo': '', 'away_logo': '',
                                     'status': 'Agendado', 'is_live': False, 'is_finished': False,
-                                    'odds': {'home': avg(h_odds), 'draw': avg(d_odds), 'away': avg(a_odds)},
+                                    'odds': odds_com_margem,
+                                    'odds_bruta': odds_bruta,
+                                    'margem_pct': margem_pct,
                                     'source': 'odds-api',
                                 })
                 except Exception as e_odds:
@@ -10586,6 +10944,44 @@ _ESPN_TTL         = 1800  # 30 min
 _ESPN_FIX_TTL     = 60    # 1 min para jogos (detectar ao vivo mais rápido)
 
 
+def _gerar_odds_espn(home: str, away: str, sport_key: str) -> dict:
+    """
+    Gera odds sintéticas (brutas, sem margem) quando ESPN não fornece mercado.
+    Usa hash do nome dos times para determinismo (mesmo jogo = mesmas odds).
+    """
+    import hashlib
+    seed = int(hashlib.md5(f'{home}{away}{sport_key}'.encode()).hexdigest(), 16)
+    rng = seed % 1000
+    if 'nba' in sport_key or 'basketball' in sport_key:
+        # NBA: sem empate, odds próximas
+        h = round(1.60 + (rng % 80) / 100, 2)
+        a = round(2.60 - (rng % 60) / 100, 2)
+        return {'home': h, 'draw': None, 'away': a}
+    elif 'nfl' in sport_key or 'football' in sport_key:
+        h = round(1.70 + (rng % 90) / 100, 2)
+        a = round(2.40 - (rng % 50) / 100, 2)
+        return {'home': h, 'draw': None, 'away': a}
+    elif 'mma' in sport_key:
+        h = round(1.40 + (rng % 120) / 100, 2)
+        a = round(2.80 - (rng % 80) / 100, 2)
+        return {'home': h, 'draw': None, 'away': a}
+    else:
+        # Futebol: 3 mercados
+        fav = rng % 3  # 0=home, 1=draw, 2=away
+        if fav == 0:
+            h = round(1.60 + (rng % 60) / 100, 2)
+            d = round(3.20 + (rng % 40) / 100, 2)
+            a = round(4.50 + (rng % 80) / 100, 2)
+        elif fav == 1:
+            h = round(2.40 + (rng % 50) / 100, 2)
+            d = round(2.80 + (rng % 30) / 100, 2)
+            a = round(2.90 + (rng % 50) / 100, 2)
+        else:
+            h = round(4.20 + (rng % 80) / 100, 2)
+            d = round(3.50 + (rng % 40) / 100, 2)
+            a = round(1.65 + (rng % 50) / 100, 2)
+        return {'home': h, 'draw': d, 'away': a}
+
 async def _espn_fetch_scoreboard(sess, espn_slug, league_name, sport_key, category='soccer'):
     """Helper: busca scoreboard ESPN e retorna lista de jogos normalizados."""
     import json as _json, aiohttp as _aio
@@ -10633,6 +11029,9 @@ async def _espn_fetch_scoreboard(sess, espn_slug, league_name, sport_key, catego
             a_name = a_team.get('displayName', a_team.get('name', '?'))
             if h_name == '?' or a_name == '?':
                 continue
+            # Aplicar margem nas odds geradas
+            odds_bruta = _gerar_odds_espn(h_name, a_name, sport_key)
+            odds_com_margem, margem_pct = _aplicar_margem_odds(odds_bruta, sport_key)
             result.append({
                 'id':            ev.get('id', ''),
                 'sport':         sport_key,
@@ -10652,7 +11051,9 @@ async def _espn_fetch_scoreboard(sess, espn_slug, league_name, sport_key, catego
                 'is_finished':   is_finished,
                 'clock':         clock,
                 'elapsed':       elapsed,
-                'odds':          {'home': None, 'draw': None, 'away': None},
+                'odds':          odds_com_margem,
+                'odds_bruta':    odds_bruta,
+                'margem_pct':    margem_pct,
                 'source':        'espn',
             })
         return result
@@ -11204,12 +11605,15 @@ async def route_bet_apostar(request):
     except Exception:
         return web.json_response({'success': False, 'error': 'JSON inválido'}, status=400)
 
-    usuario_id = body.get('usuario_id')
-    jogo_id    = body.get('jogo_id', '')
-    jogo_nome  = body.get('jogo_nome', '')
-    selecao    = body.get('selecao', '')
-    odd        = float(body.get('odd', 0))
-    valor      = float(body.get('valor', 0))
+    usuario_id   = body.get('usuario_id')
+    jogo_id      = body.get('jogo_id', '')
+    jogo_nome    = body.get('jogo_nome', '')
+    selecao      = body.get('selecao', '')
+    odd          = float(body.get('odd', 0))
+    valor        = float(body.get('valor', 0))
+    league_key   = body.get('league_key', '') or body.get('sport', '')
+    odd_bruta    = float(body.get('odd_bruta', 0) or odd)
+    margem_apl   = float(body.get('margem_pct', 0) or _get_margem_liga(league_key))
 
     if not usuario_id:
         return web.json_response({'success': False, 'error': 'Faça login primeiro'})
@@ -11240,11 +11644,13 @@ async def route_bet_apostar(request):
             })
         # Debitar saldo
         cur.execute("UPDATE usuarios SET saldo = saldo - %s WHERE id=%s", (valor, usuario_id))
-        # Registrar aposta
+        # Registrar aposta com league_key, odd_bruta e margem
         cur.execute("""
-            INSERT INTO apostas (usuario_id, jogo_id, jogo_nome, selecao, odd, valor, retorno_potencial, status)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,'pendente') RETURNING id
-        """, (usuario_id, jogo_id, jogo_nome, selecao, odd, valor, retorno))
+            INSERT INTO apostas (usuario_id, jogo_id, jogo_nome, selecao, odd, valor,
+                                 retorno_potencial, status, league_key, odd_bruta, margem_aplicada)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,'pendente',%s,%s,%s) RETURNING id
+        """, (usuario_id, jogo_id, jogo_nome, selecao, odd, valor, retorno,
+              league_key or None, odd_bruta or None, margem_apl))
         aposta_id = cur.fetchone()[0]
         conn.commit()
         # Saldo atualizado
@@ -11256,6 +11662,7 @@ async def route_bet_apostar(request):
             'aposta_id': aposta_id,
             'saldo': novo_saldo,
             'retorno_potencial': retorno,
+            'margem_pct': margem_apl,
             'msg': f'✅ Aposta de R$ {valor:.2f} registrada! Retorno potencial: R$ {retorno:.2f}'
         })
     except Exception as e:
@@ -14083,6 +14490,14 @@ async def main():
     app.router.add_get('/api/admin/usuarios',           route_admin_usuarios_list)
     app.router.add_post('/api/admin/usuarios/ajustar',  route_admin_usuarios_ajustar)
     app.router.add_post('/api/admin/usuarios/suspender',route_admin_usuarios_suspender)
+    # Margem de lucro por liga
+    app.router.add_get('/api/admin/bet/margem',         route_admin_margem_get)
+    app.router.add_post('/api/admin/bet/margem',        route_admin_margem_set)
+    # Dashboard financeiro de apostas
+    app.router.add_get('/api/admin/bet/dashboard',      route_admin_bet_dashboard)
+    # Resolver apostas
+    app.router.add_post('/api/admin/bet/resolver',      route_admin_bet_resolver)
+    app.router.add_post('/api/admin/bet/resolver-auto', route_admin_bet_resolver_auto)
 
     runner = web.AppRunner(app)
     await runner.setup()

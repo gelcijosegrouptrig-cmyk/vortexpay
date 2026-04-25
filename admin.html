@@ -780,6 +780,10 @@ function toggleLoginSenha() {
         🏆 <span>Campeonatos</span>
         <span class="badge" id="badge-ligas" style="background:#555">0</span>
       </div>
+      <div class="nav-item" onclick="showTab('apostas-mgr')">
+        🎯 <span>Apostas & Lucro</span>
+        <span class="badge" id="badge-apostas-pend" style="background:#f59e0b">0</span>
+      </div>
       <div class="nav-item" onclick="showTab('usuarios-mgr')">
         👥 <span>Usuários</span>
         <span class="badge" id="badge-users-mgr">0</span>
@@ -1124,6 +1128,112 @@ function toggleLoginSenha() {
         <div class="pagination" id="pag-saq"></div>
       </div>
 
+      </div>
+
+      <!-- ═══ APOSTAS & LUCRO ═══ -->
+      <div id="tab-apostas-mgr" class="tab-content">
+
+        <!-- KPIs financeiros -->
+        <div class="metrics-grid" id="apostas-kpis" style="margin-bottom:16px">
+          <div class="metric-card green">
+            <div class="metric-icon">💰</div>
+            <div class="metric-label">GGR (Lucro da Casa)</div>
+            <div class="metric-value" id="kpi-ggr">—</div>
+            <div class="metric-sub">apostas LOST → retidas</div>
+          </div>
+          <div class="metric-card orange">
+            <div class="metric-icon">📊</div>
+            <div class="metric-label">Total Apostado</div>
+            <div class="metric-value" id="kpi-total-apostado">—</div>
+            <div class="metric-sub" id="kpi-qtd-apostas">— apostas</div>
+          </div>
+          <div class="metric-card blue">
+            <div class="metric-icon">🏆</div>
+            <div class="metric-label">Pago (WON)</div>
+            <div class="metric-value" id="kpi-pago-won">—</div>
+            <div class="metric-sub">retorno pago aos usuários</div>
+          </div>
+          <div class="metric-card red">
+            <div class="metric-icon">⏳</div>
+            <div class="metric-label">Em Risco (Pendentes)</div>
+            <div class="metric-value" id="kpi-risco">—</div>
+            <div class="metric-sub">retorno potencial em aberto</div>
+          </div>
+          <div class="metric-card yellow">
+            <div class="metric-icon">📥</div>
+            <div class="metric-label">Depósitos Confirmados</div>
+            <div class="metric-value" id="kpi-depositos">—</div>
+            <div class="metric-sub" id="kpi-dep-qtd">— transações</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-icon">📤</div>
+            <div class="metric-label">Saques Pagos</div>
+            <div class="metric-value" id="kpi-saques">—</div>
+            <div class="metric-sub" id="kpi-saq-qtd">— saques</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="section-grid">
+
+          <!-- Margem por liga -->
+          <div class="table-card">
+            <div class="table-header" style="display:flex;justify-content:space-between;align-items:center">
+              <h3>📐 Margem de Lucro por Liga</h3>
+              <div style="display:flex;gap:6px">
+                <button onclick="salvarTodasMargens()" style="padding:6px 14px;background:linear-gradient(135deg,#ff6b35,#f7931e);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer">💾 Salvar Tudo</button>
+                <button onclick="loadMargens()" class="refresh-btn" style="font-size:12px">🔄</button>
+              </div>
+            </div>
+            <div style="padding:8px 16px;background:rgba(96,165,250,0.08);border-bottom:1px solid var(--border);font-size:11px;color:var(--text2)">
+              💡 A margem reduz as odds exibidas ao usuário. Ex: odd bruta 2.00 com 10% → odd 1.82 exibida. Lucro da casa ≈ margem%.
+            </div>
+            <div id="margens-loading" style="padding:24px;text-align:center;color:var(--text2)"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>
+            <div id="margens-lista" style="display:none;max-height:400px;overflow-y:auto"></div>
+          </div>
+
+          <!-- Por liga (volume) -->
+          <div class="table-card">
+            <div class="table-header"><h3>📈 Volume por Campeonato (30 dias)</h3></div>
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Liga</th><th>Apostas</th><th>Apostado</th><th>Lucro Bruto</th></tr></thead>
+                <tbody id="table-por-liga">
+                  <tr class="loading-row"><td colspan="4"><div class="spinner"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Últimas apostas + resolver -->
+        <div class="table-card">
+          <div class="table-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <h3>🎯 Apostas Recentes</h3>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button onclick="resolverAutoAdmin()" style="padding:6px 14px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);border-radius:8px;color:#4ade80;font-size:12px;font-weight:700;cursor:pointer">
+                🤖 Resolver Automático (ESPN)
+              </button>
+              <button onclick="loadApostasDash()" class="refresh-btn" style="font-size:12px">🔄 Atualizar</button>
+            </div>
+          </div>
+          <div style="padding:8px 16px;background:rgba(245,158,11,0.08);border-bottom:1px solid var(--border);font-size:11px;color:var(--yellow)">
+            ⚠️ Use "Resolver Automático" para buscar resultados no ESPN. Ou resolva manualmente clicando nos botões WON / LOST / ✖ de cada aposta.
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>Usuário</th><th>Jogo</th><th>Seleção</th>
+                  <th>Odd</th><th>Apostado</th><th>Retorno</th><th>Status</th><th>Liga</th><th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="table-apostas-recentes">
+                <tr class="loading-row"><td colspan="10"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="resolver-auto-msg" style="padding:10px 16px;font-size:13px;color:var(--green);display:none"></div>
+        </div>
       </div>
 
       <!-- ═══ CAMPEONATOS ═══ -->
@@ -6128,10 +6238,11 @@ function showTab(tab) {
   if (tab === 'campeonatos') loadLigas();
   if (tab === 'usuarios-mgr') loadUsuariosMgr();
   if (tab === 'config-pagamento') { loadConfigPagamento(); loadLigaApiResumo(); }
+  if (tab === 'apostas-mgr') { loadApostasDash(); loadMargens(); }
 }
 
 function tabName(tab) {
-  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api', bot2:'mercado pago', bot3:'bot mp2', paypix:'paypix', paypixcob:'paypix-cob', campeonatos:'campeonato', 'usuarios-mgr':'usuários', 'config-pagamento':'config' };
+  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api', bot2:'mercado pago', bot3:'bot mp2', paypix:'paypix', paypixcob:'paypix-cob', campeonatos:'campeonato', 'usuarios-mgr':'usuários', 'config-pagamento':'config', 'apostas-mgr':'apostas & lucro' };
   return map[tab] || tab;
 }
 
@@ -6250,6 +6361,251 @@ function showToastAdmin(msg, cor='green') {
   t.style.color = '#fff';
   t.style.opacity = '1';
   setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
+// ═══════════════════════════════════════════════
+// APOSTAS & LUCRO — DASHBOARD FINANCEIRO
+// ═══════════════════════════════════════════════
+
+async function loadApostasDash() {
+  const tbody = document.getElementById('table-apostas-recentes');
+  const tbodyLiga = document.getElementById('table-por-liga');
+  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="10"><div class="spinner"></div></td></tr>';
+  if (tbodyLiga) tbodyLiga.innerHTML = '<tr class="loading-row"><td colspan="4"><div class="spinner"></div></td></tr>';
+  try {
+    const r = await fetch('/api/admin/bet/dashboard', {
+      headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() }
+    });
+    const d = await r.json();
+    if (!d.ok) { showToastAdmin('Erro: ' + (d.error || 'falha'), 'red'); return; }
+
+    // KPIs
+    const fmt = v => 'R$ ' + parseFloat(v || 0).toLocaleString('pt-BR', {minimumFractionDigits:2});
+    const el = id => document.getElementById(id);
+    const ps = d.por_status || {};
+    const won = ps['WON'] || {}; const lost = ps['LOST'] || {}; const pend = ps['pendente'] || {};
+    const totalApostado = parseFloat(d.total_apostado || 0);
+    const totalPago = parseFloat(d.total_pago_won || 0);
+    const ggr = parseFloat(d.ggr || 0);
+    const risco = parseFloat(d.risco_atual || 0);
+    const qtdTotal = (won.qtd||0) + (lost.qtd||0) + (pend.qtd||0);
+
+    if (el('kpi-ggr')) el('kpi-ggr').textContent = fmt(ggr);
+    if (el('kpi-total-apostado')) el('kpi-total-apostado').textContent = fmt(totalApostado);
+    if (el('kpi-qtd-apostas')) el('kpi-qtd-apostas').textContent = qtdTotal + ' apostas';
+    if (el('kpi-pago-won')) el('kpi-pago-won').textContent = fmt(totalPago);
+    if (el('kpi-risco')) el('kpi-risco').textContent = fmt(risco);
+    if (el('kpi-depositos')) el('kpi-depositos').textContent = fmt(d.depositos?.total);
+    if (el('kpi-dep-qtd')) el('kpi-dep-qtd').textContent = (d.depositos?.qtd || 0) + ' transações';
+    if (el('kpi-saques')) el('kpi-saques').textContent = fmt(d.saques?.total);
+    if (el('kpi-saq-qtd')) el('kpi-saq-qtd').textContent = (d.saques?.qtd || 0) + ' saques';
+    // Atualiza badge no menu lateral
+    const badgePend = document.getElementById('badge-apostas-pend');
+    if (badgePend) {
+      const qtdPend = pend.qtd || 0;
+      badgePend.textContent = qtdPend;
+      badgePend.style.background = qtdPend > 0 ? '#f59e0b' : '#555';
+    }
+
+    // Tabela por liga
+    if (tbodyLiga) {
+      if (!d.por_liga || !d.por_liga.length) {
+        tbodyLiga.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text2)">Nenhuma aposta registrada ainda</td></tr>';
+      } else {
+        tbodyLiga.innerHTML = d.por_liga.map(l => {
+          const ligaKey = l.liga || 'outros';
+          const nome = _LIGAS_NOMES[ligaKey] || ligaKey;
+          const lucroLiq = parseFloat(l.lucro_bruto || 0) - parseFloat(l.pago_won || 0);
+          const lucroColor = lucroLiq >= 0 ? '#4ade80' : '#f87171';
+          return `<tr>
+            <td><span style="font-size:11px">${nome}</span></td>
+            <td style="text-align:center">${l.qtd}</td>
+            <td>${fmt(l.apostado)}</td>
+            <td style="color:${lucroColor};font-weight:700">${fmt(lucroLiq)}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+
+    // Tabela de apostas recentes
+    if (tbody) {
+      if (!d.ultimas_apostas || !d.ultimas_apostas.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text2)">Nenhuma aposta registrada ainda</td></tr>';
+      } else {
+        tbody.innerHTML = d.ultimas_apostas.map(a => {
+          const statusColor = {WON:'#4ade80', LOST:'#f87171', pendente:'#fbbf24', CANCELADA:'#94a3b8'}[a.status] || '#94a3b8';
+          const statusLabel = {WON:'✅ WON', LOST:'❌ LOST', pendente:'⏳ Pendente', CANCELADA:'↩ Cancel.'}[a.status] || a.status;
+          const botoesResolver = a.status === 'pendente' ? `
+            <div style="display:flex;gap:4px;justify-content:center">
+              <button onclick="resolverAposta(${a.id},'WON')" title="WON" style="padding:3px 8px;background:rgba(74,222,128,0.2);border:1px solid #4ade80;border-radius:6px;color:#4ade80;font-size:11px;cursor:pointer;font-weight:700">✅</button>
+              <button onclick="resolverAposta(${a.id},'LOST')" title="LOST" style="padding:3px 8px;background:rgba(248,113,113,0.2);border:1px solid #f87171;border-radius:6px;color:#f87171;font-size:11px;cursor:pointer;font-weight:700">❌</button>
+              <button onclick="resolverAposta(${a.id},'CANCELADA')" title="Cancelar" style="padding:3px 8px;background:rgba(148,163,184,0.2);border:1px solid #94a3b8;border-radius:6px;color:#94a3b8;font-size:11px;cursor:pointer">↩</button>
+            </div>` : `<span style="color:${statusColor};font-size:11px">${statusLabel}</span>`;
+          const nomeLiga = _LIGAS_NOMES[a.liga] || a.liga || '—';
+          return `<tr>
+            <td style="font-size:11px;color:var(--text2)">#${a.id}</td>
+            <td style="font-size:12px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.usuario}">${a.usuario}</td>
+            <td style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.jogo}">${a.jogo}</td>
+            <td style="font-size:11px;color:var(--orange)">${a.selecao}</td>
+            <td style="text-align:center;font-weight:700">${parseFloat(a.odd).toFixed(2)}</td>
+            <td style="text-align:right">R$ ${parseFloat(a.valor).toFixed(2)}</td>
+            <td style="text-align:right;color:#60a5fa">R$ ${parseFloat(a.retorno).toFixed(2)}</td>
+            <td><span style="color:${statusColor};font-size:11px;font-weight:600">${statusLabel}</span></td>
+            <td style="font-size:10px;color:var(--text2);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nomeLiga}">${nomeLiga}</td>
+            <td>${botoesResolver}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+  } catch(e) {
+    showToastAdmin('Erro ao carregar apostas: ' + e.message, 'red');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#f87171;padding:20px">Erro de conexão — verifique o servidor</td></tr>';
+  }
+}
+
+// Mapa de nomes legíveis para chaves de liga
+const _LIGAS_NOMES = {
+  'soccer_brazil_campeonato':'Brasileirão A','soccer_brazil_campeonato_b':'Brasileirão B',
+  'soccer_conmebol_copa_libertadores':'Copa Libertadores','soccer_conmebol_copa_sulamericana':'Sul-Americana',
+  'soccer_uefa_champs_league':'Champions League','soccer_epl':'Premier League',
+  'soccer_italy_serie_a':'Serie A Italiana','soccer_germany_bundesliga':'Bundesliga',
+  'soccer_france_ligue_one':'Ligue 1','basketball_nba':'NBA',
+  'americanfootball_nfl':'NFL','mma_mixed_martial_arts':'UFC / MMA',
+  'outros':'Outros'
+};
+
+async function resolverAposta(apostaId, resultado) {
+  const label = {WON:'✅ WON', LOST:'❌ LOST', CANCELADA:'↩ Cancelada'}[resultado];
+  if (!confirm(`Resolver aposta #${apostaId} como ${label}?`)) return;
+  try {
+    const r = await fetch('/api/admin/bet/resolver', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ aposta_id: apostaId, resultado })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToastAdmin(`${label} — Aposta #${apostaId} resolvida${d.credito > 0 ? ' · R$'+d.credito.toFixed(2)+' creditado' : ''}`, 'green');
+      setTimeout(loadApostasDash, 800);
+    } else {
+      showToastAdmin('Erro: ' + (d.error || 'falha'), 'red');
+    }
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+async function resolverAutoAdmin() {
+  const btn = document.querySelector('button[onclick="resolverAutoAdmin()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '🤖 Resolvendo via ESPN...'; }
+  const msg = document.getElementById('resolver-auto-msg');
+  if (msg) { msg.style.display = 'block'; msg.textContent = '🔍 Buscando resultados no ESPN...'; }
+  try {
+    const r = await fetch('/api/admin/bet/resolver-auto', {
+      method: 'POST',
+      headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() }
+    });
+    const d = await r.json();
+    const txt = d.resolved > 0
+      ? `✅ ${d.resolved} aposta(s) resolvida(s) automaticamente via ESPN!`
+      : '⚠️ Nenhuma aposta pôde ser resolvida agora — jogos ainda em andamento ou aguardando placar.';
+    if (msg) msg.textContent = txt;
+    showToastAdmin(txt, d.resolved > 0 ? 'green' : 'orange');
+    if (d.resolved > 0) setTimeout(loadApostasDash, 1200);
+  } catch(e) {
+    if (msg) msg.textContent = 'Erro: ' + e.message;
+    showToastAdmin('Erro: ' + e.message, 'red');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 Resolver Automático (ESPN)'; }
+  }
+}
+
+// ─── Margens ────────────────────────────────────────────────────────────────
+
+async function loadMargens() {
+  const loading = document.getElementById('margens-loading');
+  const lista = document.getElementById('margens-lista');
+  if (loading) loading.style.display = 'block';
+  if (lista) lista.style.display = 'none';
+  try {
+    const r = await fetch('/api/admin/bet/margem', {
+      headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() }
+    });
+    const d = await r.json();
+    if (!d.ok || !d.ligas) { showToastAdmin('Erro ao carregar margens', 'red'); return; }
+    if (lista) {
+      lista.innerHTML = d.ligas.map(l => `
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.nome}</div>
+            <div style="font-size:10px;color:var(--text2);margin-top:2px">
+              ${l.ativa ? '🟢 Ativa' : '🔴 Suspensa'}
+              ${l.updated_at ? ' · Editado ' + l.updated_at : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <div style="position:relative;display:flex;align-items:center">
+              <input type="number" id="margem-${l.liga_key}" value="${l.margem_pct}"
+                min="0" max="50" step="0.5"
+                style="width:64px;padding:6px 22px 6px 8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-weight:700;text-align:center"
+              />
+              <span style="position:absolute;right:6px;font-size:11px;color:var(--text2);pointer-events:none">%</span>
+            </div>
+            <button onclick="salvarMargem('${l.liga_key}')"
+              style="padding:6px 10px;background:linear-gradient(135deg,#ff6b35,#f7931e);border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">
+              💾
+            </button>
+          </div>
+        </div>
+      `).join('');
+      loading.style.display = 'none';
+      lista.style.display = 'block';
+    }
+  } catch(e) {
+    showToastAdmin('Erro: ' + e.message, 'red');
+    if (loading) loading.style.display = 'none';
+  }
+}
+
+async function salvarMargem(ligaKey) {
+  const input = document.getElementById('margem-' + ligaKey);
+  if (!input) return;
+  const pct = parseFloat(input.value);
+  if (isNaN(pct) || pct < 0 || pct > 50) {
+    showToastAdmin('Margem deve ser entre 0% e 50%', 'red'); return;
+  }
+  try {
+    const r = await fetch('/api/admin/bet/margem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ liga_key: ligaKey, margem_pct: pct })
+    });
+    const d = await r.json();
+    if (d.ok) showToastAdmin(`✅ Margem de ${pct}% salva para ${_LIGAS_NOMES[ligaKey] || ligaKey}`, 'green');
+    else showToastAdmin('Erro: ' + (d.error || 'falha'), 'red');
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+async function salvarTodasMargens() {
+  const ligas = Object.keys(_LIGAS_NOMES);
+  const margens = {};
+  let count = 0;
+  for (const key of ligas) {
+    const input = document.getElementById('margem-' + key);
+    if (input) {
+      const v = parseFloat(input.value);
+      if (!isNaN(v) && v >= 0 && v <= 50) { margens[key] = v; count++; }
+    }
+  }
+  if (!count) { showToastAdmin('Nenhuma margem encontrada para salvar', 'orange'); return; }
+  try {
+    const r = await fetch('/api/admin/bet/margem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ margens })
+    });
+    const d = await r.json();
+    if (d.ok) showToastAdmin(`✅ ${count} margem(ns) salva(s) com sucesso!`, 'green');
+    else showToastAdmin('Erro: ' + (d.error || 'falha'), 'red');
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
 }
 
 // ═══════════════════════════════════════════════
