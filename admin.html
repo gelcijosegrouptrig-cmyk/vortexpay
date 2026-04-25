@@ -1643,20 +1643,7 @@ function toggleLoginSenha() {
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <select id="bolao-disp-liga" onchange="carregarJogosDisponiveisBolao()"
                 style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px">
-                <option value="">🌍 Todas as Ligas</option>
-                <option value="soccer_brazil_campeonato">🇧🇷 Brasileirão A</option>
-                <option value="soccer_brazil_serie_b">🇧🇷 Série B</option>
-                <option value="soccer_conmebol_copa_libertadores">🏆 Libertadores</option>
-                <option value="soccer_conmebol_sudamericana">🌎 Sul-Americana</option>
-                <option value="soccer_uefa_champs_league">⭐ Champions</option>
-                <option value="soccer_epl">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</option>
-                <option value="soccer_spain_la_liga">🇪🇸 La Liga</option>
-                <option value="soccer_italy_serie_a">🇮🇹 Serie A</option>
-                <option value="soccer_germany_bundesliga">🇩🇪 Bundesliga</option>
-                <option value="soccer_france_ligue_one">🇫🇷 Ligue 1</option>
-                <option value="basketball_nba">🏀 NBA</option>
-                <option value="americanfootball_nfl">🏈 NFL</option>
-                <option value="mma_mixed_martial_arts">🥊 MMA</option>
+                <option value="">⏳ Carregando ligas...</option>
               </select>
               <button onclick="carregarJogosDisponiveisBolao()"
                 style="padding:6px 14px;background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.4);border-radius:8px;color:#60a5fa;font-size:12px;font-weight:700;cursor:pointer">
@@ -1697,17 +1684,6 @@ function toggleLoginSenha() {
               <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">🔑 Liga Key (ESPN)</label>
               <select id="bolao-liga-key" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
                 <option value="">— Selecionar —</option>
-                <option value="soccer_brazil_campeonato">🇧🇷 Brasileirão Série A</option>
-                <option value="soccer_brazil_serie_b">🇧🇷 Série B</option>
-                <option value="soccer_conmebol_copa_libertadores">🏆 Libertadores</option>
-                <option value="soccer_conmebol_sudamericana">🌎 Sul-Americana</option>
-                <option value="soccer_uefa_champs_league">⭐ Champions League</option>
-                <option value="soccer_epl">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</option>
-                <option value="soccer_spain_la_liga">🇪🇸 La Liga</option>
-                <option value="soccer_italy_serie_a">🇮🇹 Serie A</option>
-                <option value="soccer_germany_bundesliga">🇩🇪 Bundesliga</option>
-                <option value="soccer_france_ligue_one">🇫🇷 Ligue 1</option>
-                <option value="basketball_nba">🏀 NBA</option>
               </select>
             </div>
             <div>
@@ -7011,7 +6987,7 @@ function showTab(tab) {
   if (tab === 'pnl') { loadPnL(); }
   if (tab === 'afiliados') loadAfiliados();
   if (tab === 'multi') loadMultiAdmin();
-  if (tab === 'bolao') { loadBolaoAdmin(); carregarJogosDisponiveisBolao(); }
+  if (tab === 'bolao') { loadBolaoAdmin(); carregarSelectLigasAtivas(); }
   if (tab === 'notificacoes') loadNotifConfig();
   if (tab === 'dashboard') { loadAll(); loadCharts(); }
 }
@@ -7646,12 +7622,77 @@ async function loadAfiliados() {
 
 let _bolaoJogoAtivo = null; // jogo selecionado para ver bilhetes/fechar
 
+/* ══ BOLÃO — Carregar select com ligas ATIVAS (não suspensas) ══ */
+const _BOLAO_LIGA_LABELS = {
+  'soccer_brazil_campeonato':           '🇧🇷 Brasileirão A',
+  'soccer_brazil_serie_b':              '🇧🇷 Série B',
+  'soccer_conmebol_copa_libertadores':  '🏆 Libertadores',
+  'soccer_conmebol_sudamericana':       '🌎 Sul-Americana',
+  'soccer_copa_brasil':                 '🇧🇷 Copa do Brasil',
+  'soccer_uefa_champs_league':          '⭐ Champions',
+  'soccer_epl':                         '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League',
+  'soccer_spain_la_liga':               '🇪🇸 La Liga',
+  'soccer_italy_serie_a':               '🇮🇹 Serie A',
+  'soccer_germany_bundesliga':          '🇩🇪 Bundesliga',
+  'soccer_france_ligue_one':            '🇫🇷 Ligue 1',
+  'basketball_nba':                     '🏀 NBA',
+  'americanfootball_nfl':               '🏈 NFL',
+  'mma_mixed_martial_arts':             '🥊 MMA',
+};
+
+async function carregarSelectLigasAtivas() {
+  const selFiltro = document.getElementById('bolao-disp-liga');
+  const selForm   = document.getElementById('bolao-liga-key');
+  try {
+    const r = await fetch('/api/ligas/ativas');
+    const d = await r.json();
+    const ligas = d.ok ? (d.ligas || []) : [];
+
+    // ── Select de filtro (busca de jogos disponíveis) ──
+    if (selFiltro) {
+      if (!ligas.length) {
+        selFiltro.innerHTML = '<option value="">Nenhuma liga ativa</option>';
+      } else {
+        selFiltro.innerHTML = ligas.map(l => {
+          const label = _BOLAO_LIGA_LABELS[l.key] || l.nome;
+          return `<option value="${l.key}">${label}</option>`;
+        }).join('');
+        // Seleciona a primeira e busca os jogos automaticamente
+        selFiltro.value = ligas[0].key;
+        carregarJogosDisponiveisBolao();
+      }
+    }
+
+    // ── Select do formulário (liga key do jogo a criar) ──
+    if (selForm) {
+      const currentVal = selForm.value;
+      selForm.innerHTML = '<option value="">— Selecionar —</option>' + ligas.map(l => {
+        const label = _BOLAO_LIGA_LABELS[l.key] || l.nome;
+        return `<option value="${l.key}">${label}</option>`;
+      }).join('');
+      // Manter valor selecionado se ainda válido
+      if (currentVal) selForm.value = currentVal;
+    }
+
+  } catch(e) {
+    if (selFiltro) selFiltro.innerHTML = '<option value="">Erro ao carregar</option>';
+  }
+}
+
 /* ══ BOLÃO — Jogos Disponíveis (ESPN) ══ */
 async function carregarJogosDisponiveisBolao() {
   const container = document.getElementById('bolao-jogos-disponiveis');
   const msg       = document.getElementById('bolao-disp-msg');
   const liga      = document.getElementById('bolao-disp-liga')?.value || '';
   if (!container) return;
+
+  // Liga obrigatória — não buscar "todas as ligas" de uma vez (muito lento)
+  if (!liga) {
+    container.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:30px;font-size:13px">
+      Selecione uma liga para ver os jogos disponíveis.
+    </div>`;
+    return;
+  }
 
   container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px">
     <div class="spinner2" style="margin:0 auto 10px"></div>
