@@ -441,6 +441,19 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 .bs-msg.ok{background:#22c55e18;border:1px solid #22c55e33;color:var(--green);display:block}
 .bs-msg.err{background:#ef444418;border:1px solid #ef444433;color:var(--red);display:block}
 
+/* ── Tabs betslip Simples / Acumuladora ── */
+.bs-tabs{display:flex;border-bottom:1px solid var(--border2);flex-shrink:0}
+.bs-tab{flex:1;padding:10px 8px;background:transparent;border:none;border-bottom:2px solid transparent;
+  color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:5px}
+.bs-tab:hover{color:var(--text);background:var(--bg3)}
+.bs-tab.active{color:var(--blue);border-bottom-color:var(--blue);background:rgba(59,130,246,0.05)}
+.bs-multi-badge{background:var(--gold);color:#1a0800;font-size:9px;font-weight:900;
+  border-radius:10px;padding:1px 5px;min-width:16px;text-align:center}
+/* Destaque acumuladora ativa */
+.bs-tab#bst-multi.active{color:#8b5cf6;border-bottom-color:#8b5cf6;background:rgba(139,92,246,0.05)}
+.bs-tab#bst-multi.active .bs-multi-badge{background:#8b5cf6;color:#fff}
+
 /* Botão flutuante de abrir slip */
 .slip-fab{
   position:fixed;bottom:20px;right:20px;z-index:149;
@@ -1005,30 +1018,57 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 <!-- ══ BETSLIP LATERAL ══ -->
 <aside class="betslip" id="betslip">
   <div class="bs-header">
-    <span class="bs-title">🎯 Minha Aposta</span>
+    <span class="bs-title">🎯 Bilhete</span>
     <span class="bs-count" id="bs-count">0</span>
     <button class="bs-close" onclick="toggleSlip(false)" title="Fechar">✕</button>
   </div>
+
+  <!-- Tabs Simples / Múltipla -->
+  <div class="bs-tabs" id="bs-tabs">
+    <button class="bs-tab active" id="bst-simples" onclick="setBetTipo('simples')">
+      🎯 Simples
+    </button>
+    <button class="bs-tab" id="bst-multi" onclick="setBetTipo('multi')">
+      🎰 Acumuladora
+      <span class="bs-multi-badge" id="bs-multi-badge" style="display:none">2+</span>
+    </button>
+  </div>
+
   <div class="bs-body" id="bs-body">
     <div class="bs-empty" id="bs-empty">
       <div class="ico">🎯</div>
       <p>Clique em uma <strong>odd</strong> para adicionar ao seu bilhete</p>
     </div>
+    <!-- Aviso modo simples (quando há múltiplas seleções) -->
+    <div id="bs-simples-aviso" style="display:none;padding:8px 10px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;font-size:11px;color:#f59e0b;margin-bottom:8px;">
+      ⚡ No modo <b>Simples</b>, apenas a <b>1ª seleção</b> será apostada.<br>
+      <span style="color:#94a3b8">Mude para <b>Acumuladora</b> para combinar todas.</span>
+    </div>
     <div id="bs-selecoes"></div>
   </div>
+
   <div class="bs-footer" id="bs-footer" style="display:none">
+    <!-- Info acumuladora -->
+    <div id="bs-multi-info" style="display:none;margin-bottom:10px;padding:10px;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);border-radius:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;margin-bottom:4px">
+        <span>🎰 Seleções</span><span id="bs-multi-qtd" style="color:#a78bfa;font-weight:800">0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#94a3b8">
+        <span>⚡ Tipo de aposta</span><span style="color:#8b5cf6;font-weight:700">ACUMULADORA</span>
+      </div>
+    </div>
     <div class="bs-odds-total">
-      <span class="bs-ot-lbl">Odd Total</span>
+      <span class="bs-ot-lbl" id="bs-ot-lbl">Odd</span>
       <span class="bs-ot-val" id="bs-odd-total">1.00</span>
     </div>
     <div class="bs-valor-row">
       <div class="bs-valor-lbl">Valor da aposta (R$)</div>
-      <input class="bs-valor-input" type="number" id="bs-valor" placeholder="0,00" min="1" step="0.50" oninput="calcRetorno()">
+      <input class="bs-valor-input" type="number" id="bs-valor" placeholder="0,00" min="2" step="0.50" oninput="calcRetorno()">
     </div>
     <div class="bs-rapidos">
       <div class="bs-r" onclick="setValorAposta(5)">R$5</div>
       <div class="bs-r" onclick="setValorAposta(10)">R$10</div>
-      <div class="bs-r" onclick="setValorAposta(20)">R$20</div>
+      <div class="bs-r" onclick="setValorAposta(25)">R$25</div>
       <div class="bs-r" onclick="setValorAposta(50)">R$50</div>
     </div>
     <div class="bs-retorno" id="bs-retorno" style="display:none">
@@ -1089,6 +1129,7 @@ let _currentView = 'home';
 let _currentSport = 'upcoming';
 let _liveTimer = null;
 let _selecoes = [];
+let _betTipo = 'simples'; // 'simples' | 'multi'
 
 /* ══ SESSION ══ */
 function saveSession(u){localStorage.setItem('pnb_user',JSON.stringify(u))}
@@ -1507,26 +1548,34 @@ function toggleSlip(open){
   const el = document.getElementById('betslip');
   if(open === undefined) open = !el.classList.contains('open');
   el.classList.toggle('open', open);
-  // Mostrar/ocultar FAB
   const fab = document.getElementById('slip-fab');
   if(fab) fab.classList.toggle('hidden', open || _selecoes.length === 0);
 }
 
-function selOdd(jid, time, tipo, odd, jogo){
+/* ── Trocar entre modo Simples e Acumuladora ── */
+function setBetTipo(tipo){
+  _betTipo = tipo;
+  document.getElementById('bst-simples')?.classList.toggle('active', tipo === 'simples');
+  document.getElementById('bst-multi')?.classList.toggle('active',   tipo === 'multi');
+  renderSlip();
+}
+
+function selOdd(jid, time, tipo, odd, jogo, league_key){
+  league_key = league_key || '';
   const ex = _selecoes.findIndex(s => s.jid === jid);
   if(ex >= 0){
     if(_selecoes[ex].tipo === tipo){
-      // Desselecionar
       _selecoes.splice(ex, 1);
     } else {
-      // Trocar seleção no mesmo jogo
-      _selecoes[ex] = {jid, time, tipo, odd, jogo};
+      _selecoes[ex] = {jid, time, tipo, odd, jogo, league_key};
     }
   } else {
-    _selecoes.push({jid, time, tipo, odd, jogo});
+    if(_selecoes.length >= 10){
+      _showBsMsg('Máximo 10 seleções por acumuladora!', true);
+      return;
+    }
+    _selecoes.push({jid, time, tipo, odd, jogo, league_key});
   }
-
-  // Atualizar visual dos botões
   document.querySelectorAll('[id^="ob-'+jid+'"]').forEach(b => b.classList.remove('sel'));
   const cur = _selecoes.find(s => s.jid === jid);
   if(cur){
@@ -1534,13 +1583,12 @@ function selOdd(jid, time, tipo, odd, jogo){
     const btn = document.getElementById('ob-'+jid+'-'+(mp[cur.tipo]||'c'));
     if(btn) btn.classList.add('sel');
   }
-
-  renderSlip();
-
-  // Abrir slip automaticamente na primeira seleção
-  if(_selecoes.length === 1 && cur){
-    toggleSlip(true);
+  // Auto-ativar modo múltipla se ≥2 seleções
+  if(_selecoes.length >= 2 && _betTipo === 'simples'){
+    setBetTipo('multi');
   }
+  renderSlip();
+  if(_selecoes.length === 1 && cur) toggleSlip(true);
 }
 
 function renderSlip(){
@@ -1551,42 +1599,69 @@ function renderSlip(){
   const bsEmpty  = document.getElementById('bs-empty');
   const bsSels   = document.getElementById('bs-selecoes');
   const bsFooter = document.getElementById('bs-footer');
+  const aviso    = document.getElementById('bs-simples-aviso');
+  const multiInfo= document.getElementById('bs-multi-info');
+  const multiQtd = document.getElementById('bs-multi-qtd');
+  const otLbl    = document.getElementById('bs-ot-lbl');
+  const multiBadge = document.getElementById('bs-multi-badge');
+  const tabsEl   = document.getElementById('bs-tabs');
 
-  // Atualizar contadores
   if(bsCount) bsCount.textContent = count;
   if(fabCnt)  fabCnt.textContent  = count;
-
-  // FAB: mostrar quando há seleções e slip fechado
+  if(multiBadge){
+    multiBadge.textContent = count >= 2 ? count : '2+';
+    multiBadge.style.display = count >= 2 ? 'inline-flex' : 'none';
+  }
   if(fabEl){
     const slipOpen = document.getElementById('betslip').classList.contains('open');
     fabEl.classList.toggle('hidden', count === 0 || slipOpen);
   }
-  // Área vazia
+  // Mostrar tabs só quando houver seleções
+  if(tabsEl) tabsEl.style.display = count > 0 ? 'flex' : 'none';
   if(bsEmpty) bsEmpty.style.display = count ? 'none' : 'block';
   if(bsFooter) bsFooter.style.display = count ? 'block' : 'none';
+
+  // Aviso modo simples
+  const modoMulti = _betTipo === 'multi';
+  if(aviso)    aviso.style.display    = (count > 1 && !modoMulti) ? 'block' : 'none';
+  if(multiInfo) multiInfo.style.display = modoMulti ? 'block' : 'none';
+  if(multiQtd)  multiQtd.textContent   = count;
+  if(otLbl)     otLbl.textContent       = modoMulti ? 'Odd Total (acumulada)' : 'Odd';
 
   // Renderizar seleções
   if(!bsSels) return;
   bsSels.innerHTML = '';
-  _selecoes.forEach((s, i) => {
-    const tipoLabel = {C: 'Casa', X: 'Empate', F: 'Fora'}[s.tipo] || s.tipo;
+  const selsParaExibir = (modoMulti || count === 0) ? _selecoes : [_selecoes[0]];
+  selsParaExibir.forEach((s, i) => {
+    const tipoLabel = {C: '🏠 Casa', X: '🤝 Empate', F: '✈️ Fora'}[s.tipo] || s.tipo;
     const div = document.createElement('div');
-    div.className = 'bs-sel';
+    div.className = 'bs-sel' + (modoMulti ? ' bs-sel-multi' : '');
     div.id = 'bss-'+s.jid;
     div.innerHTML =
+      (modoMulti && count > 1 ? `<div class="bss-num">${i+1}</div>` : '') +
       '<div class="bss-jogo">' + s.jogo + '</div>' +
-      '<div class="bss-sel">' + s.time + '</div>' +
-      '<div class="bss-tipo">' + tipoLabel + '</div>' +
-      '<div class="bss-odd">' + Number(s.odd).toFixed(2) + '</div>' +
-      '<button class="bss-rm" onclick="removerSel(\'' + s.jid + '\')">✕</button>';
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">' +
+        '<div>' +
+          '<div class="bss-sel">' + s.time + '</div>' +
+          '<div class="bss-tipo">' + tipoLabel + '</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:6px">' +
+          '<div class="bss-odd">' + Number(s.odd).toFixed(2) + '</div>' +
+          '<button class="bss-rm" onclick="removerSel(\'' + s.jid + '\')">✕</button>' +
+        '</div>' +
+      '</div>';
     bsSels.appendChild(div);
   });
 
-  // Calcular odd total
-  const oddTotal = _selecoes.reduce((acc, s) => acc * Number(s.odd), 1);
+  // Odd total
+  const oddBase = modoMulti
+    ? _selecoes.reduce((acc, s) => acc * Number(s.odd), 1)
+    : (_selecoes[0] ? Number(_selecoes[0].odd) : 1);
   const otEl = document.getElementById('bs-odd-total');
-  if(otEl) otEl.textContent = oddTotal.toFixed(2);
-
+  if(otEl){
+    otEl.textContent = oddBase.toFixed(2);
+    otEl.style.color = modoMulti && count >= 2 ? '#8b5cf6' : 'var(--gold)';
+  }
   calcRetorno();
 }
 
@@ -1594,10 +1669,10 @@ function removerSel(jid){
   const idx = _selecoes.findIndex(s => s.jid === jid);
   if(idx < 0) return;
   _selecoes.splice(idx, 1);
-  // Desmarcar botões
   document.querySelectorAll('[id^="ob-'+jid+'"]').forEach(b => b.classList.remove('sel'));
+  // Voltar para simples se ficou só 1 seleção
+  if(_selecoes.length <= 1) _betTipo = 'simples';
   renderSlip();
-  // Fechar slip se vazio
   if(!_selecoes.length) toggleSlip(false);
 }
 
@@ -1608,11 +1683,14 @@ function setValorAposta(v){
 
 function calcRetorno(){
   const valor = parseFloat(document.getElementById('bs-valor')?.value || 0);
-  const oddTotal = _selecoes.reduce((acc, s) => acc * Number(s.odd), 1);
-  const retEl    = document.getElementById('bs-retorno');
-  const retVal   = document.getElementById('bs-ret-val');
+  const modoMulti = _betTipo === 'multi';
+  const oddBase = modoMulti
+    ? _selecoes.reduce((acc, s) => acc * Number(s.odd), 1)
+    : (_selecoes[0] ? Number(_selecoes[0].odd) : 1);
+  const retEl  = document.getElementById('bs-retorno');
+  const retVal = document.getElementById('bs-ret-val');
   if(valor > 0 && _selecoes.length){
-    const ret = valor * oddTotal;
+    const ret = valor * oddBase;
     if(retEl)  retEl.style.display  = 'flex';
     if(retVal) retVal.textContent   = 'R$ ' + ret.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
   } else {
@@ -1625,61 +1703,90 @@ async function confirmarAposta(){
   if(!u){ toggleSlip(false); openModal('login'); return; }
 
   const valor = parseFloat(document.getElementById('bs-valor')?.value || 0);
-  const msg   = document.getElementById('bs-msg');
   const btn   = document.getElementById('btn-apostar');
+  const modoMulti = _betTipo === 'multi';
 
   if(!_selecoes.length){ _showBsMsg('Adicione pelo menos uma seleção.', true); return; }
-  if(!valor || valor < 1){ _showBsMsg('Informe um valor mínimo de R$ 1,00.', true); return; }
+  if(!valor || valor < 2){ _showBsMsg('Valor mínimo R$ 2,00.', true); return; }
   if(valor > Number(u.saldo || 0)){ _showBsMsg('Saldo insuficiente. Deposite para apostar.', true); return; }
 
-  const oddTotal = _selecoes.reduce((acc, s) => acc * Number(s.odd), 1);
+  if(modoMulti && _selecoes.length < 2){
+    _showBsMsg('Acumuladora requer ao menos 2 seleções.', true); return;
+  }
 
-  btn.disabled   = true;
-  btn.textContent = '⏳ Processando...';
+  btn.disabled    = true;
+  btn.textContent = '⏳ Registrando...';
 
   try{
-    const payload = {
-      usuario_id: u.id,
-      valor: valor,
-      selecoes: _selecoes.map(s => ({
-        jogo_id: s.jid,
-        jogo:    s.jogo,
-        time:    s.time,
-        tipo:    s.tipo,
-        odd:     s.odd,
-      })),
-      odd_total: parseFloat(oddTotal.toFixed(2)),
-      retorno_possivel: parseFloat((valor * oddTotal).toFixed(2)),
-    };
-
-    const r = await fetch(BASE + '/api/bet/apostar', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload),
-    });
-    const d = await r.json();
-
-    if(d.error){
-      _showBsMsg(d.error, true);
+    let d;
+    if(modoMulti){
+      // ── Aposta MÚLTIPLA ────────────────────────────────────────────────
+      const oddTotal = parseFloat(_selecoes.reduce((acc, s) => acc * Number(s.odd), 1).toFixed(4));
+      const payload = {
+        usuario_id: u.id,
+        valor,
+        odd_total: oddTotal,
+        retorno_possivel: parseFloat((valor * oddTotal).toFixed(2)),
+        selecoes: _selecoes.map(s => ({
+          jogo_id:    s.jid,
+          jogo:       s.jogo,
+          time:       s.time,
+          tipo:       s.tipo,
+          odd:        s.odd,
+          league_key: s.league_key || ''
+        }))
+      };
+      const r = await fetch(BASE + '/api/bet/multi', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      d = await r.json();
+      if(d.success){
+        u.saldo = Number(u.saldo) - valor;
+        saveSession(u); renderHeader();
+        const ret = (valor * oddTotal).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+        _showBsMsg(`🎰 Acumuladora registrada! ${_selecoes.length} seleções × ${oddTotal.toFixed(2)} = ${ret}`, false);
+      } else {
+        _showBsMsg(d.error || 'Erro ao registrar', true);
+      }
     } else {
-      // Deduzir saldo localmente
-      u.saldo = Number(u.saldo) - valor;
-      saveSession(u);
-      renderHeader();
+      // ── Aposta SIMPLES (primeira seleção) ──────────────────────────────
+      const s = _selecoes[0];
+      const payload = {
+        usuario_id: u.id,
+        jogo_id:    s.jid,
+        jogo_nome:  s.jogo,
+        selecao:    s.time,
+        odd:        s.odd,
+        valor,
+        league_key: s.league_key || ''
+      };
+      const r = await fetch(BASE + '/api/bet/apostar', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      d = await r.json();
+      if(d.success){
+        u.saldo = Number(u.saldo) - valor;
+        saveSession(u); renderHeader();
+        const ret = (valor * s.odd).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+        _showBsMsg(`✅ Aposta registrada! Retorno possível: ${ret}`, false);
+      } else {
+        _showBsMsg(d.error || 'Erro ao registrar', true);
+      }
+    }
 
-      const ret = (valor * oddTotal).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-      _showBsMsg('✅ Aposta registrada! Retorno possível: ' + ret, false);
-
-      // Limpar seleções após 2s
+    if(d.success){
       setTimeout(() => {
         _selecoes = [];
+        _betTipo = 'simples';
         document.querySelectorAll('.odd-btn2.sel').forEach(b => b.classList.remove('sel'));
         renderSlip();
         toggleSlip(false);
-      }, 2500);
+      }, 2800);
     }
   } catch(e){
-    _showBsMsg('Falha ao conectar. Tente novamente.', true);
+    _showBsMsg('Falha na conexão. Tente novamente.', true);
   } finally {
     btn.disabled    = false;
     btn.textContent = '💰 Confirmar Aposta';

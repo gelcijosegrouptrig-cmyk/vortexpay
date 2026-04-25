@@ -815,6 +815,10 @@ function toggleLoginSenha() {
         🤝 <span>Afiliados</span>
         <span class="badge" id="badge-afiliados" style="background:#10b981">0</span>
       </div>
+      <div class="nav-item" onclick="showTab('multi')">
+        🎰 <span>Aposta Múltipla</span>
+        <span class="badge" id="badge-multi" style="background:#8b5cf6">0</span>
+      </div>
       <div class="nav-item" onclick="showTab('notificacoes')">
         🔔 <span>Notificações</span>
       </div>
@@ -1593,6 +1597,96 @@ function toggleLoginSenha() {
           </div>
         </div>
       </div>
+
+      <!-- ═══ APOSTA MÚLTIPLA / ACUMULADORA ═══ -->
+      <div id="tab-multi" class="tab-content">
+
+        <!-- KPIs -->
+        <div class="metrics-grid" style="margin-bottom:20px">
+          <div class="metric-card purple">
+            <div class="metric-icon">🎰</div>
+            <div class="metric-label">Total Acumuladoras</div>
+            <div class="metric-value" id="multi-total">—</div>
+            <div class="metric-sub">apostas registradas</div>
+          </div>
+          <div class="metric-card blue">
+            <div class="metric-icon">💰</div>
+            <div class="metric-label">Volume Apostado</div>
+            <div class="metric-value" id="multi-volume">—</div>
+            <div class="metric-sub">total em reais</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-icon">✅</div>
+            <div class="metric-label">WON</div>
+            <div class="metric-value" id="multi-won">—</div>
+            <div class="metric-sub">pagas aos usuários</div>
+          </div>
+          <div class="metric-card red">
+            <div class="metric-icon">❌</div>
+            <div class="metric-label">LOST (GGR)</div>
+            <div class="metric-value" id="multi-lost">—</div>
+            <div class="metric-sub">lucro casa</div>
+          </div>
+          <div class="metric-card yellow">
+            <div class="metric-icon">⏳</div>
+            <div class="metric-label">Pendentes</div>
+            <div class="metric-value" id="multi-pendente">—</div>
+            <div class="metric-sub">aguardando resultado</div>
+          </div>
+          <div class="metric-card teal">
+            <div class="metric-icon">📈</div>
+            <div class="metric-label">Odd Média</div>
+            <div class="metric-value" id="multi-odd-media">—</div>
+            <div class="metric-sub">acumuladoras</div>
+          </div>
+        </div>
+
+        <!-- Ações em lote -->
+        <div class="table-card" style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <h3>🎰 Acumuladoras em Aberto</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button onclick="resolverMultiAuto()" style="padding:8px 16px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);border-radius:8px;color:#4ade80;font-size:12px;font-weight:700;cursor:pointer">
+                🤖 Resolver Automático (ESPN)
+              </button>
+              <button onclick="loadMultiAdmin()" class="refresh-btn" style="font-size:12px">🔄 Atualizar</button>
+            </div>
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin:4px 0 12px">
+            ⚠️ Cada acumuladora tem <b>N seleções</b>. Todas devem vencer para o usuário ganhar. Resolva individualmente ou use o automático.
+          </p>
+          <div style="overflow-x:auto">
+            <table class="admin-table" id="tbl-multi">
+              <thead>
+                <tr>
+                  <th>#ID</th>
+                  <th>Usuário</th>
+                  <th>Valor</th>
+                  <th>Odd Total</th>
+                  <th>Retorno</th>
+                  <th>Seleções</th>
+                  <th>Data</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="multi-tbody">
+                <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px"><div class="spinner2" style="margin:0 auto 8px"></div>Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Detalhes de uma acumuladora (expande ao clicar) -->
+        <div class="table-card" id="multi-detalhe-card" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <h3>🔍 Detalhes da Acumuladora <span id="multi-detalhe-id" style="color:#8b5cf6"></span></h3>
+            <button onclick="document.getElementById('multi-detalhe-card').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+          </div>
+          <div id="multi-detalhe-body" style="margin-top:12px"></div>
+        </div>
+
+      </div><!-- /tab-multi -->
 
       <!-- ═══ NOTIFICAÇÕES TELEGRAM ═══ -->
       <div id="tab-notificacoes" class="tab-content">
@@ -6661,6 +6755,7 @@ function showTab(tab) {
     'jogo-responsavel': '🛡️ Jogo Responsável',
     pnl: '📊 Relatório P&L',
     afiliados: '🤝 Afiliados',
+    multi: '🎰 Aposta Múltipla / Acumuladora',
     notificacoes: '🔔 Notificações Telegram',
   };
   document.getElementById('page-title').textContent = titles[tab] || tab;
@@ -6684,6 +6779,7 @@ function showTab(tab) {
   if (tab === 'jogo-responsavel') loadJogoResp();
   if (tab === 'pnl') { loadPnL(); }
   if (tab === 'afiliados') loadAfiliados();
+  if (tab === 'multi') loadMultiAdmin();
   if (tab === 'notificacoes') loadNotifConfig();
   if (tab === 'dashboard') { loadAll(); loadCharts(); }
 }
@@ -7310,6 +7406,183 @@ async function loadAfiliados() {
           </tr>`).join('');
     }
   } catch(e) { showToastAdmin('Erro: '+e.message, 'red'); }
+}
+
+// ═══════════════════════════════════════════════
+// APOSTA MÚLTIPLA / ACUMULADORA — ADMIN
+// ═══════════════════════════════════════════════
+
+async function loadMultiAdmin() {
+  const tbody = document.getElementById('multi-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px"><div class="spinner2" style="margin:0 auto 8px"></div>Carregando...</td></tr>';
+
+  try {
+    const r = await fetch('/api/admin/bet/multi', {
+      headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() }
+    });
+    const d = await r.json();
+    if (!d.ok) { showToastAdmin('Erro ao carregar múltiplas: ' + (d.error||''), 'red'); return; }
+
+    // KPIs
+    const el = id => document.getElementById(id);
+    const stats = d.stats || {};
+    const pendente = stats.pendente || {};
+    const won = stats.WON || {};
+    const lost = stats.LOST || {};
+    const total = (pendente.qtd||0) + (won.qtd||0) + (lost.qtd||0);
+    const volTotal = parseFloat(pendente.vol||0) + parseFloat(won.vol||0) + parseFloat(lost.vol||0);
+
+    if (el('multi-total'))    el('multi-total').textContent    = total;
+    if (el('multi-volume'))   el('multi-volume').textContent   = _fmtBRL(volTotal);
+    if (el('multi-won'))      el('multi-won').textContent      = _fmtBRL(won.pago||0);
+    if (el('multi-lost'))     el('multi-lost').textContent     = _fmtBRL(lost.vol||0);
+    if (el('multi-pendente')) el('multi-pendente').textContent = pendente.qtd || 0;
+    if (el('multi-odd-media'))el('multi-odd-media').textContent= parseFloat(d.odd_media||0).toFixed(2) + 'x';
+
+    // Badge no sidebar
+    const badge = document.getElementById('badge-multi');
+    if (badge) badge.textContent = pendente.qtd || 0;
+
+    // Tabela
+    if (!tbody) return;
+    const lista = d.apostas || [];
+    if (!lista.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">Nenhuma aposta múltipla registrada</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = lista.map(a => {
+      const sColor = a.status === 'WON' ? '#4ade80' : a.status === 'LOST' ? '#f87171' : '#f59e0b';
+      const sIcon  = a.status === 'WON' ? '✅' : a.status === 'LOST' ? '❌' : '⏳';
+      const sels   = Array.isArray(a.selecoes) ? a.selecoes : (typeof a.selecoes === 'string' ? JSON.parse(a.selecoes) : []);
+      const nSels  = sels.length;
+      const acoesHtml = a.status === 'pendente'
+        ? `<div style="display:flex;gap:6px;justify-content:center">
+            <button onclick="resolverMulti(${a.id},'WON')"
+              style="padding:4px 10px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);border-radius:6px;color:#4ade80;font-size:11px;font-weight:700;cursor:pointer">WON</button>
+            <button onclick="resolverMulti(${a.id},'LOST')"
+              style="padding:4px 10px;background:rgba(248,113,113,0.2);border:1px solid rgba(248,113,113,0.4);border-radius:6px;color:#f87171;font-size:11px;font-weight:700;cursor:pointer">LOST</button>
+            <button onclick="verDetalheMulti(${a.id},${JSON.stringify(a).replace(/"/g,'&quot;')})"
+              style="padding:4px 10px;background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.4);border-radius:6px;color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer">🔍</button>
+          </div>`
+        : `<span style="color:${sColor};font-size:12px;font-weight:700">${sIcon} ${a.status}</span>`;
+
+      return `<tr>
+        <td style="font-weight:700;color:#8b5cf6">#${a.id}</td>
+        <td style="font-weight:600">${a.nome||'—'}<br><span style="font-size:10px;color:var(--muted)">${a.cpf||''}</span></td>
+        <td style="color:#60a5fa;font-weight:700">${_fmtBRL(a.valor)}</td>
+        <td style="color:#f59e0b;font-weight:800">${parseFloat(a.odd_total||0).toFixed(2)}x</td>
+        <td style="color:#4ade80">${_fmtBRL(a.retorno_potencial)}</td>
+        <td style="text-align:center">
+          <span style="background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.4);border-radius:12px;padding:2px 10px;font-size:12px;font-weight:700;color:#a78bfa">
+            ${nSels} jogos
+          </span>
+        </td>
+        <td style="font-size:11px;color:var(--muted)">${_fmtDate(a.criado_em)}</td>
+        <td><span style="color:${sColor};font-weight:700">${sIcon} ${a.status}</span></td>
+        <td>${acoesHtml}</td>
+      </tr>`;
+    }).join('');
+
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+async function resolverMulti(multiId, resultado) {
+  const confirmMsg = resultado === 'WON'
+    ? `✅ Confirmar GANHOU para acumuladora #${multiId}? O prêmio será creditado ao usuário.`
+    : `❌ Confirmar PERDEU para acumuladora #${multiId}? A aposta será encerrada sem pagamento.`;
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const r = await fetch('/api/admin/bet/multi/resolver', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ multi_id: multiId, resultado })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToastAdmin(`${resultado === 'WON' ? '🏆 WON' : '❌ LOST'} — Acumuladora #${multiId} resolvida!`, resultado === 'WON' ? 'green' : 'red');
+      loadMultiAdmin();
+    } else {
+      showToastAdmin('Erro: ' + (d.error || 'falha'), 'red');
+    }
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+async function resolverMultiAuto() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Processando ESPN...';
+  try {
+    const r = await fetch('/api/admin/bet/multi/resolver-auto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToastAdmin(`🤖 Auto-resolver: ${d.resolvidas || 0} acumuladora(s) resolvida(s)!`, 'green');
+      loadMultiAdmin();
+    } else {
+      showToastAdmin('Erro: ' + (d.error || 'falha'), 'red');
+    }
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+  finally {
+    btn.disabled = false;
+    btn.textContent = '🤖 Resolver Automático (ESPN)';
+  }
+}
+
+function verDetalheMulti(multiId, aposta) {
+  const card = document.getElementById('multi-detalhe-card');
+  const body = document.getElementById('multi-detalhe-body');
+  const titleId = document.getElementById('multi-detalhe-id');
+  if (!card || !body) return;
+
+  const sels = Array.isArray(aposta.selecoes) ? aposta.selecoes
+    : (typeof aposta.selecoes === 'string' ? JSON.parse(aposta.selecoes) : []);
+
+  titleId.textContent = '#' + multiId;
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px">
+      <div style="padding:10px;background:var(--card);border-radius:8px;text-align:center">
+        <div style="font-size:11px;color:var(--muted)">Usuário</div>
+        <div style="font-weight:700;font-size:14px">${aposta.nome||'—'}</div>
+      </div>
+      <div style="padding:10px;background:var(--card);border-radius:8px;text-align:center">
+        <div style="font-size:11px;color:var(--muted)">Valor Apostado</div>
+        <div style="font-weight:700;font-size:14px;color:#60a5fa">${_fmtBRL(aposta.valor)}</div>
+      </div>
+      <div style="padding:10px;background:var(--card);border-radius:8px;text-align:center">
+        <div style="font-size:11px;color:var(--muted)">Odd Total</div>
+        <div style="font-weight:800;font-size:16px;color:#f59e0b">${parseFloat(aposta.odd_total||0).toFixed(2)}x</div>
+      </div>
+      <div style="padding:10px;background:var(--card);border-radius:8px;text-align:center">
+        <div style="font-size:11px;color:var(--muted)">Retorno Possível</div>
+        <div style="font-weight:700;font-size:14px;color:#4ade80">${_fmtBRL(aposta.retorno_potencial)}</div>
+      </div>
+    </div>
+    <h4 style="margin-bottom:10px;color:var(--text)">📋 Seleções (${sels.length} jogos)</h4>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${sels.map((s, i) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--card);border-radius:8px;border-left:3px solid #8b5cf6">
+          <div>
+            <span style="font-size:11px;color:#8b5cf6;font-weight:700">Seleção ${i+1}</span><br>
+            <span style="font-weight:600;font-size:13px">${s.jogo||'—'}</span><br>
+            <span style="font-size:12px;color:var(--muted)">
+              ${s.tipo === 'C' ? '🏠 Casa' : s.tipo === 'X' ? '🤝 Empate' : '✈️ Fora'} — ${s.time||''}
+            </span>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:18px;font-weight:800;color:#f59e0b">${parseFloat(s.odd||0).toFixed(2)}</div>
+            <div style="font-size:10px;color:var(--muted)">${s.league_key||''}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // ═══════════════════════════════════════════════

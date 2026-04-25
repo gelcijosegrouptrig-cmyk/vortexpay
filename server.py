@@ -11241,6 +11241,316 @@ async def route_admin_notif_config(request):
     except Exception as e:
         return web.json_response({'ok': False, 'error': str(e)}, status=500)
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎰  APOSTA MÚLTIPLA / ACUMULADORA
+#     POST /api/bet/multi         — registra acumuladora
+#     GET  /api/bet/multi/minhas  — histórico do usuário
+#     GET  /api/admin/bet/multi   — dashboard admin
+#     POST /api/admin/bet/multi/resolver — resolve manualmente
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _ensure_bet_multi_table(cur, conn):
+    """Garante que a tabela de apostas múltiplas existe."""
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS bet_multi (
+            id            SERIAL PRIMARY KEY,
+            usuario_id    INTEGER NOT NULL,
+            valor         REAL    NOT NULL,
+            odd_total     REAL    NOT NULL,
+            retorno_potencial REAL NOT NULL,
+            status        VARCHAR(20)  DEFAULT 'pendente',
+            qtd_selecoes  INTEGER      DEFAULT 0,
+            selecoes      TEXT,        -- JSON das seleções
+            league_keys   TEXT,        -- ligas envolvidas (CSV)
+            criado_em     TIMESTAMP    DEFAULT NOW(),
+            resolvido_em  TIMESTAMP
+        )
+    """)
+    conn.commit()
+
+
+async def route_bet_multi_apostar(request):
+    """POST /api/bet/multi — registra aposta múltipla/acumuladora."""
+    import json as _json
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({'success': False, 'error': 'JSON inválido'}, status=400)
+
+    usuario_id = body.get('usuario_id')
+    valor      = float(body.get('valor', 0))
+    selecoes   = body.get('selecoes', [])   # lista de {jogo_id, jogo, time, tipo, odd, league_key}
+    odd_total  = float(body.get('odd_total', 0))
+
+    # ── Validações básicas ──────────────────────────────────────────────────
+    if not usuario_id:
+        return web.json_response({'success': False, 'error': 'Faça login primeiro'})
+    if valor < 2:
+        return web.json_response({'success': False, 'error': 'Valor mínimo R$ 2,00'})
+    if len(selecoes) < 2:
+        return web.json_response({'success': False, 'error': 'Aposta múltipla exige ao menos 2 seleções'})
+    if len(selecoes) > 10:
+        return web.json_response({'success': False, 'error': 'Máximo 10 seleções por acumuladora'})
+    if odd_total < 1.01:
+        return web.json_response({'success': False, 'error': 'Odd total inválida'})
+
+    # ── Verificar jogos duplicados ──────────────────────────────────────────
+    jids = [str(s.get('jogo_id','')) for s in selecoes]
+    if len(jids) != len(set(jids)):
+        return web.json_response({'success': False,
+                                  'error': 'Não é permitido selecionar 2 outcomes do mesmo jogo'})
+
+    retorno = round(valor * odd_total, 2)
+    league_keys = ','.join(set(str(s.get('league_key','')) for s in selecoes if s.get('league_key')))
+
+    conn = await _bet_db()
+    if not conn:
+        return web.json_response({'success': False, 'error': 'DB indisponível'})
+    try:
+        cur = conn.cursor()
+        # Verificar saldo
+        cur.execute("SELECT saldo FROM usuarios WHERE id=%s FOR UPDATE", (usuario_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return web.json_response({'success': False, 'error': 'Usuário não encontrado'})
+        saldo_atual = float(row[0] or 0)
+        if saldo_atual < valor:
+            cur.close(); conn.close()
+            return web.json_response({
+                'success': False,
+                'error': f'Saldo insuficiente. Saldo: R$ {saldo_atual:.2f}'
+            })
+        # Verificar limite de aposta por liga (usa maior liga da seleção)
+        try:
+            _ensure_limites_table(cur, conn)
+            for s in selecoes:
+                lk = s.get('league_key', '')
+                if lk:
+                    cur.execute("SELECT limite_aposta FROM bet_limites WHERE liga_key=%s", (lk,))
+                    lim_row = cur.fetchone()
+                    lim = float(lim_row[0]) if lim_row else 500.0
+                    if valor > lim:
+                        cur.close(); conn.close()
+                        return web.json_response({
+                            'success': False,
+                            'error': f'Valor excede limite máximo de R$ {lim:.0f} para esta liga'
+                        })
+        except Exception:
+            pass
+        # Debitar saldo
+        cur.execute("UPDATE usuarios SET saldo = saldo - %s WHERE id=%s", (valor, usuario_id))
+        # Registrar aposta múltipla
+        _ensure_bet_multi_table(cur, conn)
+        cur.execute("""
+            INSERT INTO bet_multi
+                (usuario_id, valor, odd_total, retorno_potencial, qtd_selecoes, selecoes, league_keys)
+            VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING id
+        """, (usuario_id, valor, odd_total, retorno, len(selecoes),
+              _json.dumps(selecoes, ensure_ascii=False), league_keys))
+        multi_id = cur.fetchone()[0]
+        conn.commit()
+        cur.execute("SELECT saldo FROM usuarios WHERE id=%s", (usuario_id,))
+        novo_saldo = float(cur.fetchone()[0] or 0)
+        cur.close(); conn.close()
+        print(f'[bet_multi] #{multi_id} user={usuario_id} val={valor} odd={odd_total} ret={retorno} sels={len(selecoes)}', flush=True)
+        return web.json_response({
+            'success': True,
+            'multi_id': multi_id,
+            'saldo': novo_saldo,
+            'retorno_potencial': retorno,
+            'odd_total': odd_total,
+            'qtd_selecoes': len(selecoes),
+            'msg': f'✅ Acumuladora registrada! {len(selecoes)} seleções × odd {odd_total:.2f} = retorno R$ {retorno:.2f}'
+        })
+    except Exception as e:
+        try: conn.close()
+        except Exception: pass
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_bet_multi_minhas(request):
+    """GET /api/bet/multi/minhas?usuario_id=X — histórico de acumuladoras do usuário."""
+    import json as _json
+    usuario_id = request.rel_url.query.get('usuario_id', '')
+    if not usuario_id:
+        return web.json_response({'success': False, 'error': 'usuario_id obrigatório'})
+    conn = await _bet_db()
+    if not conn:
+        return web.json_response({'success': False, 'error': 'DB indisponível'})
+    try:
+        cur = conn.cursor()
+        _ensure_bet_multi_table(cur, conn)
+        cur.execute("""
+            SELECT id, valor, odd_total, retorno_potencial, status, qtd_selecoes,
+                   selecoes, criado_em, resolvido_em
+            FROM bet_multi WHERE usuario_id=%s ORDER BY criado_em DESC LIMIT 30
+        """, (int(usuario_id),))
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        apostas = []
+        for r in rows:
+            sels = []
+            try: sels = _json.loads(r[6] or '[]')
+            except Exception: pass
+            apostas.append({
+                'id': r[0], 'valor': float(r[1]), 'odd_total': float(r[2]),
+                'retorno_potencial': float(r[3]), 'status': r[4],
+                'qtd_selecoes': r[5], 'selecoes': sels,
+                'criado_em': str(r[7])[:16] if r[7] else '',
+                'resolvido_em': str(r[8])[:16] if r[8] else ''
+            })
+        return web.json_response({'success': True, 'apostas': apostas, 'total': len(apostas)})
+    except Exception as e:
+        try: conn.close()
+        except Exception: pass
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_admin_bet_multi_dashboard(request):
+    """GET /api/admin/bet/multi — KPIs e lista de acumuladoras para o admin."""
+    import json as _json
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_bet_multi_table(cur, conn)
+        # KPIs
+        cur.execute("""
+            SELECT status,
+                   COUNT(*) AS qtd,
+                   COALESCE(SUM(valor),0) AS apostado,
+                   COALESCE(SUM(retorno_potencial),0) AS potencial
+            FROM bet_multi GROUP BY status
+        """)
+        kpis = {}
+        for r in cur.fetchall():
+            kpis[r[0]] = {'qtd': r[1], 'apostado': float(r[2]), 'potencial': float(r[3])}
+
+        # GGR múltiplas (apostas LOST)
+        cur.execute("SELECT COALESCE(SUM(valor),0) FROM bet_multi WHERE status='LOST'")
+        ggr_multi = float(cur.fetchone()[0])
+        cur.execute("SELECT COALESCE(SUM(retorno_potencial),0) FROM bet_multi WHERE status='WON'")
+        pago_multi = float(cur.fetchone()[0])
+
+        # Últimas 30 apostas múltiplas
+        cur.execute("""
+            SELECT m.id, u.nome, u.cpf, m.valor, m.odd_total,
+                   m.retorno_potencial, m.status, m.qtd_selecoes,
+                   m.selecoes, m.criado_em, m.league_keys
+            FROM bet_multi m LEFT JOIN usuarios u ON u.id=m.usuario_id
+            ORDER BY m.criado_em DESC LIMIT 30
+        """)
+        apostas = []
+        for r in cur.fetchall():
+            sels = []
+            try: sels = _json.loads(r[8] or '[]')
+            except Exception: pass
+            apostas.append({
+                'id': r[0], 'usuario': r[1] or '?', 'cpf': r[2] or '',
+                'valor': float(r[3]), 'odd_total': float(r[4]),
+                'retorno_potencial': float(r[5]), 'status': r[6],
+                'qtd_selecoes': r[7], 'selecoes': sels,
+                'criado_em': str(r[9])[:16] if r[9] else '',
+                'ligas': r[10] or ''
+            })
+        cur.close(); conn.close()
+        return web.json_response({
+            'ok': True, 'kpis': kpis,
+            'ggr_multi': ggr_multi, 'pago_multi': pago_multi,
+            'apostas': apostas
+        })
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_bet_multi_resolver(request):
+    """POST /api/admin/bet/multi/resolver — resolve aposta múltipla manualmente."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body    = await request.json()
+        multi_id = int(body.get('id', 0))
+        novo_status = body.get('status', '').upper()  # WON | LOST | CANCELADA
+        if novo_status not in ('WON', 'LOST', 'CANCELADA'):
+            return web.json_response({'ok': False, 'error': 'status inválido'}, status=400)
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_bet_multi_table(cur, conn)
+        # Buscar aposta
+        cur.execute("SELECT usuario_id, valor, retorno_potencial, status FROM bet_multi WHERE id=%s", (multi_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': 'Aposta não encontrada'})
+        uid, valor, retorno, status_atual = row
+        if status_atual != 'pendente':
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': f'Aposta já resolvida: {status_atual}'})
+        # Atualizar status
+        cur.execute("UPDATE bet_multi SET status=%s, resolvido_em=NOW() WHERE id=%s",
+                    (novo_status, multi_id))
+        # Creditar se WON ou devolver se CANCELADA
+        if novo_status == 'WON':
+            cur.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (retorno, uid))
+        elif novo_status == 'CANCELADA':
+            cur.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (valor, uid))
+        conn.commit(); cur.close(); conn.close()
+        credito = f' | Creditado R$ {retorno:.2f}' if novo_status == 'WON' else (f' | Devolvido R$ {valor:.2f}' if novo_status == 'CANCELADA' else '')
+        return web.json_response({'ok': True,
+                                  'msg': f'Aposta #{multi_id} → {novo_status}{credito}'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_bet_multi_resolver_auto(request):
+    """POST /api/admin/bet/multi/resolver-auto — tenta resolver múltiplas via ESPN."""
+    import json as _json
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_bet_multi_table(cur, conn)
+        cur.execute("""
+            SELECT id, usuario_id, valor, retorno_potencial, selecoes
+            FROM bet_multi WHERE status='pendente' ORDER BY criado_em ASC LIMIT 20
+        """)
+        pendentes = cur.fetchall()
+        resolvidas = 0; erros = 0
+        for row in pendentes:
+            mid, uid, valor, retorno, sels_json = row
+            try:
+                sels = _json.loads(sels_json or '[]')
+                # Verificar cada seleção via ESPN
+                resultados = []
+                for s in sels:
+                    res = await _verificar_resultado_espn(
+                        s.get('jogo_id',''), s.get('tipo',''),
+                        s.get('league_key',''), s.get('jogo',''))
+                    resultados.append(res)
+                # Se algum LOST → acumuladora LOST
+                if 'LOST' in resultados:
+                    novo_status = 'LOST'
+                elif all(r == 'WON' for r in resultados):
+                    novo_status = 'WON'
+                else:
+                    continue  # ainda pendente (jogos não terminaram)
+                cur.execute("UPDATE bet_multi SET status=%s, resolvido_em=NOW() WHERE id=%s",
+                            (novo_status, mid))
+                if novo_status == 'WON':
+                    cur.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (retorno, uid))
+                conn.commit()
+                resolvidas += 1
+            except Exception:
+                erros += 1
+        cur.close(); conn.close()
+        return web.json_response({
+            'ok': True,
+            'msg': f'{resolvidas} acumuladoras resolvidas, {erros} erros, {len(pendentes)-resolvidas-erros} ainda pendentes'
+        })
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
 async def route_bet_jogos(request):
     """GET /api/bet/jogos — retorna jogos com odds reais (odds-api) ou ESPN como fallback.
     Suporta ?sport=<key> para filtrar por campeonato específico.
@@ -15165,6 +15475,12 @@ async def main():
     # Notificações Telegram admin
     app.router.add_post('/api/admin/notif-config',      route_admin_notif_config)
     app.router.add_get('/api/admin/notif-config',       route_admin_notif_config_get)
+    # ── Aposta Múltipla / Acumuladora ──────────────────────────────────────
+    app.router.add_post('/api/bet/multi',                    route_bet_multi_apostar)
+    app.router.add_get('/api/bet/multi/minhas',              route_bet_multi_minhas)
+    app.router.add_get('/api/admin/bet/multi',               route_admin_bet_multi_dashboard)
+    app.router.add_post('/api/admin/bet/multi/resolver',     route_admin_bet_multi_resolver)
+    app.router.add_post('/api/admin/bet/multi/resolver-auto',route_admin_bet_multi_resolver_auto)
 
     runner = web.AppRunner(app)
     await runner.setup()
