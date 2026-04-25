@@ -815,19 +815,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
     <div class="view" id="view-apostas">
       <div class="sport-chips" id="sport-chips">
         <div class="sport-chip active" data-sport="upcoming" onclick="chipSport(this)">🔥 Em Destaque</div>
-        <div class="sport-chip" data-sport="soccer_brazil_campeonato" onclick="chipSport(this)">🇧🇷 Brasileirão A</div>
-        <div class="sport-chip" data-sport="soccer_brazil_serie_b" onclick="chipSport(this)">🇧🇷 Série B</div>
-        <div class="sport-chip" data-sport="soccer_conmebol_copa_libertadores" onclick="chipSport(this)">🏆 Libertadores</div>
-        <div class="sport-chip" data-sport="soccer_conmebol_sudamericana" onclick="chipSport(this)">🌎 Sul-Americana</div>
-        <div class="sport-chip" data-sport="soccer_uefa_champs_league" onclick="chipSport(this)">⭐ Champions</div>
-        <div class="sport-chip" data-sport="soccer_epl" onclick="chipSport(this)">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</div>
-        <div class="sport-chip" data-sport="soccer_spain_la_liga" onclick="chipSport(this)">🇪🇸 La Liga</div>
-        <div class="sport-chip" data-sport="soccer_italy_serie_a" onclick="chipSport(this)">🇮🇹 Serie A</div>
-        <div class="sport-chip" data-sport="soccer_germany_bundesliga" onclick="chipSport(this)">🇩🇪 Bundesliga</div>
-        <div class="sport-chip" data-sport="soccer_france_ligue_one" onclick="chipSport(this)">🇫🇷 Ligue 1</div>
-        <div class="sport-chip" data-sport="basketball_nba" onclick="chipSport(this)">🏀 NBA</div>
-        <div class="sport-chip" data-sport="americanfootball_nfl" onclick="chipSport(this)">🏈 NFL</div>
-        <div class="sport-chip" data-sport="mma_mixed_martial_arts" onclick="chipSport(this)">🥊 MMA</div>
+        <!-- chips carregados dinamicamente por carregarChipsLigas() -->
       </div>
       <!-- Título dinâmico da seção -->
       <div class="sec-head" style="margin-bottom:12px">
@@ -1573,6 +1561,48 @@ async function carregarJogos(sport) {
     }
   } catch(e) {
     lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1">⚠️ Erro ao carregar. <button onclick="carregarJogos(\'' + sport + '\')" style="background:var(--blue);border:none;color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;margin-left:8px">Tentar novamente</button></div>';
+  }
+}
+
+/* ── Mapa de labels dos chips (key → emoji + nome) ── */
+const _LIGA_LABELS = {
+  'soccer_brazil_campeonato':           '🇧🇷 Brasileirão A',
+  'soccer_brazil_serie_b':              '🇧🇷 Série B',
+  'soccer_conmebol_copa_libertadores':  '🏆 Libertadores',
+  'soccer_conmebol_sudamericana':       '🌎 Sul-Americana',
+  'soccer_copa_brasil':                 '🇧🇷 Copa do Brasil',
+  'soccer_uefa_champs_league':          '⭐ Champions',
+  'soccer_epl':                         '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League',
+  'soccer_spain_la_liga':               '🇪🇸 La Liga',
+  'soccer_italy_serie_a':               '🇮🇹 Serie A',
+  'soccer_germany_bundesliga':          '🇩🇪 Bundesliga',
+  'soccer_france_ligue_one':            '🇫🇷 Ligue 1',
+  'basketball_nba':                     '🏀 NBA',
+  'americanfootball_nfl':               '🏈 NFL',
+  'mma_mixed_martial_arts':             '🥊 MMA',
+};
+
+/* ── Carrega chips dinamicamente respeitando ligas suspensas ── */
+async function carregarChipsLigas() {
+  try {
+    const resp = await fetch(`${BASE}/api/ligas/ativas`);
+    const data = await resp.json();
+    if (!data.ok || !data.ligas) return;
+    const container = document.getElementById('sport-chips');
+    if (!container) return;
+    // Manter apenas o chip "Em Destaque"
+    container.innerHTML = '<div class="sport-chip active" data-sport="upcoming" onclick="chipSport(this)">🔥 Em Destaque</div>';
+    data.ligas.forEach(liga => {
+      const label = _LIGA_LABELS[liga.key] || liga.nome;
+      const div = document.createElement('div');
+      div.className = 'sport-chip';
+      div.dataset.sport = liga.key;
+      div.onclick = function(){ chipSport(this); };
+      div.textContent = label;
+      container.appendChild(div);
+    });
+  } catch(e) {
+    console.warn('[chips] Erro ao carregar ligas ativas:', e);
   }
 }
 
@@ -2544,6 +2574,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   renderHeader();
   navTo('home');
   loadJogosHome();
+  carregarChipsLigas();   // carrega chips respeitando ligas suspensas
   loadSorteioInfo();
   carregarBolaoHome();
   // Atualizar ao vivo a cada 30s em background

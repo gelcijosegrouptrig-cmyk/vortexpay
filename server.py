@@ -3856,12 +3856,29 @@ async def route_admin_ligas_suspender(request):
         cfg = _admin_get_liga_config(liga_key)
         cfg['suspensa'] = suspensa
         _admin_save_liga_config(liga_key, cfg)
+        # Invalidar cache de odds para que a home reflita imediatamente
+        _odds_cache['ts'] = 0
+        _odds_cache['data'] = []
         status = 'SUSPENSA' if suspensa else 'ATIVA'
-        print(f'[admin/ligas] {liga_key} → {status}', flush=True)
+        print(f'[admin/ligas] {liga_key} → {status} (cache invalidado)', flush=True)
         return web.json_response({'ok': True, 'liga_key': liga_key, 'suspensa': suspensa,
                                   'msg': f'Liga {_ADMIN_LIGAS_MAP[liga_key]["nome"]} → {status}'})
     except Exception as e:
         return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+async def route_ligas_ativas(request):
+    """GET /api/ligas/ativas — lista ligas NÃO suspensas para o frontend montar chips."""
+    ligas = []
+    for key, info in _ADMIN_LIGAS_MAP.items():
+        cfg = _admin_get_liga_config(key)
+        if not cfg.get('suspensa', False):
+            ligas.append({
+                'key':       key,
+                'nome':      info['nome'],
+                'categoria': info['categoria'],
+            })
+    return web.json_response({'ok': True, 'ligas': ligas})
+
 
 async def route_admin_ligas_config(request):
     """POST /api/admin/ligas/config — configura api_pagamento, odds, nota de uma liga."""
@@ -12230,10 +12247,26 @@ async def route_bet_jogos(request):
     agora = _time.time()
     sport_filter = request.rel_url.query.get('sport', '').strip()
 
-    # Cache válido
+    # ── Ligas suspensas (verificar SEMPRE, antes e depois do cache) ───────────
+    ligas_suspensas = set()
+    for _lk in _ADMIN_LIGAS_MAP:
+        _cfg_lk = _admin_get_liga_config(_lk)
+        if _cfg_lk.get('suspensa', False):
+            ligas_suspensas.add(_lk)
+
+    # Se o sport_filter pedido está suspenso, retornar vazio imediatamente
+    if sport_filter and sport_filter not in ('upcoming', 'destaque', 'all'):
+        if sport_filter in ligas_suspensas:
+            return web.json_response({
+                'success': True, 'jogos': [], 'total': 0,
+                'suspensa': True,
+                'msg': 'Esta liga está temporariamente suspensa.'
+            })
+
+    # Cache válido — filtrar suspensas também no hit de cache
     cache_valido = agora - _odds_cache['ts'] < _ODDS_CACHE_TTL and _odds_cache['data']
     if cache_valido:
-        jogos = _odds_cache['data']
+        jogos = [j for j in _odds_cache['data'] if j.get('sport', '') not in ligas_suspensas]
         if sport_filter and sport_filter not in ('upcoming', 'destaque', 'all'):
             jogos = [j for j in jogos if j.get('sport') == sport_filter]
         return web.json_response({'success': True, 'jogos': jogos, 'from_cache': True, 'total': len(jogos)})
@@ -12288,6 +12321,9 @@ async def route_bet_jogos(request):
                 except Exception as e_odds:
                     print(f'[bet/jogos/odds] sport={sport}: {e_odds}', flush=True)
 
+    # Filtrar jogos já coletados via odds-api que sejam de ligas suspensas
+    all_jogos = [j for j in all_jogos if j.get('sport', '') not in ligas_suspensas]
+
     # ── 2. Fallback ESPN (gratuito — sempre completa os jogos) ──────────────────
     existing_pairs = set((j['home_team'] + '|' + j['away_team']) for j in all_jogos)
     sports_to_fetch = []
@@ -12298,6 +12334,9 @@ async def route_bet_jogos(request):
     else:
         seen_slugs = set()
         for k, v in _ESPN_FIXTURES.items():
+            # Pular ligas suspensas no fallback ESPN também
+            if k in ligas_suspensas:
+                continue
             if v[0] not in seen_slugs:
                 sports_to_fetch.append((k, v))
                 seen_slugs.add(v[0])
@@ -16106,6 +16145,7 @@ async def main():
     app.router.add_post('/api/admin/patch-paypix-html', route_patch_paypix_html)
     app.router.add_post('/api/admin/patch-admin-html',  route_patch_admin_html)
     # Campeonatos / Ligas
+    app.router.add_get('/api/ligas/ativas',             route_ligas_ativas)        # público — chips da home
     app.router.add_get('/api/admin/ligas',              route_admin_ligas_list)
     app.router.add_post('/api/admin/ligas/suspender',   route_admin_ligas_suspender)
     app.router.add_post('/api/admin/ligas/config',      route_admin_ligas_config)
