@@ -11551,6 +11551,677 @@ async def route_admin_bet_multi_resolver_auto(request):
         return web.json_response({'ok': False, 'error': str(e)}, status=500)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎯 BOLÃO PLACAR EXATO — Sistema completo
+#   Tabelas: bolao_jogos, bolao_bilhetes
+#   Rotas públicas:
+#     GET  /api/bolao/jogos          — jogos publicados (home)
+#     GET  /api/bolao/bilhetes       — bilhetes do usuário
+#     POST /api/bolao/comprar        — comprar bilhete
+#   Rotas admin:
+#     GET  /api/admin/bolao/jogos    — todos jogos (API+manuais)
+#     POST /api/admin/bolao/jogo     — criar/editar jogo
+#     POST /api/admin/bolao/publicar — publicar/despublicar
+#     GET  /api/admin/bolao/bilhetes — bilhetes de um jogo
+#     POST /api/admin/bolao/fechar   — fechar rodada + distribuir prêmios
+#     POST /api/admin/bolao/resolver — resolver manual (forçar placar)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _ensure_bolao_tables(cur, conn):
+    """Cria tabelas do bolão se não existirem."""
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS bolao_jogos (
+            id              SERIAL PRIMARY KEY,
+            time_casa       TEXT NOT NULL,
+            time_fora       TEXT NOT NULL,
+            campeonato      TEXT NOT NULL DEFAULT '',
+            liga_key        TEXT NOT NULL DEFAULT '',
+            data_jogo       TIMESTAMP,
+            valor_bilhete   NUMERIC(10,2) NOT NULL DEFAULT 10.00,
+            pote_inicial    NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+            pote_acumulado  NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+            margem_pct      NUMERIC(5,2)  NOT NULL DEFAULT 27.50,
+            status          TEXT NOT NULL DEFAULT 'agendado',
+            publicado       BOOLEAN NOT NULL DEFAULT FALSE,
+            placar_casa     INT,
+            placar_fora     INT,
+            resolvido_em    TIMESTAMP,
+            criado_em       TIMESTAMP DEFAULT NOW(),
+            jogo_id_espn    TEXT DEFAULT ''
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS bolao_bilhetes (
+            id              SERIAL PRIMARY KEY,
+            bolao_id        INT NOT NULL REFERENCES bolao_jogos(id),
+            usuario_id      INT NOT NULL,
+            placar_casa     INT NOT NULL,
+            placar_fora     INT NOT NULL,
+            valor           NUMERIC(10,2) NOT NULL,
+            status          TEXT NOT NULL DEFAULT 'pendente',
+            premio          NUMERIC(10,2) DEFAULT 0,
+            tipo_premio     TEXT DEFAULT '',
+            criado_em       TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    conn.commit()
+
+
+async def _buscar_placar_espn_bolao(sess, bolao):
+    """
+    Busca placar final no ESPN para um jogo de bolão.
+    Retorna (placar_casa, placar_fora) ou None se não finalizado.
+    """
+    import aiohttp
+    liga_key   = bolao.get('liga_key', '')
+    time_casa  = bolao.get('time_casa', '')
+    time_fora  = bolao.get('time_fora', '')
+    jogo_espn  = bolao.get('jogo_id_espn', '')
+
+    # Determinar slug ESPN
+    cat = 'soccer'
+    if 'nba' in liga_key: cat = 'basketball'
+    elif 'nfl' in liga_key: cat = 'football'
+    elif 'mma' in liga_key: cat = 'mma'
+
+    cfg = _ESPN_FIXTURES.get(liga_key or '')
+    if not cfg:
+        # fallback: tentar com ligas populares
+        slugs = [('bra.1','soccer'), ('UEFA.CHAMPIONS','soccer'),
+                 ('esp.1','soccer'), ('eng.1','soccer')]
+    else:
+        espn_slug, _, category = cfg
+        slugs = [(espn_slug, category)]
+
+    for slug, category in slugs:
+        try:
+            if category == 'soccer':
+                url = f'https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/scoreboard'
+            else:
+                url = f'https://site.api.espn.com/apis/site/v2/sports/{category}/{slug}/scoreboard'
+
+            async with sess.get(url, timeout=aiohttp.ClientTimeout(total=8)) as r:
+                if r.status != 200: continue
+                data = await r.json(content_type=None)
+
+            for ev in data.get('events', []):
+                comp = ev.get('competitions', [{}])[0]
+                status_type = comp.get('status', {}).get('type', {})
+                if not status_type.get('completed', False): continue
+
+                # Tentar match por ID ESPN
+                ev_id = str(ev.get('id', ''))
+                nome_ev = ev.get('name', ev.get('shortName', '')).lower()
+                match_id   = jogo_espn and str(jogo_espn) == ev_id
+                match_nome = (time_casa.lower() in nome_ev or
+                              time_fora.lower() in nome_ev or
+                              (time_casa[:4].lower() in nome_ev and time_fora[:4].lower() in nome_ev))
+
+                if not (match_id or match_nome): continue
+
+                competitors = comp.get('competitors', [])
+                home = next((c for c in competitors if c.get('homeAway') == 'home'), None)
+                away = next((c for c in competitors if c.get('homeAway') == 'away'), None)
+                if not home or not away: continue
+
+                try:
+                    sc_h = int(home.get('score', 0) or 0)
+                    sc_a = int(away.get('score', 0) or 0)
+                    return (sc_h, sc_a)
+                except Exception:
+                    continue
+        except Exception as e:
+            print(f'[bolao_espn] err {slug}: {e}', flush=True)
+            continue
+    return None
+
+
+async def _distribuir_premio_bolao(bolao_id, placar_casa, placar_fora):
+    """
+    Distribui prêmio do bolão após placar final.
+    Regras:
+      - Casa retira margem_pct% do pote bruto
+      - Grupo A (placar exato) → recebe 100% do pote líquido ÷ qtd
+      - Se Grupo A vazio:
+          50% acumula para o próximo jogo da mesma liga
+          50% divide entre quem acertou vencedor (Grupo B)
+      - Credita saldo automaticamente e registra transação
+      - Notifica via Telegram
+    """
+    import asyncio
+    conn = _admin_db_connect()
+    cur  = conn.cursor()
+    try:
+        _ensure_bolao_tables(cur, conn)
+
+        # Buscar dados do bolão
+        cur.execute("SELECT * FROM bolao_jogos WHERE id=%s", (bolao_id,))
+        cols = [d[0] for d in cur.description]
+        row  = cur.fetchone()
+        if not row: return {'ok': False, 'error': 'Bolão não encontrado'}
+        bolao = dict(zip(cols, row))
+
+        if bolao['status'] == 'encerrado':
+            return {'ok': False, 'error': 'Bolão já encerrado'}
+
+        # Marcar como distribuindo (evita duplo pagamento)
+        cur.execute("UPDATE bolao_jogos SET status='distribuindo' WHERE id=%s", (bolao_id,))
+        conn.commit()
+
+        # Buscar todos os bilhetes pendentes
+        cur.execute("""
+            SELECT bb.id, bb.usuario_id, bb.placar_casa, bb.placar_fora, bb.valor,
+                   u.nome, u.saldo
+            FROM bolao_bilhetes bb
+            JOIN usuarios u ON u.id = bb.usuario_id
+            WHERE bb.bolao_id=%s AND bb.status='pendente'
+        """, (bolao_id,))
+        bilhetes = [dict(zip([d[0] for d in cur.description], r)) for r in cur.fetchall()]
+
+        if not bilhetes:
+            cur.execute("""
+                UPDATE bolao_jogos SET status='encerrado', placar_casa=%s,
+                placar_fora=%s, resolvido_em=NOW() WHERE id=%s
+            """, (placar_casa, placar_fora, bolao_id))
+            conn.commit()
+            return {'ok': True, 'msg': 'Nenhum bilhete — bolão encerrado sem distribuição'}
+
+        # Calcular pote bruto
+        pote_bruto     = sum(float(b['valor']) for b in bilhetes)
+        pote_acumulado = float(bolao.get('pote_acumulado', 0) or 0)
+        pote_inicial   = float(bolao.get('pote_inicial', 0) or 0)
+        pote_total     = pote_bruto + pote_acumulado + pote_inicial
+
+        margem        = float(bolao.get('margem_pct', 27.5)) / 100
+        casa_retira   = round(pote_total * margem, 2)
+        pote_liquido  = round(pote_total - casa_retira, 2)
+
+        # Separar grupos
+        grupo_a = [b for b in bilhetes
+                   if b['placar_casa'] == placar_casa and b['placar_fora'] == placar_fora]
+
+        # Vencedor do jogo (para consolação)
+        if placar_casa > placar_fora:   vencedor = 'casa'
+        elif placar_fora > placar_casa: vencedor = 'fora'
+        else:                           vencedor = 'empate'
+
+        grupo_b = []
+        if not grupo_a:
+            for b in bilhetes:
+                if vencedor == 'casa'   and b['placar_casa'] > b['placar_fora']:   grupo_b.append(b)
+                elif vencedor == 'fora' and b['placar_fora'] > b['placar_casa']:   grupo_b.append(b)
+                elif vencedor == 'empate' and b['placar_casa'] == b['placar_fora']: grupo_b.append(b)
+
+        pagamentos = []  # lista de (usuario_id, valor, tipo)
+
+        if grupo_a:
+            # TODOS os ganhadores do placar exato dividem pote líquido
+            premio_each = round(pote_liquido / len(grupo_a), 2)
+            for b in grupo_a:
+                pagamentos.append((b['id'], b['usuario_id'], b['nome'], premio_each, 'placar_exato'))
+            acumulo_proximo = 0
+        else:
+            # 50% acumula, 50% consolação
+            acumulo_proximo = round(pote_liquido * 0.5, 2)
+            pote_consolacao = round(pote_liquido * 0.5, 2)
+            if grupo_b:
+                premio_consolacao = round(pote_consolacao / len(grupo_b), 2)
+                for b in grupo_b:
+                    pagamentos.append((b['id'], b['usuario_id'], b['nome'], premio_consolacao, 'consolacao_vencedor'))
+            else:
+                # Ninguém acertou nem o vencedor → tudo acumula
+                acumulo_proximo = pote_liquido
+
+        # Creditar saldos
+        for bil_id, uid, nome, premio, tipo in pagamentos:
+            cur.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (premio, uid))
+            cur.execute("""
+                UPDATE bolao_bilhetes SET status=%s, premio=%s, tipo_premio=%s WHERE id=%s
+            """, ('WON' if tipo == 'placar_exato' else 'consolacao', premio, tipo, bil_id))
+            # Registrar transação
+            cur.execute("""
+                INSERT INTO transacoes (usuario_id, tipo, valor, descricao, criado_em)
+                VALUES (%s, 'premio_bolao', %s, %s, NOW())
+            """, (uid, premio,
+                  f"Bolão #{bolao_id}: {bolao['time_casa']} × {bolao['time_fora']} — {tipo.replace('_',' ')}"))
+
+        # Marcar bilhetes perdedores
+        ids_pagos = [p[0] for p in pagamentos]
+        for b in bilhetes:
+            if b['id'] not in ids_pagos:
+                cur.execute("UPDATE bolao_bilhetes SET status='LOST' WHERE id=%s", (b['id'],))
+
+        # Atualizar bolão com acúmulo para próximo
+        cur.execute("""
+            UPDATE bolao_jogos
+            SET status='encerrado', placar_casa=%s, placar_fora=%s,
+                resolvido_em=NOW(), pote_acumulado=%s
+            WHERE id=%s
+        """, (placar_casa, placar_fora, acumulo_proximo, bolao_id))
+        conn.commit()
+
+        # Notificações Telegram por ganhador
+        for bil_id, uid, nome, premio, tipo in pagamentos:
+            emoji = '🏆' if tipo == 'placar_exato' else '🥈'
+            tipo_txt = 'Placar Exato!' if tipo == 'placar_exato' else 'Acertou o Vencedor!'
+            msg = (f"{emoji} Parabéns, {nome}!\n"
+                   f"Você ganhou no Bolão!\n"
+                   f"🎯 {tipo_txt}\n"
+                   f"⚽ {bolao['time_casa']} {placar_casa}×{placar_fora} {bolao['time_fora']}\n"
+                   f"💰 Prêmio creditado: R$ {premio:,.2f}\n"
+                   f"👉 Acesse para sacar ou apostar!")
+            asyncio.create_task(_notif_telegram_admin(msg))
+
+        # Resumo para admin
+        resumo_msg = (f"🎯 Bolão #{bolao_id} encerrado!\n"
+                      f"⚽ {bolao['time_casa']} {placar_casa}×{placar_fora} {bolao['time_fora']}\n"
+                      f"💰 Pote total: R$ {pote_total:,.2f}\n"
+                      f"🏠 Casa ficou: R$ {casa_retira:,.2f} ({bolao['margem_pct']}%)\n"
+                      f"🏆 Placar exato: {len(grupo_a)} ganhadores\n"
+                      f"🥈 Consolação: {len(grupo_b)} ganhadores\n"
+                      f"🎰 Acúmulo próximo jogo: R$ {acumulo_proximo:,.2f}")
+        asyncio.create_task(_notif_telegram_admin(resumo_msg))
+
+        return {
+            'ok':            True,
+            'placar':        f"{placar_casa}×{placar_fora}",
+            'pote_total':    pote_total,
+            'casa_retira':   casa_retira,
+            'pote_liquido':  pote_liquido,
+            'ganhadores_a':  len(grupo_a),
+            'ganhadores_b':  len(grupo_b),
+            'acumulo':       acumulo_proximo,
+            'pagamentos':    len(pagamentos)
+        }
+
+    except Exception as e:
+        try: conn.rollback()
+        except: pass
+        # Reverter status
+        try:
+            cur.execute("UPDATE bolao_jogos SET status='aberto' WHERE id=%s AND status='distribuindo'",
+                        (bolao_id,))
+            conn.commit()
+        except: pass
+        return {'ok': False, 'error': str(e)}
+    finally:
+        try: cur.close(); conn.close()
+        except: pass
+
+
+# ─── ROTAS PÚBLICAS ───────────────────────────────────────────────────────────
+
+async def route_bolao_jogos(request):
+    """GET /api/bolao/jogos — jogos publicados para a home."""
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_bolao_tables(cur, conn)
+        cur.execute("""
+            SELECT j.id, j.time_casa, j.time_fora, j.campeonato, j.liga_key,
+                   j.data_jogo, j.valor_bilhete, j.pote_inicial, j.pote_acumulado,
+                   j.margem_pct, j.status, j.publicado, j.placar_casa, j.placar_fora,
+                   j.criado_em,
+                   COALESCE(SUM(b.valor), 0)  AS pote_arrecadado,
+                   COUNT(b.id)                 AS total_bilhetes
+            FROM bolao_jogos j
+            LEFT JOIN bolao_bilhetes b ON b.bolao_id = j.id
+            WHERE j.publicado = TRUE AND j.status IN ('agendado','aberto')
+            GROUP BY j.id
+            ORDER BY j.data_jogo ASC NULLS LAST
+        """)
+        cols = [d[0] for d in cur.description]
+        jogos = []
+        for row in cur.fetchall():
+            jg = dict(zip(cols, row))
+            pote_total = (float(jg['pote_inicial'] or 0) +
+                          float(jg['pote_acumulado'] or 0) +
+                          float(jg['pote_arrecadado'] or 0))
+            jg['pote_total']       = round(pote_total, 2)
+            jg['total_bilhetes']   = int(jg['total_bilhetes'] or 0)
+            jg['valor_bilhete']    = float(jg['valor_bilhete'] or 10)
+            jg['data_jogo']        = str(jg['data_jogo']) if jg['data_jogo'] else None
+            jogos.append(jg)
+        cur.close(); conn.close()
+        return web.json_response({'ok': True, 'jogos': jogos})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_bolao_comprar(request):
+    """POST /api/bolao/comprar — compra bilhete."""
+    try:
+        data       = await request.json()
+        bolao_id   = int(data.get('bolao_id', 0))
+        usuario_id = int(data.get('usuario_id', 0))
+        pl_casa    = int(data.get('placar_casa', 0))
+        pl_fora    = int(data.get('placar_fora', 0))
+
+        if not bolao_id or not usuario_id:
+            return web.json_response({'ok': False, 'error': 'Dados inválidos'}, status=400)
+        if pl_casa < 0 or pl_fora < 0 or pl_casa > 20 or pl_fora > 20:
+            return web.json_response({'ok': False, 'error': 'Placar inválido'}, status=400)
+
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_bolao_tables(cur, conn)
+
+        # Buscar jogo
+        cur.execute("SELECT * FROM bolao_jogos WHERE id=%s AND publicado=TRUE", (bolao_id,))
+        cols = [d[0] for d in cur.description]
+        row  = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': 'Bolão não encontrado ou não publicado'}, status=404)
+        bolao = dict(zip(cols, row))
+
+        if bolao['status'] not in ('agendado', 'aberto'):
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': 'Este bolão não está mais aberto'}, status=400)
+
+        valor = float(bolao['valor_bilhete'])
+
+        # Verificar saldo do usuário
+        cur.execute("SELECT saldo FROM usuarios WHERE id=%s", (usuario_id,))
+        usr = cur.fetchone()
+        if not usr:
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': 'Usuário não encontrado'}, status=404)
+        saldo = float(usr[0] or 0)
+        if saldo < valor:
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': f'Saldo insuficiente. Necessário R$ {valor:.2f}'}, status=400)
+
+        # Verificar se usuário já apostou ESSE placar nesse bolão
+        cur.execute("""
+            SELECT id FROM bolao_bilhetes
+            WHERE bolao_id=%s AND usuario_id=%s AND placar_casa=%s AND placar_fora=%s AND status='pendente'
+        """, (bolao_id, usuario_id, pl_casa, pl_fora))
+        if cur.fetchone():
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': 'Você já tem um bilhete com esse placar!'}, status=400)
+
+        # Debitar saldo e registrar bilhete
+        cur.execute("UPDATE usuarios SET saldo = saldo - %s WHERE id=%s", (valor, usuario_id))
+        cur.execute("""
+            INSERT INTO bolao_bilhetes (bolao_id, usuario_id, placar_casa, placar_fora, valor)
+            VALUES (%s, %s, %s, %s, %s) RETURNING id
+        """, (bolao_id, usuario_id, pl_casa, pl_fora, valor))
+        bilhete_id = cur.fetchone()[0]
+
+        # Marcar bolão como 'aberto' se era agendado
+        cur.execute("UPDATE bolao_jogos SET status='aberto' WHERE id=%s AND status='agendado'", (bolao_id,))
+
+        # Registrar transação
+        cur.execute("""
+            INSERT INTO transacoes (usuario_id, tipo, valor, descricao, criado_em)
+            VALUES (%s, 'bolao_bilhete', %s, %s, NOW())
+        """, (usuario_id, -valor,
+              f"Bilhete Bolão #{bolao_id}: {bolao['time_casa']} × {bolao['time_fora']} — {pl_casa}×{pl_fora}"))
+        conn.commit()
+        cur.close(); conn.close()
+
+        return web.json_response({
+            'ok':         True,
+            'bilhete_id': bilhete_id,
+            'msg':        f'Bilhete #{bilhete_id} registrado! {bolao["time_casa"]} {pl_casa}×{pl_fora} {bolao["time_fora"]}',
+            'placar':     f'{pl_casa}×{pl_fora}'
+        })
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_bolao_meus_bilhetes(request):
+    """GET /api/bolao/bilhetes?usuario_id=X — bilhetes do usuário."""
+    try:
+        usuario_id = int(request.rel_url.query.get('usuario_id', 0))
+        if not usuario_id:
+            return web.json_response({'ok': False, 'error': 'usuario_id obrigatório'}, status=400)
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_bolao_tables(cur, conn)
+        cur.execute("""
+            SELECT bb.id, bb.bolao_id, bb.placar_casa, bb.placar_fora, bb.valor,
+                   bb.status, bb.premio, bb.tipo_premio, bb.criado_em,
+                   j.time_casa, j.time_fora, j.campeonato, j.data_jogo,
+                   j.placar_casa AS res_casa, j.placar_fora AS res_fora,
+                   j.status AS jogo_status,
+                   COALESCE(SUM(b2.valor),0) AS pote_arrecadado,
+                   COUNT(b2.id)              AS total_bilhetes,
+                   j.pote_inicial, j.pote_acumulado
+            FROM bolao_bilhetes bb
+            JOIN bolao_jogos j ON j.id = bb.bolao_id
+            LEFT JOIN bolao_bilhetes b2 ON b2.bolao_id = j.id
+            WHERE bb.usuario_id=%s
+            GROUP BY bb.id, j.id
+            ORDER BY bb.criado_em DESC LIMIT 50
+        """, (usuario_id,))
+        cols = [d[0] for d in cur.description]
+        bilhetes = []
+        for row in cur.fetchall():
+            b = dict(zip(cols, row))
+            b['pote_total'] = round(
+                float(b['pote_inicial'] or 0) +
+                float(b['pote_acumulado'] or 0) +
+                float(b['pote_arrecadado'] or 0), 2)
+            b['data_jogo']  = str(b['data_jogo'])  if b['data_jogo']  else None
+            b['criado_em']  = str(b['criado_em'])  if b['criado_em']  else None
+            b['valor']      = float(b['valor'] or 0)
+            b['premio']     = float(b['premio'] or 0)
+            bilhetes.append(b)
+        cur.close(); conn.close()
+        return web.json_response({'ok': True, 'bilhetes': bilhetes})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+# ─── ROTAS ADMIN ─────────────────────────────────────────────────────────────
+
+async def route_admin_bolao_jogos(request):
+    """GET /api/admin/bolao/jogos — todos os jogos (publicados e não publicados)."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_bolao_tables(cur, conn)
+        cur.execute("""
+            SELECT j.id, j.time_casa, j.time_fora, j.campeonato, j.liga_key,
+                   j.data_jogo, j.valor_bilhete, j.pote_inicial, j.pote_acumulado,
+                   j.margem_pct, j.status, j.publicado, j.placar_casa, j.placar_fora,
+                   j.criado_em, j.resolvido_em, j.jogo_id_espn,
+                   COALESCE(SUM(b.valor), 0)  AS pote_arrecadado,
+                   COUNT(b.id)                 AS total_bilhetes
+            FROM bolao_jogos j
+            LEFT JOIN bolao_bilhetes b ON b.bolao_id = j.id
+            GROUP BY j.id
+            ORDER BY j.data_jogo DESC NULLS LAST, j.criado_em DESC
+        """)
+        cols = [d[0] for d in cur.description]
+        jogos = []
+        for row in cur.fetchall():
+            jg = dict(zip(cols, row))
+            jg['pote_total']     = round(
+                float(jg['pote_inicial'] or 0) +
+                float(jg['pote_acumulado'] or 0) +
+                float(jg['pote_arrecadado'] or 0), 2)
+            jg['total_bilhetes'] = int(jg['total_bilhetes'] or 0)
+            jg['valor_bilhete']  = float(jg['valor_bilhete'] or 10)
+            jg['data_jogo']      = str(jg['data_jogo'])     if jg['data_jogo']     else None
+            jg['criado_em']      = str(jg['criado_em'])     if jg['criado_em']     else None
+            jg['resolvido_em']   = str(jg['resolvido_em'])  if jg['resolvido_em']  else None
+            jogos.append(jg)
+        cur.close(); conn.close()
+        return web.json_response({'ok': True, 'jogos': jogos})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_bolao_criar(request):
+    """POST /api/admin/bolao/jogo — cria ou edita jogo do bolão."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        d = await request.json()
+        jogo_id      = d.get('id')           # se tiver, edita
+        time_casa    = (d.get('time_casa') or '').strip()
+        time_fora    = (d.get('time_fora') or '').strip()
+        campeonato   = (d.get('campeonato') or '').strip()
+        liga_key     = (d.get('liga_key') or '').strip()
+        data_jogo    = d.get('data_jogo')    # ISO string
+        valor_bilhete= float(d.get('valor_bilhete') or 10)
+        pote_inicial = float(d.get('pote_inicial') or 0)
+        margem_pct   = float(d.get('margem_pct') or 27.5)
+        publicado    = bool(d.get('publicado', False))
+        jogo_espn    = (d.get('jogo_id_espn') or '').strip()
+
+        if not time_casa or not time_fora:
+            return web.json_response({'ok': False, 'error': 'time_casa e time_fora obrigatórios'}, status=400)
+
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_bolao_tables(cur, conn)
+
+        if jogo_id:
+            cur.execute("""
+                UPDATE bolao_jogos
+                SET time_casa=%s, time_fora=%s, campeonato=%s, liga_key=%s,
+                    data_jogo=%s, valor_bilhete=%s, pote_inicial=%s,
+                    margem_pct=%s, publicado=%s, jogo_id_espn=%s
+                WHERE id=%s RETURNING id
+            """, (time_casa, time_fora, campeonato, liga_key, data_jogo,
+                  valor_bilhete, pote_inicial, margem_pct, publicado, jogo_espn, jogo_id))
+            rid = cur.fetchone()
+            msg = f'Jogo #{jogo_id} atualizado!'
+        else:
+            cur.execute("""
+                INSERT INTO bolao_jogos
+                (time_casa, time_fora, campeonato, liga_key, data_jogo,
+                 valor_bilhete, pote_inicial, margem_pct, publicado, jogo_id_espn)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+            """, (time_casa, time_fora, campeonato, liga_key, data_jogo,
+                  valor_bilhete, pote_inicial, margem_pct, publicado, jogo_espn))
+            rid = cur.fetchone()
+            msg = f'Jogo #{rid[0]} criado!'
+
+        conn.commit(); cur.close(); conn.close()
+        return web.json_response({'ok': True, 'msg': msg, 'id': rid[0] if rid else jogo_id})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_bolao_publicar(request):
+    """POST /api/admin/bolao/publicar — toggle publicar/despublicar."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        d = await request.json()
+        jogo_id   = int(d.get('id', 0))
+        publicado = bool(d.get('publicado', True))
+        conn = _admin_db_connect(); cur = conn.cursor()
+        cur.execute("UPDATE bolao_jogos SET publicado=%s WHERE id=%s", (publicado, jogo_id))
+        conn.commit(); cur.close(); conn.close()
+        status = 'publicado' if publicado else 'despublicado'
+        return web.json_response({'ok': True, 'msg': f'Jogo #{jogo_id} {status}!'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_bolao_bilhetes(request):
+    """GET /api/admin/bolao/bilhetes?id=X — bilhetes de um jogo específico."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        bolao_id = int(request.rel_url.query.get('id', 0))
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_bolao_tables(cur, conn)
+        cur.execute("""
+            SELECT bb.id, bb.usuario_id, bb.placar_casa, bb.placar_fora,
+                   bb.valor, bb.status, bb.premio, bb.tipo_premio, bb.criado_em,
+                   u.nome, u.cpf
+            FROM bolao_bilhetes bb
+            JOIN usuarios u ON u.id = bb.usuario_id
+            WHERE bb.bolao_id=%s
+            ORDER BY bb.criado_em ASC
+        """, (bolao_id,))
+        cols = [d[0] for d in cur.description]
+        bilhetes = []
+        for row in cur.fetchall():
+            b = dict(zip(cols, row))
+            b['criado_em'] = str(b['criado_em']) if b['criado_em'] else None
+            b['valor']     = float(b['valor'] or 0)
+            b['premio']    = float(b['premio'] or 0)
+            bilhetes.append(b)
+        cur.close(); conn.close()
+        return web.json_response({'ok': True, 'bilhetes': bilhetes})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_bolao_fechar(request):
+    """POST /api/admin/bolao/fechar — fecha rodada com placar manual e distribui."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        d          = await request.json()
+        bolao_id   = int(d.get('id', 0))
+        pl_casa    = int(d.get('placar_casa', -1))
+        pl_fora    = int(d.get('placar_fora', -1))
+        if not bolao_id or pl_casa < 0 or pl_fora < 0:
+            return web.json_response({'ok': False, 'error': 'id, placar_casa e placar_fora obrigatórios'}, status=400)
+        resultado = await _distribuir_premio_bolao(bolao_id, pl_casa, pl_fora)
+        return web.json_response(resultado)
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_bolao_resolver_auto(request):
+    """POST /api/admin/bolao/resolver-auto — busca placar no ESPN e distribui automaticamente."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    import aiohttp
+    try:
+        d        = await request.json()
+        bolao_id = int(d.get('id', 0))
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_bolao_tables(cur, conn)
+        cur.execute("SELECT * FROM bolao_jogos WHERE id=%s", (bolao_id,))
+        cols = [d2[0] for d2 in cur.description]
+        row  = cur.fetchone()
+        cur.close(); conn.close()
+        if not row:
+            return web.json_response({'ok': False, 'error': 'Jogo não encontrado'}, status=404)
+        bolao = dict(zip(cols, row))
+        async with aiohttp.ClientSession() as sess:
+            placar = await _buscar_placar_espn_bolao(sess, bolao)
+        if not placar:
+            return web.json_response({
+                'ok': False,
+                'error': 'Placar não encontrado no ESPN. Jogo pode não ter encerrado ainda. Use resolução manual.'
+            })
+        pl_casa, pl_fora = placar
+        resultado = await _distribuir_premio_bolao(bolao_id, pl_casa, pl_fora)
+        resultado['placar_espn'] = f'{pl_casa}×{pl_fora}'
+        return web.json_response(resultado)
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_bolao_deletar(request):
+    """POST /api/admin/bolao/deletar — remove jogo sem bilhetes."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        d = await request.json()
+        jogo_id = int(d.get('id', 0))
+        conn = _admin_db_connect(); cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM bolao_bilhetes WHERE bolao_id=%s", (jogo_id,))
+        qtd = cur.fetchone()[0]
+        if qtd > 0:
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': f'Não é possível deletar: {qtd} bilhetes vendidos'})
+        cur.execute("DELETE FROM bolao_jogos WHERE id=%s", (jogo_id,))
+        conn.commit(); cur.close(); conn.close()
+        return web.json_response({'ok': True, 'msg': f'Jogo #{jogo_id} removido!'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
 async def route_bet_jogos(request):
     """GET /api/bet/jogos — retorna jogos com odds reais (odds-api) ou ESPN como fallback.
     Suporta ?sport=<key> para filtrar por campeonato específico.
@@ -15481,6 +16152,18 @@ async def main():
     app.router.add_get('/api/admin/bet/multi',               route_admin_bet_multi_dashboard)
     app.router.add_post('/api/admin/bet/multi/resolver',     route_admin_bet_multi_resolver)
     app.router.add_post('/api/admin/bet/multi/resolver-auto',route_admin_bet_multi_resolver_auto)
+
+    # ── Bolão Placar Exato ────────────────────────────────────────────────────
+    app.router.add_get ('/api/bolao/jogos',              route_bolao_jogos)
+    app.router.add_post('/api/bolao/comprar',            route_bolao_comprar)
+    app.router.add_get ('/api/bolao/bilhetes',           route_bolao_meus_bilhetes)
+    app.router.add_get ('/api/admin/bolao/jogos',        route_admin_bolao_jogos)
+    app.router.add_post('/api/admin/bolao/jogo',         route_admin_bolao_criar)
+    app.router.add_post('/api/admin/bolao/publicar',     route_admin_bolao_publicar)
+    app.router.add_get ('/api/admin/bolao/bilhetes',     route_admin_bolao_bilhetes)
+    app.router.add_post('/api/admin/bolao/fechar',       route_admin_bolao_fechar)
+    app.router.add_post('/api/admin/bolao/resolver-auto',route_admin_bolao_resolver_auto)
+    app.router.add_post('/api/admin/bolao/deletar',      route_admin_bolao_deletar)
 
     runner = web.AppRunner(app)
     await runner.setup()

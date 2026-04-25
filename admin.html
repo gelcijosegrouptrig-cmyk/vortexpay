@@ -819,6 +819,10 @@ function toggleLoginSenha() {
         🎰 <span>Aposta Múltipla</span>
         <span class="badge" id="badge-multi" style="background:#8b5cf6">0</span>
       </div>
+      <div class="nav-item" onclick="showTab('bolao')">
+        🎯 <span>Bolão Placar</span>
+        <span class="badge" id="badge-bolao" style="background:#f59e0b">0</span>
+      </div>
       <div class="nav-item" onclick="showTab('notificacoes')">
         🔔 <span>Notificações</span>
       </div>
@@ -1597,6 +1601,192 @@ function toggleLoginSenha() {
           </div>
         </div>
       </div>
+
+      <!-- ═══ BOLÃO PLACAR EXATO ═══ -->
+      <div id="tab-bolao" class="tab-content">
+
+        <!-- KPIs -->
+        <div class="metrics-grid" style="margin-bottom:20px">
+          <div class="metric-card yellow">
+            <div class="metric-icon">🎯</div>
+            <div class="metric-label">Jogos Ativos</div>
+            <div class="metric-value" id="bolao-kpi-ativos">—</div>
+            <div class="metric-sub">publicados no site</div>
+          </div>
+          <div class="metric-card blue">
+            <div class="metric-icon">🎫</div>
+            <div class="metric-label">Total Bilhetes</div>
+            <div class="metric-value" id="bolao-kpi-bilhetes">—</div>
+            <div class="metric-sub">vendidos hoje</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-icon">💰</div>
+            <div class="metric-label">Pote Total</div>
+            <div class="metric-value" id="bolao-kpi-pote">—</div>
+            <div class="metric-sub">em aberto</div>
+          </div>
+          <div class="metric-card red">
+            <div class="metric-icon">🏠</div>
+            <div class="metric-label">Margem Casa</div>
+            <div class="metric-value" id="bolao-kpi-margem">27,5%</div>
+            <div class="metric-sub">retida automaticamente</div>
+          </div>
+        </div>
+
+        <!-- Criar novo jogo -->
+        <div class="table-card" style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <h3>➕ Criar / Editar Jogo do Bolão</h3>
+            <button onclick="limparFormBolao()" style="padding:6px 12px;background:rgba(100,116,139,0.2);border:1px solid rgba(100,116,139,0.3);border-radius:8px;color:#94a3b8;font-size:12px;cursor:pointer">🔄 Limpar</button>
+          </div>
+          <input type="hidden" id="bolao-edit-id">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">🏠 Time Casa *</label>
+              <input type="text" id="bolao-time-casa" placeholder="Ex: Flamengo" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">✈️ Time Fora *</label>
+              <input type="text" id="bolao-time-fora" placeholder="Ex: Palmeiras" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">🏆 Campeonato</label>
+              <input type="text" id="bolao-campeonato" placeholder="Ex: Brasileirão Série A" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">🔑 Liga Key (ESPN)</label>
+              <select id="bolao-liga-key" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+                <option value="">— Selecionar —</option>
+                <option value="soccer_brazil_campeonato">🇧🇷 Brasileirão Série A</option>
+                <option value="soccer_brazil_serie_b">🇧🇷 Série B</option>
+                <option value="soccer_conmebol_copa_libertadores">🏆 Libertadores</option>
+                <option value="soccer_conmebol_sudamericana">🌎 Sul-Americana</option>
+                <option value="soccer_uefa_champs_league">⭐ Champions League</option>
+                <option value="soccer_epl">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</option>
+                <option value="soccer_spain_la_liga">🇪🇸 La Liga</option>
+                <option value="soccer_italy_serie_a">🇮🇹 Serie A</option>
+                <option value="soccer_germany_bundesliga">🇩🇪 Bundesliga</option>
+                <option value="soccer_france_ligue_one">🇫🇷 Ligue 1</option>
+                <option value="basketball_nba">🏀 NBA</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">📅 Data / Hora do Jogo</label>
+              <input type="datetime-local" id="bolao-data" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">🎫 Valor do Bilhete (R$)</label>
+              <input type="number" id="bolao-valor-bilhete" value="10" min="1" step="0.50" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">💰 Pote Inicial (R$) <span style="color:#94a3b8;font-size:10px">injeção admin</span></label>
+              <input type="number" id="bolao-pote-inicial" value="0" min="0" step="10" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">🏠 Margem Casa (%)</label>
+              <input type="number" id="bolao-margem" value="27.5" min="10" max="50" step="0.5" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="bolao-publicado" style="width:16px;height:16px;accent-color:#f59e0b">
+              <span>Publicar imediatamente na home</span>
+            </label>
+          </div>
+          <button onclick="salvarJogoBolao()" style="padding:10px 24px;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;width:100%">
+            ✅ Salvar Jogo no Bolão
+          </button>
+          <div id="bolao-form-msg" style="margin-top:10px;font-size:12px;text-align:center"></div>
+        </div>
+
+        <!-- Lista de jogos -->
+        <div class="table-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+            <h3>📋 Todos os Jogos do Bolão</h3>
+            <button onclick="loadBolaoAdmin()" class="refresh-btn">🔄 Atualizar</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="admin-table" id="tbl-bolao">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Jogo</th>
+                  <th>Campeonato</th>
+                  <th>Data</th>
+                  <th>Bilhete</th>
+                  <th>Pote Total</th>
+                  <th>Bilhetes</th>
+                  <th>Status</th>
+                  <th>Publicado</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="bolao-tbody">
+                <tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px">
+                  <div class="spinner2" style="margin:0 auto 8px"></div>Carregando...
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Modal bilhetes de um jogo -->
+        <div class="table-card" id="bolao-bilhetes-card" style="display:none;margin-top:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <h3>🎫 Bilhetes do Jogo <span id="bolao-bilhetes-titulo" style="color:#f59e0b"></span></h3>
+            <div style="display:flex;gap:8px">
+              <button onclick="fecharRodadaModal()" id="btn-fechar-rodada"
+                style="padding:8px 16px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);border-radius:8px;color:#4ade80;font-size:12px;font-weight:700;cursor:pointer">
+                🏆 Fechar Rodada
+              </button>
+              <button onclick="resolverAutoBolao()" id="btn-resolver-auto-bolao"
+                style="padding:8px 16px;background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.4);border-radius:8px;color:#60a5fa;font-size:12px;font-weight:700;cursor:pointer">
+                🤖 ESPN Auto
+              </button>
+              <button onclick="document.getElementById('bolao-bilhetes-card').style.display='none'"
+                style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+            </div>
+          </div>
+
+          <!-- Fechar com placar manual -->
+          <div id="bolao-fechar-form" style="display:none;margin:16px 0;padding:14px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px">
+            <div style="font-size:12px;color:#f59e0b;font-weight:700;margin-bottom:10px">⚽ Inserir Placar Final</div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div>
+                <label style="font-size:11px;color:var(--muted)">Gols Casa</label>
+                <input type="number" id="bolao-pl-casa" min="0" max="20" value="0"
+                  style="width:70px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:16px;font-weight:700;text-align:center">
+              </div>
+              <span style="font-size:20px;font-weight:900;color:var(--text)">×</span>
+              <div>
+                <label style="font-size:11px;color:var(--muted)">Gols Fora</label>
+                <input type="number" id="bolao-pl-fora" min="0" max="20" value="0"
+                  style="width:70px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:16px;font-weight:700;text-align:center">
+              </div>
+              <button onclick="confirmarFecharRodada()"
+                style="padding:8px 20px;background:linear-gradient(135deg,#4ade80,#16a34a);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+                ✅ Confirmar e Distribuir Prêmios
+              </button>
+            </div>
+            <div id="bolao-fechar-msg" style="margin-top:8px;font-size:12px"></div>
+          </div>
+
+          <div style="overflow-x:auto;margin-top:12px">
+            <table class="admin-table" id="tbl-bolao-bilhetes">
+              <thead>
+                <tr>
+                  <th>#</th><th>Usuário</th><th>Placar Apostado</th>
+                  <th>Valor</th><th>Status</th><th>Prêmio</th><th>Data</th>
+                </tr>
+              </thead>
+              <tbody id="bolao-bilhetes-tbody">
+                <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Selecione um jogo</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /tab-bolao -->
 
       <!-- ═══ APOSTA MÚLTIPLA / ACUMULADORA ═══ -->
       <div id="tab-multi" class="tab-content">
@@ -6756,6 +6946,7 @@ function showTab(tab) {
     pnl: '📊 Relatório P&L',
     afiliados: '🤝 Afiliados',
     multi: '🎰 Aposta Múltipla / Acumuladora',
+    bolao: '🎯 Bolão Placar Exato',
     notificacoes: '🔔 Notificações Telegram',
   };
   document.getElementById('page-title').textContent = titles[tab] || tab;
@@ -6780,6 +6971,7 @@ function showTab(tab) {
   if (tab === 'pnl') { loadPnL(); }
   if (tab === 'afiliados') loadAfiliados();
   if (tab === 'multi') loadMultiAdmin();
+  if (tab === 'bolao') loadBolaoAdmin();
   if (tab === 'notificacoes') loadNotifConfig();
   if (tab === 'dashboard') { loadAll(); loadCharts(); }
 }
@@ -7406,6 +7598,281 @@ async function loadAfiliados() {
           </tr>`).join('');
     }
   } catch(e) { showToastAdmin('Erro: '+e.message, 'red'); }
+}
+
+// ═══════════════════════════════════════════════
+// BOLÃO PLACAR EXATO — ADMIN
+// ═══════════════════════════════════════════════
+
+let _bolaoJogoAtivo = null; // jogo selecionado para ver bilhetes/fechar
+
+async function loadBolaoAdmin() {
+  const tbody = document.getElementById('bolao-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px"><div class="spinner2" style="margin:0 auto 8px"></div>Carregando...</td></tr>';
+  try {
+    const r = await fetch('/api/admin/bolao/jogos', { headers: {'X-PaynexBet-Secret': ADMIN_SECRET()} });
+    const d = await r.json();
+    if (!d.ok) { showToastAdmin('Erro: ' + (d.error||''), 'red'); return; }
+
+    const jogos = d.jogos || [];
+    const ativos    = jogos.filter(j => j.publicado && j.status !== 'encerrado').length;
+    const bilhetes  = jogos.reduce((s, j) => s + (j.total_bilhetes||0), 0);
+    const pote      = jogos.filter(j => j.status !== 'encerrado').reduce((s,j) => s + (j.pote_total||0), 0);
+
+    const el = id => document.getElementById(id);
+    if (el('bolao-kpi-ativos'))    el('bolao-kpi-ativos').textContent   = ativos;
+    if (el('bolao-kpi-bilhetes'))  el('bolao-kpi-bilhetes').textContent = bilhetes;
+    if (el('bolao-kpi-pote'))      el('bolao-kpi-pote').textContent     = _fmtBRL(pote);
+    const badge = document.getElementById('badge-bolao');
+    if (badge) badge.textContent = ativos;
+
+    if (!tbody) return;
+    if (!jogos.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px">Nenhum jogo cadastrado. Crie o primeiro acima! 👆</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = jogos.map(j => {
+      const stColor = j.status === 'encerrado' ? '#94a3b8'
+                    : j.status === 'aberto'    ? '#4ade80'
+                    : '#f59e0b';
+      const stIcon  = j.status === 'encerrado' ? '✅' : j.status === 'aberto' ? '🟢' : '📅';
+      const pubHtml = j.publicado
+        ? `<button onclick="togglePublicarBolao(${j.id},false)" style="padding:4px 10px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);border-radius:6px;color:#4ade80;font-size:11px;font-weight:700;cursor:pointer">👁 Publicado</button>`
+        : `<button onclick="togglePublicarBolao(${j.id},true)" style="padding:4px 10px;background:rgba(100,116,139,0.2);border:1px solid rgba(100,116,139,0.3);border-radius:6px;color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer">👁 Oculto</button>`;
+      const dataFmt = j.data_jogo ? j.data_jogo.replace('T',' ').substring(0,16) : '—';
+      const placarFinal = j.status === 'encerrado' && j.placar_casa !== null
+        ? `<br><span style="font-size:10px;color:#94a3b8">Resultado: ${j.placar_casa}×${j.placar_fora}</span>` : '';
+
+      return `<tr>
+        <td style="font-weight:700;color:#f59e0b">#${j.id}</td>
+        <td style="font-weight:600">${j.time_casa} × ${j.time_fora}${placarFinal}</td>
+        <td style="font-size:11px;color:var(--muted)">${j.campeonato||'—'}</td>
+        <td style="font-size:11px;color:var(--muted)">${dataFmt}</td>
+        <td style="color:#60a5fa;font-weight:700">${_fmtBRL(j.valor_bilhete)}</td>
+        <td style="color:#4ade80;font-weight:700">${_fmtBRL(j.pote_total)}</td>
+        <td style="text-align:center">
+          <span style="background:rgba(96,165,250,0.15);border-radius:12px;padding:2px 10px;font-size:12px;font-weight:700;color:#60a5fa">${j.total_bilhetes}</span>
+        </td>
+        <td><span style="color:${stColor};font-weight:700">${stIcon} ${j.status}</span></td>
+        <td style="text-align:center">${pubHtml}</td>
+        <td>
+          <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+            <button onclick="editarJogoBolao(${JSON.stringify(j).replace(/"/g,'&quot;')})"
+              style="padding:4px 8px;background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.4);border-radius:6px;color:#a78bfa;font-size:11px;cursor:pointer">✏️</button>
+            <button onclick="verBilhetesBolao(${j.id},'${j.time_casa} × ${j.time_fora}')"
+              style="padding:4px 8px;background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.4);border-radius:6px;color:#60a5fa;font-size:11px;cursor:pointer">🎫</button>
+            ${j.status !== 'encerrado' ? `<button onclick="verBilhetesBolao(${j.id},'${j.time_casa} × ${j.time_fora}',true)"
+              style="padding:4px 8px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);border-radius:6px;color:#4ade80;font-size:11px;cursor:pointer">🏆</button>` : ''}
+            ${j.total_bilhetes === 0 ? `<button onclick="deletarJogoBolao(${j.id})"
+              style="padding:4px 8px;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);border-radius:6px;color:#f87171;font-size:11px;cursor:pointer">🗑</button>` : ''}
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+async function salvarJogoBolao() {
+  const el    = id => document.getElementById(id);
+  const msgEl = el('bolao-form-msg');
+  const editId = el('bolao-edit-id')?.value;
+
+  const payload = {
+    id:            editId ? parseInt(editId) : undefined,
+    time_casa:     el('bolao-time-casa')?.value.trim(),
+    time_fora:     el('bolao-time-fora')?.value.trim(),
+    campeonato:    el('bolao-campeonato')?.value.trim(),
+    liga_key:      el('bolao-liga-key')?.value,
+    data_jogo:     el('bolao-data')?.value || null,
+    valor_bilhete: parseFloat(el('bolao-valor-bilhete')?.value || 10),
+    pote_inicial:  parseFloat(el('bolao-pote-inicial')?.value || 0),
+    margem_pct:    parseFloat(el('bolao-margem')?.value || 27.5),
+    publicado:     el('bolao-publicado')?.checked || false,
+  };
+
+  if (!payload.time_casa || !payload.time_fora) {
+    if (msgEl) { msgEl.textContent = '❌ Time Casa e Time Fora são obrigatórios!'; msgEl.style.color = '#f87171'; }
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/admin/bolao/jogo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      if (msgEl) { msgEl.textContent = '✅ ' + d.msg; msgEl.style.color = '#4ade80'; }
+      showToastAdmin(d.msg, 'green');
+      limparFormBolao();
+      loadBolaoAdmin();
+    } else {
+      if (msgEl) { msgEl.textContent = '❌ ' + (d.error||'Erro'); msgEl.style.color = '#f87171'; }
+    }
+  } catch(e) {
+    if (msgEl) { msgEl.textContent = '❌ ' + e.message; msgEl.style.color = '#f87171'; }
+  }
+}
+
+function limparFormBolao() {
+  const el = id => document.getElementById(id);
+  ['bolao-edit-id','bolao-time-casa','bolao-time-fora','bolao-campeonato'].forEach(i => { if(el(i)) el(i).value = ''; });
+  if(el('bolao-liga-key'))       el('bolao-liga-key').value = '';
+  if(el('bolao-data'))           el('bolao-data').value = '';
+  if(el('bolao-valor-bilhete'))  el('bolao-valor-bilhete').value = '10';
+  if(el('bolao-pote-inicial'))   el('bolao-pote-inicial').value = '0';
+  if(el('bolao-margem'))         el('bolao-margem').value = '27.5';
+  if(el('bolao-publicado'))      el('bolao-publicado').checked = false;
+  if(el('bolao-form-msg'))       el('bolao-form-msg').textContent = '';
+}
+
+function editarJogoBolao(j) {
+  const el = id => document.getElementById(id);
+  if(el('bolao-edit-id'))       el('bolao-edit-id').value = j.id;
+  if(el('bolao-time-casa'))     el('bolao-time-casa').value = j.time_casa;
+  if(el('bolao-time-fora'))     el('bolao-time-fora').value = j.time_fora;
+  if(el('bolao-campeonato'))    el('bolao-campeonato').value = j.campeonato || '';
+  if(el('bolao-liga-key'))      el('bolao-liga-key').value = j.liga_key || '';
+  if(el('bolao-data'))          el('bolao-data').value = j.data_jogo ? j.data_jogo.replace(' ','T').substring(0,16) : '';
+  if(el('bolao-valor-bilhete')) el('bolao-valor-bilhete').value = j.valor_bilhete || 10;
+  if(el('bolao-pote-inicial'))  el('bolao-pote-inicial').value = j.pote_inicial || 0;
+  if(el('bolao-margem'))        el('bolao-margem').value = j.margem_pct || 27.5;
+  if(el('bolao-publicado'))     el('bolao-publicado').checked = !!j.publicado;
+  if(el('bolao-form-msg'))      el('bolao-form-msg').textContent = `Editando Jogo #${j.id}`;
+  document.getElementById('tab-bolao')?.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function togglePublicarBolao(id, publicar) {
+  try {
+    const r = await fetch('/api/admin/bolao/publicar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ id, publicado: publicar })
+    });
+    const d = await r.json();
+    if (d.ok) { showToastAdmin(d.msg, publicar ? 'green' : 'yellow'); loadBolaoAdmin(); }
+    else showToastAdmin('Erro: ' + (d.error||''), 'red');
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+async function deletarJogoBolao(id) {
+  if (!confirm(`Deletar Jogo #${id}? Esta ação não pode ser desfeita.`)) return;
+  try {
+    const r = await fetch('/api/admin/bolao/deletar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ id })
+    });
+    const d = await r.json();
+    if (d.ok) { showToastAdmin(d.msg, 'green'); loadBolaoAdmin(); }
+    else showToastAdmin('Erro: ' + (d.error||''), 'red');
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+async function verBilhetesBolao(id, titulo, abrirFechar) {
+  _bolaoJogoAtivo = id;
+  const card = document.getElementById('bolao-bilhetes-card');
+  const titleEl = document.getElementById('bolao-bilhetes-titulo');
+  const fecharForm = document.getElementById('bolao-fechar-form');
+  if (titleEl) titleEl.textContent = titulo;
+  if (fecharForm) fecharForm.style.display = abrirFechar ? 'block' : 'none';
+  if (card) card.style.display = 'block';
+
+  const tbody = document.getElementById('bolao-bilhetes-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px"><div class="spinner2" style="margin:0 auto 8px"></div>Carregando...</td></tr>';
+
+  try {
+    const r = await fetch(`/api/admin/bolao/bilhetes?id=${id}`, { headers: {'X-PaynexBet-Secret': ADMIN_SECRET()} });
+    const d = await r.json();
+    if (!d.ok) { showToastAdmin('Erro: ' + (d.error||''), 'red'); return; }
+    const bilhetes = d.bilhetes || [];
+    if (!bilhetes.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Nenhum bilhete vendido ainda</td></tr>';
+      return;
+    }
+    tbody.innerHTML = bilhetes.map((b, i) => {
+      const stColor = b.status === 'WON' ? '#4ade80' : b.status === 'LOST' ? '#f87171' : b.status === 'consolacao' ? '#a78bfa' : '#f59e0b';
+      const stIcon  = b.status === 'WON' ? '🏆' : b.status === 'LOST' ? '❌' : b.status === 'consolacao' ? '🥈' : '⏳';
+      return `<tr>
+        <td style="font-weight:700;color:#f59e0b">${b.id}</td>
+        <td>${b.nome||'—'}<br><span style="font-size:10px;color:var(--muted)">${b.cpf||''}</span></td>
+        <td style="font-size:18px;font-weight:900;color:var(--text);text-align:center">${b.placar_casa} × ${b.placar_fora}</td>
+        <td style="color:#60a5fa">${_fmtBRL(b.valor)}</td>
+        <td><span style="color:${stColor};font-weight:700">${stIcon} ${b.status}</span></td>
+        <td style="color:#4ade80;font-weight:700">${b.premio > 0 ? _fmtBRL(b.premio) : '—'}</td>
+        <td style="font-size:11px;color:var(--muted)">${b.criado_em ? b.criado_em.substring(0,16) : '—'}</td>
+      </tr>`;
+    }).join('');
+    card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+function fecharRodadaModal() {
+  const fecharForm = document.getElementById('bolao-fechar-form');
+  if (fecharForm) fecharForm.style.display = fecharForm.style.display === 'none' ? 'block' : 'none';
+}
+
+async function confirmarFecharRodada() {
+  if (!_bolaoJogoAtivo) return;
+  const plCasa = parseInt(document.getElementById('bolao-pl-casa')?.value || 0);
+  const plFora = parseInt(document.getElementById('bolao-pl-fora')?.value || 0);
+  const msgEl  = document.getElementById('bolao-fechar-msg');
+
+  if (!confirm(`⚽ Confirmar resultado: ${plCasa}×${plFora}?\nIsso distribuirá os prêmios automaticamente e não pode ser desfeito!`)) return;
+
+  if (msgEl) { msgEl.textContent = '⏳ Calculando e distribuindo prêmios...'; msgEl.style.color = '#f59e0b'; }
+  try {
+    const r = await fetch('/api/admin/bolao/fechar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ id: _bolaoJogoAtivo, placar_casa: plCasa, placar_fora: plFora })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      const msg = `🏆 Rodada encerrada! Placar: ${plCasa}×${plFora} | Ganhadores placar exato: ${d.ganhadores_a} | Consolação: ${d.ganhadores_b} | Casa ficou: ${_fmtBRL(d.casa_retira)} | Acúmulo próximo: ${_fmtBRL(d.acumulo)}`;
+      if (msgEl) { msgEl.textContent = '✅ ' + msg; msgEl.style.color = '#4ade80'; }
+      showToastAdmin(msg, 'green');
+      loadBolaoAdmin();
+      setTimeout(() => verBilhetesBolao(_bolaoJogoAtivo, '', false), 1500);
+    } else {
+      if (msgEl) { msgEl.textContent = '❌ ' + (d.error||'Erro'); msgEl.style.color = '#f87171'; }
+      showToastAdmin('Erro: ' + (d.error||''), 'red');
+    }
+  } catch(e) {
+    if (msgEl) { msgEl.textContent = '❌ ' + e.message; msgEl.style.color = '#f87171'; }
+  }
+}
+
+async function resolverAutoBolao() {
+  if (!_bolaoJogoAtivo) return;
+  const btn = document.getElementById('btn-resolver-auto-bolao');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Buscando ESPN...'; }
+  const msgEl = document.getElementById('bolao-fechar-msg');
+  if (msgEl) { msgEl.textContent = '🤖 Consultando ESPN...'; msgEl.style.color = '#60a5fa'; }
+  try {
+    const r = await fetch('/api/admin/bolao/resolver-auto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
+      body: JSON.stringify({ id: _bolaoJogoAtivo })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      const msg = `✅ ESPN encontrou placar ${d.placar_espn}! Ganhadores: ${d.ganhadores_a} | Consolação: ${d.ganhadores_b} | Casa: ${_fmtBRL(d.casa_retira)}`;
+      if (msgEl) { msgEl.textContent = msg; msgEl.style.color = '#4ade80'; }
+      showToastAdmin(msg, 'green');
+      loadBolaoAdmin();
+      setTimeout(() => verBilhetesBolao(_bolaoJogoAtivo, '', false), 1500);
+    } else {
+      if (msgEl) { msgEl.textContent = '❌ ' + (d.error||'Não encontrado'); msgEl.style.color = '#f87171'; }
+      showToastAdmin(d.error || 'Placar não encontrado no ESPN', 'red');
+    }
+  } catch(e) {
+    if (msgEl) { msgEl.textContent = '❌ ' + e.message; msgEl.style.color = '#f87171'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 ESPN Auto'; }
+  }
 }
 
 // ═══════════════════════════════════════════════
