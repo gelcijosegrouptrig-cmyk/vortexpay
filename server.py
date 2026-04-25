@@ -11355,6 +11355,24 @@ async def route_bet_multi_apostar(request):
                         })
         except Exception:
             pass
+        # ── Limite de retorno máximo (R$ 5.000 por acumuladora) ──────────────
+        RETORNO_MAX = 5000.0
+        if retorno > RETORNO_MAX:
+            cur.close(); conn.close()
+            return web.json_response({
+                'success': False,
+                'error': f'Retorno potencial R$ {retorno:.2f} excede limite máximo de R$ {RETORNO_MAX:.0f}. Reduza o valor da aposta.'
+            })
+        # ── Margem dinâmica extra por seleção nas acumuladoras ───────────────
+        # A cada seleção acima de 2, aplicar 1.5% adicional de margem implícita
+        # via redução das odds (proteção da casa)
+        n_sels = len(selecoes)
+        if n_sels > 2:
+            fator_extra = 1.0 - (0.015 * (n_sels - 2))  # ex: 3 sels → 1.5%, 5 sels → 4.5%
+            fator_extra = max(fator_extra, 0.90)  # mínimo 90% das odds originais
+            odd_total = round(odd_total * fator_extra, 4)
+            retorno   = round(valor * odd_total, 2)
+            print(f'[bet_multi] margem_dinamica: {n_sels} sels → fator {fator_extra:.4f} → odd ajustada {odd_total}', flush=True)
         # Debitar saldo
         cur.execute("UPDATE usuarios SET saldo = saldo - %s WHERE id=%s", (valor, usuario_id))
         # Registrar aposta múltipla
@@ -11416,6 +11434,41 @@ async def route_bet_multi_minhas(request):
                 'qtd_selecoes': r[5], 'selecoes': sels,
                 'criado_em': str(r[7])[:16] if r[7] else '',
                 'resolvido_em': str(r[8])[:16] if r[8] else ''
+            })
+        return web.json_response({'success': True, 'apostas': apostas, 'total': len(apostas)})
+    except Exception as e:
+        try: conn.close()
+        except Exception: pass
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_bet_minhas_simples(request):
+    """GET /api/bet/minhas?usuario_id=X — histórico de apostas simples do usuário."""
+    usuario_id = request.rel_url.query.get('usuario_id', '')
+    if not usuario_id:
+        return web.json_response({'success': False, 'error': 'usuario_id obrigatório'})
+    conn = await _bet_db()
+    if not conn:
+        return web.json_response({'success': False, 'error': 'DB indisponível'})
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, jogo_id, jogo_nome, selecao, odd, valor, retorno_potencial,
+                   status, resultado, criado_em, resolvido_em, league_key
+            FROM apostas WHERE usuario_id=%s ORDER BY criado_em DESC LIMIT 50
+        """, (int(usuario_id),))
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        apostas = []
+        for r in rows:
+            apostas.append({
+                'id': r[0], 'jogo_id': r[1], 'jogo_nome': r[2],
+                'selecao': r[3], 'odd': float(r[4] or 1),
+                'valor': float(r[5] or 0), 'retorno_potencial': float(r[6] or 0),
+                'status': r[7], 'resultado': r[8],
+                'criado_em': str(r[9])[:16] if r[9] else '',
+                'resolvido_em': str(r[10])[:16] if r[10] else '',
+                'league_key': r[11] or ''
             })
         return web.json_response({'success': True, 'apostas': apostas, 'total': len(apostas)})
     except Exception as e:
@@ -16262,6 +16315,7 @@ async def main():
     # ── Aposta Múltipla / Acumuladora ──────────────────────────────────────
     app.router.add_post('/api/bet/multi',                    route_bet_multi_apostar)
     app.router.add_get('/api/bet/multi/minhas',              route_bet_multi_minhas)
+    app.router.add_get('/api/bet/minhas',                    route_bet_minhas_simples)
     app.router.add_get('/api/admin/bet/multi',               route_admin_bet_multi_dashboard)
     app.router.add_post('/api/admin/bet/multi/resolver',     route_admin_bet_multi_resolver)
     app.router.add_post('/api/admin/bet/multi/resolver-auto',route_admin_bet_multi_resolver_auto)
@@ -16296,6 +16350,81 @@ async def main():
 
     # Worker de splits PayPix pendentes - tenta a cada 5 min até finalizar
     asyncio.create_task(_worker_paypix_fila())
+
+    # ── CRON: Resolver apostas múltiplas automaticamente a cada 15min ──────
+    async def _cron_resolver_apostas_auto():
+        import asyncio as _asyncio
+        while True:
+            await _asyncio.sleep(900)  # 15 minutos
+            try:
+                import json as _json
+                conn = await _bet_db()
+                if not conn:
+                    continue
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT id, usuario_id, valor, retorno_potencial, selecoes
+                    FROM bet_multi WHERE status='pendente' ORDER BY criado_em ASC LIMIT 30
+                """)
+                pendentes = cur.fetchall()
+                resolvidas = 0
+                for row in pendentes:
+                    mid, uid, valor, retorno, sels_json = row
+                    try:
+                        sels = _json.loads(sels_json or '[]')
+                        resultados = []
+                        for s in sels:
+                            res = await _verificar_resultado_espn(
+                                s.get('jogo_id',''), s.get('tipo',''),
+                                s.get('league_key',''), s.get('jogo',''))
+                            resultados.append(res)
+                        if 'LOST' in resultados:
+                            novo_status = 'LOST'
+                        elif all(r == 'WON' for r in resultados):
+                            novo_status = 'WON'
+                        else:
+                            continue
+                        cur.execute("UPDATE bet_multi SET status=%s, resolvido_em=NOW() WHERE id=%s", (novo_status, mid))
+                        if novo_status == 'WON':
+                            cur.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (retorno, uid))
+                        conn.commit()
+                        resolvidas += 1
+                        print(f'[cron_resolver] multi #{mid} → {novo_status}', flush=True)
+                    except Exception as _e:
+                        print(f'[cron_resolver] erro multi #{mid}: {_e}', flush=True)
+                # Resolver apostas simples pendentes
+                try:
+                    cur.execute("""
+                        SELECT id, usuario_id, jogo_id, selecao, league_key, retorno_potencial, jogo_nome
+                        FROM apostas WHERE status='pendente' ORDER BY criado_em ASC LIMIT 30
+                    """)
+                    simples_pendentes = cur.fetchall()
+                    for row in simples_pendentes:
+                        sid, suid, jid, selecao, lk, retorno_s, jnome = row
+                        try:
+                            tipo_map = {'Casa': 'C', 'Empate': 'X', 'Fora': 'F'}
+                            tipo = 'C'
+                            for tk, tv in tipo_map.items():
+                                if tk.lower() in (selecao or '').lower():
+                                    tipo = tv; break
+                            res = await _verificar_resultado_espn(jid, tipo, lk or '', jnome or '')
+                            if res in ('WON', 'LOST'):
+                                cur.execute("UPDATE apostas SET status=%s, resultado=%s, resolvido_em=NOW() WHERE id=%s",
+                                    ('ganhou' if res == 'WON' else 'perdeu', res, sid))
+                                if res == 'WON':
+                                    cur.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (float(retorno_s or 0), suid))
+                                conn.commit()
+                                print(f'[cron_resolver] simples #{sid} → {res}', flush=True)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                cur.close(); conn.close()
+                if resolvidas: print(f'[cron_resolver] ✅ {resolvidas} acumuladoras resolvidas', flush=True)
+            except Exception as _e:
+                print(f'[cron_resolver] erro geral: {_e}', flush=True)
+
+    asyncio.create_task(_cron_resolver_apostas_auto())
 
     # ── Bot 2 (@paypix_nexbot) - tasks paralelas (userbot Telethon legado) ──
     asyncio.create_task(conectar_telegram2())
