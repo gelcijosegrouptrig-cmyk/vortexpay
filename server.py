@@ -10599,6 +10599,648 @@ def _extrair_resultado_competidor(comp, selecao):
         return 'WON' if winner == 'draw' else 'LOST'
     return None
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔢  ITEM 1 — Charts / Gráficos  (GGR por dia, Dep vs Saq, pizza por liga)
+# ═══════════════════════════════════════════════════════════════════════════════
+async def route_admin_bet_charts(request):
+    """GET /api/admin/bet/charts — dados para gráficos Chart.js."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        dias = int(request.rel_url.query.get('dias', 30))
+        conn = _admin_db_connect(); cur = conn.cursor()
+        # GGR por dia (últimos N dias)
+        cur.execute("""
+            SELECT DATE(criado_em) AS dia,
+                   COALESCE(SUM(valor),0) AS apostado,
+                   COALESCE(SUM(CASE WHEN status='LOST' THEN valor ELSE 0 END),0) AS lucro,
+                   COALESCE(SUM(CASE WHEN status='WON'  THEN retorno_potencial ELSE 0 END),0) AS pago,
+                   COUNT(*) AS qtd
+            FROM apostas
+            WHERE criado_em >= NOW() - INTERVAL '%s days'
+            GROUP BY dia ORDER BY dia
+        """ % int(dias))
+        ggr_dias = [{'dia': str(r[0]), 'apostado': float(r[1]), 'lucro': float(r[2]),
+                     'pago': float(r[3]), 'qtd': r[4]} for r in cur.fetchall()]
+        # Depósitos por dia
+        try:
+            cur.execute("""
+                SELECT DATE(criado_em) AS dia, COALESCE(SUM(valor),0), COUNT(*)
+                FROM depositos_suit WHERE status='PAID'
+                AND criado_em >= NOW() - INTERVAL '%s days'
+                GROUP BY dia ORDER BY dia
+            """ % int(dias))
+            dep_dias = [{'dia': str(r[0]), 'valor': float(r[1]), 'qtd': r[2]} for r in cur.fetchall()]
+        except Exception: dep_dias = []
+        # Saques por dia
+        try:
+            cur.execute("""
+                SELECT DATE(criado_em) AS dia, COALESCE(SUM(valor),0), COUNT(*)
+                FROM saques WHERE status='PAGO'
+                AND criado_em >= NOW() - INTERVAL '%s days'
+                GROUP BY dia ORDER BY dia
+            """ % int(dias))
+            saq_dias = [{'dia': str(r[0]), 'valor': float(r[1]), 'qtd': r[2]} for r in cur.fetchall()]
+        except Exception: saq_dias = []
+        # Pizza por liga
+        cur.execute("""
+            SELECT COALESCE(league_key,'outros'), COUNT(*), COALESCE(SUM(valor),0)
+            FROM apostas GROUP BY league_key ORDER BY SUM(valor) DESC LIMIT 10
+        """)
+        pizza_liga = [{'liga': r[0], 'qtd': r[1], 'apostado': float(r[2])} for r in cur.fetchall()]
+        # Status pie
+        cur.execute("SELECT status, COUNT(*), COALESCE(SUM(valor),0) FROM apostas GROUP BY status")
+        pizza_status = [{'status': r[0], 'qtd': r[1], 'apostado': float(r[2])} for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return web.json_response({'ok': True, 'ggr_dias': ggr_dias, 'dep_dias': dep_dias,
+                                  'saq_dias': saq_dias, 'pizza_liga': pizza_liga, 'pizza_status': pizza_status})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📅  ITEM 7 — P&L por período com filtro de data
+# ═══════════════════════════════════════════════════════════════════════════════
+async def route_admin_bet_pnl(request):
+    """GET /api/admin/bet/pnl?inicio=YYYY-MM-DD&fim=YYYY-MM-DD — P&L detalhado."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        inicio = request.rel_url.query.get('inicio', '')
+        fim    = request.rel_url.query.get('fim', '')
+        conn = _admin_db_connect(); cur = conn.cursor()
+        where = "1=1"
+        params = []
+        if inicio:
+            where += " AND criado_em >= %s"; params.append(inicio + ' 00:00:00')
+        if fim:
+            where += " AND criado_em <= %s"; params.append(fim + ' 23:59:59')
+        cur.execute(f"""
+            SELECT status, COUNT(*), COALESCE(SUM(valor),0), COALESCE(SUM(retorno_potencial),0)
+            FROM apostas WHERE {where} GROUP BY status
+        """, params)
+        por_status = {r[0]: {'qtd': r[1], 'apostado': float(r[2]), 'potencial': float(r[3])} for r in cur.fetchall()}
+        cur.execute(f"SELECT COALESCE(SUM(valor),0) FROM apostas WHERE {where}", params)
+        total_apostado = float(cur.fetchone()[0])
+        cur.execute(f"SELECT COALESCE(SUM(retorno_potencial),0) FROM apostas WHERE status='WON' AND {where}", params)
+        total_pago = float(cur.fetchone()[0])
+        cur.execute(f"SELECT COALESCE(SUM(valor),0) FROM apostas WHERE status='LOST' AND {where}", params)
+        ggr = float(cur.fetchone()[0])
+        # Por liga no período
+        cur.execute(f"""
+            SELECT COALESCE(league_key,'outros'), COUNT(*), COALESCE(SUM(valor),0),
+                   COALESCE(SUM(CASE WHEN status='LOST' THEN valor ELSE 0 END),0),
+                   COALESCE(SUM(CASE WHEN status='WON'  THEN retorno_potencial ELSE 0 END),0)
+            FROM apostas WHERE {where} GROUP BY league_key ORDER BY SUM(valor) DESC
+        """, params)
+        por_liga = [{'liga': r[0], 'qtd': r[1], 'apostado': float(r[2]),
+                     'lucro_bruto': float(r[3]), 'pago_won': float(r[4])} for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return web.json_response({'ok': True, 'periodo': {'inicio': inicio, 'fim': fim},
+                                  'total_apostado': total_apostado, 'total_pago_won': total_pago,
+                                  'ggr': ggr, 'ggr_liquido': ggr - total_pago,
+                                  'por_status': por_status, 'por_liga': por_liga})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📁  ITEM 3 — Exportar CSV
+# ═══════════════════════════════════════════════════════════════════════════════
+async def route_admin_export_apostas_csv(request):
+    """GET /api/admin/export/apostas.csv — exporta apostas em CSV."""
+    if not _admin_auth(request):
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import io, csv as _csv
+        inicio = request.rel_url.query.get('inicio', '')
+        fim    = request.rel_url.query.get('fim', '')
+        conn = _admin_db_connect(); cur = conn.cursor()
+        where = "1=1"; params = []
+        if inicio: where += " AND a.criado_em >= %s"; params.append(inicio + ' 00:00:00')
+        if fim:    where += " AND a.criado_em <= %s"; params.append(fim + ' 23:59:59')
+        cur.execute(f"""
+            SELECT a.id, u.nome, u.cpf, a.jogo_nome, a.selecao, a.odd,
+                   a.valor, a.retorno_potencial, a.status, a.league_key, a.criado_em
+            FROM apostas a LEFT JOIN usuarios u ON u.id=a.usuario_id
+            WHERE {where} ORDER BY a.criado_em DESC
+        """, params)
+        rows = cur.fetchall(); cur.close(); conn.close()
+        out = io.StringIO()
+        w = _csv.writer(out)
+        w.writerow(['ID','Usuário','CPF','Jogo','Seleção','Odd','Apostado','Retorno','Status','Liga','Data'])
+        for r in rows:
+            w.writerow([r[0], r[1] or '', r[2] or '', r[3] or '', r[4] or '',
+                        float(r[5] or 0), float(r[6] or 0), float(r[7] or 0),
+                        r[8] or '', r[9] or '', str(r[10])[:16] if r[10] else ''])
+        return web.Response(text=out.getvalue(), content_type='text/csv',
+                            headers={'Content-Disposition': 'attachment; filename="apostas.csv"'})
+    except Exception as e:
+        return web.Response(text=f'Erro: {e}', status=500)
+
+async def route_admin_export_usuarios_csv(request):
+    """GET /api/admin/export/usuarios.csv — exporta usuários em CSV."""
+    if not _admin_auth(request):
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import io, csv as _csv
+        conn = _admin_db_connect(); cur = conn.cursor()
+        cur.execute("""
+            SELECT u.id, u.nome, u.cpf, u.saldo,
+                   COUNT(a.id) AS apostas, COALESCE(SUM(a.valor),0) AS volume,
+                   u.suspendido, u.criado_em
+            FROM usuarios u LEFT JOIN apostas a ON a.usuario_id=u.id
+            GROUP BY u.id ORDER BY u.criado_em DESC
+        """)
+        rows = cur.fetchall(); cur.close(); conn.close()
+        out = io.StringIO()
+        w = _csv.writer(out)
+        w.writerow(['ID','Nome','CPF','Saldo','Apostas','Volume','Suspenso','Cadastro'])
+        for r in rows:
+            w.writerow([r[0], r[1] or '', r[2] or '', float(r[3] or 0),
+                        r[4], float(r[5] or 0), 'Sim' if r[6] else 'Não',
+                        str(r[7])[:16] if r[7] else ''])
+        return web.Response(text=out.getvalue(), content_type='text/csv',
+                            headers={'Content-Disposition': 'attachment; filename="usuarios.csv"'})
+    except Exception as e:
+        return web.Response(text=f'Erro: {e}', status=500)
+
+async def route_admin_export_depositos_csv(request):
+    """GET /api/admin/export/depositos.csv — exporta depósitos em CSV."""
+    if not _admin_auth(request):
+        return web.Response(text='Não autorizado', status=401)
+    try:
+        import io, csv as _csv
+        conn = _admin_db_connect(); cur = conn.cursor()
+        try:
+            cur.execute("""
+                SELECT d.id, u.nome, u.cpf, d.valor, d.status, d.criado_em
+                FROM depositos_suit d LEFT JOIN usuarios u ON u.cpf=d.cpf
+                ORDER BY d.criado_em DESC LIMIT 5000
+            """)
+            rows = cur.fetchall()
+        except Exception:
+            rows = []
+        cur.close(); conn.close()
+        out = io.StringIO()
+        w = _csv.writer(out)
+        w.writerow(['ID','Nome','CPF','Valor','Status','Data'])
+        for r in rows:
+            w.writerow([r[0], r[1] or '', r[2] or '', float(r[3] or 0), r[4] or '', str(r[5])[:16] if r[5] else ''])
+        return web.Response(text=out.getvalue(), content_type='text/csv',
+                            headers={'Content-Disposition': 'attachment; filename="depositos.csv"'})
+    except Exception as e:
+        return web.Response(text=f'Erro: {e}', status=500)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎯  ITEM 2 — Limites máx de aposta por liga e por usuário
+# ═══════════════════════════════════════════════════════════════════════════════
+def _ensure_limites_table(cur, conn):
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS bet_limites (
+            liga_key VARCHAR(100) PRIMARY KEY,
+            limite_aposta REAL DEFAULT 500.0,
+            limite_usuario_dia REAL DEFAULT 1000.0,
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    # Inserir defaults se vazio
+    cur.execute("SELECT COUNT(*) FROM bet_limites")
+    if cur.fetchone()[0] == 0:
+        for k in ['soccer_brazil_campeonato','soccer_brazil_serie_b','soccer_conmebol_copa_libertadores',
+                  'soccer_conmebol_sudamericana','soccer_uefa_champs_league','soccer_epl',
+                  'soccer_spain_la_liga','soccer_italy_serie_a','soccer_germany_bundesliga',
+                  'soccer_france_ligue_one','basketball_nba','americanfootball_nfl','mma_mixed_martial_arts']:
+            cur.execute("""
+                INSERT INTO bet_limites (liga_key, limite_aposta, limite_usuario_dia)
+                VALUES (%s, 500.0, 1000.0) ON CONFLICT DO NOTHING
+            """, (k,))
+    conn.commit()
+
+async def route_admin_limites_get(request):
+    """GET /api/admin/bet/limites — lista limites por liga."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_limites_table(cur, conn)
+        cur.execute("SELECT liga_key, limite_aposta, limite_usuario_dia, updated_at FROM bet_limites ORDER BY liga_key")
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        ligas = []
+        for r in rows:
+            info = _ADMIN_LIGAS_MAP.get(r[0], {})
+            ligas.append({'liga_key': r[0], 'nome': info.get('nome', r[0]),
+                          'limite_aposta': float(r[1]), 'limite_usuario_dia': float(r[2]),
+                          'updated_at': r[3].strftime('%d/%m %H:%M') if r[3] else ''})
+        return web.json_response({'ok': True, 'ligas': ligas})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+async def route_admin_limites_set(request):
+    """POST /api/admin/bet/limites — define limites por liga."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        liga_key = body.get('liga_key', '')
+        limite_aposta = float(body.get('limite_aposta', 500))
+        limite_dia    = float(body.get('limite_usuario_dia', 1000))
+        if not liga_key:
+            return web.json_response({'ok': False, 'error': 'liga_key obrigatório'}, status=400)
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_limites_table(cur, conn)
+        cur.execute("""
+            INSERT INTO bet_limites (liga_key, limite_aposta, limite_usuario_dia, updated_at)
+            VALUES (%s, %s, %s, NOW())
+            ON CONFLICT (liga_key) DO UPDATE
+            SET limite_aposta=%s, limite_usuario_dia=%s, updated_at=NOW()
+        """, (liga_key, limite_aposta, limite_dia, limite_aposta, limite_dia))
+        conn.commit(); cur.close(); conn.close()
+        return web.json_response({'ok': True, 'msg': f'Limites de {liga_key} salvos'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎁  ITEM 4 — Sistema de Bônus (boas-vindas, free bet, cashback, indicação)
+# ═══════════════════════════════════════════════════════════════════════════════
+def _ensure_bonus_tables(cur, conn):
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS bet_bonus_config (
+            id SERIAL PRIMARY KEY,
+            tipo VARCHAR(50) NOT NULL,
+            nome VARCHAR(200) NOT NULL,
+            descricao TEXT,
+            valor REAL DEFAULT 0,
+            percentual REAL DEFAULT 0,
+            deposito_minimo REAL DEFAULT 10,
+            rollover REAL DEFAULT 1,
+            validade_dias INTEGER DEFAULT 30,
+            ativo BOOLEAN DEFAULT TRUE,
+            criado_em TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS bet_bonus_usuarios (
+            id SERIAL PRIMARY KEY,
+            usuario_id INTEGER,
+            bonus_id INTEGER,
+            tipo VARCHAR(50),
+            valor_bonus REAL DEFAULT 0,
+            valor_usado REAL DEFAULT 0,
+            status VARCHAR(30) DEFAULT 'ativo',
+            criado_em TIMESTAMP DEFAULT NOW(),
+            expira_em TIMESTAMP
+        )
+    """)
+    conn.commit()
+
+async def route_admin_bonus_list(request):
+    """GET /api/admin/bonus — lista bônus configurados."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_bonus_tables(cur, conn)
+        cur.execute("SELECT id, tipo, nome, descricao, valor, percentual, deposito_minimo, rollover, validade_dias, ativo, criado_em FROM bet_bonus_config ORDER BY criado_em DESC")
+        bonus = [{'id': r[0], 'tipo': r[1], 'nome': r[2], 'descricao': r[3] or '',
+                  'valor': float(r[4] or 0), 'percentual': float(r[5] or 0),
+                  'deposito_minimo': float(r[6] or 0), 'rollover': float(r[7] or 1),
+                  'validade_dias': r[8], 'ativo': bool(r[9]),
+                  'criado_em': r[10].strftime('%d/%m/%Y') if r[10] else ''} for r in cur.fetchall()]
+        # Estatísticas de uso
+        cur.execute("SELECT COUNT(*), COALESCE(SUM(valor_bonus),0) FROM bet_bonus_usuarios WHERE status='ativo'")
+        stats = cur.fetchone()
+        cur.close(); conn.close()
+        return web.json_response({'ok': True, 'bonus': bonus,
+                                  'stats': {'ativos': stats[0], 'valor_total': float(stats[1])}})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+async def route_admin_bonus_criar(request):
+    """POST /api/admin/bonus/criar — cria novo bônus."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        tipo        = body.get('tipo', 'free_bet')  # boas_vindas|free_bet|cashback|indicacao
+        nome        = body.get('nome', '')
+        descricao   = body.get('descricao', '')
+        valor       = float(body.get('valor', 0))
+        percentual  = float(body.get('percentual', 0))
+        dep_min     = float(body.get('deposito_minimo', 10))
+        rollover    = float(body.get('rollover', 1))
+        validade    = int(body.get('validade_dias', 30))
+        if not nome:
+            return web.json_response({'ok': False, 'error': 'nome obrigatório'}, status=400)
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_bonus_tables(cur, conn)
+        cur.execute("""
+            INSERT INTO bet_bonus_config (tipo, nome, descricao, valor, percentual, deposito_minimo, rollover, validade_dias)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+        """, (tipo, nome, descricao, valor, percentual, dep_min, rollover, validade))
+        new_id = cur.fetchone()[0]
+        conn.commit(); cur.close(); conn.close()
+        print(f'[admin/bonus] Novo bônus #{new_id}: {tipo} — {nome}', flush=True)
+        return web.json_response({'ok': True, 'id': new_id, 'msg': f'Bônus "{nome}" criado com sucesso'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+async def route_admin_bonus_cancelar(request):
+    """POST /api/admin/bonus/cancelar — desativa bônus."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        bonus_id = int(body.get('id', 0))
+        conn = _admin_db_connect(); cur = conn.cursor()
+        cur.execute("UPDATE bet_bonus_config SET ativo=false WHERE id=%s", (bonus_id,))
+        conn.commit(); cur.close(); conn.close()
+        return web.json_response({'ok': True, 'msg': f'Bônus #{bonus_id} desativado'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ⚠️  ITEM 5 — Alertas de Risco
+# ═══════════════════════════════════════════════════════════════════════════════
+async def route_admin_alertas(request):
+    """GET /api/admin/alertas — detecta apostadores suspeitos."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        alertas = []
+        # 1. Win rate acima de 70%
+        cur.execute("""
+            SELECT u.id, u.nome, u.cpf,
+                   COUNT(a.id) AS total,
+                   SUM(CASE WHEN a.status='WON' THEN 1 ELSE 0 END) AS won,
+                   COALESCE(SUM(a.valor),0) AS volume
+            FROM apostas a JOIN usuarios u ON u.id=a.usuario_id
+            WHERE a.status IN ('WON','LOST')
+            GROUP BY u.id, u.nome, u.cpf
+            HAVING COUNT(a.id) >= 3
+            ORDER BY (SUM(CASE WHEN a.status='WON' THEN 1.0 ELSE 0 END)/COUNT(a.id)) DESC
+            LIMIT 20
+        """)
+        for r in cur.fetchall():
+            total, won = r[3], r[4] or 0
+            wr = (won / total * 100) if total > 0 else 0
+            if wr >= 70:
+                alertas.append({'tipo': 'win_rate_alto', 'nivel': 'alto' if wr >= 85 else 'medio',
+                                 'usuario_id': r[0], 'nome': r[1] or '?', 'cpf': r[2] or '',
+                                 'detalhe': f'Win rate {wr:.0f}% ({won}/{total} apostas)',
+                                 'volume': float(r[5])})
+        # 2. Saque logo após depósito sem apostar (lavagem)
+        try:
+            cur.execute("""
+                SELECT u.id, u.nome, u.cpf,
+                       COALESCE(SUM(d.valor),0) AS dep_total,
+                       COUNT(DISTINCT a.id) AS apostas
+                FROM usuarios u
+                JOIN depositos_suit d ON d.cpf=u.cpf AND d.status='PAID'
+                LEFT JOIN apostas a ON a.usuario_id=u.id
+                GROUP BY u.id, u.nome, u.cpf
+                HAVING COALESCE(SUM(d.valor),0) > 50 AND COUNT(DISTINCT a.id) = 0
+                LIMIT 10
+            """)
+            for r in cur.fetchall():
+                alertas.append({'tipo': 'saque_sem_aposta', 'nivel': 'alto',
+                                 'usuario_id': r[0], 'nome': r[1] or '?', 'cpf': r[2] or '',
+                                 'detalhe': f'Depositou R${float(r[3]):.2f} mas não apostou nada',
+                                 'volume': float(r[3])})
+        except Exception: pass
+        # 3. Usuários com aposta única muito alta (>80% do saldo)
+        cur.execute("""
+            SELECT u.id, u.nome, u.cpf, a.valor, u.saldo
+            FROM apostas a JOIN usuarios u ON u.id=a.usuario_id
+            WHERE a.valor > 100 AND u.saldo > 0 AND a.status='pendente'
+            AND a.valor > u.saldo * 0.8
+            ORDER BY a.valor DESC LIMIT 10
+        """)
+        for r in cur.fetchall():
+            alertas.append({'tipo': 'aposta_concentrada', 'nivel': 'medio',
+                             'usuario_id': r[0], 'nome': r[1] or '?', 'cpf': r[2] or '',
+                             'detalhe': f'Apostou R${float(r[3]):.2f} (>80% do saldo R${float(r[4]):.2f})',
+                             'volume': float(r[3])})
+        cur.close(); conn.close()
+        return web.json_response({'ok': True, 'alertas': alertas,
+                                  'total': len(alertas),
+                                  'altos': sum(1 for a in alertas if a['nivel'] == 'alto'),
+                                  'medios': sum(1 for a in alertas if a['nivel'] == 'medio')})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+async def route_admin_alertas_ignorar(request):
+    """POST /api/admin/alertas/ignorar — registra que alerta foi revisado."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    return web.json_response({'ok': True, 'msg': 'Alerta marcado como revisado'})
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🛡️  ITEM 6 — Jogo Responsável (autoexclusão, limite dep, limite perda)
+# ═══════════════════════════════════════════════════════════════════════════════
+def _ensure_jogo_resp_table(cur, conn):
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS bet_jogo_responsavel (
+            usuario_id INTEGER PRIMARY KEY,
+            autoexcluido BOOLEAN DEFAULT FALSE,
+            autoexclusao_ate TIMESTAMP,
+            limite_deposito_mes REAL DEFAULT 0,
+            limite_perda_mes REAL DEFAULT 0,
+            limite_aposta_unica REAL DEFAULT 0,
+            pausa_ate TIMESTAMP,
+            motivo TEXT,
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    conn.commit()
+
+async def route_admin_jogo_resp_list(request):
+    """GET /api/admin/jogo-responsavel — lista usuários com restrições ativas."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_jogo_resp_table(cur, conn)
+        cur.execute("""
+            SELECT jr.usuario_id, u.nome, u.cpf, jr.autoexcluido, jr.autoexclusao_ate,
+                   jr.limite_deposito_mes, jr.limite_perda_mes, jr.limite_aposta_unica,
+                   jr.pausa_ate, jr.motivo, jr.updated_at
+            FROM bet_jogo_responsavel jr
+            JOIN usuarios u ON u.id=jr.usuario_id
+            ORDER BY jr.updated_at DESC
+        """)
+        rows = cur.fetchall()
+        # Estatísticas globais
+        cur.execute("SELECT COUNT(*) FROM bet_jogo_responsavel WHERE autoexcluido=true")
+        total_excluidos = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM bet_jogo_responsavel WHERE pausa_ate > NOW()")
+        total_pausados = cur.fetchone()[0]
+        cur.close(); conn.close()
+        usuarios = [{'usuario_id': r[0], 'nome': r[1] or '?', 'cpf': r[2] or '',
+                     'autoexcluido': bool(r[3]),
+                     'autoexclusao_ate': str(r[4])[:16] if r[4] else None,
+                     'limite_deposito_mes': float(r[5] or 0), 'limite_perda_mes': float(r[6] or 0),
+                     'limite_aposta_unica': float(r[7] or 0),
+                     'pausa_ate': str(r[8])[:16] if r[8] else None,
+                     'motivo': r[9] or '', 'updated_at': str(r[10])[:16] if r[10] else ''} for r in rows]
+        return web.json_response({'ok': True, 'usuarios': usuarios,
+                                  'total_excluidos': total_excluidos, 'total_pausados': total_pausados})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+async def route_admin_jogo_resp_set(request):
+    """POST /api/admin/jogo-responsavel — define restrições para usuário."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        usuario_id = int(body.get('usuario_id', 0))
+        if not usuario_id:
+            return web.json_response({'ok': False, 'error': 'usuario_id obrigatório'}, status=400)
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_jogo_resp_table(cur, conn)
+        import datetime as _dt
+        autoexcluido = bool(body.get('autoexcluido', False))
+        dias_excl = int(body.get('dias_exclusao', 30))
+        excl_ate = (_dt.datetime.now() + _dt.timedelta(days=dias_excl)) if autoexcluido else None
+        lim_dep  = float(body.get('limite_deposito_mes', 0))
+        lim_perd = float(body.get('limite_perda_mes', 0))
+        lim_apos = float(body.get('limite_aposta_unica', 0))
+        dias_pausa = int(body.get('dias_pausa', 0))
+        pausa_ate = (_dt.datetime.now() + _dt.timedelta(days=dias_pausa)) if dias_pausa > 0 else None
+        motivo = body.get('motivo', '')
+        cur.execute("""
+            INSERT INTO bet_jogo_responsavel
+                (usuario_id, autoexcluido, autoexclusao_ate, limite_deposito_mes,
+                 limite_perda_mes, limite_aposta_unica, pausa_ate, motivo, updated_at)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+            ON CONFLICT (usuario_id) DO UPDATE SET
+                autoexcluido=%s, autoexclusao_ate=%s, limite_deposito_mes=%s,
+                limite_perda_mes=%s, limite_aposta_unica=%s, pausa_ate=%s, motivo=%s, updated_at=NOW()
+        """, (usuario_id, autoexcluido, excl_ate, lim_dep, lim_perd, lim_apos, pausa_ate, motivo,
+              autoexcluido, excl_ate, lim_dep, lim_perd, lim_apos, pausa_ate, motivo))
+        # Se autoexcluído, também suspender a conta
+        if autoexcluido:
+            try:
+                cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS suspendido BOOLEAN DEFAULT false")
+                cur.execute("UPDATE usuarios SET suspendido=true WHERE id=%s", (usuario_id,))
+            except Exception: pass
+        conn.commit(); cur.close(); conn.close()
+        print(f'[jogo-responsavel] User {usuario_id} → autoexcl={autoexcluido}, lim_dep={lim_dep}, lim_perd={lim_perd}', flush=True)
+        return web.json_response({'ok': True, 'msg': 'Configurações de jogo responsável salvas'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🤝  ITEM 9 — Afiliados / Indicação
+# ═══════════════════════════════════════════════════════════════════════════════
+async def route_admin_afiliados_list(request):
+    """GET /api/admin/afiliados — lista afiliados com métricas."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        # Garantir coluna referido_por
+        try:
+            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS referido_por INTEGER DEFAULT NULL")
+            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS codigo_indicacao VARCHAR(20) DEFAULT NULL")
+            conn.commit()
+        except Exception: conn.rollback()
+        cur.execute("""
+            SELECT u.id, u.nome, u.cpf, u.codigo_indicacao,
+                   COUNT(r.id) AS indicados,
+                   COALESCE(SUM(a_r.valor),0) AS volume_indicados,
+                   u.criado_em
+            FROM usuarios u
+            LEFT JOIN usuarios r ON r.referido_por=u.id
+            LEFT JOIN apostas a_r ON a_r.usuario_id=r.id
+            WHERE u.codigo_indicacao IS NOT NULL
+            GROUP BY u.id ORDER BY COUNT(r.id) DESC LIMIT 50
+        """)
+        afiliados = [{'id': r[0], 'nome': r[1] or '?', 'cpf': r[2] or '',
+                      'codigo': r[3] or '', 'indicados': r[4],
+                      'volume_indicados': float(r[5] or 0),
+                      'criado_em': str(r[6])[:10] if r[6] else ''} for r in cur.fetchall()]
+        cur.execute("SELECT COUNT(*) FROM usuarios WHERE referido_por IS NOT NULL")
+        total_indicados = cur.fetchone()[0]
+        cur.close(); conn.close()
+        return web.json_response({'ok': True, 'afiliados': afiliados,
+                                  'total_indicados': total_indicados,
+                                  'total_afiliados': len(afiliados)})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔔  ITEM 8 — Notificações Telegram ao Admin
+# ═══════════════════════════════════════════════════════════════════════════════
+_NOTIF_CONFIG = {'bot_token': '', 'chat_id': '', 'limite_saque': 200.0,
+                 'limite_aposta': 500.0, 'alertas_risco': True}
+
+async def _carregar_notif_config():
+    """Carrega config de notificações do DB."""
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        cur.execute("SELECT valor FROM configuracoes WHERE chave='notif_admin_config'")
+        row = cur.fetchone(); cur.close(); conn.close()
+        if row:
+            import json as _j
+            _NOTIF_CONFIG.update(_j.loads(row[0]))
+    except Exception: pass
+
+async def _notif_telegram_admin(msg: str):
+    """Envia mensagem de alerta ao admin via Telegram."""
+    import aiohttp as _aio
+    token = _NOTIF_CONFIG.get('bot_token', '')
+    chat  = _NOTIF_CONFIG.get('chat_id', '')
+    if not token or not chat:
+        return
+    try:
+        async with _aio.ClientSession() as sess:
+            await sess.post(f'https://api.telegram.org/bot{token}/sendMessage',
+                            json={'chat_id': chat, 'text': msg, 'parse_mode': 'HTML'},
+                            timeout=_aio.ClientTimeout(total=5))
+    except Exception: pass
+
+async def route_admin_notif_config_get(request):
+    """GET /api/admin/notif-config — retorna config de notificações."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    await _carregar_notif_config()
+    cfg = dict(_NOTIF_CONFIG)
+    if cfg.get('bot_token'):
+        cfg['bot_token'] = cfg['bot_token'][:8] + '***'  # mascarar token
+    return web.json_response({'ok': True, 'config': cfg})
+
+async def route_admin_notif_config(request):
+    """POST /api/admin/notif-config — salva config de notificações."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        import json as _j
+        # Atualizar config em memória
+        if 'bot_token' in body and body['bot_token'] and '***' not in body['bot_token']:
+            _NOTIF_CONFIG['bot_token'] = body['bot_token']
+        if 'chat_id' in body:
+            _NOTIF_CONFIG['chat_id'] = str(body['chat_id'])
+        if 'limite_saque'  in body: _NOTIF_CONFIG['limite_saque']  = float(body['limite_saque'])
+        if 'limite_aposta' in body: _NOTIF_CONFIG['limite_aposta'] = float(body['limite_aposta'])
+        if 'alertas_risco' in body: _NOTIF_CONFIG['alertas_risco'] = bool(body['alertas_risco'])
+        # Salvar no DB
+        conn = _admin_db_connect(); cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO configuracoes (chave, valor) VALUES ('notif_admin_config', %s)
+            ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor
+        """, (_j.dumps(_NOTIF_CONFIG),))
+        conn.commit(); cur.close(); conn.close()
+        # Testar envio se solicitado
+        if body.get('testar'):
+            await _notif_telegram_admin('🔔 <b>PaynexBet Admin</b>\nNotificações configuradas com sucesso! ✅')
+            return web.json_response({'ok': True, 'msg': 'Configuração salva e mensagem de teste enviada!'})
+        return web.json_response({'ok': True, 'msg': 'Configuração de notificações salva!'})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
 async def route_bet_jogos(request):
     """GET /api/bet/jogos — retorna jogos com odds reais (odds-api) ou ESPN como fallback.
     Suporta ?sport=<key> para filtrar por campeonato específico.
@@ -14498,6 +15140,31 @@ async def main():
     # Resolver apostas
     app.router.add_post('/api/admin/bet/resolver',      route_admin_bet_resolver)
     app.router.add_post('/api/admin/bet/resolver-auto', route_admin_bet_resolver_auto)
+    # Charts / P&L
+    app.router.add_get('/api/admin/bet/charts',         route_admin_bet_charts)
+    app.router.add_get('/api/admin/bet/pnl',            route_admin_bet_pnl)
+    # Exportar CSV
+    app.router.add_get('/api/admin/export/apostas.csv',   route_admin_export_apostas_csv)
+    app.router.add_get('/api/admin/export/usuarios.csv',  route_admin_export_usuarios_csv)
+    app.router.add_get('/api/admin/export/depositos.csv', route_admin_export_depositos_csv)
+    # Limites por liga e por usuário
+    app.router.add_get('/api/admin/bet/limites',        route_admin_limites_get)
+    app.router.add_post('/api/admin/bet/limites',       route_admin_limites_set)
+    # Sistema de Bônus
+    app.router.add_get('/api/admin/bonus',              route_admin_bonus_list)
+    app.router.add_post('/api/admin/bonus/criar',       route_admin_bonus_criar)
+    app.router.add_post('/api/admin/bonus/cancelar',    route_admin_bonus_cancelar)
+    # Alertas de Risco
+    app.router.add_get('/api/admin/alertas',            route_admin_alertas)
+    app.router.add_post('/api/admin/alertas/ignorar',   route_admin_alertas_ignorar)
+    # Jogo Responsável
+    app.router.add_get('/api/admin/jogo-responsavel',   route_admin_jogo_resp_list)
+    app.router.add_post('/api/admin/jogo-responsavel',  route_admin_jogo_resp_set)
+    # Afiliados
+    app.router.add_get('/api/admin/afiliados',          route_admin_afiliados_list)
+    # Notificações Telegram admin
+    app.router.add_post('/api/admin/notif-config',      route_admin_notif_config)
+    app.router.add_get('/api/admin/notif-config',       route_admin_notif_config_get)
 
     runner = web.AppRunner(app)
     await runner.setup()

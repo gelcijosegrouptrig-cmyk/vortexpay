@@ -664,6 +664,8 @@
   }
 
 </style>
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -791,6 +793,31 @@ function toggleLoginSenha() {
       <div class="nav-item" onclick="showTab('config-pagamento')">
         ⚙️ <span>Config Pagamento</span>
       </div>
+      <div class="nav-item" onclick="showTab('limites')">
+        🎯 <span>Limites de Aposta</span>
+      </div>
+      <div class="nav-item" onclick="showTab('bonus')">
+        🎁 <span>Bônus & Promoções</span>
+        <span class="badge" id="badge-bonus-ativos" style="background:#8b5cf6">0</span>
+      </div>
+      <div class="nav-item" onclick="showTab('alertas')">
+        ⚠️ <span>Alertas de Risco</span>
+        <span class="badge" id="badge-alertas" style="background:#ef4444">0</span>
+      </div>
+      <div class="nav-item" onclick="showTab('jogo-responsavel')">
+        🛡️ <span>Jogo Responsável</span>
+        <span class="badge" id="badge-jr" style="background:#f59e0b">0</span>
+      </div>
+      <div class="nav-item" onclick="showTab('pnl')">
+        📊 <span>P&L por Período</span>
+      </div>
+      <div class="nav-item" onclick="showTab('afiliados')">
+        🤝 <span>Afiliados</span>
+        <span class="badge" id="badge-afiliados" style="background:#10b981">0</span>
+      </div>
+      <div class="nav-item" onclick="showTab('notificacoes')">
+        🔔 <span>Notificações</span>
+      </div>
       <div class="nav-section">Desenvolvedores</div>
       <div class="nav-item" onclick="showTab('api')">
         🔌 <span>API & Webhooks</span>
@@ -829,17 +856,7 @@ function toggleLoginSenha() {
       <!-- DASHBOARD -->
       <div id="tab-dashboard" class="tab-content active">
 
-        <!-- Gráfico 7 dias -->
-        <div class="chart-section" id="chart-section" style="display:none">
-          <div class="chart-title">📈 Atividade dos Últimos 7 Dias</div>
-          <div class="chart-legend">
-            <div class="legend-item"><div class="legend-dot" style="background:#ff6b35"></div>Depósitos</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>Saques</div>
-          </div>
-          <div class="chart-bars-new" id="chart-bars"></div>
-          <div class="bar-dates" id="chart-dates"></div>
-        </div>
-
+        <!-- ── KPIs topo ── -->
         <div class="metrics-grid">
           <div class="metric-card orange">
             <div class="metric-icon">💰</div>
@@ -877,6 +894,52 @@ function toggleLoginSenha() {
             <div class="metric-label">Saques Pendentes</div>
             <div class="metric-value" id="m-pend-saq">—</div>
             <div class="metric-sub" id="m-val-pend-saq">aguardando processamento</div>
+          </div>
+        </div>
+
+        <!-- ══ GRÁFICOS CHART.JS ══ -->
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px" class="section-grid">
+          <!-- Gráfico de linha: GGR por dia -->
+          <div class="table-card">
+            <div class="table-header" style="display:flex;justify-content:space-between;align-items:center">
+              <h3>📈 GGR & Volume por Dia</h3>
+              <div style="display:flex;gap:6px;align-items:center">
+                <select id="chart-periodo" onchange="loadCharts()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:4px 10px;font-size:12px;cursor:pointer">
+                  <option value="7">7 dias</option>
+                  <option value="14">14 dias</option>
+                  <option value="30" selected>30 dias</option>
+                  <option value="90">90 dias</option>
+                </select>
+                <button onclick="loadCharts()" class="refresh-btn" style="font-size:12px">🔄</button>
+              </div>
+            </div>
+            <div style="padding:16px;position:relative;height:260px">
+              <canvas id="chartGGR"></canvas>
+            </div>
+          </div>
+          <!-- Gráfico de pizza: por liga -->
+          <div class="table-card">
+            <div class="table-header"><h3>🥧 Volume por Liga</h3></div>
+            <div style="padding:16px;position:relative;height:260px;display:flex;align-items:center;justify-content:center">
+              <canvas id="chartPizzaLiga"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="section-grid">
+          <!-- Gráfico barras: Depósitos vs Saques -->
+          <div class="table-card">
+            <div class="table-header"><h3>💱 Depósitos vs Saques (R$)</h3></div>
+            <div style="padding:16px;position:relative;height:220px">
+              <canvas id="chartDepSaq"></canvas>
+            </div>
+          </div>
+          <!-- Gráfico pizza: Status apostas -->
+          <div class="table-card">
+            <div class="table-header"><h3>🎯 Status das Apostas</h3></div>
+            <div style="padding:16px;position:relative;height:220px;display:flex;align-items:center;justify-content:center">
+              <canvas id="chartPizzaStatus"></canvas>
+            </div>
           </div>
         </div>
 
@@ -1213,6 +1276,9 @@ function toggleLoginSenha() {
               <button onclick="resolverAutoAdmin()" style="padding:6px 14px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);border-radius:8px;color:#4ade80;font-size:12px;font-weight:700;cursor:pointer">
                 🤖 Resolver Automático (ESPN)
               </button>
+              <button onclick="window.open('/api/admin/export/apostas.csv?secret='+encodeURIComponent(ADMIN_SECRET()),'_blank')" style="padding:6px 14px;background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.4);border-radius:8px;color:#60a5fa;font-size:12px;font-weight:700;cursor:pointer">
+                📁 CSV
+              </button>
               <button onclick="loadApostasDash()" class="refresh-btn" style="font-size:12px">🔄 Atualizar</button>
             </div>
           </div>
@@ -1233,6 +1299,371 @@ function toggleLoginSenha() {
             </table>
           </div>
           <div id="resolver-auto-msg" style="padding:10px 16px;font-size:13px;color:var(--green);display:none"></div>
+        </div>
+      </div>
+
+      <!-- ═══ LIMITES DE APOSTA ═══ -->
+      <div id="tab-limites" class="tab-content">
+        <div class="table-card">
+          <div class="table-header" style="display:flex;justify-content:space-between;align-items:center">
+            <h3>🎯 Limites de Aposta por Liga</h3>
+            <button onclick="loadLimites()" class="refresh-btn">🔄 Atualizar</button>
+          </div>
+          <div style="padding:10px 16px;background:rgba(96,165,250,0.08);border-bottom:1px solid var(--border);font-size:11px;color:var(--text2)">
+            💡 <b>Limite por aposta:</b> valor máximo em uma única aposta. &nbsp;|&nbsp; <b>Limite dia/usuário:</b> total que o usuário pode apostar por dia.
+          </div>
+          <div id="limites-loading" style="padding:24px;text-align:center"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>
+          <div id="limites-lista" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- ═══ BÔNUS & PROMOÇÕES ═══ -->
+      <div id="tab-bonus" class="tab-content">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="section-grid">
+          <!-- Criar bônus -->
+          <div class="table-card">
+            <div class="table-header"><h3>➕ Criar Novo Bônus</h3></div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Tipo de Bônus</label>
+                <select id="bonus-tipo" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+                  <option value="boas_vindas">🎉 Boas-Vindas (1º depósito)</option>
+                  <option value="free_bet">🆓 Free Bet (crédito de aposta)</option>
+                  <option value="cashback">💸 Cashback (% do que perdeu)</option>
+                  <option value="indicacao">🤝 Indicação (refer a friend)</option>
+                  <option value="recarga">🔄 Recarga (depósito recorrente)</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Nome do Bônus</label>
+                <input id="bonus-nome" type="text" placeholder="Ex: Bônus de Boas-Vindas 100%" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Descrição</label>
+                <input id="bonus-desc" type="text" placeholder="Descrição para o usuário" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Valor (R$)</label>
+                  <input id="bonus-valor" type="number" placeholder="0" min="0" step="1" value="0" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Percentual (%)</label>
+                  <input id="bonus-pct" type="number" placeholder="0" min="0" max="200" step="5" value="0" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box">
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Dep. Mínimo (R$)</label>
+                  <input id="bonus-dep-min" type="number" placeholder="10" value="10" min="0" style="width:100%;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;box-sizing:border-box">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Rollover (x)</label>
+                  <input id="bonus-rollover" type="number" placeholder="1" value="1" min="1" max="10" step="0.5" style="width:100%;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;box-sizing:border-box">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Validade (dias)</label>
+                  <input id="bonus-validade" type="number" placeholder="30" value="30" min="1" style="width:100%;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;box-sizing:border-box">
+                </div>
+              </div>
+              <button onclick="criarBonus()" style="padding:10px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;width:100%">
+                ✨ Criar Bônus
+              </button>
+              <div id="bonus-create-msg" style="font-size:12px;text-align:center;min-height:16px"></div>
+            </div>
+          </div>
+          <!-- Stats bônus -->
+          <div class="table-card">
+            <div class="table-header"><h3>📊 Estatísticas de Bônus</h3></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+              <div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:16px;text-align:center">
+                <div style="font-size:11px;color:var(--text2);margin-bottom:4px">Bônus Ativos (usuários)</div>
+                <div style="font-size:32px;font-weight:800;color:#8b5cf6" id="stats-bonus-ativos">—</div>
+              </div>
+              <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:16px;text-align:center">
+                <div style="font-size:11px;color:var(--text2);margin-bottom:4px">Valor Total em Bônus</div>
+                <div style="font-size:32px;font-weight:800;color:#10b981" id="stats-bonus-valor">—</div>
+              </div>
+              <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:16px;text-align:center">
+                <div style="font-size:11px;color:var(--text2);margin-bottom:4px">Tipos configurados</div>
+                <div style="font-size:32px;font-weight:800;color:#f59e0b" id="stats-bonus-tipos">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Lista de bônus -->
+        <div class="table-card">
+          <div class="table-header" style="display:flex;justify-content:space-between;align-items:center">
+            <h3>🎁 Bônus Configurados</h3>
+            <button onclick="loadBonus()" class="refresh-btn">🔄</button>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Tipo</th><th>Nome</th><th>Valor</th><th>%</th><th>Rollover</th><th>Validade</th><th>Status</th><th>Ação</th></tr></thead>
+              <tbody id="table-bonus"><tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ ALERTAS DE RISCO ═══ -->
+      <div id="tab-alertas" class="tab-content">
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header" style="display:flex;justify-content:space-between;align-items:center">
+            <h3>⚠️ Alertas de Risco — Monitoramento de Usuários</h3>
+            <button onclick="loadAlertas()" class="refresh-btn">🔄 Analisar Agora</button>
+          </div>
+          <div style="padding:8px 16px;background:rgba(239,68,68,0.08);border-bottom:1px solid var(--border);font-size:11px;color:#f87171">
+            🔍 O sistema analisa automaticamente: win rate elevado, lavagem de dinheiro, apostas concentradas e padrões suspeitos.
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px" id="alertas-kpis">
+            <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:14px;text-align:center">
+              <div style="font-size:11px;color:var(--text2)">Alertas ALTO risco</div>
+              <div style="font-size:28px;font-weight:800;color:#ef4444" id="kpi-alertas-altos">—</div>
+            </div>
+            <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:14px;text-align:center">
+              <div style="font-size:11px;color:var(--text2)">Alertas MÉDIO risco</div>
+              <div style="font-size:28px;font-weight:800;color:#f59e0b" id="kpi-alertas-medios">—</div>
+            </div>
+            <div style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:12px;padding:14px;text-align:center">
+              <div style="font-size:11px;color:var(--text2)">Total analisado</div>
+              <div style="font-size:28px;font-weight:800;color:#4ade80" id="kpi-alertas-total">—</div>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Tipo</th><th>Risco</th><th>Usuário</th><th>CPF</th><th>Detalhe</th><th>Volume</th><th>Ação</th></tr></thead>
+              <tbody id="table-alertas"><tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ JOGO RESPONSÁVEL ═══ -->
+      <div id="tab-jogo-responsavel" class="tab-content">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="section-grid">
+          <!-- Configurar restrição -->
+          <div class="table-card">
+            <div class="table-header"><h3>🛡️ Aplicar Restrição</h3></div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">ID do Usuário</label>
+                <input id="jr-usuario-id" type="number" placeholder="ID do usuário" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box">
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:10px">
+                <input type="checkbox" id="jr-autoexcluir" style="width:18px;height:18px;cursor:pointer">
+                <label for="jr-autoexcluir" style="cursor:pointer;font-weight:600;color:#f87171">🚫 Autoexclusão (bloquear conta)</label>
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Dias de exclusão (se autoexclusão ativada)</label>
+                <select id="jr-dias-excl" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+                  <option value="30">30 dias</option>
+                  <option value="90">90 dias</option>
+                  <option value="180">180 dias</option>
+                  <option value="365">1 ano</option>
+                  <option value="3650">Permanente (10 anos)</option>
+                </select>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Limite depósito/mês (R$)</label>
+                  <input id="jr-lim-dep" type="number" placeholder="0 = sem limite" min="0" value="0" style="width:100%;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;box-sizing:border-box">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Limite perda/mês (R$)</label>
+                  <input id="jr-lim-perd" type="number" placeholder="0 = sem limite" min="0" value="0" style="width:100%;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;box-sizing:border-box">
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Limite aposta única (R$)</label>
+                  <input id="jr-lim-apos" type="number" placeholder="0 = sem limite" min="0" value="0" style="width:100%;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;box-sizing:border-box">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Pausar por (dias)</label>
+                  <input id="jr-pausa" type="number" placeholder="0 = sem pausa" min="0" value="0" style="width:100%;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;box-sizing:border-box">
+                </div>
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Motivo / Observação</label>
+                <input id="jr-motivo" type="text" placeholder="Ex: Solicitação do usuário, comportamento suspeito..." style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box">
+              </div>
+              <button onclick="salvarJogoResp()" style="padding:10px;background:linear-gradient(135deg,#dc2626,#991b1b);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">
+                🛡️ Salvar Restrição
+              </button>
+              <div id="jr-msg" style="font-size:12px;text-align:center;min-height:16px"></div>
+            </div>
+          </div>
+          <!-- Stats -->
+          <div class="table-card">
+            <div class="table-header"><h3>📊 Estatísticas Jogo Responsável</h3></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:16px;text-align:center">
+                <div style="font-size:11px;color:var(--text2)">Autoexcluídos</div>
+                <div style="font-size:36px;font-weight:800;color:#ef4444" id="jr-stat-excluidos">—</div>
+              </div>
+              <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:16px;text-align:center">
+                <div style="font-size:11px;color:var(--text2)">Em Pausa</div>
+                <div style="font-size:36px;font-weight:800;color:#f59e0b" id="jr-stat-pausados">—</div>
+              </div>
+              <div style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:12px;padding:16px;text-align:center">
+                <div style="font-size:11px;color:var(--text2)">Com Limites Ativos</div>
+                <div style="font-size:36px;font-weight:800;color:#60a5fa" id="jr-stat-total">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Lista usuários com restrições -->
+        <div class="table-card">
+          <div class="table-header" style="display:flex;justify-content:space-between;align-items:center">
+            <h3>📋 Usuários com Restrições</h3>
+            <button onclick="loadJogoResp()" class="refresh-btn">🔄</button>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Usuário</th><th>CPF</th><th>Autoexcluído</th><th>Exclusão até</th><th>Lim.Dep/mês</th><th>Lim.Perda/mês</th><th>Em Pausa até</th><th>Motivo</th></tr></thead>
+              <tbody id="table-jr"><tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ P&L POR PERÍODO ═══ -->
+      <div id="tab-pnl" class="tab-content">
+        <div class="table-card" style="margin-bottom:16px">
+          <div class="table-header"><h3>📊 Relatório P&L por Período</h3></div>
+          <div style="padding:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div>
+              <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Data Início</label>
+              <input type="date" id="pnl-inicio" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Data Fim</label>
+              <input type="date" id="pnl-fim" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+            </div>
+            <button onclick="loadPnL()" style="padding:9px 20px;background:linear-gradient(135deg,#ff6b35,#f7931e);border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;font-size:13px">
+              📊 Gerar Relatório
+            </button>
+            <button onclick="exportarRelatorio()" style="padding:9px 20px;background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.4);border-radius:8px;color:#60a5fa;font-weight:700;cursor:pointer;font-size:13px">
+              📁 Exportar CSV
+            </button>
+          </div>
+        </div>
+        <!-- KPIs P&L -->
+        <div class="metrics-grid" id="pnl-kpis" style="margin-bottom:16px">
+          <div class="metric-card green"><div class="metric-icon">💰</div><div class="metric-label">GGR Bruto</div><div class="metric-value" id="pnl-ggr">—</div><div class="metric-sub">apostas LOST retidas</div></div>
+          <div class="metric-card orange"><div class="metric-icon">📊</div><div class="metric-label">Total Apostado</div><div class="metric-value" id="pnl-apostado">—</div><div class="metric-sub" id="pnl-periodo-label">— apostas</div></div>
+          <div class="metric-card blue"><div class="metric-icon">🏆</div><div class="metric-label">Pago (WON)</div><div class="metric-value" id="pnl-pago">—</div><div class="metric-sub">retorno pago</div></div>
+          <div class="metric-card red"><div class="metric-icon">📉</div><div class="metric-label">GGR Líquido</div><div class="metric-value" id="pnl-liquido">—</div><div class="metric-sub">GGR − pagamentos</div></div>
+          <div class="metric-card yellow"><div class="metric-icon">⏳</div><div class="metric-label">Pendentes</div><div class="metric-value" id="pnl-pendentes">—</div><div class="metric-sub">em aberto</div></div>
+          <div class="metric-card purple"><div class="metric-icon">📐</div><div class="metric-label">Margem Real</div><div class="metric-value" id="pnl-margem">—</div><div class="metric-sub">GGR / Total apostado</div></div>
+        </div>
+        <!-- Por liga no período -->
+        <div class="table-card">
+          <div class="table-header"><h3>📈 Breakdown por Liga no Período</h3></div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Liga</th><th>Apostas</th><th>Apostado</th><th>Lucro Bruto</th><th>Pago WON</th><th>GGR Líquido</th></tr></thead>
+              <tbody id="table-pnl-liga"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text2)">Selecione um período e clique em Gerar Relatório</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ AFILIADOS ═══ -->
+      <div id="tab-afiliados" class="tab-content">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+          <div class="metric-card green"><div class="metric-icon">🤝</div><div class="metric-label">Total Afiliados</div><div class="metric-value" id="afl-total">—</div><div class="metric-sub">com código ativo</div></div>
+          <div class="metric-card blue"><div class="metric-icon">👥</div><div class="metric-label">Total Indicados</div><div class="metric-value" id="afl-indicados">—</div><div class="metric-sub">usuários convertidos</div></div>
+          <div class="metric-card orange"><div class="metric-icon">📊</div><div class="metric-label">Volume Indicados</div><div class="metric-value" id="afl-volume">—</div><div class="metric-sub">total apostado</div></div>
+        </div>
+        <div class="table-card">
+          <div class="table-header" style="display:flex;justify-content:space-between;align-items:center">
+            <h3>🤝 Top Afiliados por Indicações</h3>
+            <button onclick="loadAfiliados()" class="refresh-btn">🔄</button>
+          </div>
+          <div style="padding:10px 16px;background:rgba(16,185,129,0.08);border-bottom:1px solid var(--border);font-size:11px;color:var(--text2)">
+            💡 Cada usuário possui um código único de indicação. Quando alguém se cadastra com esse código, o indicador é creditado automaticamente.
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>#</th><th>Afiliado</th><th>CPF</th><th>Código</th><th>Indicados</th><th>Volume Gerado</th><th>Cadastrado em</th></tr></thead>
+              <tbody id="table-afiliados"><tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ NOTIFICAÇÕES TELEGRAM ═══ -->
+      <div id="tab-notificacoes" class="tab-content">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="section-grid">
+          <!-- Config -->
+          <div class="table-card">
+            <div class="table-header"><h3>🔔 Configurar Notificações Telegram</h3></div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+              <div style="padding:12px;background:rgba(96,165,250,0.08);border-radius:10px;font-size:12px;color:var(--text2);line-height:1.6">
+                <b style="color:var(--blue)">📋 Como configurar:</b><br>
+                1. Crie um bot no Telegram com @BotFather<br>
+                2. Copie o token gerado<br>
+                3. Inicie uma conversa com seu bot<br>
+                4. Acesse: <code style="color:#4ade80">https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code><br>
+                5. Copie seu <b>chat_id</b> do campo "id"
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Bot Token</label>
+                <input id="notif-token" type="text" placeholder="1234567890:ABCdef..." style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box;font-family:monospace">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Chat ID (seu ID ou do grupo)</label>
+                <input id="notif-chatid" type="text" placeholder="-100123456789 ou 123456789" style="width:100%;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box;font-family:monospace">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Alerta saque acima de (R$)</label>
+                  <input id="notif-lim-saque" type="number" placeholder="200" value="200" style="width:100%;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Alerta aposta acima de (R$)</label>
+                  <input id="notif-lim-aposta" type="number" placeholder="500" value="500" style="width:100%;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box">
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:10px;background:rgba(239,68,68,0.08);border-radius:10px">
+                <input type="checkbox" id="notif-alertas-risco" checked style="width:16px;height:16px;cursor:pointer">
+                <label for="notif-alertas-risco" style="cursor:pointer;font-size:13px">⚠️ Notificar alertas de risco (win rate alto, lavagem)</label>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button onclick="salvarNotifConfig(false)" style="flex:1;padding:10px;background:linear-gradient(135deg,#ff6b35,#f7931e);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+                  💾 Salvar
+                </button>
+                <button onclick="salvarNotifConfig(true)" style="flex:1;padding:10px;background:rgba(74,222,128,0.2);border:1px solid #4ade80;border-radius:10px;color:#4ade80;font-size:13px;font-weight:700;cursor:pointer">
+                  📨 Salvar + Testar
+                </button>
+              </div>
+              <div id="notif-msg" style="font-size:12px;text-align:center;min-height:16px"></div>
+            </div>
+          </div>
+          <!-- Preview de notificações -->
+          <div class="table-card">
+            <div class="table-header"><h3>📋 Tipos de Notificações</h3></div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+              <div style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:10px;padding:12px;font-size:12px">
+                <div style="color:#4ade80;font-weight:700;margin-bottom:4px">💸 Saque Grande</div>
+                <div style="color:#94a3b8;font-family:monospace">🏦 <b>PaynexBet Admin</b><br>💸 Saque de <b>R$500,00</b><br>👤 João Silva (CPF: 123...)<br>⏰ 14:32 25/04/2026</div>
+              </div>
+              <div style="background:#0a0a1a;border:1px solid #1a1a3a;border-radius:10px;padding:12px;font-size:12px">
+                <div style="color:#60a5fa;font-weight:700;margin-bottom:4px">🎯 Aposta Alta</div>
+                <div style="color:#94a3b8;font-family:monospace">🏦 <b>PaynexBet Admin</b><br>🎯 Aposta de <b>R$800,00</b><br>⚽ Bahia vs Santos — Casa<br>📐 Odd: 1.85</div>
+              </div>
+              <div style="background:#1a0a0a;border:1px solid #3a1a1a;border-radius:10px;padding:12px;font-size:12px">
+                <div style="color:#ef4444;font-weight:700;margin-bottom:4px">⚠️ Alerta de Risco</div>
+                <div style="color:#94a3b8;font-family:monospace">🏦 <b>PaynexBet Admin</b><br>⚠️ Win rate alto detectado<br>👤 Carlos (ID: 42)<br>📊 Win rate: 87% (13/15)</div>
+              </div>
+              <div style="background:#1a0a1a;border:1px solid #3a1a3a;border-radius:10px;padding:12px;font-size:12px">
+                <div style="color:#8b5cf6;font-weight:700;margin-bottom:4px">📊 Resumo Diário (00:00)</div>
+                <div style="color:#94a3b8;font-family:monospace">📊 <b>Resumo do dia</b><br>💰 GGR: R$1.234,00<br>📥 Dep: R$3.500 (12 tx)<br>📤 Saq: R$800 (3 tx)</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -6223,6 +6654,14 @@ function showTab(tab) {
     campeonatos: '🏆 Campeonatos',
     'usuarios-mgr': '👥 Usuários',
     'config-pagamento': '⚙️ Config Pagamento',
+    'apostas-mgr': '🎯 Apostas & Lucro',
+    limites: '🎯 Limites de Aposta',
+    bonus: '🎁 Bônus & Promoções',
+    alertas: '⚠️ Alertas de Risco',
+    'jogo-responsavel': '🛡️ Jogo Responsável',
+    pnl: '📊 Relatório P&L',
+    afiliados: '🤝 Afiliados',
+    notificacoes: '🔔 Notificações Telegram',
   };
   document.getElementById('page-title').textContent = titles[tab] || tab;
   fecharSidebar();
@@ -6239,6 +6678,14 @@ function showTab(tab) {
   if (tab === 'usuarios-mgr') loadUsuariosMgr();
   if (tab === 'config-pagamento') { loadConfigPagamento(); loadLigaApiResumo(); }
   if (tab === 'apostas-mgr') { loadApostasDash(); loadMargens(); }
+  if (tab === 'limites') loadLimites();
+  if (tab === 'bonus') loadBonus();
+  if (tab === 'alertas') loadAlertas();
+  if (tab === 'jogo-responsavel') loadJogoResp();
+  if (tab === 'pnl') { loadPnL(); }
+  if (tab === 'afiliados') loadAfiliados();
+  if (tab === 'notificacoes') loadNotifConfig();
+  if (tab === 'dashboard') { loadAll(); loadCharts(); }
 }
 
 function tabName(tab) {
@@ -6361,6 +6808,508 @@ function showToastAdmin(msg, cor='green') {
   t.style.color = '#fff';
   t.style.opacity = '1';
   setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
+// ═══════════════════════════════════════════════
+// 🥇 ITEM 1 — GRÁFICOS CHART.JS
+// ═══════════════════════════════════════════════
+let _chartGGR = null, _chartPizzaLiga = null, _chartDepSaq = null, _chartPizzaStatus = null;
+
+const _CHART_COLORS = ['#ff6b35','#4ade80','#60a5fa','#f59e0b','#8b5cf6','#10b981','#f87171','#34d399','#fbbf24','#a78bfa'];
+const _LIGA_LABEL_MAP = {
+  'soccer_brazil_campeonato':'Brasileirão A','soccer_brazil_serie_b':'Série B',
+  'soccer_conmebol_copa_libertadores':'Libertadores','soccer_conmebol_sudamericana':'Sul-Am.',
+  'soccer_uefa_champs_league':'Champions','soccer_epl':'Premier','soccer_spain_la_liga':'La Liga',
+  'soccer_italy_serie_a':'Serie A','soccer_germany_bundesliga':'Bundesliga',
+  'soccer_france_ligue_one':'Ligue 1','basketball_nba':'NBA','americanfootball_nfl':'NFL',
+  'mma_mixed_martial_arts':'UFC/MMA','outros':'Outros'
+};
+
+function _destroyChart(c) { try { if(c) c.destroy(); } catch(e) {} }
+function _fmtBRL(v) { return 'R$ ' + parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2}); }
+function _fmtDate(s) { if(!s) return ''; const d=new Date(s+'T00:00:00'); return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}); }
+
+async function loadCharts() {
+  const dias = document.getElementById('chart-periodo')?.value || 30;
+  try {
+    const r = await fetch(`/api/admin/bet/charts?dias=${dias}`, {
+      headers: {'X-PaynexBet-Secret': ADMIN_SECRET()}
+    });
+    const d = await r.json();
+    if (!d.ok) return;
+
+    // ── Gráfico 1: GGR por dia (linha + barras)
+    const labels = d.ggr_dias.map(x => _fmtDate(x.dia));
+    const lucroData = d.ggr_dias.map(x => parseFloat(x.lucro));
+    const apostadoData = d.ggr_dias.map(x => parseFloat(x.apostado));
+    _destroyChart(_chartGGR);
+    const ctxGGR = document.getElementById('chartGGR');
+    if (ctxGGR) {
+      _chartGGR = new Chart(ctxGGR, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Total Apostado', data: apostadoData, backgroundColor: 'rgba(96,165,250,0.3)', borderColor: '#60a5fa', borderWidth: 2, type: 'bar', order: 2 },
+            { label: 'GGR (Lucro Casa)', data: lucroData, borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.15)', borderWidth: 2, type: 'line', fill: true, tension: 0.3, pointRadius: 3, order: 1 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } }, tooltip: { callbacks: { label: ctx => ' ' + _fmtBRL(ctx.raw) } } },
+          scales: {
+            x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
+            y: { ticks: { color: '#64748b', font: { size: 10 }, callback: v => 'R$'+v.toLocaleString('pt-BR') }, grid: { color: '#1e293b' } }
+          }
+        }
+      });
+    }
+
+    // ── Gráfico 2: Pizza por liga
+    const ligaLabels = d.pizza_liga.map(x => _LIGA_LABEL_MAP[x.liga] || x.liga);
+    const ligaData   = d.pizza_liga.map(x => parseFloat(x.apostado));
+    _destroyChart(_chartPizzaLiga);
+    const ctxPizza = document.getElementById('chartPizzaLiga');
+    if (ctxPizza && ligaData.length) {
+      _chartPizzaLiga = new Chart(ctxPizza, {
+        type: 'doughnut',
+        data: { labels: ligaLabels, datasets: [{ data: ligaData, backgroundColor: _CHART_COLORS, borderWidth: 2, borderColor: '#0f172a' }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 }, padding: 8, boxWidth: 12 } },
+                     tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${_fmtBRL(ctx.raw)}` } } }
+        }
+      });
+    }
+
+    // ── Gráfico 3: Depósitos vs Saques por dia
+    const depMap = {}; const saqMap = {};
+    d.dep_dias.forEach(x => { depMap[x.dia] = parseFloat(x.valor); });
+    d.saq_dias.forEach(x => { saqMap[x.dia] = parseFloat(x.valor); });
+    const dsLabels = [...new Set([...d.dep_dias.map(x=>x.dia),...d.saq_dias.map(x=>x.dia)])].sort().slice(-14);
+    const dsDepData = dsLabels.map(d => depMap[d] || 0);
+    const dsSaqData = dsLabels.map(d => saqMap[d] || 0);
+    _destroyChart(_chartDepSaq);
+    const ctxDS = document.getElementById('chartDepSaq');
+    if (ctxDS) {
+      _chartDepSaq = new Chart(ctxDS, {
+        type: 'bar',
+        data: {
+          labels: dsLabels.map(_fmtDate),
+          datasets: [
+            { label: 'Depósitos', data: dsDepData, backgroundColor: 'rgba(74,222,128,0.6)', borderColor: '#4ade80', borderWidth: 1 },
+            { label: 'Saques', data: dsSaqData, backgroundColor: 'rgba(248,113,113,0.6)', borderColor: '#f87171', borderWidth: 1 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } }, tooltip: { callbacks: { label: ctx => ' '+_fmtBRL(ctx.raw) } } },
+          scales: {
+            x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
+            y: { ticks: { color: '#64748b', font: { size: 10 }, callback: v => 'R$'+v.toLocaleString('pt-BR') }, grid: { color: '#1e293b' } }
+          }
+        }
+      });
+    }
+
+    // ── Gráfico 4: Pizza status apostas
+    const stMap = { pendente: '⏳ Pendente', WON: '✅ WON', LOST: '❌ LOST', CANCELADA: '↩ Cancel.' };
+    const stColors = { pendente: '#f59e0b', WON: '#4ade80', LOST: '#f87171', CANCELADA: '#94a3b8' };
+    const stLabels = d.pizza_status.map(x => stMap[x.status] || x.status);
+    const stData   = d.pizza_status.map(x => x.qtd);
+    const stBg     = d.pizza_status.map(x => stColors[x.status] || '#64748b');
+    _destroyChart(_chartPizzaStatus);
+    const ctxSt = document.getElementById('chartPizzaStatus');
+    if (ctxSt && stData.length) {
+      _chartPizzaStatus = new Chart(ctxSt, {
+        type: 'doughnut',
+        data: { labels: stLabels, datasets: [{ data: stData, backgroundColor: stBg, borderWidth: 2, borderColor: '#0f172a' }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, padding: 8, boxWidth: 12 } },
+                     tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} apostas` } } }
+        }
+      });
+    }
+  } catch(e) { console.error('[charts]', e); }
+}
+
+// ═══════════════════════════════════════════════
+// 🥈 ITEM 2 — LIMITES DE APOSTA
+// ═══════════════════════════════════════════════
+async function loadLimites() {
+  const loading = document.getElementById('limites-loading');
+  const lista = document.getElementById('limites-lista');
+  if (loading) loading.style.display = 'block';
+  if (lista) lista.style.display = 'none';
+  try {
+    const r = await fetch('/api/admin/bet/limites', { headers: {'X-PaynexBet-Secret': ADMIN_SECRET()} });
+    const d = await r.json();
+    if (!d.ok || !d.ligas) { showToastAdmin('Erro ao carregar limites', 'red'); return; }
+    if (lista) {
+      lista.innerHTML = d.ligas.map(l => `
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+          <div style="flex:1;min-width:140px">
+            <div style="font-size:13px;font-weight:600">${l.nome}</div>
+            <div style="font-size:10px;color:var(--text2)">${l.liga_key}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:11px;color:var(--text2);white-space:nowrap">Máx/aposta:</span>
+            <div style="position:relative;display:flex;align-items:center">
+              <span style="position:absolute;left:8px;font-size:11px;color:var(--text2);pointer-events:none">R$</span>
+              <input type="number" id="lim-apos-${l.liga_key}" value="${l.limite_aposta}"
+                min="1" step="50" style="width:80px;padding:6px 8px 6px 22px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-weight:700;text-align:right">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:11px;color:var(--text2);white-space:nowrap">Máx/dia:</span>
+            <div style="position:relative;display:flex;align-items:center">
+              <span style="position:absolute;left:8px;font-size:11px;color:var(--text2);pointer-events:none">R$</span>
+              <input type="number" id="lim-dia-${l.liga_key}" value="${l.limite_usuario_dia}"
+                min="1" step="100" style="width:90px;padding:6px 8px 6px 22px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-weight:700;text-align:right">
+            </div>
+          </div>
+          <button onclick="salvarLimite('${l.liga_key}')"
+            style="padding:6px 12px;background:linear-gradient(135deg,#ff6b35,#f7931e);border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;cursor:pointer">
+            💾
+          </button>
+        </div>
+      `).join('');
+      loading.style.display = 'none';
+      lista.style.display = 'block';
+    }
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+async function salvarLimite(ligaKey) {
+  const limApos = parseFloat(document.getElementById('lim-apos-' + ligaKey)?.value || 500);
+  const limDia  = parseFloat(document.getElementById('lim-dia-' + ligaKey)?.value || 1000);
+  try {
+    const r = await fetch('/api/admin/bet/limites', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-PaynexBet-Secret':ADMIN_SECRET()},
+      body: JSON.stringify({liga_key: ligaKey, limite_aposta: limApos, limite_usuario_dia: limDia})
+    });
+    const d = await r.json();
+    if (d.ok) showToastAdmin(`✅ Limites de ${_LIGA_LABEL_MAP[ligaKey]||ligaKey} salvos`, 'green');
+    else showToastAdmin('Erro: ' + (d.error||'falha'), 'red');
+  } catch(e) { showToastAdmin('Erro: '+e.message, 'red'); }
+}
+
+// ═══════════════════════════════════════════════
+// 4️⃣ ITEM 4 — SISTEMA DE BÔNUS
+// ═══════════════════════════════════════════════
+async function loadBonus() {
+  const tbody = document.getElementById('table-bonus');
+  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>';
+  try {
+    const r = await fetch('/api/admin/bonus', { headers: {'X-PaynexBet-Secret': ADMIN_SECRET()} });
+    const d = await r.json();
+    if (!d.ok) { showToastAdmin('Erro ao carregar bônus', 'red'); return; }
+    const el = id => document.getElementById(id);
+    if (el('stats-bonus-ativos')) el('stats-bonus-ativos').textContent = d.stats?.ativos || 0;
+    if (el('stats-bonus-valor'))  el('stats-bonus-valor').textContent  = _fmtBRL(d.stats?.valor_total);
+    if (el('stats-bonus-tipos'))  el('stats-bonus-tipos').textContent  = d.bonus?.length || 0;
+    const badge = document.getElementById('badge-bonus-ativos');
+    if (badge) badge.textContent = d.bonus?.filter(b=>b.ativo).length || 0;
+    const tipoLabel = {boas_vindas:'🎉 Boas-Vindas', free_bet:'🆓 Free Bet', cashback:'💸 Cashback', indicacao:'🤝 Indicação', recarga:'🔄 Recarga'};
+    if (tbody) {
+      tbody.innerHTML = !d.bonus?.length
+        ? '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text2)">Nenhum bônus criado ainda</td></tr>'
+        : d.bonus.map(b => `<tr>
+            <td>${tipoLabel[b.tipo]||b.tipo}</td>
+            <td style="font-weight:600">${b.nome}</td>
+            <td>${b.valor>0 ? _fmtBRL(b.valor) : '—'}</td>
+            <td>${b.percentual>0 ? b.percentual+'%' : '—'}</td>
+            <td>${b.rollover}x</td>
+            <td>${b.validade_dias} dias</td>
+            <td><span style="padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;${b.ativo?'background:rgba(74,222,128,0.2);color:#4ade80':'background:rgba(248,113,113,0.2);color:#f87171'}">${b.ativo?'✅ Ativo':'❌ Inativo'}</span></td>
+            <td>${b.ativo?`<button onclick="cancelarBonus(${b.id})" style="padding:3px 10px;background:rgba(248,113,113,0.2);border:1px solid #f87171;border-radius:6px;color:#f87171;font-size:11px;cursor:pointer">Desativar</button>`:'—'}</td>
+          </tr>`).join('');
+    }
+  } catch(e) { showToastAdmin('Erro: '+e.message, 'red'); }
+}
+
+async function criarBonus() {
+  const body = {
+    tipo: document.getElementById('bonus-tipo').value,
+    nome: document.getElementById('bonus-nome').value,
+    descricao: document.getElementById('bonus-desc').value,
+    valor: parseFloat(document.getElementById('bonus-valor').value||0),
+    percentual: parseFloat(document.getElementById('bonus-pct').value||0),
+    deposito_minimo: parseFloat(document.getElementById('bonus-dep-min').value||10),
+    rollover: parseFloat(document.getElementById('bonus-rollover').value||1),
+    validade_dias: parseInt(document.getElementById('bonus-validade').value||30)
+  };
+  if (!body.nome) { showToastAdmin('Digite um nome para o bônus', 'red'); return; }
+  const msg = document.getElementById('bonus-create-msg');
+  try {
+    const r = await fetch('/api/admin/bonus/criar', {
+      method:'POST', headers:{'Content-Type':'application/json','X-PaynexBet-Secret':ADMIN_SECRET()},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      if (msg) { msg.style.color='#4ade80'; msg.textContent='✅ '+d.msg; }
+      showToastAdmin('✅ '+d.msg, 'green');
+      document.getElementById('bonus-nome').value='';
+      document.getElementById('bonus-desc').value='';
+      setTimeout(loadBonus, 600);
+    } else {
+      if (msg) { msg.style.color='#f87171'; msg.textContent='Erro: '+(d.error||'falha'); }
+    }
+  } catch(e) { showToastAdmin('Erro: '+e.message, 'red'); }
+}
+
+async function cancelarBonus(id) {
+  if (!confirm(`Desativar bônus #${id}?`)) return;
+  const r = await fetch('/api/admin/bonus/cancelar', {
+    method:'POST', headers:{'Content-Type':'application/json','X-PaynexBet-Secret':ADMIN_SECRET()},
+    body: JSON.stringify({id})
+  });
+  const d = await r.json();
+  if (d.ok) { showToastAdmin('✅ Bônus desativado', 'green'); setTimeout(loadBonus, 600); }
+}
+
+// ═══════════════════════════════════════════════
+// 5️⃣ ITEM 5 — ALERTAS DE RISCO
+// ═══════════════════════════════════════════════
+async function loadAlertas() {
+  const tbody = document.getElementById('table-alertas');
+  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>';
+  try {
+    const r = await fetch('/api/admin/alertas', { headers: {'X-PaynexBet-Secret': ADMIN_SECRET()} });
+    const d = await r.json();
+    const el = id => document.getElementById(id);
+    if (el('kpi-alertas-altos'))  el('kpi-alertas-altos').textContent  = d.altos  || 0;
+    if (el('kpi-alertas-medios')) el('kpi-alertas-medios').textContent = d.medios || 0;
+    if (el('kpi-alertas-total'))  el('kpi-alertas-total').textContent  = d.total  || 0;
+    const badge = document.getElementById('badge-alertas');
+    if (badge) { badge.textContent = d.altos||0; badge.style.background = (d.altos||0)>0?'#ef4444':'#555'; }
+    const tipoLabel = { win_rate_alto:'📈 Win Rate Alto', saque_sem_aposta:'🚨 Saque s/ Aposta', aposta_concentrada:'🎯 Aposta Concentrada' };
+    const nivelStyle = { alto:'background:rgba(239,68,68,0.2);color:#ef4444', medio:'background:rgba(245,158,11,0.2);color:#f59e0b' };
+    if (tbody) {
+      tbody.innerHTML = !d.alertas?.length
+        ? '<tr><td colspan="7" style="text-align:center;padding:24px;color:#4ade80">✅ Nenhum alerta detectado — sistema saudável!</td></tr>'
+        : d.alertas.map(a => `<tr>
+            <td style="font-size:12px">${tipoLabel[a.tipo]||a.tipo}</td>
+            <td><span style="padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;${nivelStyle[a.nivel]||''}">${a.nivel.toUpperCase()}</span></td>
+            <td style="font-weight:600">${a.nome}</td>
+            <td style="font-size:11px;color:var(--text2)">${a.cpf||'—'}</td>
+            <td style="font-size:12px;max-width:200px">${a.detalhe}</td>
+            <td style="color:var(--orange)">R$ ${parseFloat(a.volume||0).toFixed(2)}</td>
+            <td><div style="display:flex;gap:4px">
+              <button onclick="suspenderUserRapido(${a.usuario_id},'${a.nome}')" style="padding:3px 8px;background:rgba(248,113,113,0.2);border:1px solid #f87171;border-radius:6px;color:#f87171;font-size:11px;cursor:pointer">⛔ Suspender</button>
+              <button onclick="ignorarAlerta(this)" style="padding:3px 8px;background:rgba(148,163,184,0.2);border:1px solid #94a3b8;border-radius:6px;color:#94a3b8;font-size:11px;cursor:pointer">✓ OK</button>
+            </div></td>
+          </tr>`).join('');
+    }
+  } catch(e) { showToastAdmin('Erro: '+e.message, 'red'); if(tbody) tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#f87171;padding:20px">Erro de conexão</td></tr>'; }
+}
+
+function ignorarAlerta(btn) {
+  const tr = btn.closest('tr');
+  if (tr) { tr.style.opacity='0'; tr.style.transition='opacity 0.3s'; setTimeout(()=>tr.remove(),300); }
+}
+async function suspenderUserRapido(id, nome) {
+  if (!confirm(`Suspender conta de ${nome} (ID: ${id})?`)) return;
+  const r = await fetch('/api/admin/usuarios/suspender', {
+    method:'POST', headers:{'Content-Type':'application/json','X-PaynexBet-Secret':ADMIN_SECRET()},
+    body: JSON.stringify({usuario_id: id, suspendido: true})
+  });
+  const d = await r.json();
+  if (d.ok) { showToastAdmin('⛔ Conta suspensa: '+nome, 'orange'); setTimeout(loadAlertas, 800); }
+}
+
+// ═══════════════════════════════════════════════
+// 6️⃣ ITEM 6 — JOGO RESPONSÁVEL
+// ═══════════════════════════════════════════════
+async function loadJogoResp() {
+  const tbody = document.getElementById('table-jr');
+  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>';
+  try {
+    const r = await fetch('/api/admin/jogo-responsavel', { headers: {'X-PaynexBet-Secret': ADMIN_SECRET()} });
+    const d = await r.json();
+    const el = id => document.getElementById(id);
+    if (el('jr-stat-excluidos')) el('jr-stat-excluidos').textContent = d.total_excluidos || 0;
+    if (el('jr-stat-pausados'))  el('jr-stat-pausados').textContent  = d.total_pausados  || 0;
+    if (el('jr-stat-total'))     el('jr-stat-total').textContent     = d.usuarios?.length || 0;
+    const badge = document.getElementById('badge-jr');
+    if (badge) badge.textContent = (d.total_excluidos||0)+(d.total_pausados||0);
+    if (tbody) {
+      tbody.innerHTML = !d.usuarios?.length
+        ? '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text2)">Nenhuma restrição ativa</td></tr>'
+        : d.usuarios.map(u => `<tr>
+            <td style="font-weight:600">${u.nome}</td>
+            <td style="font-size:11px;color:var(--text2)">${u.cpf||'—'}</td>
+            <td>${u.autoexcluido?'<span style="color:#f87171;font-weight:700">🚫 Sim</span>':'<span style="color:#4ade80">✅ Não</span>'}</td>
+            <td style="font-size:11px">${u.autoexclusao_ate||'—'}</td>
+            <td style="font-size:12px">${u.limite_deposito_mes>0?'R$'+u.limite_deposito_mes.toFixed(2):'—'}</td>
+            <td style="font-size:12px">${u.limite_perda_mes>0?'R$'+u.limite_perda_mes.toFixed(2):'—'}</td>
+            <td style="font-size:11px">${u.pausa_ate||'—'}</td>
+            <td style="font-size:11px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${u.motivo}">${u.motivo||'—'}</td>
+          </tr>`).join('');
+    }
+  } catch(e) { showToastAdmin('Erro: '+e.message, 'red'); }
+}
+
+async function salvarJogoResp() {
+  const uid = parseInt(document.getElementById('jr-usuario-id').value||0);
+  if (!uid) { showToastAdmin('Digite o ID do usuário', 'red'); return; }
+  const body = {
+    usuario_id: uid,
+    autoexcluido: document.getElementById('jr-autoexcluir').checked,
+    dias_exclusao: parseInt(document.getElementById('jr-dias-excl').value||30),
+    limite_deposito_mes: parseFloat(document.getElementById('jr-lim-dep').value||0),
+    limite_perda_mes: parseFloat(document.getElementById('jr-lim-perd').value||0),
+    limite_aposta_unica: parseFloat(document.getElementById('jr-lim-apos').value||0),
+    dias_pausa: parseInt(document.getElementById('jr-pausa').value||0),
+    motivo: document.getElementById('jr-motivo').value
+  };
+  const msg = document.getElementById('jr-msg');
+  try {
+    const r = await fetch('/api/admin/jogo-responsavel', {
+      method:'POST', headers:{'Content-Type':'application/json','X-PaynexBet-Secret':ADMIN_SECRET()},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      if (msg) { msg.style.color='#4ade80'; msg.textContent='✅ '+d.msg; }
+      showToastAdmin('🛡️ '+d.msg, 'green');
+      setTimeout(loadJogoResp, 600);
+    } else {
+      if (msg) { msg.style.color='#f87171'; msg.textContent='Erro: '+(d.error||'falha'); }
+    }
+  } catch(e) { showToastAdmin('Erro: '+e.message, 'red'); }
+}
+
+// ═══════════════════════════════════════════════
+// 7️⃣ ITEM 7 — P&L POR PERÍODO
+// ═══════════════════════════════════════════════
+async function loadPnL() {
+  const inicio = document.getElementById('pnl-inicio')?.value || '';
+  const fim    = document.getElementById('pnl-fim')?.value || '';
+  const tbody  = document.getElementById('table-pnl-liga');
+  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="6"><div class="spinner"></div></td></tr>';
+  try {
+    const params = new URLSearchParams({secret: ADMIN_SECRET()});
+    if (inicio) params.set('inicio', inicio);
+    if (fim)    params.set('fim',    fim);
+    const r = await fetch(`/api/admin/bet/pnl?${params}`);
+    const d = await r.json();
+    if (!d.ok) { showToastAdmin('Erro: '+(d.error||'falha'), 'red'); return; }
+    const el = id => document.getElementById(id);
+    if (el('pnl-ggr'))       el('pnl-ggr').textContent       = _fmtBRL(d.ggr);
+    if (el('pnl-apostado'))  el('pnl-apostado').textContent  = _fmtBRL(d.total_apostado);
+    if (el('pnl-pago'))      el('pnl-pago').textContent      = _fmtBRL(d.total_pago_won);
+    if (el('pnl-liquido'))   el('pnl-liquido').textContent   = _fmtBRL(d.ggr_liquido);
+    const pend = d.por_status?.pendente;
+    if (el('pnl-pendentes')) el('pnl-pendentes').textContent = pend ? _fmtBRL(pend.apostado) : '—';
+    const margem = d.total_apostado > 0 ? (d.ggr / d.total_apostado * 100) : 0;
+    if (el('pnl-margem'))    el('pnl-margem').textContent    = margem.toFixed(1) + '%';
+    const label = inicio || fim ? `${inicio||'início'} → ${fim||'hoje'}` : 'todos os tempos';
+    if (el('pnl-periodo-label')) el('pnl-periodo-label').textContent = label;
+    if (tbody) {
+      tbody.innerHTML = !d.por_liga?.length
+        ? '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text2)">Nenhuma aposta no período</td></tr>'
+        : d.por_liga.map(l => {
+            const liq = parseFloat(l.lucro_bruto||0)-parseFloat(l.pago_won||0);
+            const cor = liq >= 0 ? '#4ade80' : '#f87171';
+            return `<tr>
+              <td>${_LIGA_LABEL_MAP[l.liga]||l.liga||'outros'}</td>
+              <td style="text-align:center">${l.qtd}</td>
+              <td>${_fmtBRL(l.apostado)}</td>
+              <td style="color:#f59e0b">${_fmtBRL(l.lucro_bruto)}</td>
+              <td style="color:#60a5fa">${_fmtBRL(l.pago_won)}</td>
+              <td style="color:${cor};font-weight:700">${_fmtBRL(liq)}</td>
+            </tr>`;
+          }).join('');
+    }
+  } catch(e) { showToastAdmin('Erro: '+e.message, 'red'); }
+}
+
+function exportarRelatorio() {
+  const inicio = document.getElementById('pnl-inicio')?.value || '';
+  const fim    = document.getElementById('pnl-fim')?.value || '';
+  const params = new URLSearchParams({secret: ADMIN_SECRET()});
+  if (inicio) params.set('inicio', inicio);
+  if (fim)    params.set('fim',    fim);
+  window.open(`/api/admin/export/apostas.csv?${params}`, '_blank');
+}
+
+// ═══════════════════════════════════════════════
+// 8️⃣ ITEM 8 — NOTIFICAÇÕES TELEGRAM
+// ═══════════════════════════════════════════════
+async function loadNotifConfig() {
+  try {
+    const r = await fetch('/api/admin/notif-config', { headers: {'X-PaynexBet-Secret': ADMIN_SECRET()} });
+    const d = await r.json();
+    if (!d.ok) return;
+    const c = d.config;
+    const el = id => document.getElementById(id);
+    if (el('notif-token') && c.bot_token)  el('notif-token').value      = c.bot_token;
+    if (el('notif-chatid') && c.chat_id)   el('notif-chatid').value     = c.chat_id;
+    if (el('notif-lim-saque'))             el('notif-lim-saque').value  = c.limite_saque || 200;
+    if (el('notif-lim-aposta'))            el('notif-lim-aposta').value = c.limite_aposta || 500;
+    if (el('notif-alertas-risco'))         el('notif-alertas-risco').checked = c.alertas_risco !== false;
+  } catch(e) {}
+}
+
+async function salvarNotifConfig(testar) {
+  const body = {
+    bot_token:      document.getElementById('notif-token')?.value || '',
+    chat_id:        document.getElementById('notif-chatid')?.value || '',
+    limite_saque:   parseFloat(document.getElementById('notif-lim-saque')?.value || 200),
+    limite_aposta:  parseFloat(document.getElementById('notif-lim-aposta')?.value || 500),
+    alertas_risco:  document.getElementById('notif-alertas-risco')?.checked !== false,
+    testar
+  };
+  const msg = document.getElementById('notif-msg');
+  try {
+    const r = await fetch('/api/admin/notif-config', {
+      method:'POST', headers:{'Content-Type':'application/json','X-PaynexBet-Secret':ADMIN_SECRET()},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      if (msg) { msg.style.color='#4ade80'; msg.textContent='✅ '+d.msg; }
+      showToastAdmin('🔔 '+d.msg, 'green');
+    } else {
+      if (msg) { msg.style.color='#f87171'; msg.textContent='Erro: '+(d.error||'falha'); }
+    }
+  } catch(e) { showToastAdmin('Erro: '+e.message, 'red'); }
+}
+
+// ═══════════════════════════════════════════════
+// 9️⃣ ITEM 9 — AFILIADOS
+// ═══════════════════════════════════════════════
+async function loadAfiliados() {
+  const tbody = document.getElementById('table-afiliados');
+  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>';
+  try {
+    const r = await fetch('/api/admin/afiliados', { headers: {'X-PaynexBet-Secret': ADMIN_SECRET()} });
+    const d = await r.json();
+    const el = id => document.getElementById(id);
+    if (el('afl-total'))     el('afl-total').textContent     = d.total_afiliados || 0;
+    if (el('afl-indicados')) el('afl-indicados').textContent = d.total_indicados  || 0;
+    const badge = document.getElementById('badge-afiliados');
+    if (badge) badge.textContent = d.total_afiliados || 0;
+    const volTotal = d.afiliados?.reduce((s,a)=>s+parseFloat(a.volume_indicados||0),0)||0;
+    if (el('afl-volume')) el('afl-volume').textContent = _fmtBRL(volTotal);
+    if (tbody) {
+      tbody.innerHTML = !d.afiliados?.length
+        ? '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text2)">Nenhum afiliado cadastrado ainda</td></tr>'
+        : d.afiliados.map((a,i) => `<tr>
+            <td style="text-align:center;font-weight:700;color:var(--text2)">${i+1}</td>
+            <td style="font-weight:600">${a.nome}</td>
+            <td style="font-size:11px;color:var(--text2)">${a.cpf||'—'}</td>
+            <td><code style="background:var(--card);padding:2px 8px;border-radius:6px;font-size:12px;color:var(--green)">${a.codigo||'—'}</code></td>
+            <td style="text-align:center;font-weight:700;color:#60a5fa">${a.indicados}</td>
+            <td style="color:#4ade80">${_fmtBRL(a.volume_indicados)}</td>
+            <td style="font-size:11px;color:var(--text2)">${a.criado_em||'—'}</td>
+          </tr>`).join('');
+    }
+  } catch(e) { showToastAdmin('Erro: '+e.message, 'red'); }
 }
 
 // ═══════════════════════════════════════════════
@@ -6821,6 +7770,53 @@ async function loadAll() {
   document.getElementById('last-update').textContent = '🔄 Atualizando...';
   await Promise.all([loadHealth(), loadStats(), loadSaldo()]);
   document.getElementById('last-update').textContent = '⏱ ' + new Date().toLocaleTimeString('pt-BR');
+  // Carrega gráficos automaticamente no dashboard
+  try { if (typeof loadCharts === 'function') loadCharts(); } catch(e) {}
+  // Atualiza badges das abas (alertas, bônus, JR)
+  _atualizarBadgesGlobais();
+}
+
+async function _atualizarBadgesGlobais() {
+  // Badge alertas
+  try {
+    const r = await fetch('/api/admin/alertas', { headers: {'X-PaynexBet-Secret': ADMIN_SECRET()} });
+    const d = await r.json();
+    if (d.ok) {
+      const b = document.getElementById('badge-alertas');
+      if (b) { b.textContent = d.altos || 0; b.style.display = (d.altos > 0) ? 'inline-block' : 'none'; }
+    }
+  } catch(e) {}
+  // Badge bônus ativos
+  try {
+    const r = await fetch('/api/admin/bonus', { headers: {'X-PaynexBet-Secret': ADMIN_SECRET()} });
+    const d = await r.json();
+    if (d.ok) {
+      const b = document.getElementById('badge-bonus-ativos');
+      if (b) { b.textContent = d.stats?.ativos || 0; b.style.display = 'inline-block'; }
+      const el = document.getElementById('stats-bonus-ativos');
+      if (el) el.textContent = d.stats?.ativos || 0;
+      const ev = document.getElementById('stats-bonus-valor');
+      if (ev) ev.textContent = _fmtBRL(d.stats?.valor_total || 0);
+      const et = document.getElementById('stats-bonus-tipos');
+      if (et) et.textContent = d.bonus?.length || 0;
+    }
+  } catch(e) {}
+  // Badge jogo responsável
+  try {
+    const r = await fetch('/api/admin/jogo-responsavel', { headers: {'X-PaynexBet-Secret': ADMIN_SECRET()} });
+    const d = await r.json();
+    if (d.ok) {
+      const b = document.getElementById('badge-jr');
+      const total = (d.total_excluidos || 0) + (d.total_pausados || 0);
+      if (b) { b.textContent = total; b.style.display = total > 0 ? 'inline-block' : 'none'; }
+      const ee = document.getElementById('jr-stat-excluidos');
+      const ep = document.getElementById('jr-stat-pausados');
+      const et = document.getElementById('jr-stat-total');
+      if (ee) ee.textContent = d.total_excluidos || 0;
+      if (ep) ep.textContent = d.total_pausados || 0;
+      if (et) et.textContent = d.usuarios?.length || 0;
+    }
+  } catch(e) {}
 }
 
 // ═══════════════════════════════════════════════
