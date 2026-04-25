@@ -1633,6 +1633,46 @@ function toggleLoginSenha() {
           </div>
         </div>
 
+        <!-- ── SEÇÃO: Próximos Jogos Reais (ESPN) ── -->
+        <div class="table-card" style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+            <div>
+              <h3 style="margin:0">📡 Próximos Jogos — Clique para Selecionar</h3>
+              <p style="font-size:11px;color:var(--muted);margin:4px 0 0">Jogos reais da ESPN. Clique em um jogo para preencher o formulário automaticamente.</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <select id="bolao-disp-liga" onchange="carregarJogosDisponiveisBolao()"
+                style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px">
+                <option value="">🌍 Todas as Ligas</option>
+                <option value="soccer_brazil_campeonato">🇧🇷 Brasileirão A</option>
+                <option value="soccer_brazil_serie_b">🇧🇷 Série B</option>
+                <option value="soccer_conmebol_copa_libertadores">🏆 Libertadores</option>
+                <option value="soccer_conmebol_sudamericana">🌎 Sul-Americana</option>
+                <option value="soccer_uefa_champs_league">⭐ Champions</option>
+                <option value="soccer_epl">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</option>
+                <option value="soccer_spain_la_liga">🇪🇸 La Liga</option>
+                <option value="soccer_italy_serie_a">🇮🇹 Serie A</option>
+                <option value="soccer_germany_bundesliga">🇩🇪 Bundesliga</option>
+                <option value="soccer_france_ligue_one">🇫🇷 Ligue 1</option>
+                <option value="basketball_nba">🏀 NBA</option>
+                <option value="americanfootball_nfl">🏈 NFL</option>
+                <option value="mma_mixed_martial_arts">🥊 MMA</option>
+              </select>
+              <button onclick="carregarJogosDisponiveisBolao()"
+                style="padding:6px 14px;background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.4);border-radius:8px;color:#60a5fa;font-size:12px;font-weight:700;cursor:pointer">
+                🔄 Buscar
+              </button>
+            </div>
+          </div>
+          <!-- Grid de cards dos jogos -->
+          <div id="bolao-jogos-disponiveis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;min-height:80px">
+            <div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:30px;font-size:13px">
+              Clique em <strong>🔄 Buscar</strong> para carregar os próximos jogos da ESPN
+            </div>
+          </div>
+          <div id="bolao-disp-msg" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:right"></div>
+        </div>
+
         <!-- Criar novo jogo -->
         <div class="table-card" style="margin-bottom:20px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -6971,7 +7011,7 @@ function showTab(tab) {
   if (tab === 'pnl') { loadPnL(); }
   if (tab === 'afiliados') loadAfiliados();
   if (tab === 'multi') loadMultiAdmin();
-  if (tab === 'bolao') loadBolaoAdmin();
+  if (tab === 'bolao') { loadBolaoAdmin(); carregarJogosDisponiveisBolao(); }
   if (tab === 'notificacoes') loadNotifConfig();
   if (tab === 'dashboard') { loadAll(); loadCharts(); }
 }
@@ -7605,6 +7645,121 @@ async function loadAfiliados() {
 // ═══════════════════════════════════════════════
 
 let _bolaoJogoAtivo = null; // jogo selecionado para ver bilhetes/fechar
+
+/* ══ BOLÃO — Jogos Disponíveis (ESPN) ══ */
+async function carregarJogosDisponiveisBolao() {
+  const container = document.getElementById('bolao-jogos-disponiveis');
+  const msg       = document.getElementById('bolao-disp-msg');
+  const liga      = document.getElementById('bolao-disp-liga')?.value || '';
+  if (!container) return;
+
+  container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px">
+    <div class="spinner2" style="margin:0 auto 10px"></div>
+    <span style="color:var(--muted);font-size:13px">Buscando jogos na ESPN…</span>
+  </div>`;
+  if (msg) msg.textContent = '';
+
+  try {
+    const url = '/api/admin/bolao/jogos-disponiveis' + (liga ? `?liga=${liga}` : '');
+    const r   = await fetch(url, { headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() } });
+    const d   = await r.json();
+    if (!d.ok) {
+      container.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:#f87171;padding:20px">Erro: ${d.error || 'Falha na API'}</div>`;
+      return;
+    }
+    const jogos = d.jogos || [];
+    if (!jogos.length) {
+      container.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:30px">
+        Nenhum jogo futuro encontrado para esta liga no momento.
+      </div>`;
+      if (msg) msg.textContent = 'Tente outra liga ou volte mais tarde.';
+      return;
+    }
+
+    if (msg) msg.textContent = `${jogos.length} jogo(s) encontrado(s). Clique para selecionar.`;
+
+    container.innerHTML = jogos.map(j => {
+      const dataFmt = j.data_jogo
+        ? new Date(j.data_jogo).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+        : '—';
+      const liveBadge = j.ao_vivo
+        ? `<span style="background:#ef4444;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;color:#fff;margin-left:6px">● AO VIVO</span>`
+        : '';
+      const logoHtml = (logo, nome) => logo
+        ? `<img src="${logo}" style="width:28px;height:28px;object-fit:contain;border-radius:50%;background:rgba(255,255,255,0.08)" onerror="this.style.display='none'">`
+        : `<span style="width:28px;height:28px;border-radius:50%;background:rgba(100,116,139,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:14px">⚽</span>`;
+      const jStr = JSON.stringify(j).replace(/"/g, '&quot;');
+      return `
+        <div onclick="selecionarJogoBolao(${jStr})"
+          style="background:rgba(30,58,138,0.15);border:1.5px solid rgba(96,165,250,0.2);border-radius:12px;padding:12px;cursor:pointer;transition:all 0.2s;position:relative"
+          onmouseover="this.style.borderColor='rgba(96,165,250,0.6)';this.style.background='rgba(30,58,138,0.3)'"
+          onmouseout="this.style.borderColor='rgba(96,165,250,0.2)';this.style.background='rgba(30,58,138,0.15)'">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:4px">
+            <span>${j.campeonato}</span>${liveBadge}
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0">
+              ${logoHtml(j.logo_casa, j.time_casa)}
+              <span style="font-size:11px;font-weight:700;color:var(--text);text-align:center;line-height:1.2">${j.time_casa}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+              <span style="font-size:10px;color:var(--muted)">VS</span>
+              <span style="font-size:10px;color:#60a5fa;font-weight:700">${dataFmt}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0">
+              ${logoHtml(j.logo_fora, j.time_fora)}
+              <span style="font-size:11px;font-weight:700;color:var(--text);text-align:center;line-height:1.2">${j.time_fora}</span>
+            </div>
+          </div>
+          <div style="margin-top:8px;text-align:center">
+            <span style="font-size:10px;color:#4ade80;background:rgba(74,222,128,0.1);border-radius:4px;padding:2px 8px">
+              👆 Clique para selecionar
+            </span>
+          </div>
+        </div>`;
+    }).join('');
+
+  } catch(e) {
+    container.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:#f87171;padding:20px">Erro de conexão: ${e.message}</div>`;
+  }
+}
+
+function selecionarJogoBolao(j) {
+  const el = id => document.getElementById(id);
+
+  // Preencher o formulário com os dados do jogo selecionado
+  if (el('bolao-time-casa'))   el('bolao-time-casa').value   = j.time_casa || '';
+  if (el('bolao-time-fora'))   el('bolao-time-fora').value   = j.time_fora || '';
+  if (el('bolao-campeonato'))  el('bolao-campeonato').value  = j.campeonato || '';
+  if (el('bolao-liga-key'))    el('bolao-liga-key').value    = j.liga_key || '';
+  if (el('bolao-edit-id'))     el('bolao-edit-id').value     = '';  // sempre novo
+
+  // Converter data para datetime-local
+  if (el('bolao-data') && j.data_jogo) {
+    try {
+      const d = new Date(j.data_jogo);
+      // Ajustar para fuso horário local
+      const offset = d.getTimezoneOffset();
+      const local  = new Date(d.getTime() - offset * 60000);
+      el('bolao-data').value = local.toISOString().slice(0, 16);
+    } catch(e) {}
+  }
+
+  // Rolar até o formulário
+  const formEl = document.querySelector('#tab-bolao .table-card:nth-child(3)');
+  if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Destacar visualmente o card selecionado
+  document.querySelectorAll('#bolao-jogos-disponiveis > div').forEach(c => {
+    c.style.border = '1.5px solid rgba(96,165,250,0.2)';
+    c.style.background = 'rgba(30,58,138,0.15)';
+  });
+  event?.currentTarget && (event.currentTarget.style.border = '2px solid #60a5fa');
+  event?.currentTarget && (event.currentTarget.style.background = 'rgba(30,58,138,0.5)');
+
+  showToastAdmin(`✅ ${j.time_casa} × ${j.time_fora} selecionado! Ajuste e salve.`, 'green');
+  if (el('bolao-form-msg')) el('bolao-form-msg').textContent = `🎯 Jogo pré-preenchido: ${j.time_casa} × ${j.time_fora}`;
+}
 
 async function loadBolaoAdmin() {
   const tbody = document.getElementById('bolao-tbody');

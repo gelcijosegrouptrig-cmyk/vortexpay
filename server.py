@@ -12070,6 +12070,79 @@ async def route_admin_bolao_jogos(request):
         return web.json_response({'ok': False, 'error': str(e)}, status=500)
 
 
+async def route_admin_bolao_jogos_disponiveis(request):
+    """GET /api/admin/bolao/jogos-disponiveis — busca próximos jogos reais da ESPN para o admin escolher."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    import aiohttp, time as _time
+    liga_filter = request.rel_url.query.get('liga', '').strip()
+    agora = _time.time()
+
+    # Ligas para buscar (só as ativas ou a filtrada)
+    if liga_filter and liga_filter in _ESPN_FIXTURES:
+        ligas_buscar = [(liga_filter, _ESPN_FIXTURES[liga_filter])]
+    else:
+        ligas_buscar = [(k, v) for k, v in _ESPN_FIXTURES.items()]
+
+    todos_jogos = []
+    async with aiohttp.ClientSession(headers={'User-Agent': 'Mozilla/5.0'}) as sess:
+        for liga_key, cfg in ligas_buscar:
+            espn_slug   = cfg[0]
+            league_name = cfg[1]
+            category    = cfg[2] if len(cfg) > 2 else 'soccer'
+            try:
+                if category == 'soccer':
+                    url = f'https://site.api.espn.com/apis/site/v2/sports/soccer/{espn_slug}/scoreboard'
+                else:
+                    url = f'https://site.api.espn.com/apis/site/v2/sports/{category}/{espn_slug}/scoreboard'
+                async with sess.get(url, timeout=aiohttp.ClientTimeout(total=6)) as r:
+                    if r.status != 200:
+                        continue
+                    data = await r.json()
+                events = data.get('events') or []
+                for ev in events[:12]:
+                    comps = ev.get('competitions', [{}])
+                    comp  = comps[0] if comps else {}
+                    competitors = comp.get('competitors', [])
+                    home_team = away_team = ''
+                    home_logo = away_logo = ''
+                    for c in competitors:
+                        team = c.get('team', {})
+                        if c.get('homeAway') == 'home':
+                            home_team = team.get('displayName', team.get('name', ''))
+                            home_logo = team.get('logo', '')
+                        else:
+                            away_team = team.get('displayName', team.get('name', ''))
+                            away_logo = team.get('logo', '')
+                    if not home_team or not away_team:
+                        continue
+                    status_type = ev.get('status', {}).get('type', {})
+                    state = status_type.get('state', 'pre')  # pre / in / post
+                    # Só pegar jogos futuros e ao vivo (não encerrados)
+                    if state == 'post':
+                        continue
+                    date_str = ev.get('date', '')
+                    ev_id    = ev.get('id', '')
+                    todos_jogos.append({
+                        'id_espn':     ev_id,
+                        'liga_key':    liga_key,
+                        'campeonato':  league_name,
+                        'time_casa':   home_team,
+                        'time_fora':   away_team,
+                        'logo_casa':   home_logo,
+                        'logo_fora':   away_logo,
+                        'data_jogo':   date_str,
+                        'status':      state,  # 'pre' ou 'in'
+                        'ao_vivo':     state == 'in',
+                    })
+            except Exception as e_esp:
+                print(f'[bolao/disponiveis] {liga_key}: {e_esp}', flush=True)
+
+    # Ordenar: ao vivo primeiro, depois por data
+    todos_jogos.sort(key=lambda x: (0 if x['ao_vivo'] else 1, x['data_jogo']))
+    return web.json_response({'ok': True, 'jogos': todos_jogos, 'total': len(todos_jogos)})
+
+
 async def route_admin_bolao_criar(request):
     """POST /api/admin/bolao/jogo — cria ou edita jogo do bolão."""
     if not _admin_auth(request):
@@ -16197,8 +16270,9 @@ async def main():
     app.router.add_get ('/api/bolao/jogos',              route_bolao_jogos)
     app.router.add_post('/api/bolao/comprar',            route_bolao_comprar)
     app.router.add_get ('/api/bolao/bilhetes',           route_bolao_meus_bilhetes)
-    app.router.add_get ('/api/admin/bolao/jogos',        route_admin_bolao_jogos)
-    app.router.add_post('/api/admin/bolao/jogo',         route_admin_bolao_criar)
+    app.router.add_get ('/api/admin/bolao/jogos',              route_admin_bolao_jogos)
+    app.router.add_get ('/api/admin/bolao/jogos-disponiveis',  route_admin_bolao_jogos_disponiveis)
+    app.router.add_post('/api/admin/bolao/jogo',               route_admin_bolao_criar)
     app.router.add_post('/api/admin/bolao/publicar',     route_admin_bolao_publicar)
     app.router.add_get ('/api/admin/bolao/bilhetes',     route_admin_bolao_bilhetes)
     app.router.add_post('/api/admin/bolao/fechar',       route_admin_bolao_fechar)
