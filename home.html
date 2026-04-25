@@ -695,20 +695,14 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
     <div class="sb-section">
       <div class="sb-label">Em Alta</div>
       <div class="sb-item active" id="sb-destaque" onclick="sbNav('apostas','destaque')"><span class="ico">🔥</span>Em Destaque <span class="badge live">AO VIVO</span></div>
-      <div class="sb-item" id="sb-brasileirao" onclick="sbNav('apostas','soccer_brazil_campeonato')"><span class="ico">🇧🇷</span>Brasileirão</div>
-      <div class="sb-item" id="sb-libertadores" onclick="sbNav('apostas','soccer_conmebol_copa_libertadores')"><span class="ico">🏆</span>Libertadores</div>
-      <div class="sb-item" id="sb-champions" onclick="sbNav('apostas','soccer_uefa_champs_league')"><span class="ico">⭐</span>Champions League</div>
-      <div class="sb-item" id="sb-premier" onclick="sbNav('apostas','soccer_epl')"><span class="ico">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span>Premier League</div>
-      <div class="sb-item" id="sb-laliga" onclick="sbNav('apostas','soccer_spain_la_liga')"><span class="ico">🇪🇸</span>La Liga</div>
+      <!-- ligas "Em Alta" injetadas por carregarSidebarLigas() -->
+      <div id="sb-ligas-em-alta"></div>
     </div>
     <div class="sb-divider"></div>
     <div class="sb-section">
       <div class="sb-label">Esportes</div>
-      <div class="sb-item" id="sb-futebol" onclick="sbNav('apostas','soccer_brazil_campeonato')"><span class="ico">⚽</span>Futebol</div>
-      <div class="sb-item" id="sb-basquete" onclick="sbNav('apostas','basketball_nba')"><span class="ico">🏀</span>Basquete</div>
-      <div class="sb-item" id="sb-tenis" onclick="sbNav('apostas','tennis_atp_australian_open')"><span class="ico">🎾</span>Tênis</div>
-      <div class="sb-item" id="sb-nfl" onclick="sbNav('apostas','americanfootball_nfl')"><span class="ico">🏈</span>Futebol Americano</div>
-      <div class="sb-item" id="sb-mma" onclick="sbNav('apostas','mma_mixed_martial_arts')"><span class="ico">🥊</span>MMA / Boxe</div>
+      <!-- esportes injetados por carregarSidebarLigas() -->
+      <div id="sb-ligas-esportes"></div>
     </div>
     <div class="sb-divider"></div>
     <div class="sb-section">
@@ -1210,28 +1204,30 @@ function navTo(view, extra){
       showView('home');setHnActive('hn-apostas');setSbActive('sb-destaque');break;
     case 'apostas':
       showView('apostas');setHnActive('hn-apostas');
-      const sport=extra||'upcoming';
-      _currentSport=sport;
-      // Marcar chip correto
-      document.querySelectorAll('.sport-chip').forEach(c=>{
-        c.classList.toggle('active',c.dataset.sport===sport)
+      carregarChipsLigas().then(() => {
+        const sport=extra||'upcoming';
+        _currentSport=sport;
+        // Marcar chip correto após carregar dinamicamente
+        document.querySelectorAll('.sport-chip').forEach(c=>{
+          c.classList.toggle('active',c.dataset.sport===sport)
+        });
+        // Marcar sb-item correto baseado no sport
+        const sbSportMap={
+          'upcoming':'sb-destaque','destaque':'sb-destaque',
+          'soccer_brazil_campeonato':'sb-brasileirao',
+          'soccer_conmebol_copa_libertadores':'sb-libertadores',
+          'soccer_uefa_champs_league':'sb-champions',
+          'soccer_epl':'sb-premier',
+          'soccer_spain_la_liga':'sb-laliga',
+          'basketball_nba':'sb-basquete',
+          'americanfootball_nfl':'sb-nfl',
+          'mma_mixed_martial_arts':'sb-mma',
+          'tennis_atp_aus_open_singles':'sb-tenis',
+          'tennis_atp_australian_open':'sb-tenis',
+        };
+        setSbActive(sbSportMap[sport]||'sb-destaque');
+        carregarJogos(sport);
       });
-      // Marcar sb-item correto baseado no sport
-      const sbSportMap={
-        'upcoming':'sb-destaque','destaque':'sb-destaque',
-        'soccer_brazil_campeonato':'sb-brasileirao',
-        'soccer_conmebol_copa_libertadores':'sb-libertadores',
-        'soccer_uefa_champs_league':'sb-champions',
-        'soccer_epl':'sb-premier',
-        'soccer_spain_la_liga':'sb-laliga',
-        'basketball_nba':'sb-basquete',
-        'americanfootball_nfl':'sb-nfl',
-        'mma_mixed_martial_arts':'sb-mma',
-        'tennis_atp_aus_open_singles':'sb-tenis',
-        'tennis_atp_australian_open':'sb-tenis',
-      };
-      setSbActive(sbSportMap[sport]||'sb-destaque');
-      carregarJogos(sport);
       break;
     case 'live':
       showView('live');setHnActive('hn-live');setSbActive('sb-live');
@@ -1582,25 +1578,81 @@ const _LIGA_LABELS = {
   'mma_mixed_martial_arts':             '🥊 MMA',
 };
 
-/* ── Carrega chips dinamicamente respeitando ligas suspensas ── */
+/* ── Mapa sidebar: key → {ico, nome, categoria} ── */
+const _LIGA_SIDEBAR = {
+  'soccer_brazil_campeonato':           {ico:'🇧🇷', nome:'Brasileirão',      cat:'alta'},
+  'soccer_brazil_serie_b':              {ico:'🇧🇷', nome:'Série B',           cat:'alta'},
+  'soccer_conmebol_copa_libertadores':  {ico:'🏆', nome:'Libertadores',       cat:'alta'},
+  'soccer_conmebol_sudamericana':       {ico:'🌎', nome:'Sul-Americana',      cat:'alta'},
+  'soccer_copa_brasil':                 {ico:'🇧🇷', nome:'Copa do Brasil',     cat:'alta'},
+  'soccer_uefa_champs_league':          {ico:'⭐', nome:'Champions League',   cat:'alta'},
+  'soccer_epl':                         {ico:'🏴󠁧󠁢󠁥󠁮󠁧󠁿', nome:'Premier League',   cat:'alta'},
+  'soccer_spain_la_liga':               {ico:'🇪🇸', nome:'La Liga',            cat:'alta'},
+  'soccer_italy_serie_a':               {ico:'🇮🇹', nome:'Serie A',            cat:'alta'},
+  'soccer_germany_bundesliga':          {ico:'🇩🇪', nome:'Bundesliga',         cat:'alta'},
+  'soccer_france_ligue_one':            {ico:'🇫🇷', nome:'Ligue 1',            cat:'alta'},
+  'basketball_nba':                     {ico:'🏀', nome:'NBA',                 cat:'esporte'},
+  'americanfootball_nfl':               {ico:'🏈', nome:'NFL',                 cat:'esporte'},
+  'mma_mixed_martial_arts':             {ico:'🥊', nome:'MMA / Boxe',          cat:'esporte'},
+  'tennis_atp_aus_open_singles':        {ico:'🎾', nome:'Tênis',              cat:'esporte'},
+};
+
+/* ── Carrega chips E sidebar dinamicamente respeitando ligas suspensas ── */
 async function carregarChipsLigas() {
   try {
     const resp = await fetch(`${BASE}/api/ligas/ativas`);
     const data = await resp.json();
     if (!data.ok || !data.ligas) return;
+
+    // ── Chips (topo da view apostas) ──
     const container = document.getElementById('sport-chips');
-    if (!container) return;
-    // Manter apenas o chip "Em Destaque"
-    container.innerHTML = '<div class="sport-chip active" data-sport="upcoming" onclick="chipSport(this)">🔥 Em Destaque</div>';
-    data.ligas.forEach(liga => {
-      const label = _LIGA_LABELS[liga.key] || liga.nome;
-      const div = document.createElement('div');
-      div.className = 'sport-chip';
-      div.dataset.sport = liga.key;
-      div.onclick = function(){ chipSport(this); };
-      div.textContent = label;
-      container.appendChild(div);
-    });
+    if (container) {
+      container.innerHTML = '<div class="sport-chip active" data-sport="upcoming" onclick="chipSport(this)">🔥 Em Destaque</div>';
+      data.ligas.forEach(liga => {
+        const label = _LIGA_LABELS[liga.key] || liga.nome;
+        const div = document.createElement('div');
+        div.className = 'sport-chip';
+        div.dataset.sport = liga.key;
+        div.onclick = function(){ chipSport(this); };
+        div.textContent = label;
+        container.appendChild(div);
+      });
+    }
+
+    // ── Sidebar — "Em Alta" ──
+    const sbAlta = document.getElementById('sb-ligas-em-alta');
+    if (sbAlta) {
+      sbAlta.innerHTML = '';
+      data.ligas
+        .filter(l => (_LIGA_SIDEBAR[l.key] || {cat:'alta'}).cat === 'alta')
+        .forEach(liga => {
+          const info = _LIGA_SIDEBAR[liga.key] || {ico:'⚽', nome: liga.nome};
+          const div = document.createElement('div');
+          div.className = 'sb-item';
+          div.id = 'sb-' + liga.key.replace(/[^a-z0-9]/g,'_');
+          div.onclick = function(){ sbNav('apostas', liga.key); };
+          div.innerHTML = `<span class="ico">${info.ico}</span>${info.nome}`;
+          sbAlta.appendChild(div);
+        });
+    }
+
+    // ── Sidebar — "Esportes" ──
+    const sbEsp = document.getElementById('sb-ligas-esportes');
+    if (sbEsp) {
+      sbEsp.innerHTML = '';
+      data.ligas
+        .filter(l => (_LIGA_SIDEBAR[l.key] || {cat:'alta'}).cat === 'esporte')
+        .forEach(liga => {
+          const info = _LIGA_SIDEBAR[liga.key] || {ico:'🏅', nome: liga.nome};
+          const div = document.createElement('div');
+          div.className = 'sb-item';
+          div.id = 'sb-' + liga.key.replace(/[^a-z0-9]/g,'_');
+          div.onclick = function(){ sbNav('apostas', liga.key); };
+          div.innerHTML = `<span class="ico">${info.ico}</span>${info.nome}`;
+          sbEsp.appendChild(div);
+        });
+    }
+
   } catch(e) {
     console.warn('[chips] Erro ao carregar ligas ativas:', e);
   }
