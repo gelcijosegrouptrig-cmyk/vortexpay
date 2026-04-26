@@ -10979,7 +10979,7 @@ async def route_admin_bet_charts(request):
     try:
         dias = int(request.rel_url.query.get('dias', 30))
         conn = _admin_db_connect(); cur = conn.cursor()
-        # GGR por dia (últimos N dias)
+        # GGR por dia (últimos N dias) — usa make_interval para evitar erro de INTERVAL string
         cur.execute("""
             SELECT DATE(criado_em) AS dia,
                    COALESCE(SUM(valor),0) AS apostado,
@@ -10987,9 +10987,9 @@ async def route_admin_bet_charts(request):
                    COALESCE(SUM(CASE WHEN status='WON'  THEN retorno_potencial ELSE 0 END),0) AS pago,
                    COUNT(*) AS qtd
             FROM apostas
-            WHERE criado_em >= NOW() - INTERVAL '%s days'
+            WHERE criado_em >= NOW() - make_interval(days => %s)
             GROUP BY dia ORDER BY dia
-        """ % int(dias))
+        """, (dias,))
         ggr_dias = [{'dia': str(r[0]), 'apostado': float(r[1]), 'lucro': float(r[2]),
                      'pago': float(r[3]), 'qtd': r[4]} for r in cur.fetchall()]
         # Depósitos por dia
@@ -10997,21 +10997,21 @@ async def route_admin_bet_charts(request):
             cur.execute("""
                 SELECT DATE(criado_em) AS dia, COALESCE(SUM(valor),0), COUNT(*)
                 FROM depositos_suit WHERE status='PAID'
-                AND criado_em >= NOW() - INTERVAL '%s days'
+                AND criado_em >= NOW() - make_interval(days => %s)
                 GROUP BY dia ORDER BY dia
-            """ % int(dias))
+            """, (dias,))
             dep_dias = [{'dia': str(r[0]), 'valor': float(r[1]), 'qtd': r[2]} for r in cur.fetchall()]
-        except Exception: dep_dias = []
+        except Exception: conn.rollback(); dep_dias = []
         # Saques por dia
         try:
             cur.execute("""
                 SELECT DATE(criado_em) AS dia, COALESCE(SUM(valor),0), COUNT(*)
                 FROM saques WHERE status='PAGO'
-                AND criado_em >= NOW() - INTERVAL '%s days'
+                AND criado_em >= NOW() - make_interval(days => %s)
                 GROUP BY dia ORDER BY dia
-            """ % int(dias))
+            """, (dias,))
             saq_dias = [{'dia': str(r[0]), 'valor': float(r[1]), 'qtd': r[2]} for r in cur.fetchall()]
-        except Exception: saq_dias = []
+        except Exception: conn.rollback(); saq_dias = []
         # Pizza por liga
         cur.execute("""
             SELECT COALESCE(league_key,'outros'), COUNT(*), COALESCE(SUM(valor),0)
@@ -11025,6 +11025,8 @@ async def route_admin_bet_charts(request):
         return web.json_response({'ok': True, 'ggr_dias': ggr_dias, 'dep_dias': dep_dias,
                                   'saq_dias': saq_dias, 'pizza_liga': pizza_liga, 'pizza_status': pizza_status})
     except Exception as e:
+        try: conn.rollback(); conn.close()
+        except: pass
         return web.json_response({'ok': False, 'error': str(e)}, status=500)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -11363,13 +11365,13 @@ async def route_admin_alertas(request):
         try:
             cur.execute("""
                 SELECT u.id, u.nome, u.cpf,
-                       COALESCE(SUM(d.valor),0) AS dep_total,
+                       COALESCE(SUM(t.valor),0) AS dep_total,
                        COUNT(DISTINCT a.id) AS apostas
                 FROM usuarios u
-                JOIN depositos_suit d ON d.cpf=u.cpf AND d.status='PAID'
+                JOIN transacoes t ON t.usuario_id=u.id AND t.tipo='DEPOSITO' AND t.status='CONFIRMADO'
                 LEFT JOIN apostas a ON a.usuario_id=u.id
                 GROUP BY u.id, u.nome, u.cpf
-                HAVING COALESCE(SUM(d.valor),0) > 50 AND COUNT(DISTINCT a.id) = 0
+                HAVING COALESCE(SUM(t.valor),0) > 50 AND COUNT(DISTINCT a.id) = 0
                 LIMIT 10
             """)
             for r in cur.fetchall():
@@ -11377,26 +11379,30 @@ async def route_admin_alertas(request):
                                  'usuario_id': r[0], 'nome': r[1] or '?', 'cpf': r[2] or '',
                                  'detalhe': f'Depositou R${float(r[3]):.2f} mas não apostou nada',
                                  'volume': float(r[3])})
-        except Exception: pass
+        except Exception: conn.rollback()
         # 3. Usuários com aposta única muito alta (>80% do saldo)
-        cur.execute("""
+        try:
+         cur.execute("""
             SELECT u.id, u.nome, u.cpf, a.valor, u.saldo
             FROM apostas a JOIN usuarios u ON u.id=a.usuario_id
             WHERE a.valor > 100 AND u.saldo > 0 AND a.status='pendente'
             AND a.valor > u.saldo * 0.8
             ORDER BY a.valor DESC LIMIT 10
-        """)
-        for r in cur.fetchall():
+         """)
+         for r in cur.fetchall():
             alertas.append({'tipo': 'aposta_concentrada', 'nivel': 'medio',
                              'usuario_id': r[0], 'nome': r[1] or '?', 'cpf': r[2] or '',
                              'detalhe': f'Apostou R${float(r[3]):.2f} (>80% do saldo R${float(r[4]):.2f})',
                              'volume': float(r[3])})
+        except Exception: conn.rollback()
         cur.close(); conn.close()
         return web.json_response({'ok': True, 'alertas': alertas,
                                   'total': len(alertas),
                                   'altos': sum(1 for a in alertas if a['nivel'] == 'alto'),
                                   'medios': sum(1 for a in alertas if a['nivel'] == 'medio')})
     except Exception as e:
+        try: conn.rollback(); conn.close()
+        except: pass
         return web.json_response({'ok': False, 'error': str(e)}, status=500)
 
 async def route_admin_alertas_ignorar(request):
