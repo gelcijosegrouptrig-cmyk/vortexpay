@@ -7245,12 +7245,22 @@ function _fmtDate(s) { if(!s) return ''; const d=new Date(s+'T00:00:00'); return
 
 async function loadCharts() {
   const dias = document.getElementById('chart-periodo')?.value || 30;
+  // Loading states
+  ['chartGGR','chartDepSaq','chartPizzaLiga','chartPizzaStatus'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el){ const p = el.parentElement; if(p) p.style.opacity='0.5'; }
+  });
   try {
     const r = await fetch(`/api/admin/bet/charts?dias=${dias}`, {
       headers: {'X-PaynexBet-Secret': ADMIN_SECRET()}
     });
+    if(!r.ok){ showToastAdmin('Erro ao carregar gráficos ('+r.status+')', 'red'); return; }
     const d = await r.json();
-    if (!d.ok) return;
+    if (!d.ok){ showToastAdmin('Gráficos: '+( d.error||'Erro'), 'red'); return; }
+    ['chartGGR','chartDepSaq','chartPizzaLiga','chartPizzaStatus'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el){ const p = el.parentElement; if(p) p.style.opacity='1'; }
+    });
 
     // ── Gráfico 1: GGR por dia (linha + barras)
     const labels = d.ggr_dias.map(x => _fmtDate(x.dia));
@@ -7345,7 +7355,10 @@ async function loadCharts() {
         }
       });
     }
-  } catch(e) { console.error('[charts]', e); }
+  } catch(e) { console.error('[charts]', e); showToastAdmin('Falha ao carregar gráficos', 'red'); }
+  ['chartGGR','chartDepSaq','chartPizzaLiga','chartPizzaStatus'].forEach(id => {
+    const el = document.getElementById(id); if(el){ const p = el.parentElement; if(p) p.style.opacity='1'; }
+  });
 }
 
 // ═══════════════════════════════════════════════

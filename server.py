@@ -11162,6 +11162,93 @@ async def route_admin_export_depositos_csv(request):
     except Exception as e:
         return web.Response(text=f'Erro: {e}', status=500)
 
+async def route_admin_saques_list(request):
+    """GET /api/admin/saques — lista saques da plataforma bet (tabela 'saques')."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        cur.execute("""
+            SELECT s.id, s.saque_id, s.valor, s.chave_pix, s.tipo_chave,
+                   s.status, s.created_at, s.processado_at, s.observacao
+            FROM saques s
+            ORDER BY s.created_at DESC LIMIT 500
+        """)
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        saques = []
+        for r in rows:
+            saques.append({
+                'id': r[0], 'saque_id': r[1] or '',
+                'valor': float(r[2] or 0),
+                'chave_pix': r[3] or '', 'tipo_chave': r[4] or '',
+                'status': r[5] or '', 'criado_em': str(r[6])[:16] if r[6] else '',
+                'processado_at': str(r[7])[:16] if r[7] else '',
+                'observacao': r[8] or ''
+            })
+        pendentes  = [s for s in saques if s['status'] in ('pendente', 'pendente_asaas')]
+        aprovados  = [s for s in saques if s['status'] in ('enviado', 'aprovado')]
+        erros      = [s for s in saques if s['status'] == 'erro']
+        return web.json_response({
+            'ok': True, 'saques': saques,
+            'resumo': {
+                'total': len(saques),
+                'pendentes': len(pendentes),
+                'aprovados': len(aprovados),
+                'erros': len(erros),
+                'valor_pendente': round(sum(s['valor'] for s in pendentes), 2),
+                'valor_pago': round(sum(s['valor'] for s in aprovados), 2),
+            }
+        })
+    except Exception as e:
+        try: conn.rollback(); conn.close()
+        except Exception: pass
+        return web.json_response({'error': str(e), 'saques': [], 'resumo': {}}, status=500)
+
+
+async def route_admin_depositos_list(request):
+    """GET /api/admin/depositos — lista depósitos SuitPay da plataforma bet."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        cur.execute("""
+            SELECT d.id, d.request_number, d.usuario_id, u.nome, u.cpf,
+                   d.valor, d.status, d.id_transaction, d.pago_em, d.criado_em
+            FROM depositos_suit d
+            LEFT JOIN usuarios u ON u.id = d.usuario_id
+            ORDER BY d.criado_em DESC LIMIT 500
+        """)
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        depositos = []
+        for r in rows:
+            depositos.append({
+                'id': r[0], 'request_number': r[1] or '',
+                'usuario_id': r[2], 'nome': r[3] or '', 'cpf': r[4] or '',
+                'valor': float(r[5] or 0), 'status': r[6] or '',
+                'id_transaction': r[7] or '',
+                'pago_em': str(r[8])[:16] if r[8] else '',
+                'criado_em': str(r[9])[:16] if r[9] else ''
+            })
+        pagos     = [d for d in depositos if d['status'] == 'pago']
+        pendentes = [d for d in depositos if d['status'] == 'pendente']
+        return web.json_response({
+            'ok': True, 'depositos': depositos,
+            'resumo': {
+                'total': len(depositos),
+                'pagos': len(pagos),
+                'pendentes': len(pendentes),
+                'valor_pago': round(sum(d['valor'] for d in pagos), 2),
+                'valor_pendente': round(sum(d['valor'] for d in pendentes), 2),
+            }
+        })
+    except Exception as e:
+        try: conn.rollback(); conn.close()
+        except Exception: pass
+        return web.json_response({'error': str(e), 'depositos': [], 'resumo': {}}, status=500)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🎯  ITEM 2 — Limites máx de aposta por liga e por usuário
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -16854,6 +16941,9 @@ async def main():
     # Charts / P&L
     app.router.add_get('/api/admin/bet/charts',         route_admin_bet_charts)
     app.router.add_get('/api/admin/bet/pnl',            route_admin_bet_pnl)
+    # Admin: Saques e Depósitos bet
+    app.router.add_get('/api/admin/saques',               route_admin_saques_list)
+    app.router.add_get('/api/admin/depositos',            route_admin_depositos_list)
     # Exportar CSV
     app.router.add_get('/api/admin/export/apostas.csv',   route_admin_export_apostas_csv)
     app.router.add_get('/api/admin/export/usuarios.csv',  route_admin_export_usuarios_csv)
