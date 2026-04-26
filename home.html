@@ -124,15 +124,22 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
 /* ══ BOTÃO VOLTAR ══ */
 .btn-voltar{
-  display:inline-flex;align-items:center;gap:6px;
+  display:inline-flex;align-items:center;gap:8px;
   background:var(--card);border:1px solid var(--border);
-  border-radius:10px;padding:7px 14px 7px 10px;
-  font-size:13px;font-weight:700;color:var(--muted2);
-  cursor:pointer;transition:all .15s;margin-bottom:14px;
-  width:fit-content;
+  border-radius:50px;padding:9px 18px 9px 12px;
+  font-size:13px;font-weight:700;color:var(--text);
+  cursor:pointer;transition:all .2s;margin-bottom:16px;
+  width:fit-content;box-shadow:0 2px 8px rgba(0,0,0,0.25);
 }
-.btn-voltar:hover{background:#1e3a5f;border-color:var(--blue);color:#fff}
-.btn-voltar .bv-ico{font-size:16px;line-height:1}
+.btn-voltar:hover{background:rgba(96,165,250,0.15);border-color:var(--blue);color:#60a5fa;transform:translateX(-2px)}
+.btn-voltar:active{transform:translateX(0);opacity:0.8}
+.btn-voltar .bv-ico{
+  width:26px;height:26px;border-radius:50%;
+  background:rgba(96,165,250,0.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:900;color:#60a5fa;line-height:1;
+  flex-shrink:0;
+}
 .see-all{margin-left:auto;background:transparent;border:none;color:var(--blue2);
   font-size:12px;font-weight:600;cursor:pointer}
 .see-all:hover{text-decoration:underline}
@@ -966,6 +973,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: APOSTAS ══ -->
     <div class="view" id="view-apostas">
+      <button class="btn-voltar" onclick="navBack('home')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="sport-chips" id="sport-chips">
         <div class="sport-chip active" data-sport="upcoming" onclick="chipSport(this)">🔥 Em Destaque</div>
         <!-- chips carregados dinamicamente por carregarChipsLigas() -->
@@ -1030,7 +1038,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: MINHAS APOSTAS ══ -->
     <div class="view" id="view-minhas-apostas">
-      <button class="btn-voltar" onclick="navTo('home')" title="Voltar"><span class="bv-ico">‹</span> Página Inicial</button>
+      <button class="btn-voltar" onclick="navBack('home')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="sec-head"><div class="accent" style="background:#8b5cf6"></div><h3>🎯 Minhas Apostas</h3></div>
       <div class="ma-tabs">
         <div class="ma-tab active" id="ma-tab-todas" onclick="switchMaTab('todas')">Todas</div>
@@ -1045,7 +1053,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: AO VIVO ══ -->
     <div class="view" id="view-live">
-      <button class="btn-voltar" onclick="navTo('apostas')" title="Voltar"><span class="bv-ico">‹</span> Apostas</button>
+      <button class="btn-voltar" onclick="navBack('apostas')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="sec-head">
         <div class="accent" style="background:var(--red)"></div>
         <h3 style="color:var(--red)">Jogos Ao Vivo</h3>
@@ -1058,7 +1066,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: TABELA ══ -->
     <div class="view" id="view-tabela">
-      <button class="btn-voltar" onclick="navTo('apostas')" title="Voltar"><span class="bv-ico">‹</span> Apostas</button>
+      <button class="btn-voltar" onclick="navBack('home')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="liga-chips" id="liga-chips">
         <div class="loading-center" style="width:100%;padding:8px 0;font-size:12px;color:var(--muted)"><div class="spinner2" style="width:14px;height:14px"></div>Carregando ligas...</div>
       </div>
@@ -1070,7 +1078,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: SORTEIO ══ -->
     <div class="view" id="view-sorteio">
-      <button class="btn-voltar" onclick="navTo('home')" title="Voltar"><span class="bv-ico">‹</span> Página Inicial</button>
+      <button class="btn-voltar" onclick="navBack('home')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="sorteio-view">
         <div class="sorteio-hero">
           <div class="sh-label">🏆 Prêmio do Sorteio</div>
@@ -1093,7 +1101,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: BILHETES ══ -->
     <div class="view" id="view-bilhetes">
-      <button class="btn-voltar" onclick="navTo('home')" title="Voltar"><span class="bv-ico">‹</span> Página Inicial</button>
+      <button class="btn-voltar" onclick="navBack('home')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="sec-head"><div class="accent"></div><h3>Meus Bilhetes</h3></div>
       <!-- Tabs: Apostas normais / Bolão -->
       <div style="display:flex;gap:8px;margin-bottom:16px">
@@ -1116,7 +1124,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: BOLÃO ══ -->
     <div class="view" id="view-bolao">
-      <button class="btn-voltar" onclick="navTo('home')" title="Voltar"><span class="bv-ico">‹</span> Página Inicial</button>
+      <button class="btn-voltar" onclick="navBack('home')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="sec-head">
         <div class="accent" style="background:linear-gradient(135deg,#f59e0b,#d97706)"></div>
         <h3>🎯 Bolão Placar Exato</h3>
@@ -1128,7 +1136,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: GANHADORES ══ -->
     <div class="view" id="view-ganhadores">
-      <button class="btn-voltar" onclick="navTo('home')" title="Voltar"><span class="bv-ico">‹</span> Página Inicial</button>
+      <button class="btn-voltar" onclick="navBack('home')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="sec-head"><div class="accent" style="background:var(--gold)"></div><h3>Últimos Ganhadores</h3></div>
       <div id="ganhadores-lista">
         <div class="loading-center"><div class="spinner2"></div>Carregando...</div>
@@ -1137,7 +1145,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: DEPOSITAR ══ -->
     <div class="view" id="view-depositar">
-      <button class="btn-voltar" onclick="navTo('conta')" title="Voltar"><span class="bv-ico">‹</span> Minha Conta</button>
+      <button class="btn-voltar" onclick="navBack('conta')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="sec-head"><div class="accent" style="background:var(--green)"></div><h3>Depositar via Pix</h3></div>
       <div class="conta-grid">
         <div class="conta-card">
@@ -1180,7 +1188,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: SACAR ══ -->
     <div class="view" id="view-sacar">
-      <button class="btn-voltar" onclick="navTo('conta')" title="Voltar"><span class="bv-ico">‹</span> Minha Conta</button>
+      <button class="btn-voltar" onclick="navBack('conta')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="sec-head"><div class="accent" style="background:var(--gold)"></div><h3>Sacar via Pix</h3></div>
       <div class="conta-grid">
         <div class="conta-card">
@@ -1215,7 +1223,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: HISTORICO ══ -->
     <div class="view" id="view-historico">
-      <button class="btn-voltar" onclick="navTo('conta')" title="Voltar"><span class="bv-ico">‹</span> Minha Conta</button>
+      <button class="btn-voltar" onclick="navBack('conta')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="sec-head"><div class="accent"></div><h3>Histórico de Transações</h3></div>
       <div class="conta-card" style="max-width:600px">
         <div id="hist-lista">
@@ -1226,7 +1234,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: CONTA ══ -->
     <div class="view" id="view-conta">
-      <button class="btn-voltar" onclick="navTo('home')" title="Voltar"><span class="bv-ico">‹</span> Página Inicial</button>
+      <button class="btn-voltar" onclick="navBack('home')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="sec-head"><div class="accent"></div><h3>Minha Conta</h3></div>
       <div class="conta-grid">
         <div class="conta-card">
@@ -1384,6 +1392,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 const BASE = '';
 let _currentView = 'home';
 let _currentSport = 'upcoming';
+let _navHistory   = [];  // pilha de histórico de navegação
 let _liveTimer = null;
 let _selecoes = [];
 let _betTipo = 'simples'; // 'simples' | 'multi'
@@ -1436,6 +1445,11 @@ function setHnActive(id){
 }
 
 function navTo(view, extra){
+  // Registrar histórico (não duplicar se mesma view)
+  if (_currentView && _currentView !== view) {
+    _navHistory.push({view: _currentView, extra: _currentSport});
+    if (_navHistory.length > 20) _navHistory.shift(); // limite de 20 entradas
+  }
   _currentView=view;
   switch(view){
     case 'home':
@@ -1516,6 +1530,39 @@ function navTo(view, extra){
 }
 
 function sbNav(view, extra){navTo(view,extra)}
+
+/* ══ VOLTAR — navega para a tela anterior do histórico ══ */
+function navBack(fallback) {
+  if (_navHistory.length > 0) {
+    const prev = _navHistory.pop();
+    // Navegar diretamente sem registrar no histórico novamente
+    _currentView = prev.view;
+    switch(prev.view){
+      case 'home':
+        showView('home');setHnActive('hn-apostas');setSbActive('sb-destaque');break;
+      case 'apostas':
+        showView('apostas');setHnActive('hn-apostas');
+        carregarChipsLigas().then(() => {
+          const sp = prev.extra || 'upcoming';
+          _currentSport = sp;
+          document.querySelectorAll('.sport-chip').forEach(c=>c.classList.toggle('active',c.dataset.sport===sp));
+          carregarJogos(sp);
+        });
+        break;
+      case 'conta':
+        if(!loadSession()){openModal('login');return}
+        showView('conta');setHnActive('hn-conta');setSbActive('');
+        const uc=loadSession();
+        if(uc){document.getElementById('conta-nome').textContent=uc.nome||'--';document.getElementById('conta-saldo').textContent=_fmt(uc.saldo);}
+        break;
+      default:
+        navTo(prev.view, prev.extra);
+    }
+  } else {
+    // Sem histórico — ir para o fallback ou home
+    navTo(fallback || 'home');
+  }
+}
 
 /* ══ MODAL ══ */
 function openModal(tab){
