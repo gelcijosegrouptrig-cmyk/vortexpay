@@ -970,7 +970,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
           <h3>🎯 Bolão Placar Exato</h3>
           <button class="see-all" onclick="sbNav('bolao')">Ver todos →</button>
         </div>
-        <div id="bolao-cards-home" style="display:flex;flex-direction:column;gap:12px">
+        <div id="bolao-cards-home" style="display:flex;flex-direction:column;gap:8px">
           <div class="loading-center"><div class="spinner2"></div>Carregando bolões...</div>
         </div>
       </div>
@@ -2511,27 +2511,20 @@ function _renderBolaoCard(j) {
   const pote   = parseFloat(j.pote_total || 0);
   const valor  = parseFloat(j.valor_bilhete || 10);
   const dataFmt = j.data_jogo ? j.data_jogo.replace('T',' ').substring(0,16) : 'A definir';
-  return `<div style="background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(217,119,6,0.05));border:1px solid rgba(245,158,11,0.3);border-radius:16px;padding:16px;cursor:pointer" onclick="abrirModalBolao(${JSON.stringify(j).replace(/"/g,'&quot;')})">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-      <div>
-        <div style="font-size:10px;color:#f59e0b;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${j.campeonato||'Bolão'}</div>
-        <div style="font-size:16px;font-weight:900;color:var(--text)">${j.time_casa} <span style="color:#f59e0b">×</span> ${j.time_fora}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">📅 ${dataFmt}</div>
+  return `<div style="background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(217,119,6,0.05));border:1px solid rgba(245,158,11,0.3);border-radius:14px;padding:12px 14px;cursor:pointer" onclick="abrirModalBolao(${JSON.stringify(j).replace(/"/g,'&quot;')})">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:9px;color:#f59e0b;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px">${j.campeonato||'Bolão'}</div>
+        <div style="font-size:14px;font-weight:900;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${j.time_casa} <span style="color:#f59e0b">×</span> ${j.time_fora}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">📅 ${dataFmt} &nbsp;·&nbsp; 🎫 R$ ${parseFloat(valor).toFixed(2)}/bilhete</div>
       </div>
-      <div style="text-align:right">
-        <div style="font-size:10px;color:var(--muted)">Pote atual</div>
-        <div style="font-size:20px;font-weight:900;color:#4ade80">${_fmtBRL(pote)}</div>
-        <div style="font-size:10px;color:var(--muted)">${j.total_bilhetes||0} bilhetes</div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:9px;color:var(--muted);margin-bottom:1px">Pote atual</div>
+        <div style="font-size:18px;font-weight:900;color:#4ade80;line-height:1">${_fmtBRL(pote)}</div>
+        <button style="margin-top:6px;padding:7px 14px;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+          🎯 Apostar Placar
+        </button>
       </div>
-    </div>
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">
-        <span>🎫 R$ ${parseFloat(valor).toFixed(2)}/bilhete</span>
-        <span>🏠 Casa: ${parseFloat(j.margem_pct||27.5).toFixed(1)}%</span>
-      </div>
-      <button style="padding:8px 18px;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
-        🎯 Apostar Placar
-      </button>
     </div>
   </div>`;
 }
