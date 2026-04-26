@@ -12393,19 +12393,19 @@ async def route_bet_jogos(request):
     cache_valido = agora - _odds_cache['ts'] < _ODDS_CACHE_TTL and _odds_cache['data']
     if cache_valido:
         import datetime as _dt
-        agora_iso = _dt.datetime.utcnow()
         jogos = [j for j in _odds_cache['data']
                  if j.get('sport', '') not in ligas_suspensas
                  and not j.get('is_finished', False)]
-        # Remover jogos cujo commence_time passou há mais de 3h (provavelmente encerrados)
+        # Remover jogos que começaram há mais de 3h (provavelmente encerrados)
         jogos_vivos = []
         for j in jogos:
             ct = j.get('commence_time', '')
             if ct:
                 try:
                     ct_dt = _dt.datetime.fromisoformat(ct.replace('Z', '+00:00')).replace(tzinfo=None)
-                    if (_dt.datetime.utcnow() - ct_dt).total_seconds() > 10800:  # 3h
-                        continue  # Provável encerrado — ocultar
+                    diff = (_dt.datetime.utcnow() - ct_dt).total_seconds()
+                    if diff > 10800:  # Passou 3h desde o início = provavelmente encerrado
+                        continue
                 except Exception:
                     pass
             jogos_vivos.append(j)
@@ -12500,6 +12500,20 @@ async def route_bet_jogos(request):
                     all_jogos.append(item)
                     existing_pairs.add(pair)
 
+            # ── 3. Jogos futuros (próximos 30 dias) via ESPN com range de datas ──
+            future_key = espn_slug + '_future'
+            cached_fut = _espn_future_cache.get(future_key)
+            if cached_fut and agora - cached_fut['ts'] < _ESPN_FUTURE_TTL:
+                future_items = cached_fut['data']
+            else:
+                future_items = await _espn_fetch_future(sess, espn_slug, league_name, sp_key, category, days=30)
+                _espn_future_cache[future_key] = {'ts': agora, 'data': future_items}
+            for item in future_items:
+                pair = item['home_team'] + '|' + item['away_team']
+                if pair not in existing_pairs:
+                    all_jogos.append(item)
+                    existing_pairs.add(pair)
+
     # Filtrar encerrados antes de salvar no cache e retornar
     import datetime as _dt2
     def _jogo_vivo(j):
@@ -12509,14 +12523,26 @@ async def route_bet_jogos(request):
         if ct:
             try:
                 ct_dt = _dt2.datetime.fromisoformat(ct.replace('Z', '+00:00')).replace(tzinfo=None)
-                if (_dt2.datetime.utcnow() - ct_dt).total_seconds() > 10800:  # 3h
+                diff = (_dt2.datetime.utcnow() - ct_dt).total_seconds()
+                # Remover só se começou há mais de 3h (provavelmente encerrado)
+                # Jogos futuros têm diff negativo — mantém
+                if diff > 10800:
                     return False
             except Exception:
                 pass
         return True
     all_jogos = [j for j in all_jogos if _jogo_vivo(j)]
 
-    # Salvar cache completo (só jogos vivos)
+    # Ordenar: ao vivo primeiro → hoje → futuros (por commence_time)
+    import datetime as _dt3
+    def _sort_key(j):
+        if j.get('is_live', False):
+            return (0, '')
+        ct = j.get('commence_time', '')
+        return (1, ct)
+    all_jogos.sort(key=_sort_key)
+
+    # Salvar cache completo (só jogos vivos + futuros)
     _odds_cache['ts']   = agora
     _odds_cache['data'] = all_jogos
 
@@ -12758,10 +12784,12 @@ _ESPN_FIXTURES = {
     'tennis_atp_aus_open_singles':       ('atp',                   'Tênis ATP',           'tennis'),
 }
 
-_espn_table_cache = {}   # key=league_key → {'ts':..., 'data':[]}
-_espn_fix_cache   = {}   # key=espn_slug → {'ts':..., 'data':[]}
-_ESPN_TTL         = 1800  # 30 min
-_ESPN_FIX_TTL     = 60    # 1 min para jogos (detectar ao vivo mais rápido)
+_espn_table_cache    = {}   # key=league_key → {'ts':..., 'data':[]}
+_espn_fix_cache      = {}   # key=espn_slug → {'ts':..., 'data':[]}
+_espn_future_cache   = {}   # key=espn_slug → {'ts':..., 'data':[]} — jogos futuros (30 dias)
+_ESPN_TTL            = 1800  # 30 min
+_ESPN_FIX_TTL        = 60    # 1 min para jogos (detectar ao vivo mais rápido)
+_ESPN_FUTURE_TTL     = 1800  # 30 min para jogos futuros (mudam menos)
 
 
 def _gerar_odds_espn(home: str, away: str, sport_key: str) -> dict:
@@ -12801,6 +12829,85 @@ def _gerar_odds_espn(home: str, away: str, sport_key: str) -> dict:
             d = round(3.50 + (rng % 40) / 100, 2)
             a = round(1.65 + (rng % 50) / 100, 2)
         return {'home': h, 'draw': d, 'away': a}
+
+async def _espn_fetch_future(sess, espn_slug, league_name, sport_key, category='soccer', days=30):
+    """Busca jogos futuros (próximos N dias) via ESPN scoreboard com range de datas."""
+    import json as _json, aiohttp as _aio, datetime as _dtt
+    today = _dtt.date.today()
+    end   = today + _dtt.timedelta(days=days)
+    date_range = f"{today.strftime('%Y%m%d')}-{end.strftime('%Y%m%d')}"
+    if category == 'soccer':
+        url = f'https://site.api.espn.com/apis/site/v2/sports/soccer/{espn_slug}/scoreboard?dates={date_range}'
+    else:
+        url = f'https://site.api.espn.com/apis/site/v2/sports/{category}/{espn_slug}/scoreboard?dates={date_range}'
+    try:
+        async with sess.get(url, timeout=_aio.ClientTimeout(total=15)) as r:
+            raw = await r.read()
+            if not raw or r.status != 200:
+                return []
+            d = _json.loads(raw)
+        events = d.get('events', []) or []
+        result = []
+        for ev in events:
+            comps = ev.get('competitions', [{}])[0]
+            teams = comps.get('competitors', [])
+            h = next((t for t in teams if t.get('homeAway') == 'home'), teams[0] if teams else {})
+            a = next((t for t in teams if t.get('homeAway') == 'away'), teams[-1] if teams else {})
+            h_team = h.get('team', {})
+            a_team = a.get('team', {})
+            status_obj  = ev.get('status', {})
+            status_type = status_obj.get('type', {})
+            state       = status_type.get('state', 'pre')
+            status_desc = status_type.get('description', 'Agendado')
+            status_code = status_type.get('name', 'STATUS_SCHEDULED')
+            # Só queremos jogos futuros (state='pre')
+            if state != 'pre':
+                continue
+            h_logo = h_team.get('logo', '')
+            if not h_logo and h_team.get('logos'):
+                h_logo = h_team['logos'][0].get('href', '')
+            a_logo = a_team.get('logo', '')
+            if not a_logo and a_team.get('logos'):
+                a_logo = a_team['logos'][0].get('href', '')
+            venue_obj = comps.get('venue', {})
+            venue = venue_obj.get('fullName', '')
+            commence_time = ev.get('date', '')
+            h_name = h_team.get('displayName', h_team.get('name', '?'))
+            a_name = a_team.get('displayName', a_team.get('name', '?'))
+            if h_name == '?' or a_name == '?':
+                continue
+            odds_bruta = _gerar_odds_espn(h_name, a_name, sport_key)
+            odds_com_margem, margem_pct = _aplicar_margem_odds(odds_bruta, sport_key)
+            result.append({
+                'id':            ev.get('id', '') + '_fut',  # sufixo para não colidir com scoreboard
+                'sport':         sport_key,
+                'league':        league_name,
+                'home_team':     h_name,
+                'away_team':     a_name,
+                'home_logo':     h_logo,
+                'away_logo':     a_logo,
+                'home_goals':    None,
+                'away_goals':    None,
+                'score':         '',
+                'commence_time': commence_time,
+                'venue':         venue,
+                'status':        status_desc,
+                'status_code':   status_code,
+                'is_live':       False,
+                'is_finished':   False,
+                'is_future':     True,  # flag para frontend diferenciar
+                'clock':         '',
+                'elapsed':       0,
+                'odds':          odds_com_margem,
+                'odds_bruta':    odds_bruta,
+                'margem_pct':    margem_pct,
+                'source':        'espn_future',
+            })
+        return result
+    except Exception as _ex:
+        print(f'[espn_future] {league_name} err: {_ex}', flush=True)
+        return []
+
 
 async def _espn_fetch_scoreboard(sess, espn_slug, league_name, sport_key, category='soccer'):
     """Helper: busca scoreboard ESPN e retorna lista de jogos normalizados."""

@@ -182,6 +182,11 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   white-space:nowrap;transition:all .15s;
 }
 .sport-chip.active{background:#1e3a8a;border-color:var(--blue);color:#fff}
+.periodo-chips{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px}
+.periodo-chip{flex-shrink:0;background:var(--card);border:1px solid var(--border);
+  border-radius:999px;padding:5px 14px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;
+  white-space:nowrap;transition:all .15s}
+.periodo-chip.active{background:#1a3a52;border-color:#3b82f6;color:#60a5fa}
 .jogos-grid{display:grid;grid-template-columns:1fr;gap:10px}
 @media(min-width:700px){.jogos-grid{grid-template-columns:1fr 1fr}}
 @media(min-width:1100px){.jogos-grid{grid-template-columns:1fr 1fr 1fr}}
@@ -190,11 +195,14 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 .jogo-card:hover{border-color:#3b82f633}
 .jogo-card.live-c{border-left:3px solid var(--red)}
 .jogo-card.finished-c{opacity:0.85}
+.jogo-card.future-c{border-left:3px solid #3b82f6;opacity:0.95}
 .jc-meta{display:flex;align-items:center;gap:6px;margin-bottom:8px}
 .jc-liga{font-size:11px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .jc-hora{font-size:11px;color:#555}
 .live-tag{background:#ef444418;color:var(--red);border:1px solid #ef444433;
   border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700}
+.future-tag{background:#3b82f618;color:#60a5fa;border:1px solid #3b82f633;
+  border-radius:4px;padding:1px 7px;font-size:10px;font-weight:600;white-space:nowrap}
 .jc-times{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:6px}
 .time-b{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0}
 .time-b.away{align-items:flex-end}
@@ -873,6 +881,13 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
         <!-- chips carregados dinamicamente por carregarChipsLigas() -->
       </div>
 
+      <!-- ══ FILTRO DE PERÍODO ══ -->
+      <div class=\"periodo-chips\" id=\"periodo-chips\">
+        <div class=\"periodo-chip active\" data-dias=\"1\" onclick=\"filtroPeriodo(this,1)\">📅 Hoje</div>
+        <div class=\"periodo-chip\" data-dias=\"7\" onclick=\"filtroPeriodo(this,7)\">📆 7 dias</div>
+        <div class=\"periodo-chip\" data-dias=\"30\" onclick=\"filtroPeriodo(this,30)\">🗓️ 30 dias</div>
+      </div>
+
       <!-- ══ BANNER COMBO DO DIA ══ -->
       <div id="combo-dia-section" style="display:none;margin-bottom:4px">
         <div class="combo-dia-banner" id="combo-dia-banner" onclick="adicionarComboAoSlip()">
@@ -1257,6 +1272,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 const BASE = '';
 let _currentView = 'home';
 let _currentSport = 'upcoming';
+let _currentDias = 1;  // filtro de período: 1=hoje, 7=7dias, 30=30dias
 let _liveTimer = null;
 let _selecoes = [];
 let _betTipo = 'simples'; // 'simples' | 'multi'
@@ -1571,6 +1587,18 @@ async function carregarJogos(sport) {
     const d = await r.json();
     // Filtro duplo: backend + client-side para garantir segmentação
     let jogos = (d.jogos || []);
+
+    // Filtro de período (Hoje / 7 dias / 30 dias)
+    const agora = new Date();
+    const limiteData = new Date(agora.getTime() + _currentDias * 24 * 60 * 60 * 1000);
+    limiteData.setHours(23, 59, 59, 999);
+    jogos = jogos.filter(j => {
+      if (j.is_live) return true; // sempre mostra ao vivo
+      if (!j.commence_time) return _currentDias >= 1;
+      const ct = new Date(j.commence_time);
+      return ct <= limiteData;
+    });
+
     if (sport && sport !== 'upcoming' && sport !== 'destaque') {
       jogos = jogos.filter(j => j.sport === sport);
     }
@@ -1600,7 +1628,8 @@ async function carregarJogos(sport) {
     if (count) count.textContent = jogos.length ? jogos.length + ' jogo' + (jogos.length > 1 ? 's' : '') : '';
 
     if (!jogos.length) {
-      lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div style="font-size:32px;margin-bottom:12px">⚽</div><div style="color:var(--muted);font-size:14px">Nenhum jogo disponível para<br><strong style="color:var(--text)">' + info.titulo + '</strong> agora.</div><div style="margin-top:12px;font-size:12px;color:var(--muted)">Tente outra liga ou volte mais tarde.</div></div>';
+      const periodoLabel = _currentDias === 1 ? 'hoje' : 'nos próximos ' + _currentDias + ' dias';
+      lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div style="font-size:32px;margin-bottom:12px">⚽</div><div style="color:var(--muted);font-size:14px">Nenhum jogo disponível para<br><strong style="color:var(--text)">' + info.titulo + '</strong> ' + periodoLabel + '.</div><div style="margin-top:12px;font-size:12px;color:var(--muted)">💡 Amplie o período acima para ver jogos futuros.</div></div>';
       return;
     }
     lista.innerHTML = '';
@@ -1619,8 +1648,12 @@ async function carregarJogos(sport) {
       const o       = j.odds || {};
       const temEmpate = o.draw != null;
       const card    = document.createElement('div');
-      card.className = 'jogo-card' + (live ? ' live-c' : '');
-      const hora    = j.commence_time ? new Date(j.commence_time).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+      const isFuture = j.is_future === true;
+      card.className = 'jogo-card' + (live ? ' live-c' : '') + (isFuture ? ' future-c' : '');
+      const horaOpts = {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'};
+      const hora    = j.commence_time ? new Date(j.commence_time).toLocaleString('pt-BR', horaOpts) : '';
+      // Para jogos futuros, exibir data completa
+      const horaFull = j.commence_time ? new Date(j.commence_time).toLocaleString('pt-BR', {weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
       const hLogo   = j.home_logo || getTeamLogo?.(j.home_team);
       const aLogo   = j.away_logo || getTeamLogo?.(j.away_team);
       const hBadge  = hLogo ? '<img class="t-escudo" src="' + hLogo + '" alt="" onerror="this.style.display=\'none\'">' : '<div class="t-ini">' + teamInitials(j.home_team) + '</div>';
@@ -1628,6 +1661,7 @@ async function carregarJogos(sport) {
       // Liga badge colorida
       const lInfo   = _SPORT_LABELS[j.sport] || {};
       const ligaColor = lInfo.cor || 'var(--muted)';
+      const jLeagueKey = j.sport || '';
       // Previsão (silenciosa)
       let predHtml = '';
       try {
@@ -1641,15 +1675,16 @@ async function carregarJogos(sport) {
       card.innerHTML =
         '<div class="jc-meta">' +
           '<span class="jc-liga" style="color:' + ligaColor + ';font-weight:700">' + (j.league || j.sport) + '</span>' +
-          (live ? '<span class="live-tag">● AO VIVO</span>' : '<span class="jc-hora">' + hora + '</span>') +
+          (live ? '<span class="live-tag">● AO VIVO</span>' : isFuture ? '<span class="future-tag">📅 ' + horaFull + '</span>' : '<span class="jc-hora">' + hora + '</span>') +
         '</div>' +
         '<div class="jc-times">' +
           '<div class="time-b">' + hBadge + '<span class="t-nome">' + j.home_team + '</span></div>' +
-          '<span class="t-vs">' + (live ? '<span style="color:var(--red);font-size:10px;font-weight:900">AO VIVO</span>' : 'VS') + '</span>' +
+          '<span class="t-vs">' + (live ? '<span style="color:var(--red);font-size:10px;font-weight:900">AO VIVO</span>' : isFuture ? '<span style="color:var(--blue);font-size:9px;font-weight:700">VS</span>' : 'VS') + '</span>' +
           '<div class="time-b away">' + aBadge + '<span class="t-nome">' + j.away_team + '</span></div>' +
         '</div>' +
         predHtml +
         (j.venue ? '<div style="font-size:10px;color:var(--muted);padding:0 12px 4px;display:flex;align-items:center;gap:4px">📍 ' + j.venue + (j.round ? ' · R'+j.round : '') + '</div>' : '') +
+        (isFuture ? '<div style="padding:2px 12px 4px;font-size:10px;color:#4a9eff;display:flex;align-items:center;gap:4px"><span>📆</span><span>Jogo futuro — aposte antecipado!</span></div>' : '') +
         (()=>{
           // Se tem odds reais, usar. Se não, gerar odds simuladas para o jogo
           let oh = o.home, od = o.draw, oa = o.away;
@@ -1666,9 +1701,9 @@ async function carregarJogos(sport) {
           const teE = od!=null;
           return (oh!=null||oa!=null)
           ? '<div class="jc-odds'+(teE?'':' no-draw')+'"'+(simulated?' title="Odds estimadas"':'')+'>'+
-              (oh!=null?'<div class="odd-btn2'+(simulated?' sim-odd':'')+'" id="ob-'+j.id+'-c" onclick="selOdd(\''+j.id+'\',\''+j.home_team+'\',\'C\','+oh+',\''+j.home_team+' x '+j.away_team+'\')">'+'<div class="o-lbl">'+teamShortLabel(j.home_team)+'</div><div class="o-val">'+Number(oh).toFixed(2)+'</div></div>':'')+
-              (teE?'<div class="odd-btn2'+(simulated?' sim-odd':'')+'" id="ob-'+j.id+'-e" onclick="selOdd(\''+j.id+'\',\'Empate\',\'X\','+od+',\''+j.home_team+' x '+j.away_team+'\')">'+'<div class="o-lbl">Empate</div><div class="o-val">'+Number(od).toFixed(2)+'</div></div>':'')+
-              (oa!=null?'<div class="odd-btn2'+(simulated?' sim-odd':'')+'" id="ob-'+j.id+'-f" onclick="selOdd(\''+j.id+'\',\''+j.away_team+'\',\'F\','+oa+',\''+j.home_team+' x '+j.away_team+'\')">'+'<div class="o-lbl">'+teamShortLabel(j.away_team)+'</div><div class="o-val">'+Number(oa).toFixed(2)+'</div></div>':'')+
+              (oh!=null?'<div class="odd-btn2'+(simulated?' sim-odd':'')+'" id="ob-'+j.id+'-c" onclick="selOdd(\''+j.id+'\',\''+j.home_team+'\',\'C\','+oh+',\''+j.home_team+' x '+j.away_team+'\',\''+jLeagueKey+'\')">'+'<div class="o-lbl">'+teamShortLabel(j.home_team)+'</div><div class="o-val">'+Number(oh).toFixed(2)+'</div></div>':'')+
+              (teE?'<div class="odd-btn2'+(simulated?' sim-odd':'')+'" id="ob-'+j.id+'-e" onclick="selOdd(\''+j.id+'\',\'Empate\',\'X\','+od+',\''+j.home_team+' x '+j.away_team+'\',\''+jLeagueKey+'\')">'+'<div class="o-lbl">Empate</div><div class="o-val">'+Number(od).toFixed(2)+'</div></div>':'')+
+              (oa!=null?'<div class="odd-btn2'+(simulated?' sim-odd':'')+'" id="ob-'+j.id+'-f" onclick="selOdd(\''+j.id+'\',\''+j.away_team+'\',\'F\','+oa+',\''+j.home_team+' x '+j.away_team+'\',\''+jLeagueKey+'\')">'+'<div class="o-lbl">'+teamShortLabel(j.away_team)+'</div><div class="o-val">'+Number(oa).toFixed(2)+'</div></div>':'')+
               '</div>'+(simulated?'<div style="padding:0 12px 6px;font-size:9px;color:var(--muted);text-align:center">⚡ Odds estimadas — atualizadas próximo ao jogo</div>':'')
           : '<div style="padding:8px 12px;text-align:center;font-size:11px;color:var(--muted)">✓ Encerrado</div>';
         })()
@@ -1781,6 +1816,13 @@ function chipSport(el) {
   document.querySelectorAll('.sport-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   _currentSport = el.dataset.sport;
+  carregarJogos(_currentSport);
+}
+
+function filtroPeriodo(el, dias) {
+  document.querySelectorAll('.periodo-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  _currentDias = dias;
   carregarJogos(_currentSport);
 }
 
