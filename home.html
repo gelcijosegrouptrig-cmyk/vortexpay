@@ -281,34 +281,37 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 .jogo-card.live-c{border-left:3px solid var(--red)}
 .jogo-card.finished-c{opacity:0.85}
 .jogo-card.future-c{border-left:3px solid #3b82f6;opacity:0.95}
-.jc-meta{display:flex;align-items:center;gap:6px;margin-bottom:8px}
-.jc-liga{font-size:11px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.jc-hora{font-size:11px;color:#555}
+/* ── Meta linha (liga + hora) ── */
+.jc-meta{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.jc-liga{font-size:10px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.jc-hora{font-size:10px;color:#555;white-space:nowrap;flex-shrink:0}
 .live-tag{background:#ef444418;color:var(--red);border:1px solid #ef444433;
-  border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700}
+  border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;flex-shrink:0}
 .future-tag{background:#3b82f618;color:#60a5fa;border:1px solid #3b82f633;
-  border-radius:4px;padding:1px 7px;font-size:10px;font-weight:600;white-space:nowrap}
-.jc-times{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:6px}
-.time-b{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0}
-.time-b.away{align-items:flex-end}
-.t-escudo{width:36px;height:36px;border-radius:50%;object-fit:contain;background:#1e2035;padding:3px;
-  border:1.5px solid #ffffff15;flex-shrink:0}
-.t-ini{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#3b82f6);
-  color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.t-nome{font-size:12px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap;max-width:100%;text-align:center}
-.t-vs{font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0}
-.jc-odds{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
-.jc-odds.no-draw{grid-template-columns:1fr 1fr}
-.odd-btn2{background:#0d1120;border:1px solid #3b82f622;border-radius:9px;padding:7px 5px;
-  text-align:center;cursor:pointer;transition:all .15s}
+  border-radius:4px;padding:1px 6px;font-size:9px;font-weight:600;white-space:nowrap;flex-shrink:0}
+/* ── Times: layout HORIZONTAL — escudo + nome na mesma linha ── */
+.jc-times{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+.time-row{display:flex;align-items:center;gap:7px}
+.time-row.away{}
+.t-escudo{width:22px;height:22px;border-radius:50%;object-fit:contain;background:#1e2035;padding:2px;
+  border:1px solid #ffffff12;flex-shrink:0}
+.t-ini{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#3b82f6);
+  color:#fff;font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.t-nome{font-size:13px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;flex:1;min-width:0}
+.t-vs-sep{text-align:center;font-size:9px;color:#333;font-weight:700;letter-spacing:1px;padding:0 4px}
+/* ── Odds ── */
+.jc-odds{display:flex;gap:5px;margin-top:2px}
+.jc-odds.no-draw{}
+.odd-btn2{flex:1;background:#0d1120;border:1px solid #3b82f622;border-radius:9px;padding:6px 4px;
+  text-align:center;cursor:pointer;transition:all .15s;min-width:0}
 .odd-btn2:hover,.odd-btn2.sel{background:#1e3a8a;border-color:var(--blue)}
-.odd-btn2.sim-odd{background:#0c1f0c;border-color:#16a34a40;color:#86efac}
+.odd-btn2.sim-odd{background:#0c1f0c;border-color:#16a34a40}
 .odd-btn2.sim-odd:hover{background:#14532d;border-color:#16a34a}
 .odd-btn2.sim-odd .o-val{color:#4ade80}
 .odd-btn2.sim-odd.sel{background:#15803d;border-color:#22c55e}
-.o-lbl{font-size:10px;color:#555;margin-bottom:2px}
-.o-val{font-size:14px;font-weight:900;color:var(--blue)}
+.o-lbl{font-size:9px;color:#555;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.o-val{font-size:13px;font-weight:900;color:var(--blue)}
 .odd-btn2.sel .o-val{color:#fff}
 /* pred */
 .pred-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;margin:6px 0 3px;gap:1px}
@@ -718,8 +721,8 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   /* ── Cards de jogos ── */
   .jogos-grid{grid-template-columns:1fr;gap:8px}
   .jogo-card{padding:10px;border-radius:12px}
-  .t-escudo,.t-ini{width:26px;height:26px}
-  .t-nome{font-size:11px;font-weight:700}
+  /* t-escudo e t-ini já tem 22px no base — sem override necessário */
+  /* t-nome: 13px no base é suficiente para mobile */
   .o-btn{padding:6px 5px;border-radius:8px;min-width:52px}
   .o-val{font-size:12px;font-weight:800}
   .o-lbl{font-size:8px}
@@ -1889,9 +1892,9 @@ async function carregarJogos(sport) {
           (live ? '<span class="live-tag">● AO VIVO</span>' : isFuture ? '<span class="future-tag">📅 ' + horaFull + '</span>' : '<span class="jc-hora">' + hora + '</span>') +
         '</div>' +
         '<div class="jc-times">' +
-          '<div class="time-b">' + hBadge + '<span class="t-nome">' + j.home_team + '</span></div>' +
-          '<span class="t-vs">' + (live ? '<span style="color:var(--red);font-size:10px;font-weight:900">AO VIVO</span>' : isFuture ? '<span style="color:var(--blue);font-size:9px;font-weight:700">VS</span>' : 'VS') + '</span>' +
-          '<div class="time-b away">' + aBadge + '<span class="t-nome">' + j.away_team + '</span></div>' +
+          '<div class="time-row">' + hBadge + '<span class="t-nome">' + j.home_team + '</span>' + (live ? '<span class="live-tag" style="margin-left:auto">● VIVO</span>' : '') + '</div>' +
+          (isFuture ? '' : '<div class="t-vs-sep">vs</div>') +
+          '<div class="time-row away">' + aBadge + '<span class="t-nome">' + j.away_team + '</span></div>' +
         '</div>' +
         predHtml +
         (j.venue ? '<div style="font-size:10px;color:var(--muted);padding:0 12px 4px;display:flex;align-items:center;gap:4px">📍 ' + j.venue + (j.round ? ' · R'+j.round : '') + '</div>' : '') +
@@ -2193,9 +2196,9 @@ async function _renderizarJogos(lista, jogosExibir) {
         (live ? `<span class="live-tag">● AO VIVO</span>` : isFuture ? `<span class="future-tag">📅 ${horaFull}</span>` : `<span class="jc-hora">${hora}</span>`) +
       `</div>` +
       `<div class="jc-times">` +
-        `<div class="time-b">${hBadge}<span class="t-nome">${j.home_team}</span></div>` +
-        `<span class="t-vs">${live ? `<span style="color:var(--red);font-size:10px;font-weight:900">AO VIVO</span>` : isFuture ? `<span style="color:var(--blue);font-size:9px;font-weight:700">VS</span>` : 'VS'}</span>` +
-        `<div class="time-b away">${aBadge}<span class="t-nome">${j.away_team}</span></div>` +
+        `<div class="time-row">${hBadge}<span class="t-nome">${j.home_team}</span></div>` +
+        `<div class="t-vs-sep">vs</div>` +
+        `<div class="time-row away">${aBadge}<span class="t-nome">${j.away_team}</span></div>` +
       `</div>` +
       (j.venue ? `<div style="font-size:10px;color:var(--muted);padding:0 12px 4px;display:flex;align-items:center;gap:4px">📍 ${j.venue}</div>` : '') +
       (isFuture ? `<div style="padding:2px 12px 4px;font-size:10px;color:#4a9eff;display:flex;align-items:center;gap:4px"><span>📆</span><span>Jogo futuro — aposte antecipado!</span></div>` : '') +
@@ -2900,9 +2903,8 @@ async function carregarAoVivo(_silent){
           '<span class="live-min" style="background:#ef4444;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">● '+clockTxt+'</span>'+
         '</div>'+
         '<div class="jc-times">'+
-          '<div class="time-b">'+hBadge+'<span class="t-nome">'+j.home_team+'</span></div>'+
-          '<div class="live-score"><span class="ls-n">'+hGoals+'</span><span class="ls-sep">-</span><span class="ls-n">'+aGoals+'</span></div>'+
-          '<div class="time-b away">'+aBadge+'<span class="t-nome">'+j.away_team+'</span></div>'+
+          '<div class="time-row">'+hBadge+'<span class="t-nome">'+j.home_team+'</span><div class="live-score" style="margin-left:auto"><span class="ls-n">'+hGoals+'</span><span class="ls-sep">-</span><span class="ls-n">'+aGoals+'</span></div></div>'+
+          '<div class="time-row away">'+aBadge+'<span class="t-nome">'+j.away_team+'</span></div>'+
         '</div>'+
         (j.odds_simulated?'<div style="font-size:9px;color:var(--muted);text-align:center;padding:2px 0 4px">⚡ Odds estimadas</div>':'')+
         '<div class="jc-odds'+(temEmpate?'':' no-draw')+'">'+
