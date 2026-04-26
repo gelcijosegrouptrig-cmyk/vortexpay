@@ -121,6 +121,18 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 .sec-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;margin-top:4px}
 .sec-head h3{font-size:13px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.8px}
 .accent{width:3px;height:16px;border-radius:2px;background:var(--gold)}
+
+/* ══ BOTÃO VOLTAR ══ */
+.btn-voltar{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:7px 14px 7px 10px;
+  font-size:13px;font-weight:700;color:var(--muted2);
+  cursor:pointer;transition:all .15s;margin-bottom:14px;
+  width:fit-content;
+}
+.btn-voltar:hover{background:#1e3a5f;border-color:var(--blue);color:#fff}
+.btn-voltar .bv-ico{font-size:16px;line-height:1}
 .see-all{margin-left:auto;background:transparent;border:none;color:var(--blue2);
   font-size:12px;font-weight:600;cursor:pointer}
 .see-all:hover{text-decoration:underline}
@@ -994,6 +1006,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: MINHAS APOSTAS ══ -->
     <div class="view" id="view-minhas-apostas">
+      <button class="btn-voltar" onclick="navTo('home')" title="Voltar"><span class="bv-ico">‹</span> Página Inicial</button>
       <div class="sec-head"><div class="accent" style="background:#8b5cf6"></div><h3>🎯 Minhas Apostas</h3></div>
       <div class="ma-tabs">
         <div class="ma-tab active" id="ma-tab-todas" onclick="switchMaTab('todas')">Todas</div>
@@ -1008,6 +1021,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: AO VIVO ══ -->
     <div class="view" id="view-live">
+      <button class="btn-voltar" onclick="navTo('apostas')" title="Voltar"><span class="bv-ico">‹</span> Apostas</button>
       <div class="sec-head">
         <div class="accent" style="background:var(--red)"></div>
         <h3 style="color:var(--red)">Jogos Ao Vivo</h3>
@@ -1020,6 +1034,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: TABELA ══ -->
     <div class="view" id="view-tabela">
+      <button class="btn-voltar" onclick="navTo('apostas')" title="Voltar"><span class="bv-ico">‹</span> Apostas</button>
       <div class="liga-chips" id="liga-chips">
         <div class="liga-chip active" data-league="71" onclick="chipLiga(this)">🇧🇷 Série A</div>
         <div class="liga-chip" data-league="75" onclick="chipLiga(this)">🇧🇷 Série B</div>
@@ -1040,6 +1055,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: SORTEIO ══ -->
     <div class="view" id="view-sorteio">
+      <button class="btn-voltar" onclick="navTo('home')" title="Voltar"><span class="bv-ico">‹</span> Página Inicial</button>
       <div class="sorteio-view">
         <div class="sorteio-hero">
           <div class="sh-label">🏆 Prêmio do Sorteio</div>
@@ -1062,6 +1078,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: BILHETES ══ -->
     <div class="view" id="view-bilhetes">
+      <button class="btn-voltar" onclick="navTo('home')" title="Voltar"><span class="bv-ico">‹</span> Página Inicial</button>
       <div class="sec-head"><div class="accent"></div><h3>Meus Bilhetes</h3></div>
       <!-- Tabs: Apostas normais / Bolão -->
       <div style="display:flex;gap:8px;margin-bottom:16px">
@@ -1084,6 +1101,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: BOLÃO ══ -->
     <div class="view" id="view-bolao">
+      <button class="btn-voltar" onclick="navTo('home')" title="Voltar"><span class="bv-ico">‹</span> Página Inicial</button>
       <div class="sec-head">
         <div class="accent" style="background:linear-gradient(135deg,#f59e0b,#d97706)"></div>
         <h3>🎯 Bolão Placar Exato</h3>
@@ -1095,6 +1113,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: GANHADORES ══ -->
     <div class="view" id="view-ganhadores">
+      <button class="btn-voltar" onclick="navTo('home')" title="Voltar"><span class="bv-ico">‹</span> Página Inicial</button>
       <div class="sec-head"><div class="accent" style="background:var(--gold)"></div><h3>Últimos Ganhadores</h3></div>
       <div id="ganhadores-lista">
         <div class="loading-center"><div class="spinner2"></div>Carregando...</div>
@@ -1103,6 +1122,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: DEPOSITAR ══ -->
     <div class="view" id="view-depositar">
+      <button class="btn-voltar" onclick="navTo('conta')" title="Voltar"><span class="bv-ico">‹</span> Minha Conta</button>
       <div class="sec-head"><div class="accent" style="background:var(--green)"></div><h3>Depositar via Pix</h3></div>
       <div class="conta-grid">
         <div class="conta-card">
@@ -1145,6 +1165,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: SACAR ══ -->
     <div class="view" id="view-sacar">
+      <button class="btn-voltar" onclick="navTo('conta')" title="Voltar"><span class="bv-ico">‹</span> Minha Conta</button>
       <div class="sec-head"><div class="accent" style="background:var(--gold)"></div><h3>Sacar via Pix</h3></div>
       <div class="conta-grid">
         <div class="conta-card">
@@ -1179,6 +1200,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: HISTORICO ══ -->
     <div class="view" id="view-historico">
+      <button class="btn-voltar" onclick="navTo('conta')" title="Voltar"><span class="bv-ico">‹</span> Minha Conta</button>
       <div class="sec-head"><div class="accent"></div><h3>Histórico de Transações</h3></div>
       <div class="conta-card" style="max-width:600px">
         <div id="hist-lista">
@@ -1189,6 +1211,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
     <!-- ══ VIEW: CONTA ══ -->
     <div class="view" id="view-conta">
+      <button class="btn-voltar" onclick="navTo('home')" title="Voltar"><span class="bv-ico">‹</span> Página Inicial</button>
       <div class="sec-head"><div class="accent"></div><h3>Minha Conta</h3></div>
       <div class="conta-grid">
         <div class="conta-card">
