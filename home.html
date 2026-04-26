@@ -169,14 +169,23 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 .atalho-sep{width:1px;height:36px;background:var(--border);flex-shrink:0}
 .jogo-mini{background:var(--card);border:1px solid var(--border);border-radius:10px;
   padding:10px 12px;cursor:pointer;transition:border-color .2s;
-  display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px}
+  display:flex;flex-direction:column;gap:6px}
 .jogo-mini:hover{border-color:var(--blue)}
-.jm-liga{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-.jm-times{font-size:12px;font-weight:700;display:flex;gap:6px;align-items:center}
-.jm-live{font-size:10px;color:var(--red);font-weight:700;animation:blink 1.2s infinite}
-.jm-odds{display:flex;gap:4px}
-.odd-pill{background:#1e3a8a;border-radius:6px;padding:4px 9px;font-size:12px;font-weight:800;color:#60a5fa}
+/* linha de meta: liga + hora + live badge */
+.jm-meta{display:flex;align-items:center;gap:6px}
+.jm-liga{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jm-hora{font-size:9px;color:#555;white-space:nowrap;flex-shrink:0}
+.jm-live{font-size:9px;color:var(--red);font-weight:700;animation:blink 1.2s infinite;flex-shrink:0;background:#ef444418;border:1px solid #ef444433;border-radius:4px;padding:1px 5px}
+/* times: uma linha por time */
+.jm-times{display:flex;flex-direction:column;gap:3px}
+.jm-team{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#fff;overflow:hidden}
+.jm-team-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.jm-vs{font-size:8px;color:#333;font-weight:700;letter-spacing:.5px;padding-left:4px}
+/* odds: linha horizontal de pills */
+.jm-odds{display:flex;gap:5px}
+.odd-pill{flex:1;background:#1e3a8a;border-radius:6px;padding:5px 4px;font-size:12px;font-weight:800;color:#60a5fa;text-align:center;min-width:0}
 .odd-pill.empate{background:#222235;color:#888}
+.odd-pill .op-lbl{font-size:8px;color:#4a6fa5;display:block;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* coluna direita home */
 .premio-card{background:linear-gradient(135deg,#1a1200,#2a1c00);
@@ -1711,13 +1720,32 @@ async function loadJogosHome(){
       const div=document.createElement('div');
       div.className='jogo-mini';
       div.onclick=()=>sbNav('apostas','upcoming');
-      div.innerHTML='<div class="jm-liga">'+(j.league||j.sport)+'<br><small style="color:#555">'+hora+'</small></div>'+
-        '<div class="jm-times"><span>'+j.home_team+'</span><span style="color:var(--muted);font-size:10px">vs</span><span>'+j.away_team+'</span></div>'+
-        (live?'<div class="jm-live">● AO VIVO</div>':'')+
+      // Abreviação dos nomes dos times
+      function _shortName(n){
+        if(!n)return'?';
+        const clean=n.trim().replace(/\(.*?\)/g,'').replace(/^(FC|SC|CA|CR|CD|EC|SE|RB)\s/i,'').trim();
+        if(clean.length<=14)return clean;
+        const words=clean.split(/\s+/);
+        const skip=new Set(['de','do','da','dos','das','del','el','la','e','y']);
+        const sig=words.filter(w=>w.length>1&&!skip.has(w.toLowerCase()));
+        return sig.length>1 ? sig[0]+' '+sig[1].substring(0,3)+'.' : (sig[0]||clean).substring(0,14);
+      }
+      const hn=_shortName(j.home_team);
+      const an=_shortName(j.away_team);
+      div.innerHTML=
+        '<div class="jm-meta">'+
+          '<span class="jm-liga">'+(j.league||j.sport)+'</span>'+
+          (live?'<span class="jm-live">● VIVO</span>':'<span class="jm-hora">'+hora+'</span>')+
+        '</div>'+
+        '<div class="jm-times">'+
+          '<div class="jm-team"><span class="jm-team-name">'+j.home_team+'</span></div>'+
+          '<div class="jm-vs">vs</div>'+
+          '<div class="jm-team"><span class="jm-team-name">'+j.away_team+'</span></div>'+
+        '</div>'+
         '<div class="jm-odds">'+
-        (o.home!=null?'<div class="odd-pill">'+Number(o.home).toFixed(2)+'</div>':'')+
-        (o.draw!=null?'<div class="odd-pill empate">'+Number(o.draw).toFixed(2)+'</div>':'')+
-        (o.away!=null?'<div class="odd-pill">'+Number(o.away).toFixed(2)+'</div>':'')+
+        (o.home!=null?'<div class="odd-pill"><span class="op-lbl">'+hn+'</span>'+Number(o.home).toFixed(2)+'</div>':'')+
+        (o.draw!=null?'<div class="odd-pill empate"><span class="op-lbl">Empate</span>'+Number(o.draw).toFixed(2)+'</div>':'')+
+        (o.away!=null?'<div class="odd-pill"><span class="op-lbl">'+an+'</span>'+Number(o.away).toFixed(2)+'</div>':'')+
         '</div>';
       el.appendChild(div);
     });
