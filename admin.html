@@ -790,6 +790,10 @@ function toggleLoginSenha() {
         👥 <span>Usuários</span>
         <span class="badge" id="badge-users-mgr">0</span>
       </div>
+      <div class="nav-item" onclick="showTab('funcionarios')">
+        🧑‍💼 <span>Funcionários</span>
+        <span class="badge" id="badge-staff" style="background:#8b5cf6">0</span>
+      </div>
       <div class="nav-item" onclick="showTab('config-pagamento')">
         ⚙️ <span>Config Pagamento</span>
       </div>
@@ -2040,6 +2044,110 @@ function toggleLoginSenha() {
           </div>
         </div>
       </div>
+
+
+      <!-- ═══ GESTOR DE FUNCIONÁRIOS ═══ -->
+      <div id="tab-funcionarios" class="tab-content">
+
+        <!-- Cabeçalho com botão novo -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div>
+            <h2 style="margin:0;font-size:18px">🧑‍💼 Gestor de Funcionários</h2>
+            <p style="margin:4px 0 0;font-size:12px;color:var(--text2)">Somente o <strong style="color:#f59e0b">Admin Geral</strong> pode criar, editar e revogar acessos.</p>
+          </div>
+          <button onclick="abrirModalStaff()" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;padding:10px 20px;cursor:pointer;display:flex;align-items:center;gap:6px">
+            ＋ Novo Funcionário
+          </button>
+        </div>
+
+        <!-- Tabela de funcionários -->
+        <div class="table-card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px">#</th>
+                  <th>Nome</th>
+                  <th>E-mail</th>
+                  <th>Permissões</th>
+                  <th>Último acesso</th>
+                  <th>Status</th>
+                  <th style="width:160px">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="staff-tbody">
+                <tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Legenda de permissões -->
+        <div class="table-card" style="margin-top:16px">
+          <div class="table-header"><h3>📋 Permissões disponíveis</h3></div>
+          <div style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px" id="staff-perms-legenda"></div>
+        </div>
+
+        <!-- Modal Criar/Editar Funcionário -->
+        <div id="modal-staff" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;align-items:center;justify-content:center;padding:16px">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:540px;max-width:100%;max-height:90vh;overflow-y:auto">
+            <h3 id="modal-staff-title" style="margin:0 0 20px">＋ Novo Funcionário</h3>
+
+            <!-- Campos básicos -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Nome completo *</label>
+                <input id="staff-nome" type="text" placeholder="Ex: João Silva"
+                  style="width:100%;box-sizing:border-box;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:10px 12px;font-size:13px;outline:none">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">E-mail *</label>
+                <input id="staff-email" type="email" placeholder="joao@empresa.com"
+                  style="width:100%;box-sizing:border-box;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:10px 12px;font-size:13px;outline:none">
+              </div>
+            </div>
+
+            <!-- Permissões -->
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:8px;font-weight:700">Permissões concedidas</label>
+            <div id="staff-perms-checkboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:20px"></div>
+
+            <!-- Ações rápidas -->
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+              <button onclick="staffSelectAll(true)"  style="background:var(--card2);border:1px solid #8b5cf6;border-radius:6px;color:#c4b5fd;font-size:11px;padding:4px 10px;cursor:pointer">✅ Selecionar todas</button>
+              <button onclick="staffSelectAll(false)" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:11px;padding:4px 10px;cursor:pointer">❌ Desmarcar todas</button>
+            </div>
+
+            <div id="modal-staff-msg" style="min-height:24px;font-size:13px;text-align:center;margin-bottom:12px"></div>
+
+            <div style="display:flex;gap:10px">
+              <button onclick="salvarStaff()" style="flex:1;background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;padding:12px;cursor:pointer" id="btn-salvar-staff">
+                💾 Salvar
+              </button>
+              <button onclick="fecharModalStaff()" style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:14px;padding:12px;cursor:pointer">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Token (exibido após criar ou regen) -->
+        <div id="modal-token" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;padding:16px">
+          <div style="background:var(--card);border:1px solid #8b5cf6;border-radius:16px;padding:28px;width:500px;max-width:100%">
+            <h3 style="margin:0 0 8px;color:#c4b5fd">🔑 Token de Acesso</h3>
+            <p style="color:var(--text2);font-size:12px;margin:0 0 16px">⚠️ Copie agora! Este token <strong style="color:#f59e0b">não será exibido novamente</strong>. Envie ao funcionário com segurança.</p>
+            <div style="background:#0d0d1a;border:1px solid #8b5cf6;border-radius:8px;padding:14px;font-family:monospace;font-size:13px;color:#c4b5fd;word-break:break-all;margin-bottom:16px" id="token-display"></div>
+            <div style="display:flex;gap:10px">
+              <button onclick="copiarToken()" style="flex:1;background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;padding:11px;cursor:pointer">
+                📋 Copiar Token
+              </button>
+              <button onclick="fecharModalToken()" style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:14px;padding:11px;cursor:pointer">
+                ✅ Já copiei
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tab-funcionarios -->
 
       <!-- ═══ CONFIG PAGAMENTO ═══ -->
       <div id="tab-config-pagamento" class="tab-content">
@@ -6953,6 +7061,7 @@ function showTab(tab) {
     bot2: '🤖 Bot Mercado Pago — @paypix_nexbot',
     campeonatos: '🏆 Campeonatos',
     'usuarios-mgr': '👥 Usuários',
+    'funcionarios': '🧑‍💼 Gestor de Funcionários',
     'config-pagamento': '⚙️ Config Pagamento',
     'apostas-mgr': '🎯 Apostas & Lucro',
     limites: '🎯 Limites de Aposta',
@@ -6978,6 +7087,7 @@ function showTab(tab) {
   if (tab === 'sistema') loadHealth();
   if (tab === 'campeonatos') loadLigas();
   if (tab === 'usuarios-mgr') loadUsuariosMgr();
+  if (tab === 'funcionarios') loadStaff();
   if (tab === 'config-pagamento') { loadConfigPagamento(); loadLigaApiResumo(); }
   if (tab === 'apostas-mgr') { loadApostasDash(); loadMargens(); }
   if (tab === 'limites') loadLimites();
@@ -8498,6 +8608,275 @@ async function salvarTodasMargens() {
 // ═══════════════════════════════════════════════
 let _usersMgrPage = 0;
 let _usersMgrAjusteId = null;
+
+// ═══════════════════════════════════════════════════════════════════
+// ██  GESTOR DE FUNCIONÁRIOS — JavaScript completo                 ██
+// ═══════════════════════════════════════════════════════════════════
+let _staffEditId     = null;   // null = criar, número = editar
+let _staffPermsMap   = {};     // chave → descrição das permissões
+let _tokenAtual      = '';     // token exibido no modal de token
+
+async function loadStaff() {
+  const tbody  = document.getElementById('staff-tbody');
+  const legenda = document.getElementById('staff-perms-legenda');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>';
+
+  try {
+    const r = await fetch(BASE + '/api/admin/staff', { headers: _adminHeaders() });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+
+    _staffPermsMap = d.permissoes_disponiveis || {};
+
+    // Atualizar badge
+    const badge = document.getElementById('badge-staff');
+    if (badge) badge.textContent = (d.staff || []).length;
+
+    // Renderizar legenda de permissões
+    if (legenda) {
+      legenda.innerHTML = Object.entries(_staffPermsMap).map(([k, v]) =>
+        `<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px">
+          <span style="color:#c4b5fd;font-weight:700">${k}</span><br>
+          <span style="color:var(--text2)">${v}</span>
+        </div>`
+      ).join('');
+    }
+
+    if (!d.staff || !d.staff.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text2)">Nenhum funcionário cadastrado ainda.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = d.staff.map(s => {
+      const permsHtml = s.permissoes.length
+        ? s.permissoes.map(p =>
+            `<span style="background:rgba(139,92,246,0.15);color:#c4b5fd;border:1px solid rgba(139,92,246,0.3);border-radius:4px;padding:1px 6px;font-size:10px;white-space:nowrap">${_staffPermsMap[p] || p}</span>`
+          ).join(' ')
+        : '<span style="color:var(--text2);font-size:11px">Nenhuma</span>';
+
+      const statusBadge = s.ativo
+        ? '<span style="background:rgba(74,222,128,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700">● Ativo</span>'
+        : '<span style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700">○ Revogado</span>';
+
+      const ultimoAcesso = s.ultimo_acesso
+        ? new Date(s.ultimo_acesso).toLocaleString('pt-BR')
+        : '<span style="color:var(--text2)">Nunca</span>';
+
+      const toggleBtn = s.ativo
+        ? `<button onclick="staffToggle(${s.id},false)" title="Revogar acesso" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:6px;color:#f87171;padding:4px 8px;cursor:pointer;font-size:11px">🚫 Revogar</button>`
+        : `<button onclick="staffToggle(${s.id},true)"  title="Ativar acesso"  style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);border-radius:6px;color:#4ade80;padding:4px 8px;cursor:pointer;font-size:11px">✅ Ativar</button>`;
+
+      return `<tr>
+        <td style="color:var(--text2);font-size:11px">#${s.id}</td>
+        <td><strong>${escHtml(s.nome)}</strong></td>
+        <td style="font-size:12px;color:var(--text2)">${escHtml(s.email)}</td>
+        <td><div style="display:flex;flex-wrap:wrap;gap:3px">${permsHtml}</div></td>
+        <td style="font-size:11px">${ultimoAcesso}</td>
+        <td>${statusBadge}</td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button onclick="abrirEditarStaff(${s.id})" title="Editar" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:#fff;padding:4px 8px;cursor:pointer;font-size:11px">✏️</button>
+            ${toggleBtn}
+            <button onclick="staffRegenToken(${s.id})" title="Gerar novo token" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#fbbf24;padding:4px 8px;cursor:pointer;font-size:11px">🔑</button>
+            <button onclick="staffDeletar(${s.id},'${escHtml(s.nome)}')" title="Remover" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#f87171;padding:4px 8px;cursor:pointer;font-size:11px">🗑️</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#f87171">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+function _buildPermsCheckboxes(selecionadas = []) {
+  const container = document.getElementById('staff-perms-checkboxes');
+  if (!container) return;
+  container.innerHTML = Object.entries(_staffPermsMap).map(([k, v]) => {
+    const checked = selecionadas.includes(k) ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:12px">
+      <input type="checkbox" value="${k}" ${checked} style="accent-color:#8b5cf6;width:15px;height:15px">
+      <span><strong style="color:#c4b5fd;display:block;font-size:11px">${k}</strong><span style="color:var(--text2)">${v}</span></span>
+    </label>`;
+  }).join('');
+}
+
+function staffSelectAll(val) {
+  document.querySelectorAll('#staff-perms-checkboxes input[type=checkbox]')
+    .forEach(cb => cb.checked = val);
+}
+
+function _getPermsSelected() {
+  return [...document.querySelectorAll('#staff-perms-checkboxes input[type=checkbox]')]
+    .filter(cb => cb.checked).map(cb => cb.value);
+}
+
+function abrirModalStaff() {
+  _staffEditId = null;
+  document.getElementById('modal-staff-title').textContent = '＋ Novo Funcionário';
+  document.getElementById('staff-nome').value  = '';
+  document.getElementById('staff-email').value = '';
+  document.getElementById('modal-staff-msg').textContent = '';
+  // Carregar checkboxes (se _staffPermsMap ainda vazio, buscar)
+  if (!Object.keys(_staffPermsMap).length) {
+    fetch(BASE + '/api/admin/staff', { headers: _adminHeaders() })
+      .then(r => r.json()).then(d => {
+        _staffPermsMap = d.permissoes_disponiveis || {};
+        _buildPermsCheckboxes([]);
+      });
+  } else {
+    _buildPermsCheckboxes([]);
+  }
+  const m = document.getElementById('modal-staff');
+  m.style.display = 'flex';
+}
+
+async function abrirEditarStaff(id) {
+  // Buscar dados atuais do staff da lista já carregada
+  try {
+    const r = await fetch(BASE + '/api/admin/staff', { headers: _adminHeaders() });
+    const d = await r.json();
+    const s = (d.staff || []).find(x => x.id === id);
+    if (!s) { alert('Funcionário não encontrado'); return; }
+    _staffEditId = id;
+    document.getElementById('modal-staff-title').textContent = `✏️ Editar: ${s.nome}`;
+    document.getElementById('staff-nome').value  = s.nome;
+    document.getElementById('staff-email').value = s.email;
+    document.getElementById('modal-staff-msg').textContent = '';
+    _buildPermsCheckboxes(s.permissoes);
+    document.getElementById('modal-staff').style.display = 'flex';
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+function fecharModalStaff() {
+  document.getElementById('modal-staff').style.display = 'none';
+}
+
+async function salvarStaff() {
+  const nome  = document.getElementById('staff-nome').value.trim();
+  const email = document.getElementById('staff-email').value.trim();
+  const perms = _getPermsSelected();
+  const msg   = document.getElementById('modal-staff-msg');
+
+  if (!nome || !email) { msg.innerHTML = '<span style="color:#f87171">Nome e e-mail são obrigatórios.</span>'; return; }
+
+  const btn = document.getElementById('btn-salvar-staff');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+
+  try {
+    let url, payload;
+    if (_staffEditId) {
+      url     = BASE + '/api/admin/staff/editar';
+      payload = { id: _staffEditId, nome, email, permissoes: perms };
+    } else {
+      url     = BASE + '/api/admin/staff';
+      payload = { nome, email, permissoes: perms };
+    }
+
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { ...{ 'Content-Type': 'application/json' }, ..._adminHeaders() },
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+
+    fecharModalStaff();
+    loadStaff();
+
+    // Se criação, exibir token
+    if (!_staffEditId && d.token) {
+      exibirModalToken(d.token);
+    } else {
+      _showToast(d.msg || 'Atualizado!', 'success');
+    }
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#f87171">Erro: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Salvar';
+  }
+}
+
+async function staffToggle(id, ativo) {
+  const acao = ativo ? 'ATIVAR' : 'REVOGAR';
+  if (!confirm(`Confirma ${acao} o acesso deste funcionário?`)) return;
+  try {
+    const r = await fetch(BASE + '/api/admin/staff/toggle', {
+      method: 'POST',
+      headers: { ...{ 'Content-Type': 'application/json' }, ..._adminHeaders() },
+      body: JSON.stringify({ id, ativo })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    _showToast(d.msg, 'success');
+    loadStaff();
+  } catch(e) { _showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function staffRegenToken(id) {
+  if (!confirm('Gerar um NOVO token para este funcionário? O token antigo será invalidado imediatamente.')) return;
+  try {
+    const r = await fetch(BASE + '/api/admin/staff/regen-token', {
+      method: 'POST',
+      headers: { ...{ 'Content-Type': 'application/json' }, ..._adminHeaders() },
+      body: JSON.stringify({ id })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    exibirModalToken(d.token);
+    _showToast(d.msg, 'success');
+  } catch(e) { _showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function staffDeletar(id, nome) {
+  if (!confirm(`Remover PERMANENTEMENTE o funcionário "${nome}"? Esta ação não pode ser desfeita.`)) return;
+  try {
+    const r = await fetch(BASE + '/api/admin/staff/deletar', {
+      method: 'POST',
+      headers: { ...{ 'Content-Type': 'application/json' }, ..._adminHeaders() },
+      body: JSON.stringify({ id })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    _showToast(d.msg, 'success');
+    loadStaff();
+  } catch(e) { _showToast('Erro: ' + e.message, 'error'); }
+}
+
+function exibirModalToken(token) {
+  _tokenAtual = token;
+  document.getElementById('token-display').textContent = token;
+  document.getElementById('modal-token').style.display = 'flex';
+}
+
+function fecharModalToken() {
+  document.getElementById('modal-token').style.display = 'none';
+}
+
+function copiarToken() {
+  navigator.clipboard.writeText(_tokenAtual).then(() => {
+    _showToast('Token copiado!', 'success');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = _tokenAtual; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    _showToast('Token copiado!', 'success');
+  });
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _showToast(msg, type) {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;background:${type==='success'?'#166534':'#7f1d1d'};color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,0.4);max-width:320px`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+// ═══════════════════════════════════════════════════════════════════
 
 async function loadUsuariosMgr() {
   const busca = document.getElementById('users-busca')?.value || '';
