@@ -1830,32 +1830,39 @@ async function carregarJogos(sport) {
   });
 
   try {
-    // 1. Buscar odds (the-odds-api) — tem odds mas pode ter menos jogos
+    // 1. Buscar jogos via endpoint principal (já inclui scoreboard + futuros por liga)
     const r = await fetch(BASE + '/api/bet/jogos?sport=' + sport);
     const d = await r.json();
-    // Filtro duplo: backend + client-side para garantir segmentação
+    // Filtro duplo: backend + client-side para garantir segmentação correta
     let jogos = (d.jogos || []);
 
     if (sport && sport !== 'upcoming' && sport !== 'destaque') {
       jogos = jogos.filter(j => j.sport === sport);
     }
 
-    // 2. Se poucos jogos (< 3), buscar mais via TheSportsDB (fixtures sem odds)
+    // 2. Buscar fixtures APENAS se o backend retornou poucos jogos (< 3)
+    // O novo backend já inclui jogos futuros — fixtures só como fallback emergencial
     const sportsFutebol = ['soccer_brazil_campeonato','soccer_brazil_serie_b',
       'soccer_conmebol_copa_libertadores','soccer_conmebol_sudamericana',
       'soccer_uefa_champs_league','soccer_epl','soccer_spain_la_liga',
       'soccer_italy_serie_a','soccer_germany_bundesliga','soccer_france_ligue_one'];
-    if (sportsFutebol.includes(sport) || sport === 'upcoming' || sport === 'destaque') {
+    if (jogos.length < 3 && (sportsFutebol.includes(sport) || sport === 'upcoming' || sport === 'destaque')) {
       try {
         const rf = await fetch(BASE + '/api/bet/fixtures?sport=' + sport);
         const df = await rf.json();
-        const fixJogos = (df.jogos || []);
-        // Merge: adicionar só jogos que não estão em odds (por id ou por times)
-        const existingIds = new Set(jogos.map(j => j.id));
-        const existingPairs = new Set(jogos.map(j => j.home_team+'|'+j.away_team));
+        const fixJogos = (df.jogos || []).filter(fj =>
+          !sport || sport === 'upcoming' || sport === 'destaque' || fj.sport === sport
+        );
+        // Merge robusto: deduplicar por ID (sem sufixo _fut) E por par de times
+        const existingIdsClean = new Set(jogos.map(j => (j.id||'').replace('_fut','')));
+        const existingPairs = new Set(jogos.map(j => (j.home_team+'|'+j.away_team).toLowerCase()));
         for (const fj of fixJogos) {
-          if (!existingIds.has(fj.id) && !existingPairs.has(fj.home_team+'|'+fj.away_team)) {
+          const fjIdClean = (fj.id||'').replace('_fut','');
+          const fjPair = (fj.home_team+'|'+fj.away_team).toLowerCase();
+          if (!existingIdsClean.has(fjIdClean) && !existingPairs.has(fjPair)) {
             jogos.push(fj);
+            existingIdsClean.add(fjIdClean);
+            existingPairs.add(fjPair);
           }
         }
       } catch(ef) { /* silencioso */ }
@@ -1868,10 +1875,15 @@ async function carregarJogos(sport) {
       lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div style="font-size:32px;margin-bottom:12px">⚽</div><div style="color:var(--muted);font-size:14px">Nenhum jogo disponível para<br><strong style="color:var(--text)">' + info.titulo + '</strong> agora.</div><div style="margin-top:12px;font-size:12px;color:var(--muted)">💡 Use a barra de pesquisa para filtrar por time ou data.</div></div>';
       return;
     }
-    // Filtrar jogos encerrados — usuário não pode apostar em jogo finalizado
+    // Filtrar jogos encerrados E garantir sport correto (camada extra de segurança)
     const jogosFiltrados = jogos.filter(j => {
       const enc = j.is_finished || j.status === 'Match Finished' || j.status === 'FT' || j.status_code === 'STATUS_FINAL';
-      return !enc;
+      if (enc) return false;
+      // Filtro de sport: se há sport selecionado, só mostrar jogos daquele sport
+      if (sport && sport !== 'upcoming' && sport !== 'destaque' && sport !== 'all') {
+        if (j.sport && j.sport !== sport) return false;
+      }
+      return true;
     });
     if (!jogosFiltrados.length && jogos.length) {
       lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div style="font-size:32px;margin-bottom:12px">✅</div><div style="color:var(--muted);font-size:14px">Todos os jogos desta rodada já foram encerrados.<br><span style="color:var(--text);font-weight:700">Novos jogos em breve!</span></div></div>';
