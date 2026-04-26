@@ -182,11 +182,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   white-space:nowrap;transition:all .15s;
 }
 .sport-chip.active{background:#1e3a8a;border-color:var(--blue);color:#fff}
-.periodo-chips{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px}
-.periodo-chip{flex-shrink:0;background:var(--card);border:1px solid var(--border);
-  border-radius:999px;padding:5px 14px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;
-  white-space:nowrap;transition:all .15s}
-.periodo-chip.active{background:#1a3a52;border-color:#3b82f6;color:#60a5fa}
+
 
 /* ══ BARRA DE PESQUISA ══ */
 .search-bar-wrap{
@@ -208,13 +204,26 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 }
 .search-input:focus{border-color:var(--blue)}
 .search-input::placeholder{color:var(--muted)}
+.search-date-wrap{
+  position:relative;display:flex;align-items:center;
+}
+.search-date-ico{
+  position:absolute;left:10px;font-size:14px;pointer-events:none;z-index:1;
+}
 .search-date{
   background:var(--card);border:1px solid var(--border);border-radius:12px;
-  padding:9px 12px;font-size:12px;color:var(--text);outline:none;
-  cursor:pointer;transition:border-color .2s;min-width:130px;
+  padding:10px 12px 10px 32px;font-size:12px;color:var(--text);outline:none;
+  cursor:pointer;transition:border-color .2s;width:148px;
   color-scheme:dark;
 }
 .search-date:focus{border-color:var(--blue)}
+/* Mobile: data ocupa largura total abaixo do input */
+@media(max-width:480px){
+  .search-bar-wrap{flex-wrap:wrap}
+  .search-input-wrap{min-width:0;flex:1 1 100%}
+  .search-date-wrap{flex:1}
+  .search-date{width:100%}
+}
 .search-clear{
   background:none;border:none;color:var(--muted);font-size:18px;
   cursor:pointer;padding:6px 8px;border-radius:8px;
@@ -926,13 +935,6 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
         <!-- chips carregados dinamicamente por carregarChipsLigas() -->
       </div>
 
-      <!-- ══ FILTRO DE PERÍODO ══ -->
-      <div class=\"periodo-chips\" id=\"periodo-chips\">
-        <div class=\"periodo-chip active\" data-dias=\"1\" onclick=\"filtroPeriodo(this,1)\">📅 Hoje</div>
-        <div class=\"periodo-chip\" data-dias=\"7\" onclick=\"filtroPeriodo(this,7)\">📆 7 dias</div>
-        <div class=\"periodo-chip\" data-dias=\"30\" onclick=\"filtroPeriodo(this,30)\">🗓️ 30 dias</div>
-      </div>
-
       <!-- ══ BARRA DE PESQUISA ══ -->
       <div class="search-bar-wrap" id="search-bar-wrap">
         <div class="search-input-wrap">
@@ -941,18 +943,21 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
             class="search-input"
             id="search-time-input"
             type="text"
-            placeholder="Pesquisar time... (ex: Flamengo, São Paulo)"
+            placeholder="Pesquisar por time ou liga..."
             oninput="aplicarFiltrosBusca()"
             autocomplete="off"
           >
         </div>
-        <input
-          class="search-date"
-          id="search-data-input"
-          type="date"
-          title="Filtrar por data do jogo"
-          onchange="aplicarFiltrosBusca()"
-        >
+        <div class="search-date-wrap">
+          <span class="search-date-ico">📅</span>
+          <input
+            class="search-date"
+            id="search-data-input"
+            type="date"
+            title="Filtrar por data do jogo"
+            onchange="aplicarFiltrosBusca()"
+          >
+        </div>
         <button class="search-clear" id="search-clear-btn" title="Limpar pesquisa" onclick="limparBusca()">✕</button>
       </div>
       <div class="search-results-info" id="search-results-info"></div>
@@ -1341,7 +1346,6 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 const BASE = '';
 let _currentView = 'home';
 let _currentSport = 'upcoming';
-let _currentDias = 1;  // filtro de período: 1=hoje, 7=7dias, 30=30dias
 let _liveTimer = null;
 let _selecoes = [];
 let _betTipo = 'simples'; // 'simples' | 'multi'
@@ -1658,17 +1662,6 @@ async function carregarJogos(sport) {
     // Filtro duplo: backend + client-side para garantir segmentação
     let jogos = (d.jogos || []);
 
-    // Filtro de período (Hoje / 7 dias / 30 dias)
-    const agora = new Date();
-    const limiteData = new Date(agora.getTime() + _currentDias * 24 * 60 * 60 * 1000);
-    limiteData.setHours(23, 59, 59, 999);
-    jogos = jogos.filter(j => {
-      if (j.is_live) return true; // sempre mostra ao vivo
-      if (!j.commence_time) return _currentDias >= 1;
-      const ct = new Date(j.commence_time);
-      return ct <= limiteData;
-    });
-
     if (sport && sport !== 'upcoming' && sport !== 'destaque') {
       jogos = jogos.filter(j => j.sport === sport);
     }
@@ -1698,8 +1691,7 @@ async function carregarJogos(sport) {
     if (count) count.textContent = jogos.length ? jogos.length + ' jogo' + (jogos.length > 1 ? 's' : '') : '';
 
     if (!jogos.length) {
-      const periodoLabel = _currentDias === 1 ? 'hoje' : 'nos próximos ' + _currentDias + ' dias';
-      lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div style="font-size:32px;margin-bottom:12px">⚽</div><div style="color:var(--muted);font-size:14px">Nenhum jogo disponível para<br><strong style="color:var(--text)">' + info.titulo + '</strong> ' + periodoLabel + '.</div><div style="margin-top:12px;font-size:12px;color:var(--muted)">💡 Amplie o período acima para ver jogos futuros.</div></div>';
+      lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div style="font-size:32px;margin-bottom:12px">⚽</div><div style="color:var(--muted);font-size:14px">Nenhum jogo disponível para<br><strong style="color:var(--text)">' + info.titulo + '</strong> agora.</div><div style="margin-top:12px;font-size:12px;color:var(--muted)">💡 Use a barra de pesquisa para filtrar por time ou data.</div></div>';
       return;
     }
     // Filtrar jogos encerrados — usuário não pode apostar em jogo finalizado
@@ -1893,13 +1885,6 @@ function chipSport(el) {
   document.querySelectorAll('.sport-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   _currentSport = el.dataset.sport;
-  carregarJogos(_currentSport);
-}
-
-function filtroPeriodo(el, dias) {
-  document.querySelectorAll('.periodo-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  _currentDias = dias;
   carregarJogos(_currentSport);
 }
 
