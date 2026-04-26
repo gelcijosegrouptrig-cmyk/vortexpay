@@ -4,8 +4,38 @@ HTTP imediato + Telegram background com retry automático
 Banco: PostgreSQL (persistente) com fallback SQLite
 """
 import asyncio, re, json, os, sqlite3, time, hashlib, hmac
-from datetime import datetime
+import decimal
+from datetime import datetime, date
 from aiohttp import web
+
+# ─── JSON ENCODER GLOBAL — converte Decimal, date, datetime ──────────────────
+class _SafeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return super().default(obj)
+
+def _safe_json(data, **kwargs):
+    """json.dumps seguro para Decimal/datetime — use no lugar de web.json_response."""
+    return web.Response(
+        text=json.dumps(data, cls=_SafeEncoder, ensure_ascii=False),
+        content_type='application/json',
+        **kwargs
+    )
+
+def _sanitize(obj):
+    """Converte recursivamente Decimal→float e datetime→str num dict/list."""
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize(i) for i in obj]
+    if isinstance(obj, decimal.Decimal):
+        return float(obj)
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    return obj
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 
@@ -11949,12 +11979,19 @@ async def route_bolao_jogos(request):
             jg['pote_total']       = round(pote_total, 2)
             jg['total_bilhetes']   = int(jg['total_bilhetes'] or 0)
             jg['valor_bilhete']    = float(jg['valor_bilhete'] or 10)
+            jg['pote_inicial']     = float(jg['pote_inicial'] or 0)
+            jg['pote_acumulado']   = float(jg['pote_acumulado'] or 0)
+            jg['pote_arrecadado']  = float(jg['pote_arrecadado'] or 0)
+            jg['margem_pct']       = float(jg['margem_pct'] or 27.5)
+            jg['placar_casa']      = int(jg['placar_casa']) if jg['placar_casa'] is not None else None
+            jg['placar_fora']      = int(jg['placar_fora']) if jg['placar_fora'] is not None else None
             jg['data_jogo']        = str(jg['data_jogo']) if jg['data_jogo'] else None
+            jg['criado_em']        = str(jg['criado_em']) if jg['criado_em'] else None
             jogos.append(jg)
         cur.close(); conn.close()
-        return web.json_response({'ok': True, 'jogos': jogos})
+        return _safe_json({'ok': True, 'jogos': _sanitize(jogos)})
     except Exception as e:
-        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
 
 
 async def route_bolao_comprar(request):
@@ -12029,14 +12066,15 @@ async def route_bolao_comprar(request):
         conn.commit()
         cur.close(); conn.close()
 
-        return web.json_response({
+        bid = int(bilhete_id) if isinstance(bilhete_id, decimal.Decimal) else bilhete_id
+        return _safe_json({
             'ok':         True,
-            'bilhete_id': bilhete_id,
-            'msg':        f'Bilhete #{bilhete_id} registrado! {bolao["time_casa"]} {pl_casa}×{pl_fora} {bolao["time_fora"]}',
+            'bilhete_id': bid,
+            'msg':        f'Bilhete #{bid} registrado! {bolao["time_casa"]} {pl_casa}×{pl_fora} {bolao["time_fora"]}',
             'placar':     f'{pl_casa}×{pl_fora}'
         })
     except Exception as e:
-        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
 
 
 async def route_bolao_meus_bilhetes(request):
@@ -12067,19 +12105,24 @@ async def route_bolao_meus_bilhetes(request):
         bilhetes = []
         for row in cur.fetchall():
             b = dict(zip(cols, row))
-            b['pote_total'] = round(
+            b['pote_total']       = round(
                 float(b['pote_inicial'] or 0) +
                 float(b['pote_acumulado'] or 0) +
                 float(b['pote_arrecadado'] or 0), 2)
-            b['data_jogo']  = str(b['data_jogo'])  if b['data_jogo']  else None
-            b['criado_em']  = str(b['criado_em'])  if b['criado_em']  else None
-            b['valor']      = float(b['valor'] or 0)
-            b['premio']     = float(b['premio'] or 0)
+            b['pote_inicial']     = float(b['pote_inicial'] or 0)
+            b['pote_acumulado']   = float(b['pote_acumulado'] or 0)
+            b['pote_arrecadado']  = float(b['pote_arrecadado'] or 0)
+            b['data_jogo']        = str(b['data_jogo'])  if b['data_jogo']  else None
+            b['criado_em']        = str(b['criado_em'])  if b['criado_em']  else None
+            b['valor']            = float(b['valor'] or 0)
+            b['premio']           = float(b['premio'] or 0)
+            b['res_casa']         = int(b['res_casa']) if b['res_casa'] is not None else None
+            b['res_fora']         = int(b['res_fora']) if b['res_fora'] is not None else None
             bilhetes.append(b)
         cur.close(); conn.close()
-        return web.json_response({'ok': True, 'bilhetes': bilhetes})
+        return _safe_json({'ok': True, 'bilhetes': _sanitize(bilhetes)})
     except Exception as e:
-        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
 
 
 # ─── ROTAS ADMIN ─────────────────────────────────────────────────────────────
@@ -12107,20 +12150,26 @@ async def route_admin_bolao_jogos(request):
         jogos = []
         for row in cur.fetchall():
             jg = dict(zip(cols, row))
-            jg['pote_total']     = round(
+            jg['pote_total']      = round(
                 float(jg['pote_inicial'] or 0) +
                 float(jg['pote_acumulado'] or 0) +
                 float(jg['pote_arrecadado'] or 0), 2)
-            jg['total_bilhetes'] = int(jg['total_bilhetes'] or 0)
-            jg['valor_bilhete']  = float(jg['valor_bilhete'] or 10)
-            jg['data_jogo']      = str(jg['data_jogo'])     if jg['data_jogo']     else None
-            jg['criado_em']      = str(jg['criado_em'])     if jg['criado_em']     else None
-            jg['resolvido_em']   = str(jg['resolvido_em'])  if jg['resolvido_em']  else None
+            jg['total_bilhetes']  = int(jg['total_bilhetes'] or 0)
+            jg['valor_bilhete']   = float(jg['valor_bilhete'] or 10)
+            jg['pote_inicial']    = float(jg['pote_inicial'] or 0)
+            jg['pote_acumulado']  = float(jg['pote_acumulado'] or 0)
+            jg['pote_arrecadado'] = float(jg['pote_arrecadado'] or 0)
+            jg['margem_pct']      = float(jg['margem_pct'] or 27.5)
+            jg['placar_casa']     = int(jg['placar_casa']) if jg['placar_casa'] is not None else None
+            jg['placar_fora']     = int(jg['placar_fora']) if jg['placar_fora'] is not None else None
+            jg['data_jogo']       = str(jg['data_jogo'])    if jg['data_jogo']    else None
+            jg['criado_em']       = str(jg['criado_em'])    if jg['criado_em']    else None
+            jg['resolvido_em']    = str(jg['resolvido_em']) if jg['resolvido_em'] else None
             jogos.append(jg)
         cur.close(); conn.close()
-        return web.json_response({'ok': True, 'jogos': jogos})
+        return _safe_json({'ok': True, 'jogos': _sanitize(jogos)})
     except Exception as e:
-        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
 
 
 async def route_admin_bolao_jogos_disponiveis(request):
@@ -12243,9 +12292,12 @@ async def route_admin_bolao_criar(request):
             msg = f'Jogo #{rid[0]} criado!'
 
         conn.commit(); cur.close(); conn.close()
-        return web.json_response({'ok': True, 'msg': msg, 'id': rid[0] if rid else jogo_id})
+        rid_val = rid[0] if rid else jogo_id
+        # RETURNING id pode vir como int ou Decimal dependendo do driver
+        if isinstance(rid_val, decimal.Decimal): rid_val = int(rid_val)
+        return _safe_json({'ok': True, 'msg': msg, 'id': rid_val})
     except Exception as e:
-        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
 
 
 async def route_admin_bolao_publicar(request):
@@ -12260,9 +12312,9 @@ async def route_admin_bolao_publicar(request):
         cur.execute("UPDATE bolao_jogos SET publicado=%s WHERE id=%s", (publicado, jogo_id))
         conn.commit(); cur.close(); conn.close()
         status = 'publicado' if publicado else 'despublicado'
-        return web.json_response({'ok': True, 'msg': f'Jogo #{jogo_id} {status}!'})
+        return _safe_json({'ok': True, 'msg': f'Jogo #{jogo_id} {status}!'})
     except Exception as e:
-        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
 
 
 async def route_admin_bolao_bilhetes(request):
@@ -12291,9 +12343,9 @@ async def route_admin_bolao_bilhetes(request):
             b['premio']    = float(b['premio'] or 0)
             bilhetes.append(b)
         cur.close(); conn.close()
-        return web.json_response({'ok': True, 'bilhetes': bilhetes})
+        return _safe_json({'ok': True, 'bilhetes': _sanitize(bilhetes)})
     except Exception as e:
-        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
 
 
 async def route_admin_bolao_fechar(request):
@@ -12308,9 +12360,9 @@ async def route_admin_bolao_fechar(request):
         if not bolao_id or pl_casa < 0 or pl_fora < 0:
             return web.json_response({'ok': False, 'error': 'id, placar_casa e placar_fora obrigatórios'}, status=400)
         resultado = await _distribuir_premio_bolao(bolao_id, pl_casa, pl_fora)
-        return web.json_response(resultado)
+        return _safe_json(_sanitize(resultado))
     except Exception as e:
-        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
 
 
 async def route_admin_bolao_resolver_auto(request):
@@ -12340,9 +12392,9 @@ async def route_admin_bolao_resolver_auto(request):
         pl_casa, pl_fora = placar
         resultado = await _distribuir_premio_bolao(bolao_id, pl_casa, pl_fora)
         resultado['placar_espn'] = f'{pl_casa}×{pl_fora}'
-        return web.json_response(resultado)
+        return _safe_json(_sanitize(resultado))
     except Exception as e:
-        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
 
 
 async def route_admin_bolao_deletar(request):
