@@ -187,6 +187,51 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   border-radius:999px;padding:5px 14px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;
   white-space:nowrap;transition:all .15s}
 .periodo-chip.active{background:#1a3a52;border-color:#3b82f6;color:#60a5fa}
+
+/* ══ BARRA DE PESQUISA ══ */
+.search-bar-wrap{
+  position:relative;margin-bottom:12px;
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+}
+.search-input-wrap{
+  position:relative;flex:1;min-width:180px;
+}
+.search-input-wrap .search-ico{
+  position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  font-size:15px;pointer-events:none;opacity:.6;
+}
+.search-input{
+  width:100%;box-sizing:border-box;
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:10px 12px 10px 36px;font-size:13px;color:var(--text);
+  outline:none;transition:border-color .2s;
+}
+.search-input:focus{border-color:var(--blue)}
+.search-input::placeholder{color:var(--muted)}
+.search-date{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:9px 12px;font-size:12px;color:var(--text);outline:none;
+  cursor:pointer;transition:border-color .2s;min-width:130px;
+  color-scheme:dark;
+}
+.search-date:focus{border-color:var(--blue)}
+.search-clear{
+  background:none;border:none;color:var(--muted);font-size:18px;
+  cursor:pointer;padding:6px 8px;border-radius:8px;
+  transition:background .15s,color .15s;display:none;
+}
+.search-clear.visible{display:flex;align-items:center}
+.search-clear:hover{background:#ef444420;color:var(--red)}
+.search-results-info{
+  font-size:11px;color:var(--muted);padding:0 2px 8px;
+  display:none;
+}
+.search-results-info.visible{display:block}
+.search-results-info strong{color:var(--text)}
+.search-highlight{
+  background:#3b82f640;border-radius:3px;padding:0 2px;
+}
+
 .jogos-grid{display:grid;grid-template-columns:1fr;gap:10px}
 @media(min-width:700px){.jogos-grid{grid-template-columns:1fr 1fr}}
 @media(min-width:1100px){.jogos-grid{grid-template-columns:1fr 1fr 1fr}}
@@ -888,6 +933,30 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
         <div class=\"periodo-chip\" data-dias=\"30\" onclick=\"filtroPeriodo(this,30)\">🗓️ 30 dias</div>
       </div>
 
+      <!-- ══ BARRA DE PESQUISA ══ -->
+      <div class="search-bar-wrap" id="search-bar-wrap">
+        <div class="search-input-wrap">
+          <span class="search-ico">🔍</span>
+          <input
+            class="search-input"
+            id="search-time-input"
+            type="text"
+            placeholder="Pesquisar time... (ex: Flamengo, São Paulo)"
+            oninput="aplicarFiltrosBusca()"
+            autocomplete="off"
+          >
+        </div>
+        <input
+          class="search-date"
+          id="search-data-input"
+          type="date"
+          title="Filtrar por data do jogo"
+          onchange="aplicarFiltrosBusca()"
+        >
+        <button class="search-clear" id="search-clear-btn" title="Limpar pesquisa" onclick="limparBusca()">✕</button>
+      </div>
+      <div class="search-results-info" id="search-results-info"></div>
+
       <!-- ══ BANNER COMBO DO DIA ══ -->
       <div id="combo-dia-section" style="display:none;margin-bottom:4px">
         <div class="combo-dia-banner" id="combo-dia-banner" onclick="adicionarComboAoSlip()">
@@ -1276,6 +1345,7 @@ let _currentDias = 1;  // filtro de período: 1=hoje, 7=7dias, 30=30dias
 let _liveTimer = null;
 let _selecoes = [];
 let _betTipo = 'simples'; // 'simples' | 'multi'
+let _todosJogos = [];   // cache de todos os jogos carregados (para pesquisa)
 
 /* ══ SESSION ══ */
 function saveSession(u){localStorage.setItem('pnb_user',JSON.stringify(u))}
@@ -1632,7 +1702,6 @@ async function carregarJogos(sport) {
       lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div style="font-size:32px;margin-bottom:12px">⚽</div><div style="color:var(--muted);font-size:14px">Nenhum jogo disponível para<br><strong style="color:var(--text)">' + info.titulo + '</strong> ' + periodoLabel + '.</div><div style="margin-top:12px;font-size:12px;color:var(--muted)">💡 Amplie o período acima para ver jogos futuros.</div></div>';
       return;
     }
-    lista.innerHTML = '';
     // Filtrar jogos encerrados — usuário não pode apostar em jogo finalizado
     const jogosFiltrados = jogos.filter(j => {
       const enc = j.is_finished || j.status === 'Match Finished' || j.status === 'FT' || j.status_code === 'STATUS_FINAL';
@@ -1642,7 +1711,15 @@ async function carregarJogos(sport) {
       lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div style="font-size:32px;margin-bottom:12px">✅</div><div style="color:var(--muted);font-size:14px">Todos os jogos desta rodada já foram encerrados.<br><span style="color:var(--text);font-weight:700">Novos jogos em breve!</span></div></div>';
       return;
     }
-    for (const j of jogosFiltrados) {
+    // Salvar no cache global para uso pela pesquisa
+    _todosJogos = jogosFiltrados;
+    // Aplicar filtro de busca se houver texto/data digitados
+    const termoBusca = (document.getElementById('search-time-input')||{}).value || '';
+    const dataBusca  = (document.getElementById('search-data-input')||{}).value || '';
+    const jogosExibir = (termoBusca || dataBusca) ? _filtrarJogos(jogosFiltrados, termoBusca, dataBusca) : jogosFiltrados;
+    _atualizarInfoBusca(termoBusca, dataBusca, jogosExibir.length, jogosFiltrados.length);
+    lista.innerHTML = '';
+    for (const j of jogosExibir) {
       const live    = j.is_live || (new Date(j.commence_time) < new Date() && !j.is_finished && j.status_code === 'STATUS_IN_PROGRESS');
       const finished = false; // jogos encerrados já foram removidos acima
       const o       = j.odds || {};
@@ -1824,6 +1901,187 @@ function filtroPeriodo(el, dias) {
   el.classList.add('active');
   _currentDias = dias;
   carregarJogos(_currentSport);
+}
+
+/* ══ PESQUISA DE JOGOS ══ */
+
+/** Normaliza string para comparação sem acento/case */
+function _normStr(s) {
+  return (s || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/** Filtra jogos por termo (time) e/ou data */
+function _filtrarJogos(jogos, termo, data) {
+  const t = _normStr(termo);
+  return jogos.filter(j => {
+    // Filtro por nome de time
+    const passaTermo = !t ||
+      _normStr(j.home_team).includes(t) ||
+      _normStr(j.away_team).includes(t) ||
+      _normStr(j.league).includes(t);
+
+    // Filtro por data (YYYY-MM-DD comparado com commence_time)
+    let passaData = true;
+    if (data && j.commence_time) {
+      try {
+        const ct = new Date(j.commence_time);
+        const ctDate = ct.toISOString().slice(0, 10); // YYYY-MM-DD UTC
+        // Usar data local do jogo
+        const ctLocal = ct.toLocaleDateString('sv-SE'); // sv-SE = ISO format local
+        passaData = (ctLocal === data || ctDate === data);
+      } catch(e) { passaData = false; }
+    } else if (data && !j.commence_time) {
+      passaData = false;
+    }
+
+    return passaTermo && passaData;
+  });
+}
+
+/** Atualiza info de resultados e botão limpar */
+function _atualizarInfoBusca(termo, data, total, totalOriginal) {
+  const info = document.getElementById('search-results-info');
+  const btn  = document.getElementById('search-clear-btn');
+  const temFiltro = !!(termo || data);
+  if (btn) btn.classList.toggle('visible', temFiltro);
+  if (!info) return;
+  if (!temFiltro) {
+    info.classList.remove('visible');
+    return;
+  }
+  info.classList.add('visible');
+  let partes = [];
+  if (termo) partes.push(`<strong>${_escHtml(termo)}</strong>`);
+  if (data) {
+    const d = new Date(data + 'T12:00:00');
+    partes.push(`<strong>${d.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'})}</strong>`);
+  }
+  if (total === 0) {
+    info.innerHTML = `🔍 Nenhum jogo encontrado para ${partes.join(' · ')}.`;
+  } else {
+    info.innerHTML = `🔍 ${total} jogo${total>1?'s':''} encontrado${total>1?'s':''} para ${partes.join(' · ')} <span style="color:var(--muted)">(de ${totalOriginal})</span>`;
+  }
+}
+
+function _escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/** Chamado a cada tecla / mudança de data */
+function aplicarFiltrosBusca() {
+  const termo = (document.getElementById('search-time-input')||{}).value || '';
+  const data  = (document.getElementById('search-data-input')||{}).value || '';
+  const btn   = document.getElementById('search-clear-btn');
+  if (btn) btn.classList.toggle('visible', !!(termo || data));
+
+  // Se não tem jogos carregados, disparar carregamento normal
+  if (!_todosJogos.length) {
+    carregarJogos(_currentSport);
+    return;
+  }
+
+  const lista = document.getElementById('jogos-lista');
+  const count = document.getElementById('apostas-count');
+  const jogosExibir = (termo || data) ? _filtrarJogos(_todosJogos, termo, data) : _todosJogos;
+  _atualizarInfoBusca(termo, data, jogosExibir.length, _todosJogos.length);
+
+  if (!jogosExibir.length) {
+    if (termo || data) {
+      let msg = `Nenhum jogo encontrado`;
+      if (termo) msg += ` com "${_escHtml(termo)}"`;
+      if (data) {
+        const d = new Date(data + 'T12:00:00');
+        msg += ` em ${d.toLocaleDateString('pt-BR')}`;
+      }
+      lista.innerHTML = `<div class="loading-center" style="grid-column:1/-1">
+        <div style="font-size:32px;margin-bottom:12px">🔍</div>
+        <div style="color:var(--muted);font-size:14px">${msg}.</div>
+        <div style="margin-top:10px;font-size:12px;color:var(--muted)">
+          💡 Tente ampliar o período ou verificar o nome do time.
+        </div>
+        <button onclick="limparBusca()" style="margin-top:14px;background:var(--blue);border:none;color:#fff;padding:8px 20px;border-radius:10px;cursor:pointer;font-size:13px">
+          Limpar pesquisa
+        </button>
+      </div>`;
+    }
+    if (count) count.textContent = '';
+    return;
+  }
+
+  if (count) count.textContent = jogosExibir.length + ' jogo' + (jogosExibir.length > 1 ? 's' : '');
+  // Re-renderizar apenas os jogos filtrados (rápido, sem nova chamada de rede)
+  _renderizarJogos(lista, jogosExibir);
+}
+
+/** Limpa todos os filtros de pesquisa */
+function limparBusca() {
+  const inp  = document.getElementById('search-time-input');
+  const date = document.getElementById('search-data-input');
+  const btn  = document.getElementById('search-clear-btn');
+  const info = document.getElementById('search-results-info');
+  if (inp)  inp.value = '';
+  if (date) date.value = '';
+  if (btn)  btn.classList.remove('visible');
+  if (info) info.classList.remove('visible');
+  // Renderizar todos os jogos novamente
+  aplicarFiltrosBusca();
+}
+
+/** Renderiza lista de cards a partir de um array de jogos (reutilizável) */
+async function _renderizarJogos(lista, jogosExibir) {
+  lista.innerHTML = '';
+  for (const j of jogosExibir) {
+    const live = j.is_live || (new Date(j.commence_time) < new Date() && !j.is_finished && j.status_code === 'STATUS_IN_PROGRESS');
+    const isFuture = j.is_future === true;
+    const o = j.odds || {};
+    const temEmpate = o.draw != null;
+    const card = document.createElement('div');
+    card.className = 'jogo-card' + (live ? ' live-c' : '') + (isFuture ? ' future-c' : '');
+    const horaOpts = {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'};
+    const hora = j.commence_time ? new Date(j.commence_time).toLocaleString('pt-BR', horaOpts) : '';
+    const horaFull = j.commence_time ? new Date(j.commence_time).toLocaleString('pt-BR', {weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    const hLogo = j.home_logo;
+    const aLogo = j.away_logo;
+    const hBadge = hLogo ? `<img class="t-escudo" src="${hLogo}" alt="" onerror="this.style.display='none'">` : `<div class="t-ini">${teamInitials(j.home_team)}</div>`;
+    const aBadge = aLogo ? `<img class="t-escudo" src="${aLogo}" alt="" onerror="this.style.display='none'">` : `<div class="t-ini">${teamInitials(j.away_team)}</div>`;
+    const lInfo = _SPORT_LABELS[j.sport] || {};
+    const ligaColor = lInfo.cor || 'var(--muted)';
+    const jLeagueKey = j.sport || '';
+    let oh = o.home, od = o.draw, oa = o.away;
+    let simulated = false;
+    if (oh == null && oa == null && !live) {
+      const seed = (j.home_team + j.away_team).split('').reduce((a,c) => a + c.charCodeAt(0), 0);
+      const r1 = ((seed*17+3)%100)/100, r2 = ((seed*31+7)%100)/100;
+      oh = parseFloat((1.4+r1*2.2).toFixed(2));
+      oa = parseFloat((1.4+r2*2.2).toFixed(2));
+      od = parseFloat((2.8+((seed%20)/10)).toFixed(2));
+      simulated = true;
+    }
+    const teE = od != null;
+    const escH = s => (s||'').replace(/'/g, "\\'");
+    card.innerHTML =
+      `<div class="jc-meta">` +
+        `<span class="jc-liga" style="color:${ligaColor};font-weight:700">${j.league||j.sport}</span>` +
+        (live ? `<span class="live-tag">● AO VIVO</span>` : isFuture ? `<span class="future-tag">📅 ${horaFull}</span>` : `<span class="jc-hora">${hora}</span>`) +
+      `</div>` +
+      `<div class="jc-times">` +
+        `<div class="time-b">${hBadge}<span class="t-nome">${j.home_team}</span></div>` +
+        `<span class="t-vs">${live ? `<span style="color:var(--red);font-size:10px;font-weight:900">AO VIVO</span>` : isFuture ? `<span style="color:var(--blue);font-size:9px;font-weight:700">VS</span>` : 'VS'}</span>` +
+        `<div class="time-b away">${aBadge}<span class="t-nome">${j.away_team}</span></div>` +
+      `</div>` +
+      (j.venue ? `<div style="font-size:10px;color:var(--muted);padding:0 12px 4px;display:flex;align-items:center;gap:4px">📍 ${j.venue}</div>` : '') +
+      (isFuture ? `<div style="padding:2px 12px 4px;font-size:10px;color:#4a9eff;display:flex;align-items:center;gap:4px"><span>📆</span><span>Jogo futuro — aposte antecipado!</span></div>` : '') +
+      ((oh!=null||oa!=null)
+        ? `<div class="jc-odds${teE?'':' no-draw'}"${simulated?' title="Odds estimadas"':''}>`+
+          (oh!=null?`<div class="odd-btn2${simulated?' sim-odd':''}" id="ob-${j.id}-c" onclick="selOdd('${escH(j.id)}','${escH(j.home_team)}','C',${oh},'${escH(j.home_team)} x ${escH(j.away_team)}','${jLeagueKey}')"><div class="o-lbl">${teamShortLabel(j.home_team)}</div><div class="o-val">${Number(oh).toFixed(2)}</div></div>`:'')+
+          (teE?`<div class="odd-btn2${simulated?' sim-odd':''}" id="ob-${j.id}-e" onclick="selOdd('${escH(j.id)}','Empate','X',${od},'${escH(j.home_team)} x ${escH(j.away_team)}','${jLeagueKey}')"><div class="o-lbl">Empate</div><div class="o-val">${Number(od).toFixed(2)}</div></div>`:'')+
+          (oa!=null?`<div class="odd-btn2${simulated?' sim-odd':''}" id="ob-${j.id}-f" onclick="selOdd('${escH(j.id)}','${escH(j.away_team)}','F',${oa},'${escH(j.home_team)} x ${escH(j.away_team)}','${jLeagueKey}')"><div class="o-lbl">${teamShortLabel(j.away_team)}</div><div class="o-val">${Number(oa).toFixed(2)}</div></div>`:'')+
+          `</div>${simulated?`<div style="padding:0 12px 6px;font-size:9px;color:var(--muted);text-align:center">⚡ Odds estimadas — atualizadas próximo ao jogo</div>`:''}`
+        : `<div style="padding:8px 12px;text-align:center;font-size:11px;color:var(--muted)">Odds em breve</div>`
+      );
+    lista.appendChild(card);
+  }
 }
 
 /* ══ BETSLIP ══ */
