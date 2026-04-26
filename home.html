@@ -916,17 +916,6 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
           </div>
         </div>
         <div>
-          <div class="premio-card">
-            <div class="prm-label">🏆 Prêmio Estimado</div>
-            <div class="prm-val" id="premio-val">R$ 750,00</div>
-            <div class="prm-info">Próximo sorteio em breve</div>
-            <div>
-              <div class="si-row"><span class="lbl">Participantes</span><span class="val" id="si-part">--</span></div>
-              <div class="si-row"><span class="lbl">Seus bilhetes</span><span class="val" id="si-tick">--</span></div>
-              <div class="progress-bar"><div class="progress-fill" id="si-prog" style="width:65%"></div></div>
-            </div>
-            <button class="btn-prm" onclick="sbNav('sorteio')">🎲 Participar Agora</button>
-          </div>
           <div class="sec-head" style="margin-bottom:8px"><div class="accent" style="background:var(--blue)"></div><h3>Acesso Rápido</h3></div>
           <div class="quick-links">
             <div class="ql-item" onclick="sbNav('apostas','upcoming')"><span class="ql-ico">⚽</span>Apostas Esportivas<span class="ql-arrow">›</span></div>
@@ -1607,26 +1596,24 @@ async function loadSorteioInfo(){
     const r=await fetch(BASE+'/api/bet/config');
     const d=await r.json();
     const fmt=v=>Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    const _el=id=>document.getElementById(id);
     if(d.premio){
-      document.getElementById('premio-val').textContent=fmt(d.premio);
-      document.getElementById('sv-prize').textContent=fmt(d.premio);
-      document.getElementById('st-premio').textContent='R$ '+Number(d.premio).toLocaleString('pt-BR');
-      document.getElementById('sb-prize').textContent='R$'+Number(d.premio).toLocaleString('pt-BR');
+      // Atualizar só elementos que ainda existem (premio-card foi removido da home)
+      if(_el('sv-prize')) _el('sv-prize').textContent=fmt(d.premio);
+      if(_el('st-premio')) _el('st-premio').textContent='R$ '+Number(d.premio).toLocaleString('pt-BR');
+      if(_el('sb-prize')) _el('sb-prize').textContent='R$'+Number(d.premio).toLocaleString('pt-BR');
     }
     if(d.participantes!=null){
-      document.getElementById('si-part').textContent=d.participantes+' pessoas';
-      document.getElementById('sv-part').textContent=d.participantes;
+      if(_el('sv-part')) _el('sv-part').textContent=d.participantes;
       const pct=Math.min(100,Math.round(d.participantes/5));
-      document.getElementById('si-prog').style.width=pct+'%';
-      document.getElementById('sv-prog').style.width=pct+'%';
+      if(_el('sv-prog')) _el('sv-prog').style.width=pct+'%';
     }
     const u=loadSession();
     if(u){
       const sr=await fetch(BASE+'/api/sorteio/participantes');
       const sd=await sr.json();
       const bilhetes=(sd.participantes||[]).filter(p=>p.cpf===u.cpf).length;
-      document.getElementById('si-tick').textContent=bilhetes||'0';
-      document.getElementById('sv-tick').textContent=bilhetes||'0';
+      if(_el('sv-tick')) _el('sv-tick').textContent=bilhetes||'0';
     }
   }catch(e){}
 }
