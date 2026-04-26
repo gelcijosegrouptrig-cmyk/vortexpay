@@ -100,7 +100,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   border:1px solid #22c55e33;border-radius:999px;padding:4px 12px;
   font-size:11px;font-weight:700;color:var(--green);margin-bottom:14px}
 .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.4s infinite}
-.hero-title{font-size:clamp(22px,3vw,34px);font-weight:900;line-height:1.2;margin-bottom:10px}
+.hero-title{font-size:clamp(22px,5.5vw,34px);font-weight:900;line-height:1.15;margin-bottom:10px}
 .hero-title .g{background:linear-gradient(135deg,var(--gold),var(--gold2));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .hero-title .b{color:var(--blue2)}
@@ -663,82 +663,118 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
   /* ── Header mobile ── */
   .sidebar{display:none}
-  .header{padding:0 10px}
-  .header-logo{width:auto;font-size:16px;padding:0 6px 0 2px}
-  .header-nav{display:none}              /* nav desktop some; usa bottom bar */
-  .header-actions{padding:0 4px;gap:5px}
-  .btn-in{padding:6px 12px;font-size:12px}
-  .btn-out{padding:6px 12px;font-size:12px}
-  .user-chip{padding:4px 8px;gap:5px}
-  .uc-name{font-size:12px}
-  .uc-saldo{font-size:11px}
-  .user-dropdown{right:6px;top:50px;min-width:160px}
+  .header{padding:0 8px}
+  .header-logo{width:auto;font-size:15px;padding:0 4px 0 2px;gap:4px}
+  .header-logo .ico{font-size:18px}
+  .header-nav{display:none}
+  .header-actions{padding:0 2px;gap:4px}
+  .btn-in{padding:5px 10px;font-size:11px;border-radius:7px}
+  .btn-out{padding:5px 10px;font-size:11px;border-radius:7px}
+  .user-chip{padding:4px 7px;gap:4px;border-radius:8px}
+  .uc-avatar{width:24px;height:24px;font-size:10px}
+  .uc-name{font-size:11px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .uc-saldo{font-size:11px;font-weight:800}
+  .user-dropdown{right:4px;top:48px;min-width:150px}
 
   /* ── Layout geral ── */
-  .view{padding:12px 10px 90px}
+  .view{padding:10px 8px 96px}
   .content{grid-template-columns:1fr}
 
-  /* ── Hero mobile ── */
-  .hero{flex-direction:column;padding:16px;gap:12px}
-  .hero-left{min-width:unset}
-  .hero-title{font-size:clamp(20px,5vw,28px)}
-  .hero-sub{font-size:13px;max-width:100%}
-  .hero-btns{gap:8px}
-  .btn-hs{padding:10px 18px;font-size:13px}
-  .hero-right{width:100%;grid-template-columns:repeat(4,1fr);gap:8px}
-  .stat-card{padding:10px 6px}
-  .sv{font-size:15px}
-  .sl{font-size:9px}
-  .features-row{grid-template-columns:1fr 1fr}
+  /* ── Hero mobile — compacto e bonito ── */
+  .hero{flex-direction:column;padding:14px;gap:10px;border-radius:14px;margin-bottom:12px}
+  .hero-left{min-width:unset;width:100%}
+  .hero-badge{font-size:10px;padding:3px 10px;margin-bottom:10px}
+  .hero-title{font-size:clamp(22px,6vw,30px);line-height:1.15;margin-bottom:8px}
+  .hero-sub{font-size:12px;line-height:1.5;margin-bottom:14px}
+  .hero-btns{gap:8px;flex-direction:column}
+  .btn-hs{padding:12px 20px;font-size:14px;font-weight:800;border-radius:12px;width:100%;text-align:center}
+  .hero-right{width:100%;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:2px}
+  .stat-card{padding:8px 4px;border-radius:10px}
+  .sv{font-size:14px;font-weight:900}
+  .sl{font-size:8px;letter-spacing:.5px;margin-top:1px}
 
-  /* ── Chips — mobile: wrap em 2-3 linhas compactas ── */
-  .sport-chips,.liga-chips{gap:5px;margin-bottom:10px}
-  .sport-chip,.liga-chip{padding:5px 10px;font-size:11px;border-radius:8px}
+  /* ── Features ── */
+  .features-row{grid-template-columns:1fr 1fr;gap:8px}
+  .feat-card{padding:12px}
+  .feat-ico{font-size:20px;margin-bottom:6px}
+  .feat-title{font-size:12px}
+  .feat-desc{font-size:11px}
+
+  /* ── Dock de atalhos ── */
+  .dock-atalhos{padding:10px 4px;margin-bottom:14px;border-radius:14px;gap:2px}
+  .atalho-btn{padding:6px 2px}
+  .atalho-ico{font-size:20px}
+  .atalho-lbl{font-size:9px;letter-spacing:.2px}
+  .atalho-sep{height:28px}
+
+  /* ── Chips — mobile ── */
+  .sport-chips,.liga-chips{gap:5px;margin-bottom:10px;flex-wrap:wrap}
+  .sport-chip,.liga-chip{padding:6px 12px;font-size:11px;border-radius:8px;font-weight:700}
+
+  /* ── Barra de pesquisa ── */
+  .search-input{font-size:13px;padding:9px 12px 9px 34px}
+  .search-date{font-size:12px;padding:9px 10px 9px 30px}
 
   /* ── Cards de jogos ── */
   .jogos-grid{grid-template-columns:1fr;gap:8px}
-  .jogo-card{padding:12px}
-  .t-escudo,.t-ini{width:30px;height:30px}
-  .t-nome{font-size:11px}
-  .o-val{font-size:13px}
+  .jogo-card{padding:12px;border-radius:12px}
+  .t-escudo,.t-ini{width:28px;height:28px}
+  .t-nome{font-size:11px;font-weight:700}
+  .o-btn{padding:7px 6px;border-radius:8px;min-width:56px}
+  .o-val{font-size:13px;font-weight:800}
   .o-lbl{font-size:9px}
+  .sec-head h3{font-size:12px}
 
   /* ── Ao Vivo ── */
   .live-grid{grid-template-columns:1fr;gap:8px}
-  .live-card2{padding:12px}
-  .ls-n{font-size:18px}
+  .live-card2{padding:12px;border-radius:12px}
+  .ls-n{font-size:16px}
 
   /* ── Tabela ── */
   .grupos-grid{grid-template-columns:1fr}
   .t-head,.t-row{
-    grid-template-columns:24px 1fr 24px 24px 24px 24px 30px 38px;
+    grid-template-columns:22px 1fr 24px 24px 24px 24px 28px 36px;
     padding:7px 8px;font-size:10px;
   }
   .tn{font-size:10px}
-  .c-pts{font-size:11px}
+  .c-pts{font-size:11px;font-weight:900}
   .c-n{font-size:10px}
-  .tl{width:18px;height:18px}
+  .tl{width:16px;height:16px}
   .c-form{gap:1px}
   .fc{width:11px;height:11px;font-size:6px}
 
   /* ── Sorteio ── */
   .sorteio-view{padding:0}
-  .sorteio-hero{padding:18px}
-  .sh-val{font-size:34px}
+  .sorteio-hero{padding:16px;border-radius:14px}
+  .sh-val{font-size:32px;font-weight:900}
   .sh-stats{grid-template-columns:1fr 1fr;gap:8px}
+  .sh-stat .v{font-size:20px}
+  .sh-stat .l{font-size:10px}
 
   /* ── Conta ── */
   .conta-grid{grid-template-columns:1fr}
-  .conta-card{padding:14px}
-  .saldo-big{font-size:28px}
+  .conta-card{padding:14px;border-radius:12px}
+  .saldo-big{font-size:26px}
+  .cc-title{font-size:13px}
 
   /* ── Betslip ── */
   .betslip{width:var(--slip);right:calc(-1 * var(--slip));}
   .betslip.open{right:0}
-  .slip-fab{bottom:70px;right:12px;padding:10px 16px;font-size:12px}
+  .slip-fab{bottom:68px;right:10px;padding:10px 14px;font-size:12px;border-radius:50px}
 
   /* ── Modal ── */
-  .modal-box{padding:18px;width:min(95vw,380px)}
+  .modal-box{padding:16px;width:min(96vw,380px);border-radius:16px}
+
+  /* ── Botão voltar mobile ── */
+  .btn-voltar{padding:7px 14px 7px 10px;font-size:12px;margin-bottom:12px}
+  .btn-voltar .bv-ico{width:22px;height:22px;font-size:13px}
+
+  /* ── Bolão cards ── */
+  .bolao-card{padding:12px;border-radius:12px}
+
+  /* ── Quick links ── */
+  .ql-item{padding:9px 10px;font-size:12px}
+  .ql-ico{font-size:15px}
 
   /* ── Bottom Navigation Bar (mobile exclusivo) ── */
   .bottom-nav{
@@ -755,19 +791,20 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   .bn-item{
     flex:1;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:3px;
+    gap:2px;
     font-size:9px;font-weight:700;
     color:var(--muted);
     cursor:pointer;
     border:none;background:transparent;
-    padding:6px 2px;
+    padding:5px 2px;
     position:relative;
     transition:color .15s;
+    -webkit-tap-highlight-color:transparent;
   }
   .bn-item.active{color:var(--gold)}
-  .bn-item .bn-ico{font-size:18px;line-height:1}
+  .bn-item .bn-ico{font-size:20px;line-height:1}
   .bn-item .bn-dot{
-    position:absolute;top:6px;
+    position:absolute;top:5px;
     width:7px;height:7px;border-radius:50%;
     background:var(--green);
     animation:blink 1.4s infinite;
@@ -775,7 +812,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   }
   .bn-item.has-live .bn-dot{display:block}
   .bn-badge{
-    position:absolute;top:4px;right:calc(50% - 18px);
+    position:absolute;top:3px;right:calc(50% - 18px);
     background:var(--red);color:#fff;
     font-size:8px;font-weight:900;border-radius:8px;
     padding:1px 4px;min-width:14px;text-align:center;
@@ -786,14 +823,24 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 /* ══════════════════════════════════════════
    MOBILE PEQUENO (≤ 380px)
 ══════════════════════════════════════════ */
-@media(max-width:380px){
-  .hero-right{grid-template-columns:1fr 1fr}
-  .features-row{grid-template-columns:1fr}
+@media(max-width:390px){
+  /* Telas muito pequenas (iPhone SE, Galaxy A) */
+  .hero-title{font-size:20px}
+  .hero-right{grid-template-columns:repeat(4,1fr)}
+  .sv{font-size:12px}
+  .sl{font-size:7px}
+  .features-row{grid-template-columns:1fr 1fr}
+  .dock-atalhos{padding:8px 2px}
+  .atalho-ico{font-size:18px}
+  .atalho-lbl{font-size:8px}
+  .atalho-sep{height:24px}
+  .btn-hs{font-size:13px;padding:11px 16px}
+  .uc-name{display:none}
+  /* Tabela: esconde colunas menos importantes */
   .t-head,.t-row{
-    grid-template-columns:22px 1fr 0 0 0 22px 0 36px;
+    grid-template-columns:20px 1fr 0 0 0 20px 0 34px;
     font-size:10px;
   }
-  /* Esconde colunas menos importantes em tela muito pequena */
   .t-head>span:nth-child(3),
   .t-head>span:nth-child(4),
   .t-head>span:nth-child(5),
@@ -802,7 +849,6 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   .t-row>span:nth-child(4),
   .t-row>span:nth-child(5),
   .t-row>span:nth-child(7){display:none}
-  .hn-btn{padding:4px 8px;font-size:11px}
 }
 
 /* Scroll suave nas transições de view */
