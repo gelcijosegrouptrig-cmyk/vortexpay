@@ -4090,6 +4090,329 @@ async def route_admin_usuarios_suspender(request):
         return web.json_response({'ok': False, 'error': str(e)}, status=500)
 
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ███  GESTOR DE FUNCIONÁRIOS — Sistema de acesso e permissões granulares  ███
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+#  Permissões disponíveis (granulares):
+#   usuarios_ver       — ver lista de usuários e saldos
+#   usuarios_ajustar   — ajustar saldo de usuários
+#   usuarios_suspender — suspender/ativar contas de usuário
+#   apostas_ver        — ver painel de apostas e lucro
+#   apostas_resolver   — resolver apostas (aprovar/rejeitar)
+#   depositos_ver      — ver depósitos pendentes
+#   saques_ver         — ver saques pendentes
+#   saques_aprovar     — aprovar/rejeitar saques
+#   bolao_ver          — ver bolão placar
+#   bolao_gerir        — criar/editar/publicar jogos do bolão
+#   relatorios_ver     — acessar P&L, gráficos e relatórios
+#   bonus_criar        — criar bônus para usuários
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+_STAFF_PERMISSOES_DISPONIVEIS = {
+    'usuarios_ver':       'Ver usuários e saldos',
+    'usuarios_ajustar':   'Ajustar saldo de usuários',
+    'usuarios_suspender': 'Suspender/ativar contas',
+    'apostas_ver':        'Ver apostas e lucro',
+    'apostas_resolver':   'Resolver apostas',
+    'depositos_ver':      'Ver depósitos',
+    'saques_ver':         'Ver saques',
+    'saques_aprovar':     'Aprovar/rejeitar saques',
+    'bolao_ver':          'Ver bolão placar',
+    'bolao_gerir':        'Criar e publicar jogos do bolão',
+    'relatorios_ver':     'Ver relatórios e P&L',
+    'bonus_criar':        'Criar bônus para usuários',
+}
+
+import secrets as _secrets
+
+def _ensure_staff_table(cur, conn):
+    """Cria a tabela de funcionários se não existir."""
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS funcionarios (
+            id          SERIAL PRIMARY KEY,
+            nome        VARCHAR(100) NOT NULL,
+            email       VARCHAR(120) NOT NULL UNIQUE,
+            token       VARCHAR(64)  NOT NULL UNIQUE,
+            permissoes  TEXT         NOT NULL DEFAULT '[]',
+            ativo       BOOLEAN      NOT NULL DEFAULT TRUE,
+            criado_em   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+            ultimo_acesso TIMESTAMPTZ
+        )
+    """)
+    conn.commit()
+
+def _staff_gerar_token():
+    """Gera token seguro de 32 bytes (64 chars hex)."""
+    return _secrets.token_hex(32)
+
+def _staff_get_by_token(token: str):
+    """Retorna dict do funcionário pelo token, ou None."""
+    try:
+        import json as _j
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_staff_table(cur, conn)
+        cur.execute(
+            "SELECT id, nome, email, permissoes, ativo FROM funcionarios WHERE token=%s",
+            (token,)
+        )
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if not row:
+            return None
+        uid, nome, email, perms_json, ativo = row
+        return {
+            'id': uid, 'nome': nome, 'email': email,
+            'permissoes': _j.loads(perms_json or '[]'),
+            'ativo': ativo,
+        }
+    except Exception:
+        return None
+
+def _staff_auth(request, permissao_exigida: str = None):
+    """
+    Autentica um funcionário pelo header X-Staff-Token.
+    Retorna (True, staff_dict)  se autorizado.
+    Retorna (False, mensagem)   se não autorizado.
+    O admin geral (WEBHOOK_SECRET) sempre passa.
+    """
+    # Admin geral sempre autorizado
+    hdr = (request.headers.get('X-PaynexBet-Secret','') or
+           request.headers.get('x-paynexbet-secret','') or
+           request.rel_url.query.get('secret',''))
+    if hdr == WEBHOOK_SECRET:
+        return True, {'id': 0, 'nome': 'Admin Geral', 'permissoes': list(_STAFF_PERMISSOES_DISPONIVEIS.keys()), 'ativo': True}
+
+    # Funcionário
+    staff_token = (request.headers.get('X-Staff-Token','') or
+                   request.rel_url.query.get('staff_token',''))
+    if not staff_token:
+        return False, 'Token não fornecido'
+
+    staff = _staff_get_by_token(staff_token)
+    if not staff:
+        return False, 'Token inválido'
+    if not staff['ativo']:
+        return False, 'Acesso revogado pelo administrador'
+
+    if permissao_exigida and permissao_exigida not in staff['permissoes']:
+        return False, f'Sem permissão: {permissao_exigida}'
+
+    # Atualizar último acesso (assíncrono — não bloquear a requisição)
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        cur.execute("UPDATE funcionarios SET ultimo_acesso=NOW() WHERE token=%s", (staff_token,))
+        conn.commit(); cur.close(); conn.close()
+    except Exception:
+        pass
+
+    return True, staff
+
+# ── ROTAS DE FUNCIONÁRIOS ─────────────────────────────────────────────────────
+
+async def route_admin_staff_list(request):
+    """GET /api/admin/staff — lista todos os funcionários."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        import json as _j
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_staff_table(cur, conn)
+        cur.execute("""
+            SELECT id, nome, email, permissoes, ativo, criado_em, ultimo_acesso
+            FROM funcionarios ORDER BY id ASC
+        """)
+        cols = [d[0] for d in cur.description]
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        staff = []
+        for row in rows:
+            s = dict(zip(cols, row))
+            s['permissoes']     = _j.loads(s['permissoes'] or '[]')
+            s['criado_em']      = str(s['criado_em'])      if s['criado_em']      else None
+            s['ultimo_acesso']  = str(s['ultimo_acesso'])  if s['ultimo_acesso']  else None
+            staff.append(s)
+        return _safe_json({
+            'ok': True, 'staff': staff,
+            'permissoes_disponiveis': _STAFF_PERMISSOES_DISPONIVEIS
+        })
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_staff_criar(request):
+    """POST /api/admin/staff — cria novo funcionário."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        import json as _j
+        body = await request.json()
+        nome       = (body.get('nome') or '').strip()
+        email      = (body.get('email') or '').strip().lower()
+        permissoes = body.get('permissoes', [])
+
+        if not nome or not email:
+            return _safe_json({'ok': False, 'error': 'nome e email são obrigatórios'}, status=400)
+
+        # Validar permissões enviadas
+        perms_validas = [p for p in permissoes if p in _STAFF_PERMISSOES_DISPONIVEIS]
+        token = _staff_gerar_token()
+
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_staff_table(cur, conn)
+        try:
+            cur.execute("""
+                INSERT INTO funcionarios (nome, email, token, permissoes)
+                VALUES (%s, %s, %s, %s) RETURNING id
+            """, (nome, email, token, _j.dumps(perms_validas)))
+            fid = cur.fetchone()[0]
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            if 'unique' in str(e).lower():
+                return _safe_json({'ok': False, 'error': f'Email {email} já cadastrado'}, status=400)
+            raise
+        cur.close(); conn.close()
+
+        print(f'[staff] Novo funcionário criado: {nome} ({email}) ID={fid}', flush=True)
+        return _safe_json({
+            'ok': True,
+            'msg': f'Funcionário {nome} criado com sucesso!',
+            'id': int(fid),
+            'token': token,   # retornado UMA VEZ para o admin copiar
+            'permissoes': perms_validas,
+        })
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_staff_editar(request):
+    """POST /api/admin/staff/editar — edita nome, email e permissões."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        import json as _j
+        body = await request.json()
+        fid        = int(body.get('id', 0))
+        nome       = (body.get('nome') or '').strip()
+        email      = (body.get('email') or '').strip().lower()
+        permissoes = body.get('permissoes', [])
+
+        if not fid:
+            return _safe_json({'ok': False, 'error': 'id do funcionário obrigatório'}, status=400)
+
+        perms_validas = [p for p in permissoes if p in _STAFF_PERMISSOES_DISPONIVEIS]
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_staff_table(cur, conn)
+        cur.execute("""
+            UPDATE funcionarios
+            SET nome=%s, email=%s, permissoes=%s
+            WHERE id=%s RETURNING nome
+        """, (nome, email, _j.dumps(perms_validas), fid))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return _safe_json({'ok': False, 'error': 'Funcionário não encontrado'}, status=404)
+        conn.commit(); cur.close(); conn.close()
+        print(f'[staff] Funcionário #{fid} editado: {nome} perms={perms_validas}', flush=True)
+        return _safe_json({'ok': True, 'msg': f'Funcionário {nome} atualizado!', 'permissoes': perms_validas})
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_staff_toggle(request):
+    """POST /api/admin/staff/toggle — ativa ou revoga acesso."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body  = await request.json()
+        fid   = int(body.get('id', 0))
+        ativo = bool(body.get('ativo', True))
+        if not fid:
+            return _safe_json({'ok': False, 'error': 'id obrigatório'}, status=400)
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_staff_table(cur, conn)
+        cur.execute("UPDATE funcionarios SET ativo=%s WHERE id=%s RETURNING nome", (ativo, fid))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return _safe_json({'ok': False, 'error': 'Funcionário não encontrado'}, status=404)
+        conn.commit(); cur.close(); conn.close()
+        status = 'ATIVO' if ativo else 'REVOGADO'
+        print(f'[staff] Funcionário #{fid} ({row[0]}) → {status}', flush=True)
+        return _safe_json({'ok': True, 'msg': f'Acesso de {row[0]} {status}!', 'ativo': ativo})
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_staff_regen_token(request):
+    """POST /api/admin/staff/regen-token — gera novo token para o funcionário."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        fid  = int(body.get('id', 0))
+        if not fid:
+            return _safe_json({'ok': False, 'error': 'id obrigatório'}, status=400)
+        novo_token = _staff_gerar_token()
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_staff_table(cur, conn)
+        cur.execute("UPDATE funcionarios SET token=%s WHERE id=%s RETURNING nome", (novo_token, fid))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return _safe_json({'ok': False, 'error': 'Funcionário não encontrado'}, status=404)
+        conn.commit(); cur.close(); conn.close()
+        print(f'[staff] Token regerado para #{fid} ({row[0]})', flush=True)
+        return _safe_json({'ok': True, 'msg': f'Token de {row[0]} regerado!', 'token': novo_token})
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_staff_deletar(request):
+    """POST /api/admin/staff/deletar — remove funcionário permanentemente."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        fid  = int(body.get('id', 0))
+        if not fid:
+            return _safe_json({'ok': False, 'error': 'id obrigatório'}, status=400)
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_staff_table(cur, conn)
+        cur.execute("DELETE FROM funcionarios WHERE id=%s RETURNING nome", (fid,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return _safe_json({'ok': False, 'error': 'Funcionário não encontrado'}, status=404)
+        conn.commit(); cur.close(); conn.close()
+        print(f'[staff] Funcionário #{fid} ({row[0]}) REMOVIDO', flush=True)
+        return _safe_json({'ok': True, 'msg': f'Funcionário {row[0]} removido!'})
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_staff_me(request):
+    """GET /api/staff/me — retorna dados do funcionário autenticado pelo token."""
+    staff_token = (request.headers.get('X-Staff-Token','') or
+                   request.rel_url.query.get('staff_token',''))
+    if not staff_token:
+        return _safe_json({'ok': False, 'error': 'Token não fornecido'}, status=401)
+    staff = _staff_get_by_token(staff_token)
+    if not staff:
+        return _safe_json({'ok': False, 'error': 'Token inválido'}, status=401)
+    if not staff['ativo']:
+        return _safe_json({'ok': False, 'error': 'Acesso revogado'}, status=403)
+    return _safe_json({'ok': True, 'staff': {
+        'id': staff['id'], 'nome': staff['nome'], 'email': staff['email'],
+        'permissoes': staff['permissoes'],
+        'descricoes': {p: _STAFF_PERMISSOES_DISPONIVEIS.get(p,'') for p in staff['permissoes']},
+    }})
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 async def route_asaas_status(request):
     """GET /api/asaas/status - Verifica se Asaas está configurado e operacional"""
 
@@ -16506,6 +16829,14 @@ async def main():
     app.router.add_get('/api/admin/usuarios',           route_admin_usuarios_list)
     app.router.add_post('/api/admin/usuarios/ajustar',  route_admin_usuarios_ajustar)
     app.router.add_post('/api/admin/usuarios/suspender',route_admin_usuarios_suspender)
+    # ── Gestor de Funcionários ──────────────────────────────────────────────
+    app.router.add_get ('/api/admin/staff',             route_admin_staff_list)
+    app.router.add_post('/api/admin/staff',             route_admin_staff_criar)
+    app.router.add_post('/api/admin/staff/editar',      route_admin_staff_editar)
+    app.router.add_post('/api/admin/staff/toggle',      route_admin_staff_toggle)
+    app.router.add_post('/api/admin/staff/regen-token', route_admin_staff_regen_token)
+    app.router.add_post('/api/admin/staff/deletar',     route_admin_staff_deletar)
+    app.router.add_get ('/api/staff/me',                route_staff_me)   # público — funcionário consulta suas perms
     # Margem de lucro por liga
     app.router.add_get('/api/admin/bet/margem',         route_admin_margem_get)
     app.router.add_post('/api/admin/bet/margem',        route_admin_margem_set)

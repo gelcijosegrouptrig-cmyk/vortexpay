@@ -664,16 +664,16 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   /* ── Header mobile ── */
   .sidebar{display:none}
   .header{padding:0 8px}
-  .header-logo{width:auto;font-size:15px;padding:0 4px 0 2px;gap:4px}
-  .header-logo .ico{font-size:18px}
+  .header-logo{width:auto;font-size:14px;padding:0 4px 0 2px;gap:4px}
+  .header-logo .ico{font-size:17px}
   .header-nav{display:none}
   .header-actions{padding:0 2px;gap:4px}
   .btn-in{padding:5px 10px;font-size:11px;border-radius:7px}
   .btn-out{padding:5px 10px;font-size:11px;border-radius:7px}
   .user-chip{padding:4px 7px;gap:4px;border-radius:8px}
   .uc-avatar{width:24px;height:24px;font-size:10px}
-  .uc-name{font-size:11px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .uc-saldo{font-size:11px;font-weight:800}
+  .uc-name{font-size:10px;max-width:65px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .uc-saldo{font-size:10px;font-weight:800}
   .user-dropdown{right:4px;top:48px;min-width:150px}
 
   /* ── Layout geral ── */
@@ -681,100 +681,104 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   .content{grid-template-columns:1fr}
 
   /* ── Hero mobile — compacto e bonito ── */
-  .hero{flex-direction:column;padding:14px;gap:10px;border-radius:14px;margin-bottom:12px}
+  .hero{flex-direction:column;padding:12px;gap:10px;border-radius:14px;margin-bottom:12px}
   .hero-left{min-width:unset;width:100%}
-  .hero-badge{font-size:10px;padding:3px 10px;margin-bottom:10px}
-  .hero-title{font-size:clamp(22px,6vw,30px);line-height:1.15;margin-bottom:8px}
-  .hero-sub{font-size:12px;line-height:1.5;margin-bottom:14px}
+  .hero-badge{font-size:10px;padding:3px 10px;margin-bottom:8px}
+  .hero-title{font-size:clamp(20px,5.5vw,26px);line-height:1.15;margin-bottom:6px}
+  .hero-sub{font-size:11px;line-height:1.4;margin-bottom:12px;color:var(--text2)}
   .hero-btns{gap:8px;flex-direction:column}
-  .btn-hs{padding:12px 20px;font-size:14px;font-weight:800;border-radius:12px;width:100%;text-align:center}
-  .hero-right{width:100%;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:2px}
-  .stat-card{padding:8px 4px;border-radius:10px}
-  .sv{font-size:14px;font-weight:900}
-  .sl{font-size:8px;letter-spacing:.5px;margin-top:1px}
+  .btn-hs{padding:11px 16px;font-size:13px;font-weight:800;border-radius:12px;width:100%;text-align:center;box-sizing:border-box}
+  .hero-right{width:100%;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:2px}
+  .stat-card{padding:7px 3px;border-radius:10px}
+  .sv{font-size:13px;font-weight:900}
+  .sl{font-size:7px;letter-spacing:.3px;margin-top:1px}
 
   /* ── Features ── */
   .features-row{grid-template-columns:1fr 1fr;gap:8px}
-  .feat-card{padding:12px}
-  .feat-ico{font-size:20px;margin-bottom:6px}
-  .feat-title{font-size:12px}
-  .feat-desc{font-size:11px}
+  .feat-card{padding:10px}
+  .feat-ico{font-size:18px;margin-bottom:5px}
+  .feat-title{font-size:11px}
+  .feat-desc{font-size:10px}
 
   /* ── Dock de atalhos ── */
-  .dock-atalhos{padding:10px 4px;margin-bottom:14px;border-radius:14px;gap:2px}
-  .atalho-btn{padding:6px 2px}
-  .atalho-ico{font-size:20px}
-  .atalho-lbl{font-size:9px;letter-spacing:.2px}
-  .atalho-sep{height:28px}
+  .dock-atalhos{padding:8px 2px;margin-bottom:12px;border-radius:14px;gap:0px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .atalho-btn{padding:5px 4px;min-width:56px;flex-shrink:0}
+  .atalho-ico{font-size:19px}
+  .atalho-lbl{font-size:8px;letter-spacing:.1px;line-height:1.2;text-align:center;word-break:break-word;max-width:54px}
+  .atalho-sep{height:24px;flex-shrink:0}
 
   /* ── Chips — mobile ── */
-  .sport-chips,.liga-chips{gap:5px;margin-bottom:10px;flex-wrap:wrap}
-  .sport-chip,.liga-chip{padding:6px 12px;font-size:11px;border-radius:8px;font-weight:700}
+  .sport-chips,.liga-chips{gap:4px;margin-bottom:8px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+  .sport-chip,.liga-chip{padding:5px 10px;font-size:10px;border-radius:8px;font-weight:700;white-space:nowrap;flex-shrink:0}
 
   /* ── Barra de pesquisa ── */
-  .search-input{font-size:13px;padding:9px 12px 9px 34px}
-  .search-date{font-size:12px;padding:9px 10px 9px 30px}
+  .search-input{font-size:12px;padding:8px 10px 8px 32px}
+  .search-date{font-size:11px;padding:8px 8px 8px 28px}
 
   /* ── Cards de jogos ── */
   .jogos-grid{grid-template-columns:1fr;gap:8px}
-  .jogo-card{padding:12px;border-radius:12px}
-  .t-escudo,.t-ini{width:28px;height:28px}
+  .jogo-card{padding:10px;border-radius:12px}
+  .t-escudo,.t-ini{width:26px;height:26px}
   .t-nome{font-size:11px;font-weight:700}
-  .o-btn{padding:7px 6px;border-radius:8px;min-width:56px}
-  .o-val{font-size:13px;font-weight:800}
-  .o-lbl{font-size:9px}
+  .o-btn{padding:6px 5px;border-radius:8px;min-width:52px}
+  .o-val{font-size:12px;font-weight:800}
+  .o-lbl{font-size:8px}
   .sec-head h3{font-size:12px}
 
   /* ── Ao Vivo ── */
   .live-grid{grid-template-columns:1fr;gap:8px}
-  .live-card2{padding:12px;border-radius:12px}
-  .ls-n{font-size:16px}
+  .live-card2{padding:10px;border-radius:12px}
+  .ls-n{font-size:15px}
 
   /* ── Tabela ── */
   .grupos-grid{grid-template-columns:1fr}
   .t-head,.t-row{
-    grid-template-columns:22px 1fr 24px 24px 24px 24px 28px 36px;
-    padding:7px 8px;font-size:10px;
+    grid-template-columns:20px 1fr 22px 22px 22px 22px 26px 34px;
+    padding:6px 6px;font-size:9px;
   }
-  .tn{font-size:10px}
-  .c-pts{font-size:11px;font-weight:900}
-  .c-n{font-size:10px}
-  .tl{width:16px;height:16px}
+  .tn{font-size:9px}
+  .c-pts{font-size:10px;font-weight:900}
+  .c-n{font-size:9px}
+  .tl{width:15px;height:15px}
   .c-form{gap:1px}
-  .fc{width:11px;height:11px;font-size:6px}
+  .fc{width:10px;height:10px;font-size:6px}
 
   /* ── Sorteio ── */
   .sorteio-view{padding:0}
-  .sorteio-hero{padding:16px;border-radius:14px}
-  .sh-val{font-size:32px;font-weight:900}
+  .sorteio-hero{padding:14px;border-radius:14px}
+  .sh-val{font-size:30px;font-weight:900}
   .sh-stats{grid-template-columns:1fr 1fr;gap:8px}
-  .sh-stat .v{font-size:20px}
-  .sh-stat .l{font-size:10px}
+  .sh-stat .v{font-size:18px}
+  .sh-stat .l{font-size:9px}
 
   /* ── Conta ── */
   .conta-grid{grid-template-columns:1fr}
-  .conta-card{padding:14px;border-radius:12px}
-  .saldo-big{font-size:26px}
-  .cc-title{font-size:13px}
+  .conta-card{padding:12px;border-radius:12px}
+  .saldo-big{font-size:24px}
+  .cc-title{font-size:12px}
 
   /* ── Betslip ── */
   .betslip{width:var(--slip);right:calc(-1 * var(--slip));}
   .betslip.open{right:0}
-  .slip-fab{bottom:68px;right:10px;padding:10px 14px;font-size:12px;border-radius:50px}
+  .slip-fab{bottom:68px;right:10px;padding:10px 14px;font-size:11px;border-radius:50px}
 
   /* ── Modal ── */
-  .modal-box{padding:16px;width:min(96vw,380px);border-radius:16px}
+  .modal-box{padding:14px;width:min(96vw,360px);border-radius:16px}
 
   /* ── Botão voltar mobile ── */
-  .btn-voltar{padding:7px 14px 7px 10px;font-size:12px;margin-bottom:12px}
-  .btn-voltar .bv-ico{width:22px;height:22px;font-size:13px}
+  .btn-voltar{padding:6px 12px 6px 9px;font-size:11px;margin-bottom:10px}
+  .btn-voltar .bv-ico{width:20px;height:20px;font-size:12px}
 
   /* ── Bolão cards ── */
-  .bolao-card{padding:12px;border-radius:12px}
+  .bolao-card{padding:10px;border-radius:12px}
 
   /* ── Quick links ── */
-  .ql-item{padding:9px 10px;font-size:12px}
-  .ql-ico{font-size:15px}
+  .ql-item{padding:8px 9px;font-size:11px}
+  .ql-ico{font-size:14px}
+
+  /* ── Seção header (sec-head, view-head) ── */
+  .sec-head h2,.view-head h2{font-size:16px}
+  h2,h3{font-size:15px}
 
   /* ── Bottom Navigation Bar (mobile exclusivo) ── */
   .bottom-nav{
@@ -792,7 +796,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
     flex:1;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     gap:2px;
-    font-size:9px;font-weight:700;
+    font-size:8px;font-weight:700;
     color:var(--muted);
     cursor:pointer;
     border:none;background:transparent;
@@ -825,21 +829,26 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 ══════════════════════════════════════════ */
 @media(max-width:390px){
   /* Telas muito pequenas (iPhone SE, Galaxy A) */
-  .hero-title{font-size:20px}
+  .hero-title{font-size:18px}
+  .hero-sub{font-size:10px}
   .hero-right{grid-template-columns:repeat(4,1fr)}
   .sv{font-size:12px}
   .sl{font-size:7px}
   .features-row{grid-template-columns:1fr 1fr}
-  .dock-atalhos{padding:8px 2px}
-  .atalho-ico{font-size:18px}
-  .atalho-lbl{font-size:8px}
-  .atalho-sep{height:24px}
-  .btn-hs{font-size:13px;padding:11px 16px}
+  .dock-atalhos{padding:6px 2px}
+  .atalho-btn{min-width:50px}
+  .atalho-ico{font-size:17px}
+  .atalho-lbl{font-size:7px}
+  .atalho-sep{height:22px}
+  .btn-hs{font-size:12px;padding:10px 14px}
   .uc-name{display:none}
+  .sport-chip,.liga-chip{font-size:9px;padding:4px 8px}
+  .sec-head h2,.view-head h2{font-size:14px}
+  h2,h3{font-size:13px}
   /* Tabela: esconde colunas menos importantes */
   .t-head,.t-row{
-    grid-template-columns:20px 1fr 0 0 0 20px 0 34px;
-    font-size:10px;
+    grid-template-columns:20px 1fr 0 0 0 20px 0 32px;
+    font-size:9px;
   }
   .t-head>span:nth-child(3),
   .t-head>span:nth-child(4),
@@ -849,6 +858,10 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   .t-row>span:nth-child(4),
   .t-row>span:nth-child(5),
   .t-row>span:nth-child(7){display:none}
+  /* Conta: ajustar saldo */
+  .saldo-big{font-size:22px}
+  /* Modal: tela pequena */
+  .modal-box{padding:12px;border-radius:12px}
 }
 
 /* Scroll suave nas transições de view */
