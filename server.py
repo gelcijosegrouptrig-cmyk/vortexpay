@@ -12389,13 +12389,29 @@ async def route_bet_jogos(request):
                 'msg': 'Esta liga está temporariamente suspensa.'
             })
 
-    # Cache válido — filtrar suspensas também no hit de cache
+    # Cache válido — filtrar suspensas e encerrados também no hit de cache
     cache_valido = agora - _odds_cache['ts'] < _ODDS_CACHE_TTL and _odds_cache['data']
     if cache_valido:
-        jogos = [j for j in _odds_cache['data'] if j.get('sport', '') not in ligas_suspensas]
+        import datetime as _dt
+        agora_iso = _dt.datetime.utcnow()
+        jogos = [j for j in _odds_cache['data']
+                 if j.get('sport', '') not in ligas_suspensas
+                 and not j.get('is_finished', False)]
+        # Remover jogos cujo commence_time passou há mais de 3h (provavelmente encerrados)
+        jogos_vivos = []
+        for j in jogos:
+            ct = j.get('commence_time', '')
+            if ct:
+                try:
+                    ct_dt = _dt.datetime.fromisoformat(ct.replace('Z', '+00:00')).replace(tzinfo=None)
+                    if (_dt.datetime.utcnow() - ct_dt).total_seconds() > 10800:  # 3h
+                        continue  # Provável encerrado — ocultar
+                except Exception:
+                    pass
+            jogos_vivos.append(j)
         if sport_filter and sport_filter not in ('upcoming', 'destaque', 'all'):
-            jogos = [j for j in jogos if j.get('sport') == sport_filter]
-        return web.json_response({'success': True, 'jogos': jogos, 'from_cache': True, 'total': len(jogos)})
+            jogos_vivos = [j for j in jogos_vivos if j.get('sport') == sport_filter]
+        return web.json_response({'success': True, 'jogos': jogos_vivos, 'from_cache': True, 'total': len(jogos_vivos)})
 
     all_jogos = []
 
@@ -12484,7 +12500,23 @@ async def route_bet_jogos(request):
                     all_jogos.append(item)
                     existing_pairs.add(pair)
 
-    # Salvar cache completo
+    # Filtrar encerrados antes de salvar no cache e retornar
+    import datetime as _dt2
+    def _jogo_vivo(j):
+        if j.get('is_finished', False):
+            return False
+        ct = j.get('commence_time', '')
+        if ct:
+            try:
+                ct_dt = _dt2.datetime.fromisoformat(ct.replace('Z', '+00:00')).replace(tzinfo=None)
+                if (_dt2.datetime.utcnow() - ct_dt).total_seconds() > 10800:  # 3h
+                    return False
+            except Exception:
+                pass
+        return True
+    all_jogos = [j for j in all_jogos if _jogo_vivo(j)]
+
+    # Salvar cache completo (só jogos vivos)
     _odds_cache['ts']   = agora
     _odds_cache['data'] = all_jogos
 
@@ -12816,6 +12848,15 @@ async def _espn_fetch_scoreboard(sess, espn_slug, league_name, sport_key, catego
             h_name = h_team.get('displayName', h_team.get('name', '?'))
             a_name = a_team.get('displayName', a_team.get('name', '?'))
             if h_name == '?' or a_name == '?':
+                continue
+            # ── Ocultar jogos encerrados — usuário não pode apostar em jogo finalizado ──
+            if is_finished:
+                # Invalidar cache ESPN para forçar rebusca limpa na próxima chamada
+                espn_slug_key = ev.get('_espn_slug', '')
+                if espn_slug_key and espn_slug_key in _espn_fix_cache:
+                    _espn_fix_cache[espn_slug_key]['ts'] = 0
+                # Invalidar cache geral de odds também
+                _odds_cache['ts'] = 0
                 continue
             # Aplicar margem nas odds geradas
             odds_bruta = _gerar_odds_espn(h_name, a_name, sport_key)

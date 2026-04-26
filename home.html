@@ -1604,13 +1604,22 @@ async function carregarJogos(sport) {
       return;
     }
     lista.innerHTML = '';
-    for (const j of jogos) {
+    // Filtrar jogos encerrados — usuário não pode apostar em jogo finalizado
+    const jogosFiltrados = jogos.filter(j => {
+      const enc = j.is_finished || j.status === 'Match Finished' || j.status === 'FT' || j.status_code === 'STATUS_FINAL';
+      return !enc;
+    });
+    if (!jogosFiltrados.length && jogos.length) {
+      lista.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div style="font-size:32px;margin-bottom:12px">✅</div><div style="color:var(--muted);font-size:14px">Todos os jogos desta rodada já foram encerrados.<br><span style="color:var(--text);font-weight:700">Novos jogos em breve!</span></div></div>';
+      return;
+    }
+    for (const j of jogosFiltrados) {
       const live    = j.is_live || (new Date(j.commence_time) < new Date() && !j.is_finished && j.status_code === 'STATUS_IN_PROGRESS');
-      const finished = j.is_finished || j.status === 'Match Finished' || j.status === 'FT' || j.status_code === 'STATUS_FINAL';
+      const finished = false; // jogos encerrados já foram removidos acima
       const o       = j.odds || {};
       const temEmpate = o.draw != null;
       const card    = document.createElement('div');
-      card.className = 'jogo-card' + (live ? ' live-c' : '') + (finished ? ' finished-c' : '');
+      card.className = 'jogo-card' + (live ? ' live-c' : '');
       const hora    = j.commence_time ? new Date(j.commence_time).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
       const hLogo   = j.home_logo || getTeamLogo?.(j.home_team);
       const aLogo   = j.away_logo || getTeamLogo?.(j.away_team);
@@ -1632,11 +1641,8 @@ async function carregarJogos(sport) {
       card.innerHTML =
         '<div class="jc-meta">' +
           '<span class="jc-liga" style="color:' + ligaColor + ';font-weight:700">' + (j.league || j.sport) + '</span>' +
-          (live ? '<span class="live-tag">● AO VIVO</span>' :
-           finished ? '<span style="font-size:10px;color:var(--muted);background:#ffffff10;padding:2px 6px;border-radius:10px">✓ Encerrado</span>' :
-           '<span class="jc-hora">' + hora + '</span>') +
+          (live ? '<span class="live-tag">● AO VIVO</span>' : '<span class="jc-hora">' + hora + '</span>') +
         '</div>' +
-        (finished && j.score ? '<div style="text-align:center;font-size:18px;font-weight:900;color:var(--text);padding:8px 0 4px">' + j.score + '</div>' : '') +
         '<div class="jc-times">' +
           '<div class="time-b">' + hBadge + '<span class="t-nome">' + j.home_team + '</span></div>' +
           '<span class="t-vs">' + (live ? '<span style="color:var(--red);font-size:10px;font-weight:900">AO VIVO</span>' : 'VS') + '</span>' +
