@@ -758,6 +758,18 @@ def salvar_saque(saque_id, valor, chave_pix, tipo_chave):
         (saque_id, valor, chave_pix, tipo_chave, datetime.now().isoformat()))
     conn.commit(); conn.close()
 
+def _atualizar_status_saque(saque_id, status, observacao=''):
+    """Atualiza status de um saque no SQLite (tabela saques)."""
+    try:
+        conn = sqlite3_connect()
+        conn.execute(
+            'UPDATE saques SET status=?, processado_at=?, observacao=? WHERE saque_id=?',
+            (status, datetime.now().isoformat(), str(observacao)[:500], saque_id)
+        )
+        conn.commit(); conn.close()
+    except Exception as e:
+        print(f'⚠️ _atualizar_status_saque erro: {e}', flush=True)
+
 def listar_saques(limit=50):
     conn = sqlite3_connect()
     conn.execute('''CREATE TABLE IF NOT EXISTS saques (
@@ -14215,9 +14227,85 @@ async def route_bet_apostar(request):
 
 # ── FASE 6: Sacar ──────────────────────────────────────────────────────────
 
+async def route_admin_reprocessar_saque(request):
+    """POST /api/admin/reprocessar-saque — reprocessa saque pendente/erro via SuitPay (admin only)"""
+    import aiohttp, uuid as _uuid_mod2
+    auth = (request.headers.get('X-PaynexBet-Secret','') or
+            request.rel_url.query.get('secret',''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({'success': False, 'error': 'JSON inválido'}, status=400)
+
+    saque_db_id = body.get('saque_id')  # ID numérico do banco
+    valor       = float(body.get('valor', 0))
+    chave_pix   = (body.get('chave_pix') or '').strip()
+    tipo_chave  = (body.get('tipo_chave') or 'cpf').strip()
+
+    if not saque_db_id or not chave_pix or valor <= 0:
+        return web.json_response({'success': False, 'error': 'Campos obrigatórios: saque_id, valor, chave_pix'})
+
+    suit_ci, suit_cs = _get_suit_keys()
+    if not suit_ci or not suit_cs:
+        return web.json_response({'success': False, 'error': 'SuitPay não configurado'})
+
+    req_number = f'reprocess_{saque_db_id}_{_uuid_mod2.uuid4().hex[:8]}'
+    payload_suit = {
+        'requestNumber': req_number,
+        'value': valor,
+        'key': chave_pix,
+        'typeKey': tipo_chave,
+        'callbackUrl': _SUIT_WEBHOOK_URL,
+        'client': {'name': 'PaynexBet Admin Reprocess'}
+    }
+    try:
+        async with aiohttp.ClientSession() as sess:
+            async with sess.post(
+                f'{_SUIT_HOST}/api/v1/gateway/pix-payment',
+                json=payload_suit,
+                headers={'ci': suit_ci, 'cs': suit_cs, 'Content-Type': 'application/json'},
+                timeout=aiohttp.ClientTimeout(total=20)
+            ) as r:
+                resp = await r.json()
+    except Exception as e:
+        return web.json_response({'success': False, 'error': f'SuitPay erro: {e}', 'req_number': req_number})
+
+    sucesso = resp.get('success', False)
+    novo_status = 'enviado' if sucesso else 'erro'
+    obs = f'Admin reprocess SuitPay {"OK" if sucesso else "ERRO"} - reqNum:{req_number} - {str(resp)[:200]}'
+
+    # Atualizar banco PostgreSQL
+    try:
+        conn_pg = await _bet_db()
+        if conn_pg:
+            cur_pg = conn_pg.cursor()
+            from datetime import datetime as _dt2
+            cur_pg.execute(
+                "UPDATE saques SET status=%s, processado_at=%s, observacao=%s WHERE id=%s",
+                (novo_status, _dt2.now().isoformat(), obs[:500], saque_db_id)
+            )
+            conn_pg.commit(); cur_pg.close(); conn_pg.close()
+    except Exception as e_pg:
+        print(f'⚠️ Erro ao atualizar saque #{saque_db_id} no PG: {e_pg}', flush=True)
+
+    # Atualizar SQLite também
+    _atualizar_status_saque(f'admin_reprocess_{saque_db_id}', novo_status, obs)
+
+    print(f'{"✅" if sucesso else "❌"} Admin reprocess saque #{saque_db_id}: R${valor:.2f} → {tipo_chave}:{chave_pix} | {novo_status}', flush=True)
+    return web.json_response({
+        'success': sucesso,
+        'saque_db_id': saque_db_id,
+        'req_number': req_number,
+        'status': novo_status,
+        'suitpay_response': resp
+    })
+
+
 async def route_bet_sacar(request):
     """POST /api/bet/sacar — saque via SuitPay PIX"""
-    import aiohttp
+    import aiohttp, uuid as _uuid_mod
     try:
         body = await request.json()
     except Exception:
@@ -14225,14 +14313,15 @@ async def route_bet_sacar(request):
 
     usuario_id  = body.get('usuario_id')
     valor       = float(body.get('valor', 0))
-    chave_pix   = (body.get('chave_pix') or '').strip()
+    # Aceita chave_pix OU pix_key (retrocompatibilidade)
+    chave_pix   = (body.get('chave_pix') or body.get('pix_key') or '').strip()
     tipo_chave  = (body.get('tipo_chave') or 'cpf').strip()
 
     if not usuario_id:
         return web.json_response({'success': False, 'error': 'Faça login primeiro'})
     if valor < 20:
         return web.json_response({'success': False, 'error': 'Valor mínimo de saque: R$20,00'})
-    if not chave_pix:
+    if not chave_pix or len(chave_pix) < 5:
         return web.json_response({'success': False, 'error': 'Informe sua chave PIX'})
     suit_ci, suit_cs = _get_suit_keys()
     if not suit_ci or not suit_cs:
@@ -14261,10 +14350,16 @@ async def route_bet_sacar(request):
         conn.close()
         return web.json_response({'success': False, 'error': str(e)})
 
+    # Gerar ID único para rastreio
+    req_number = f'saque_{usuario_id}_{_uuid_mod.uuid4().hex[:8]}'
+    saque_id_local = 'saq_' + _uuid_mod.uuid4().hex[:12]
+
+    # Salvar saque como pendente antes de chamar SuitPay (rastreabilidade)
+    salvar_saque(saque_id_local, valor, chave_pix, tipo_chave)
+
     # Chamar SuitPay Cash-out
-    import uuid as _uuid
     payload_suit = {
-        'requestNumber': f'saque_{usuario_id}_{_uuid.uuid4().hex[:8]}',
+        'requestNumber': req_number,
         'value': valor,
         'key': chave_pix,
         'typeKey': tipo_chave,
@@ -14274,14 +14369,14 @@ async def route_bet_sacar(request):
     try:
         async with aiohttp.ClientSession() as sess:
             async with sess.post(
-                f'{_SUIT_HOST}/api/v1/gateway/pix-payment',  # endpoint correto (prefixo api/)
+                f'{_SUIT_HOST}/api/v1/gateway/pix-payment',
                 json=payload_suit,
                 headers={'ci': suit_ci, 'cs': suit_cs, 'Content-Type': 'application/json'},
-                timeout=aiohttp.ClientTimeout(total=15)
+                timeout=aiohttp.ClientTimeout(total=20)
             ) as r:
                 resp = await r.json()
     except Exception as e_suit:
-        # Devolver saldo em caso de erro
+        # Devolver saldo + marcar erro no histórico
         conn2 = await _bet_db()
         if conn2:
             try:
@@ -14289,10 +14384,11 @@ async def route_bet_sacar(request):
                 c2.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (valor, usuario_id))
                 conn2.commit(); c2.close(); conn2.close()
             except Exception: pass
+        _atualizar_status_saque(saque_id_local, 'erro', f'SuitPay timeout/erro: {e_suit}')
         return web.json_response({'success': False, 'error': f'Erro ao processar saque: {e_suit}'})
 
     if not resp.get('success'):
-        # Devolver saldo
+        # Devolver saldo + marcar erro
         conn2 = await _bet_db()
         if conn2:
             try:
@@ -14300,11 +14396,19 @@ async def route_bet_sacar(request):
                 c2.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (valor, usuario_id))
                 conn2.commit(); c2.close(); conn2.close()
             except Exception: pass
-        return web.json_response({'success': False, 'error': resp.get('message', 'Erro no saque')})
+        err_msg = resp.get('message') or resp.get('error') or 'Erro no saque SuitPay'
+        _atualizar_status_saque(saque_id_local, 'erro', f'SuitPay recusou: {err_msg}')
+        return web.json_response({'success': False, 'error': err_msg})
+
+    # Saque aprovado pela SuitPay
+    _atualizar_status_saque(saque_id_local, 'enviado',
+        f'SuitPay OK - reqNumber: {req_number} - chave: {chave_pix} ({tipo_chave})')
+    print(f'💸 Saque bet OK: R${valor:.2f} → {tipo_chave}:{chave_pix} | user#{usuario_id} | {req_number}', flush=True)
 
     return web.json_response({
         'success': True,
-        'msg': f'✅ Saque de R$ {valor:.2f} enviado para {chave_pix}!'
+        'saque_id': saque_id_local,
+        'msg': f'✅ Saque de R$ {valor:.2f} enviado para {chave_pix}! Processado em até 24h.'
     })
 
 
@@ -16765,6 +16869,7 @@ async def main():
     app.router.add_get('/api/bet/saldo/{usuario_id}', route_bet_saldo)
     app.router.add_post('/api/bet/apostar',     route_bet_apostar)
     app.router.add_post('/api/bet/sacar',       route_bet_sacar)
+    app.router.add_post('/api/admin/reprocessar-saque', route_admin_reprocessar_saque)
     app.router.add_get('/api/bet/dbcheck',      route_bet_dbcheck)
     app.router.add_get('/api/bet/crest',        route_bet_crest)
     app.router.add_get('/apostas',              route_apostas_page)

@@ -1270,12 +1270,21 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
             <div class="saldo-big" id="saldo-saque">R$ 0,00</div>
           </div>
           <div class="form-grp">
-            <label>Chave Pix (CPF)</label>
-            <input type="text" id="saq-pix" placeholder="000.000.000-00" maxlength="14" oninput="maskCPF(this)">
+            <label>Tipo de Chave Pix</label>
+            <select id="saq-tipo" onchange="atualizarMascaraSaque()" style="background:var(--card2);color:var(--text);border:1px solid var(--brd);border-radius:8px;padding:10px;width:100%;font-size:14px">
+              <option value="cpf">CPF</option>
+              <option value="telefone">Telefone</option>
+              <option value="email">E-mail</option>
+              <option value="aleatoria">Chave Aleatória (EVP)</option>
+            </select>
+          </div>
+          <div class="form-grp">
+            <label id="saq-pix-label">Chave Pix</label>
+            <input type="text" id="saq-pix" placeholder="000.000.000-00" maxlength="64">
           </div>
           <div class="form-grp">
             <label>Valor do saque (R$)</label>
-            <input type="number" id="saq-valor" placeholder="Ex: 50.00" min="10" step="0.01">
+            <input type="number" id="saq-valor" placeholder="Mínimo R$ 20,00" min="20" step="0.01">
           </div>
           <button class="btn-cc" onclick="fazerSaque()">💰 Solicitar Saque</button>
           <div class="msg-box err" id="saq-err"></div>
@@ -1284,9 +1293,9 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
         <div class="conta-card">
           <div class="cc-title"><span class="ico">📋</span>Regras de Saque</div>
           <div style="font-size:13px;color:var(--muted2);line-height:1.8">
-            • Saque mínimo: <strong style="color:var(--text)">R$ 10,00</strong><br>
+            • Saque mínimo: <strong style="color:var(--text)">R$ 20,00</strong><br>
             • Processado via Pix em até <strong style="color:var(--green)">24h</strong><br>
-            • Use o mesmo CPF do cadastro<br>
+            • Aceita CPF, Telefone, E-mail ou Chave Aleatória<br>
             • Saldo de apostas vencedoras disponível após confirmação
           </div>
         </div>
@@ -3251,22 +3260,61 @@ function copiarPix(){
 }
 
 /* ══ SAQUE ══ */
+function atualizarMascaraSaque(){
+  const tipo = document.getElementById('saq-tipo').value;
+  const inp = document.getElementById('saq-pix');
+  const lbl = document.getElementById('saq-pix-label');
+  const configs = {
+    cpf:      {label:'CPF',          placeholder:'000.000.000-00', maxlength:14},
+    telefone: {label:'Telefone',     placeholder:'+55 11 99999-9999', maxlength:20},
+    email:    {label:'E-mail',       placeholder:'seu@email.com', maxlength:64},
+    aleatoria:{label:'Chave Aleatória (EVP)', placeholder:'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', maxlength:64}
+  };
+  const c = configs[tipo] || configs.cpf;
+  lbl.textContent = c.label;
+  inp.placeholder = c.placeholder;
+  inp.maxLength = c.maxlength;
+  inp.value = '';
+}
 async function fazerSaque(){
   const u=loadSession();if(!u){openModal('login');return}
-  const pix=cleanCPF(document.getElementById('saq-pix').value);
-  const val=parseFloat(document.getElementById('saq-valor').value);
-  if(pix.length!==11){showMsgEl('saq-err','CPF/chave Pix inválido.',true);return}
-  if(!val||val<10){showMsgEl('saq-err','Valor mínimo de saque é R$ 10,00.',true);return}
+  const tipo = (document.getElementById('saq-tipo')||{value:'cpf'}).value || 'cpf';
+  const pixRaw = document.getElementById('saq-pix').value.trim();
+  const val = parseFloat(document.getElementById('saq-valor').value);
+  // Validar chave por tipo
+  let chave = pixRaw;
+  if(tipo==='cpf'){
+    chave = pixRaw.replace(/\D/g,'');
+    if(chave.length!==11){showMsgEl('saq-err','CPF inválido. Digite os 11 dígitos.',true);return}
+  } else if(tipo==='telefone'){
+    chave = pixRaw.replace(/\D/g,'');
+    if(chave.length<10||chave.length>13){showMsgEl('saq-err','Telefone inválido.',true);return}
+  } else if(tipo==='email'){
+    if(!pixRaw.includes('@')||pixRaw.length<5){showMsgEl('saq-err','E-mail inválido.',true);return}
+    chave = pixRaw;
+  } else {
+    if(pixRaw.length<10){showMsgEl('saq-err','Chave aleatória inválida.',true);return}
+    chave = pixRaw;
+  }
+  if(!val||val<20){showMsgEl('saq-err','Valor mínimo de saque é R$ 20,00.',true);return}
   if(val>Number(u.saldo||0)){showMsgEl('saq-err','Saldo insuficiente.',true);return}
+  const btn=document.querySelector('#view-sacar .btn-cc');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Processando...';}
   try{
     const r=await fetch(BASE+'/api/bet/sacar',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({usuario_id:u.id,valor:val,pix_key:pix})});
+      body:JSON.stringify({usuario_id:u.id,valor:val,chave_pix:chave,tipo_chave:tipo})});
     const d=await r.json();
-    if(d.error){showMsgEl('saq-err',d.error,true);return}
+    if(btn){btn.disabled=false;btn.textContent='💰 Solicitar Saque';}
+    if(d.error||!d.success){showMsgEl('saq-err',d.error||d.msg||'Erro ao solicitar saque.',true);return}
     u.saldo=Number(u.saldo)-val;saveSession(u);renderHeader();
     document.getElementById('saldo-saque').textContent=_fmt(u.saldo);
-    showMsgEl('saq-ok','Saque solicitado! Processado em até 24h.',false);
-  }catch(e){showMsgEl('saq-err','Falha ao conectar. Tente novamente.',true)}
+    showMsgEl('saq-ok','✅ Saque solicitado via Pix! Processado em até 24h.',false);
+    document.getElementById('saq-pix').value='';
+    document.getElementById('saq-valor').value='';
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='💰 Solicitar Saque';}
+    showMsgEl('saq-err','Falha ao conectar. Tente novamente.',true)
+  }
 }
 
 /* ══ HISTÓRICO ══ */
