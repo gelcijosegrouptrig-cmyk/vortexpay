@@ -8692,7 +8692,12 @@ async function loadStaff() {
 function _buildPermsCheckboxes(selecionadas = []) {
   const container = document.getElementById('staff-perms-checkboxes');
   if (!container) return;
-  container.innerHTML = Object.entries(_staffPermsMap).map(([k, v]) => {
+  const entries = Object.entries(_staffPermsMap);
+  if (!entries.length) {
+    container.innerHTML = '<div style="color:#f87171;font-size:12px;padding:8px">❌ Nenhuma permissão disponível. Recarregue.</div>';
+    return;
+  }
+  container.innerHTML = entries.map(([k, v]) => {
     const checked = selecionadas.includes(k) ? 'checked' : '';
     return `<label style="display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:12px">
       <input type="checkbox" value="${k}" ${checked} style="accent-color:#8b5cf6;width:15px;height:15px">
@@ -8711,24 +8716,30 @@ function _getPermsSelected() {
     .filter(cb => cb.checked).map(cb => cb.value);
 }
 
-function abrirModalStaff() {
+async function abrirModalStaff() {
   _staffEditId = null;
   document.getElementById('modal-staff-title').textContent = '＋ Novo Funcionário';
   document.getElementById('staff-nome').value  = '';
   document.getElementById('staff-email').value = '';
   document.getElementById('modal-staff-msg').textContent = '';
-  // Carregar checkboxes (se _staffPermsMap ainda vazio, buscar)
-  if (!Object.keys(_staffPermsMap).length) {
-    fetch('/api/admin/staff', { headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() } })
-      .then(r => r.json()).then(d => {
-        _staffPermsMap = d.permissoes_disponiveis || {};
-        _buildPermsCheckboxes([]);
-      });
-  } else {
-    _buildPermsCheckboxes([]);
-  }
+
+  // Mostrar modal com loading nas permissões
   const m = document.getElementById('modal-staff');
   m.style.display = 'flex';
+
+  // Carregar permissões se ainda não carregadas
+  if (!Object.keys(_staffPermsMap).length) {
+    const container = document.getElementById('staff-perms-checkboxes');
+    if (container) container.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:8px">⏳ Carregando permissões...</div>';
+    try {
+      const r = await fetch('/api/admin/staff', { headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() } });
+      const d = await r.json();
+      _staffPermsMap = d.permissoes_disponiveis || {};
+    } catch(e) {
+      console.error('Erro ao carregar permissões:', e);
+    }
+  }
+  _buildPermsCheckboxes([]);
 }
 
 async function abrirEditarStaff(id) {
@@ -8766,7 +8777,7 @@ async function salvarStaff() {
   try {
     let url, payload;
     if (_staffEditId) {
-      url     = BASE + '/api/admin/staff/editar';
+      url     = '/api/admin/staff/editar';
       payload = { id: _staffEditId, nome, email, permissoes: perms };
     } else {
       url     = '/api/admin/staff';
@@ -8801,7 +8812,7 @@ async function staffToggle(id, ativo) {
   const acao = ativo ? 'ATIVAR' : 'REVOGAR';
   if (!confirm(`Confirma ${acao} o acesso deste funcionário?`)) return;
   try {
-    const r = await fetch(BASE + '/api/admin/staff/toggle', {
+    const r = await fetch('/api/admin/staff/toggle', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
       body: JSON.stringify({ id, ativo })
@@ -8816,7 +8827,7 @@ async function staffToggle(id, ativo) {
 async function staffRegenToken(id) {
   if (!confirm('Gerar um NOVO token para este funcionário? O token antigo será invalidado imediatamente.')) return;
   try {
-    const r = await fetch(BASE + '/api/admin/staff/regen-token', {
+    const r = await fetch('/api/admin/staff/regen-token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
       body: JSON.stringify({ id })
@@ -8831,7 +8842,7 @@ async function staffRegenToken(id) {
 async function staffDeletar(id, nome) {
   if (!confirm(`Remover PERMANENTEMENTE o funcionário "${nome}"? Esta ação não pode ser desfeita.`)) return;
   try {
-    const r = await fetch(BASE + '/api/admin/staff/deletar', {
+    const r = await fetch('/api/admin/staff/deletar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
       body: JSON.stringify({ id })
