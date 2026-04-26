@@ -1915,9 +1915,11 @@ async function carregarJogos(sport) {
           predHtml = '<div class="pred-bar"><div class="pred-h" style="width:' + (pct.home||'33%') + '">' + (pct.home||'33%') + '</div><div class="pred-d" style="width:' + (pct.draw||'34%') + '">' + (pct.draw||'') + '</div><div class="pred-a" style="width:' + (pct.away||'33%') + '">' + (pct.away||'33%') + '</div></div><div class="pred-adv">🤖 ' + (p.advice||'Favorito: '+p.winner) + '</div>';
         }
       } catch(ep) {}
+      // Usar label do _SPORT_LABELS (padronizado) em vez de j.league (pode ser bruto do ESPN)
+      const ligaNome = ((_SPORT_LABELS[j.sport] || {}).titulo) || j.league || j.sport;
       card.innerHTML =
         '<div class="jc-meta">' +
-          '<span class="jc-liga" style="color:' + ligaColor + ';font-weight:700">' + (j.league || j.sport) + '</span>' +
+          '<span class="jc-liga" style="color:' + ligaColor + ';font-weight:700">' + ligaNome + '</span>' +
           (live ? '<span class="live-tag">● AO VIVO</span>' : isFuture ? '<span class="future-tag">📅 ' + horaFull + '</span>' : '<span class="jc-hora">' + hora + '</span>') +
         '</div>' +
         '<div class="jc-times">' +

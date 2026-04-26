@@ -3886,9 +3886,10 @@ async def route_admin_ligas_suspender(request):
         cfg = _admin_get_liga_config(liga_key)
         cfg['suspensa'] = suspensa
         _admin_save_liga_config(liga_key, cfg)
-        # Invalidar cache de odds para que a home reflita imediatamente
+        # Invalidar cache de odds e cache por liga para que a home reflita imediatamente
         _odds_cache['ts'] = 0
         _odds_cache['data'] = []
+        _liga_cache.clear()  # Limpar cache isolado por liga também
         status = 'SUSPENSA' if suspensa else 'ATIVA'
         print(f'[admin/ligas] {liga_key} → {status} (cache invalidado)', flush=True)
         return web.json_response({'ok': True, 'liga_key': liga_key, 'suspensa': suspensa,
@@ -10541,6 +10542,11 @@ import hashlib as _hashlib
 _odds_cache       = {'ts': 0, 'data': []}
 _ODDS_CACHE_TTL   = 60   # segundos
 
+# Cache por liga — evita mistura de sports entre requisições
+# Estrutura: _liga_cache[sport_key] = {'ts': timestamp, 'data': [jogos]}
+_liga_cache = {}
+_LIGA_CACHE_TTL = 120  # 2 minutos por liga
+
 # ── API-Football (api-sports.io) ─────────────────────────────────────────────
 _APIFOOTBALL_KEY  = '9f32a39147f38ec092f55c39abb14517'
 _APIFOOTBALL_BASE = 'https://v3.football.api-sports.io'
@@ -12833,9 +12839,88 @@ async def route_admin_bolao_deletar(request):
         return web.json_response({'ok': False, 'error': str(e)}, status=500)
 
 
+async def _buscar_jogos_liga(sport_key: str, ligas_suspensas: set, agora: float) -> list:
+    """Busca e retorna jogos de UMA liga específica, com cache por liga.
+    Garante que cada liga tem seus próprios dados isolados no cache.
+    """
+    import aiohttp as _aio, datetime as _dt
+
+    # ── Cache por liga (isolado por sport_key) ──────────────────────────────
+    cached = _liga_cache.get(sport_key)
+    if cached and agora - cached['ts'] < _LIGA_CACHE_TTL:
+        return cached['data']
+
+    cfg = _ESPN_FIXTURES.get(sport_key)
+    if not cfg:
+        return []
+
+    espn_slug   = cfg[0]
+    league_name = cfg[1]
+    category    = cfg[2] if len(cfg) > 2 else 'soccer'
+    all_jogos   = []
+    existing_pairs = set()
+
+    async with _aio.ClientSession(headers={'User-Agent': 'Mozilla/5.0'}) as sess:
+        # Scoreboard atual (jogos de hoje / ao vivo)
+        cached_fix = _espn_fix_cache.get(espn_slug)
+        if cached_fix and agora - cached_fix['ts'] < _ESPN_FIX_TTL:
+            items = cached_fix['data']
+        else:
+            items = await _espn_fetch_scoreboard(sess, espn_slug, league_name, sport_key, category)
+            _espn_fix_cache[espn_slug] = {'ts': agora, 'data': items}
+        for item in items:
+            pair = item['home_team'] + '|' + item['away_team']
+            if pair not in existing_pairs:
+                all_jogos.append(item)
+                existing_pairs.add(pair)
+
+        # Jogos futuros (próximos 30 dias)
+        future_key = espn_slug + '_future'
+        cached_fut = _espn_future_cache.get(future_key)
+        if cached_fut and agora - cached_fut['ts'] < _ESPN_FUTURE_TTL:
+            future_items = cached_fut['data']
+        else:
+            future_items = await _espn_fetch_future(sess, espn_slug, league_name, sport_key, category, days=30)
+            _espn_future_cache[future_key] = {'ts': agora, 'data': future_items}
+        for item in future_items:
+            pair = item['home_team'] + '|' + item['away_team']
+            if pair not in existing_pairs:
+                all_jogos.append(item)
+                existing_pairs.add(pair)
+
+    # Filtrar encerrados
+    import datetime as _dt2
+    def _jogo_vivo(j):
+        if j.get('is_finished', False):
+            return False
+        ct = j.get('commence_time', '')
+        if ct:
+            try:
+                ct_dt = _dt2.datetime.fromisoformat(ct.replace('Z', '+00:00')).replace(tzinfo=None)
+                diff = (_dt2.datetime.utcnow() - ct_dt).total_seconds()
+                if diff > 10800:
+                    return False
+            except Exception:
+                pass
+        return True
+    all_jogos = [j for j in all_jogos if _jogo_vivo(j)]
+
+    # Ordenar: ao vivo → por data
+    def _sort_key(j):
+        if j.get('is_live', False):
+            return (0, '')
+        return (1, j.get('commence_time', ''))
+    all_jogos.sort(key=_sort_key)
+
+    # Salvar cache por liga
+    _liga_cache[sport_key] = {'ts': agora, 'data': all_jogos}
+    return all_jogos
+
+
 async def route_bet_jogos(request):
     """GET /api/bet/jogos — retorna jogos com odds reais (odds-api) ou ESPN como fallback.
     Suporta ?sport=<key> para filtrar por campeonato específico.
+    IMPORTANTE: usa cache por liga para não misturar sports diferentes.
     """
     import time as _time, aiohttp
     agora = _time.time()
@@ -12857,14 +12942,76 @@ async def route_bet_jogos(request):
                 'msg': 'Esta liga está temporariamente suspensa.'
             })
 
-    # Cache válido — filtrar suspensas e encerrados também no hit de cache
+    # ── Busca por liga específica (CACHE ISOLADO POR LIGA) ──────────────────
+    if sport_filter and sport_filter not in ('upcoming', 'destaque', 'all'):
+        # Verificar se temos odds-api para esse sport
+        all_jogos = []
+        key = _get_odds_key()
+        if key:
+            try:
+                async with aiohttp.ClientSession() as sess:
+                    url = f'https://api.the-odds-api.com/v4/sports/{sport_filter}/odds'
+                    params = {'apiKey': key, 'regions': 'eu', 'markets': 'h2h',
+                              'oddsFormat': 'decimal', 'dateFormat': 'iso'}
+                    async with sess.get(url, params=params, timeout=aiohttp.ClientTimeout(total=8)) as r:
+                        if r.status == 200:
+                            eventos = await r.json()
+                            for ev in (eventos or [])[:8]:
+                                h_odds, d_odds, a_odds = [], [], []
+                                for bk in ev.get('bookmakers', [])[:5]:
+                                    for mkt in bk.get('markets', []):
+                                        if mkt.get('key') == 'h2h':
+                                            for oc in mkt.get('outcomes', []):
+                                                n = oc.get('name', '')
+                                                v = float(oc.get('price', 0))
+                                                if n == ev.get('home_team'):   h_odds.append(v)
+                                                elif n == ev.get('away_team'): a_odds.append(v)
+                                                else:                          d_odds.append(v)
+                                def avg(lst): return round(sum(lst)/len(lst), 2) if lst else None
+                                odds_bruta = {'home': avg(h_odds), 'draw': avg(d_odds), 'away': avg(a_odds)}
+                                odds_com_margem, margem_pct = _aplicar_margem_odds(odds_bruta, sport_filter)
+                                all_jogos.append({
+                                    'id': ev.get('id'), 'sport': sport_filter,
+                                    'league': ev.get('sport_title', sport_filter),
+                                    'home_team': ev.get('home_team', ''),
+                                    'away_team': ev.get('away_team', ''),
+                                    'commence_time': ev.get('commence_time', ''),
+                                    'home_logo': '', 'away_logo': '',
+                                    'status': 'Agendado', 'is_live': False, 'is_finished': False,
+                                    'odds': odds_com_margem,
+                                    'odds_bruta': odds_bruta,
+                                    'margem_pct': margem_pct,
+                                    'source': 'odds-api',
+                                })
+            except Exception as e_odds:
+                print(f'[bet/jogos/odds] sport={sport_filter}: {e_odds}', flush=True)
+
+        # ESPN como fallback/complemento (cache isolado por liga)
+        espn_jogos = await _buscar_jogos_liga(sport_filter, ligas_suspensas, agora)
+        existing_pairs = set(j['home_team'] + '|' + j['away_team'] for j in all_jogos)
+        for item in espn_jogos:
+            pair = item['home_team'] + '|' + item['away_team']
+            if pair not in existing_pairs:
+                all_jogos.append(item)
+                existing_pairs.add(pair)
+
+        # Ordenar: ao vivo → por data
+        def _sort_key_sf(j):
+            if j.get('is_live', False):
+                return (0, '')
+            return (1, j.get('commence_time', ''))
+        all_jogos.sort(key=_sort_key_sf)
+
+        return web.json_response({'success': True, 'jogos': all_jogos, 'total': len(all_jogos)})
+
+    # ── Sem filtro de sport: retornar TODAS as ligas (upcoming/destaque/all) ──
+    # Usa cache global apenas para o modo "sem filtro"
     cache_valido = agora - _odds_cache['ts'] < _ODDS_CACHE_TTL and _odds_cache['data']
     if cache_valido:
         import datetime as _dt
         jogos = [j for j in _odds_cache['data']
                  if j.get('sport', '') not in ligas_suspensas
                  and not j.get('is_finished', False)]
-        # Remover jogos que começaram há mais de 3h (provavelmente encerrados)
         jogos_vivos = []
         for j in jogos:
             ct = j.get('commence_time', '')
@@ -12872,22 +13019,22 @@ async def route_bet_jogos(request):
                 try:
                     ct_dt = _dt.datetime.fromisoformat(ct.replace('Z', '+00:00')).replace(tzinfo=None)
                     diff = (_dt.datetime.utcnow() - ct_dt).total_seconds()
-                    if diff > 10800:  # Passou 3h desde o início = provavelmente encerrado
+                    if diff > 10800:
                         continue
                 except Exception:
                     pass
             jogos_vivos.append(j)
-        if sport_filter and sport_filter not in ('upcoming', 'destaque', 'all'):
-            jogos_vivos = [j for j in jogos_vivos if j.get('sport') == sport_filter]
         return web.json_response({'success': True, 'jogos': jogos_vivos, 'from_cache': True, 'total': len(jogos_vivos)})
 
+    # Buscar todas as ligas em paralelo
     all_jogos = []
 
-    # ── 1. Tentar odds-api (se tiver chave) ────────────────────────────────────
+    # ── 1. Tentar odds-api para todas as ligas (se tiver chave) ────────────────
     key = _get_odds_key()
     if key:
         sports_odds = [
-            'soccer_brazil_campeonato', 'soccer_conmebol_copa_libertadores',
+            'soccer_brazil_campeonato', 'soccer_brazil_serie_b',
+            'soccer_conmebol_copa_libertadores',
             'soccer_uefa_champs_league', 'soccer_epl', 'soccer_spain_la_liga',
             'basketball_nba', 'americanfootball_nfl',
             'tennis_atp_aus_open_singles', 'mma_mixed_martial_arts',
@@ -12934,53 +13081,22 @@ async def route_bet_jogos(request):
     # Filtrar jogos já coletados via odds-api que sejam de ligas suspensas
     all_jogos = [j for j in all_jogos if j.get('sport', '') not in ligas_suspensas]
 
-    # ── 2. Fallback ESPN (gratuito — sempre completa os jogos) ──────────────────
+    # ── 2. ESPN para cada liga (usando cache isolado por liga) ───────────────────
     existing_pairs = set((j['home_team'] + '|' + j['away_team']) for j in all_jogos)
-    sports_to_fetch = []
-    if sport_filter and sport_filter not in ('upcoming', 'destaque', 'all'):
-        cfg = _ESPN_FIXTURES.get(sport_filter)
-        if cfg:
-            sports_to_fetch = [(sport_filter, cfg)]
-    else:
-        seen_slugs = set()
-        for k, v in _ESPN_FIXTURES.items():
-            # Pular ligas suspensas no fallback ESPN também
-            if k in ligas_suspensas:
-                continue
-            if v[0] not in seen_slugs:
-                sports_to_fetch.append((k, v))
-                seen_slugs.add(v[0])
-
-    async with aiohttp.ClientSession(headers={'User-Agent': 'Mozilla/5.0'}) as sess:
-        for sp_key, cfg in sports_to_fetch:
-            espn_slug   = cfg[0]
-            league_name = cfg[1]
-            category    = cfg[2] if len(cfg) > 2 else 'soccer'
-            cached_fix  = _espn_fix_cache.get(espn_slug)
-            if cached_fix and agora - cached_fix['ts'] < _ESPN_FIX_TTL:
-                items = cached_fix['data']
-            else:
-                items = await _espn_fetch_scoreboard(sess, espn_slug, league_name, sp_key, category)
-                _espn_fix_cache[espn_slug] = {'ts': agora, 'data': items}
-            for item in items:
-                pair = item['home_team'] + '|' + item['away_team']
-                if pair not in existing_pairs:
-                    all_jogos.append(item)
-                    existing_pairs.add(pair)
-
-            # ── 3. Jogos futuros (próximos 30 dias) via ESPN com range de datas ──
-            future_key = espn_slug + '_future'
-            cached_fut = _espn_future_cache.get(future_key)
-            if cached_fut and agora - cached_fut['ts'] < _ESPN_FUTURE_TTL:
-                future_items = cached_fut['data']
-            else:
-                future_items = await _espn_fetch_future(sess, espn_slug, league_name, sp_key, category, days=30)
-                _espn_future_cache[future_key] = {'ts': agora, 'data': future_items}
-            for item in future_items:
-                pair = item['home_team'] + '|' + item['away_team']
-                if pair not in existing_pairs:
-                    all_jogos.append(item)
-                    existing_pairs.add(pair)
+    seen_slugs = set()
+    for sp_key, cfg in _ESPN_FIXTURES.items():
+        if sp_key in ligas_suspensas:
+            continue
+        espn_slug = cfg[0]
+        if espn_slug in seen_slugs:
+            continue
+        seen_slugs.add(espn_slug)
+        espn_jogos = await _buscar_jogos_liga(sp_key, ligas_suspensas, agora)
+        for item in espn_jogos:
+            pair = item['home_team'] + '|' + item['away_team']
+            if pair not in existing_pairs:
+                all_jogos.append(item)
+                existing_pairs.add(pair)
 
     # Filtrar encerrados antes de salvar no cache e retornar
     import datetime as _dt2
@@ -12992,8 +13108,6 @@ async def route_bet_jogos(request):
             try:
                 ct_dt = _dt2.datetime.fromisoformat(ct.replace('Z', '+00:00')).replace(tzinfo=None)
                 diff = (_dt2.datetime.utcnow() - ct_dt).total_seconds()
-                # Remover só se começou há mais de 3h (provavelmente encerrado)
-                # Jogos futuros têm diff negativo — mantém
                 if diff > 10800:
                     return False
             except Exception:
@@ -13010,13 +13124,11 @@ async def route_bet_jogos(request):
         return (1, ct)
     all_jogos.sort(key=_sort_key)
 
-    # Salvar cache completo (só jogos vivos + futuros)
+    # Salvar cache global (só para modo sem filtro)
     _odds_cache['ts']   = agora
     _odds_cache['data'] = all_jogos
 
     jogos_resp = all_jogos
-    if sport_filter and sport_filter not in ('upcoming', 'destaque', 'all'):
-        jogos_resp = [j for j in all_jogos if j.get('sport') == sport_filter]
 
     return web.json_response({'success': True, 'jogos': jogos_resp, 'total': len(jogos_resp)})
 
