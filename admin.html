@@ -1042,6 +1042,20 @@ function toggleLoginSenha() {
       <!-- DEPÓSITOS -->
       <div id="tab-depositos" class="tab-content">
 
+        <!-- Sub-tabs: MP vs SuitPay -->
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <button id="dep-subtab-mp" onclick="switchDepSubtab('mp')"
+            style="flex:1;padding:10px 14px;background:#00b3ff22;border:1px solid #00b3ff55;color:#00b3ff;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">
+            🏦 Mercado Pago (Bot)
+          </button>
+          <button id="dep-subtab-suit" onclick="switchDepSubtab('suit')"
+            style="flex:1;padding:10px 14px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);color:#f59e0b;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">
+            💳 SuitPay (Apostas)
+          </button>
+        </div>
+
+        <!-- Painel MP (default) -->
+        <div id="dep-panel-mp">
         <!-- Banner Mercado Pago -->
         <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid #00b3ff44;border-radius:12px;padding:12px 16px;margin-bottom:16px">
           <div style="font-size:28px">💳</div>
@@ -1118,11 +1132,68 @@ function toggleLoginSenha() {
           </div>
           <div class="pagination" id="pag-dep"></div>
         </div>
-      </div>
+        </div><!-- /dep-panel-mp -->
+
+        <!-- Painel SuitPay -->
+        <div id="dep-panel-suit" style="display:none">
+          <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid rgba(245,158,11,0.4);border-radius:12px;padding:12px 16px;margin-bottom:16px">
+            <div style="font-size:28px">💳</div>
+            <div>
+              <div style="font-weight:800;font-size:16px;color:#f59e0b">📥 Depósitos SuitPay — Apostas Esportivas</div>
+              <div style="font-size:12px;color:#666;margin-top:2px">Depósitos gerados pelo sistema de apostas via SuitPay PIX</div>
+            </div>
+            <div style="margin-left:auto">
+              <button onclick="loadDepositosSuit()" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700;font-size:13px">🔄 Atualizar</button>
+            </div>
+          </div>
+          <!-- Métricas SuitPay -->
+          <div class="metrics-grid" style="margin-bottom:16px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+            <div class="metric-card green"><div class="metric-icon">📊</div><div class="metric-label">Total</div><div class="metric-value" id="suit-dep-total">—</div></div>
+            <div class="metric-card blue"><div class="metric-icon">✅</div><div class="metric-label">Pagos</div><div class="metric-value" id="suit-dep-pagos">—</div></div>
+            <div class="metric-card orange"><div class="metric-icon">⏳</div><div class="metric-label">Pendentes</div><div class="metric-value" id="suit-dep-pendentes">—</div></div>
+            <div class="metric-card green"><div class="metric-icon">💰</div><div class="metric-label">Valor Pago</div><div class="metric-value" id="suit-dep-val-pago" style="font-size:14px">R$ —</div></div>
+            <div class="metric-card orange"><div class="metric-icon">⏳</div><div class="metric-label">Valor Pendente</div><div class="metric-value" id="suit-dep-val-pendente" style="font-size:14px">R$ —</div></div>
+          </div>
+          <!-- Alerta sobre webhook -->
+          <div id="suit-webhook-alert" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.4);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#f87171">
+            ⚠️ <strong>Webhook SuitPay não configurado corretamente.</strong><br>
+            Configure no painel SuitPay: <code style="background:rgba(0,0,0,0.4);padding:2px 6px;border-radius:4px">https://paynexbet.com/webhook/suitpay</code>
+          </div>
+          <div class="table-card">
+            <div class="table-header">
+              <h3>💳 Depósitos SuitPay</h3>
+              <span class="count" id="suit-dep-count">—</span>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>#</th><th>Usuário</th><th>CPF</th><th>Valor</th><th>Status</th><th>ID Transação</th><th>Pago em</th><th>Criado em</th></tr></thead>
+                <tbody id="table-suit-depositos">
+                  <tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div><!-- /dep-panel-suit -->
+
+      </div><!-- /tab-depositos -->
 
       <!-- SAQUES -->
       <div id="tab-saques" class="tab-content">
 
+        <!-- Sub-tabs Saques: MP vs Bet -->
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <button id="saq-subtab-mp" onclick="switchSaqSubtab('mp')"
+            style="flex:1;padding:10px 14px;background:#f59e0b22;border:1px solid #f59e0b55;color:#f59e0b;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">
+            🏦 Mercado Pago (Bot)
+          </button>
+          <button id="saq-subtab-bet" onclick="switchSaqSubtab('bet')"
+            style="flex:1;padding:10px 14px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);color:#4ade80;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">
+            ⚽ Saques Bet (SuitPay/Asaas)
+          </button>
+        </div>
+
+        <!-- Painel MP Saques -->
+        <div id="saq-panel-mp">
       <!-- Banner Mercado Pago -->
       <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid #f59e0b44;border-radius:12px;padding:12px 16px;margin-bottom:16px">
         <div style="font-size:28px">💳</div>
@@ -1202,8 +1273,41 @@ function toggleLoginSenha() {
         </div>
         <div class="pagination" id="pag-saq"></div>
       </div>
+        </div><!-- /saq-panel-mp -->
 
-      </div>
+        <!-- Painel Saques Bet -->
+        <div id="saq-panel-bet" style="display:none">
+          <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid rgba(74,222,128,0.35);border-radius:12px;padding:12px 16px;margin-bottom:16px">
+            <div style="font-size:28px">⚽</div>
+            <div>
+              <div style="font-weight:800;font-size:16px;color:#4ade80">📤 Saques — Plataforma de Apostas</div>
+              <div style="font-size:12px;color:#666;margin-top:2px">Saques solicitados pelo sistema de apostas esportivas (SuitPay / Asaas)</div>
+            </div>
+            <div style="margin-left:auto">
+              <button onclick="loadSaquesBet()" style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.4);color:#4ade80;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700;font-size:13px">🔄 Atualizar</button>
+            </div>
+          </div>
+          <div class="metrics-grid" style="margin-bottom:16px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+            <div class="metric-card blue"><div class="metric-icon">📊</div><div class="metric-label">Total</div><div class="metric-value" id="saqbet-total">—</div></div>
+            <div class="metric-card yellow"><div class="metric-icon">⏳</div><div class="metric-label">Pendentes</div><div class="metric-value" id="saqbet-pendentes">—</div></div>
+            <div class="metric-card green"><div class="metric-icon">✅</div><div class="metric-label">Enviados</div><div class="metric-value" id="saqbet-aprovados">—</div></div>
+            <div class="metric-card red"><div class="metric-icon">❌</div><div class="metric-label">Erros</div><div class="metric-value" id="saqbet-erros">—</div></div>
+            <div class="metric-card green"><div class="metric-icon">💸</div><div class="metric-label">Valor Pago</div><div class="metric-value" id="saqbet-val-pago" style="font-size:14px">R$ —</div></div>
+          </div>
+          <div class="table-card">
+            <div class="table-header"><h3>⚽ Saques Bet</h3><span class="count" id="saqbet-count">—</span></div>
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>#</th><th>Saque ID</th><th>Chave Pix</th><th>Tipo</th><th>Valor</th><th>Status</th><th>Observação</th><th>Criado em</th></tr></thead>
+                <tbody id="table-saques-bet">
+                  <tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div><!-- /saq-panel-bet -->
+
+      </div><!-- /tab-saques -->
 
       <!-- ═══ APOSTAS & LUCRO ═══ -->
       <div id="tab-apostas-mgr" class="tab-content">
@@ -9616,6 +9720,81 @@ function renderDepositos() {
 }
 
 // ═══════════════════════════════════════════════
+//  DEPÓSITOS — Sub-tabs (MP / SuitPay)
+// ═══════════════════════════════════════════════
+function switchDepSubtab(tab) {
+  const mp   = document.getElementById('dep-panel-mp');
+  const suit = document.getElementById('dep-panel-suit');
+  const btnMp   = document.getElementById('dep-subtab-mp');
+  const btnSuit = document.getElementById('dep-subtab-suit');
+  if (tab === 'mp') {
+    if (mp)   mp.style.display   = '';
+    if (suit) suit.style.display = 'none';
+    if (btnMp)   { btnMp.style.borderColor   = '#00b3ff';           btnMp.style.background   = '#00b3ff33'; }
+    if (btnSuit) { btnSuit.style.borderColor = 'rgba(245,158,11,0.25)'; btnSuit.style.background = 'rgba(245,158,11,0.1)'; }
+    loadDepositos();
+  } else {
+    if (mp)   mp.style.display   = 'none';
+    if (suit) suit.style.display = '';
+    if (btnSuit) { btnSuit.style.borderColor = '#f59e0b';           btnSuit.style.background = 'rgba(245,158,11,0.3)'; }
+    if (btnMp)   { btnMp.style.borderColor   = '#00b3ff44';         btnMp.style.background   = '#00b3ff22'; }
+    loadDepositosSuit();
+  }
+}
+
+async function loadDepositosSuit() {
+  const tbody = document.getElementById('table-suit-depositos');
+  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>';
+  try {
+    const r = await fetch(`${BASE}/api/admin/depositos`, {
+      headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() }
+    });
+    if (!r.ok) { if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#f87171;padding:20px">❌ Erro ${r.status}</td></tr>`; return; }
+    const d = await r.json();
+    const deps = d.depositos || [];
+    const res  = d.resumo   || {};
+    const el = id => document.getElementById(id);
+    if (el('suit-dep-total'))       el('suit-dep-total').textContent       = res.total        || 0;
+    if (el('suit-dep-pagos'))       el('suit-dep-pagos').textContent       = res.pagos        || 0;
+    if (el('suit-dep-pendentes'))   el('suit-dep-pendentes').textContent   = res.pendentes    || 0;
+    if (el('suit-dep-val-pago'))    el('suit-dep-val-pago').textContent    = 'R$ ' + formatVal(res.valor_pago    || 0);
+    if (el('suit-dep-val-pendente'))el('suit-dep-val-pendente').textContent= 'R$ ' + formatVal(res.valor_pendente || 0);
+    if (el('suit-dep-count'))       el('suit-dep-count').textContent       = deps.length + ' registros';
+
+    // Alerta webhook se tudo pendente e mais de 1 dep
+    const alertEl = el('suit-webhook-alert');
+    if (alertEl) alertEl.style.display = (deps.length > 0 && res.pagos === 0) ? '' : 'none';
+
+    const stMap = {
+      PAID:    { cor:'#4ade80', bg:'rgba(74,222,128,0.12)', icon:'✅', label:'Pago' },
+      PENDING: { cor:'#f59e0b', bg:'rgba(245,158,11,0.12)', icon:'⏳', label:'Pendente' },
+      pago:    { cor:'#4ade80', bg:'rgba(74,222,128,0.12)', icon:'✅', label:'Pago' },
+      pendente:{ cor:'#f59e0b', bg:'rgba(245,158,11,0.12)', icon:'⏳', label:'Pendente' },
+    };
+    if (!deps.length) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">💳</div><p>Nenhum depósito SuitPay registrado</p><p style="font-size:12px;color:#555;margin-top:8px">Os depósitos aparecem aqui quando gerados pelo sistema de apostas</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = deps.map(d => {
+      const st = stMap[d.status] || { cor:'#888', bg:'#88888822', icon:'❓', label: d.status };
+      return `<tr>
+        <td style="color:var(--text3);font-size:11px">#${d.id}</td>
+        <td><div style="font-weight:600">${d.nome||'—'}</div><div style="font-size:10px;color:#666">ID ${d.usuario_id||'—'}</div></td>
+        <td style="font-size:11px;font-family:monospace">${(d.cpf||'—')}</td>
+        <td><strong style="color:#4ade80">R$ ${parseFloat(d.valor||0).toFixed(2).replace('.',',')}</strong></td>
+        <td><span style="background:${st.bg};color:${st.cor};padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700">${st.icon} ${st.label}</span></td>
+        <td style="font-size:10px;color:#777;font-family:monospace">${(d.id_transaction||'—').substring(0,20)}</td>
+        <td style="font-size:11px;color:#888">${d.pago_em||'—'}</td>
+        <td style="font-size:11px;color:#888">${d.criado_em||'—'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#f87171;padding:20px">❌ Erro: ${e.message}</td></tr>`;
+    console.error('[loadDepositosSuit]', e);
+  }
+}
+
+// ═══════════════════════════════════════════════
 //  SAQUES
 // ═══════════════════════════════════════════════
 async function loadSaques() {
@@ -9646,6 +9825,80 @@ async function loadSaques() {
 
 function formatVal(v) {
   return parseFloat(v || 0).toFixed(2).replace('.', ',');
+}
+
+// ═══════════════════════════════════════════════
+//  SAQUES — Sub-tabs (MP / Bet)
+// ═══════════════════════════════════════════════
+function switchSaqSubtab(tab) {
+  const mp   = document.getElementById('saq-panel-mp');
+  const bet  = document.getElementById('saq-panel-bet');
+  const btnMp  = document.getElementById('saq-subtab-mp');
+  const btnBet = document.getElementById('saq-subtab-bet');
+  if (tab === 'mp') {
+    if (mp)  mp.style.display  = '';
+    if (bet) bet.style.display = 'none';
+    if (btnMp)  { btnMp.style.borderColor  = '#f59e0b';         btnMp.style.background  = '#f59e0b33'; }
+    if (btnBet) { btnBet.style.borderColor = 'rgba(74,222,128,0.25)'; btnBet.style.background = 'rgba(74,222,128,0.08)'; }
+    loadSaques();
+  } else {
+    if (mp)  mp.style.display  = 'none';
+    if (bet) bet.style.display = '';
+    if (btnBet) { btnBet.style.borderColor = '#4ade80';         btnBet.style.background = 'rgba(74,222,128,0.25)'; }
+    if (btnMp)  { btnMp.style.borderColor  = '#f59e0b44';       btnMp.style.background  = '#f59e0b22'; }
+    loadSaquesBet();
+  }
+}
+
+async function loadSaquesBet() {
+  const tbody = document.getElementById('table-saques-bet');
+  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>';
+  try {
+    const r = await fetch(`${BASE}/api/admin/saques`, {
+      headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() }
+    });
+    if (!r.ok) { if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#f87171;padding:20px">❌ Erro ${r.status}</td></tr>`; return; }
+    const d = await r.json();
+    const saques = d.saques || [];
+    const res    = d.resumo || {};
+    const el = id => document.getElementById(id);
+    if (el('saqbet-total'))      el('saqbet-total').textContent      = res.total    || 0;
+    if (el('saqbet-pendentes'))  el('saqbet-pendentes').textContent  = res.pendentes || 0;
+    if (el('saqbet-aprovados'))  el('saqbet-aprovados').textContent  = res.aprovados || 0;
+    if (el('saqbet-erros'))      el('saqbet-erros').textContent      = res.erros    || 0;
+    if (el('saqbet-val-pago'))   el('saqbet-val-pago').textContent   = 'R$ ' + formatVal(res.valor_pago || 0);
+    if (el('saqbet-count'))      el('saqbet-count').textContent      = saques.length + ' registros';
+
+    const stMap = {
+      enviado:         { cor:'#4ade80', bg:'rgba(74,222,128,0.1)',  icon:'✅', label:'Enviado' },
+      aprovado:        { cor:'#4ade80', bg:'rgba(74,222,128,0.1)',  icon:'✅', label:'Aprovado' },
+      pendente:        { cor:'#f59e0b', bg:'rgba(245,158,11,0.1)',  icon:'⏳', label:'Pendente' },
+      pendente_asaas:  { cor:'#f59e0b', bg:'rgba(245,158,11,0.1)',  icon:'⏳', label:'Pend. Asaas' },
+      erro:            { cor:'#f87171', bg:'rgba(248,113,113,0.1)', icon:'❌', label:'Erro' },
+    };
+
+    if (!saques.length) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">💸</div><p>Nenhum saque registrado</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = saques.map(s => {
+      const st = stMap[s.status] || { cor:'#888', bg:'#88888822', icon:'❓', label: s.status };
+      const obs = (s.observacao || '').substring(0, 50);
+      return `<tr>
+        <td style="color:var(--text3);font-size:11px">#${s.id}</td>
+        <td style="font-size:10px;font-family:monospace;color:#888">${(s.saque_id||'—').substring(0,18)}</td>
+        <td style="font-size:12px">${s.chave_pix||'—'}</td>
+        <td><span style="font-size:10px;background:#ffffff11;padding:2px 6px;border-radius:4px">${s.tipo_chave||'—'}</span></td>
+        <td><strong style="color:#4ade80">R$ ${parseFloat(s.valor||0).toFixed(2).replace('.',',')}</strong></td>
+        <td><span style="background:${st.bg};color:${st.cor};padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700">${st.icon} ${st.label}</span></td>
+        <td style="font-size:10px;color:#666;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.observacao||''}">${obs||'—'}</td>
+        <td style="font-size:11px;color:#888">${s.criado_em||'—'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#f87171;padding:20px">❌ Erro: ${e.message}</td></tr>`;
+    console.error('[loadSaquesBet]', e);
+  }
 }
 
 async function processarSaque(id, aprovado) {
