@@ -8622,7 +8622,7 @@ async function loadStaff() {
   tbody.innerHTML = '<tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>';
 
   try {
-    const r = await fetch(BASE + '/api/admin/staff', { headers: _adminHeaders() });
+    const r = await fetch('/api/admin/staff', { headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() } });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error);
 
@@ -8719,7 +8719,7 @@ function abrirModalStaff() {
   document.getElementById('modal-staff-msg').textContent = '';
   // Carregar checkboxes (se _staffPermsMap ainda vazio, buscar)
   if (!Object.keys(_staffPermsMap).length) {
-    fetch(BASE + '/api/admin/staff', { headers: _adminHeaders() })
+    fetch('/api/admin/staff', { headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() } })
       .then(r => r.json()).then(d => {
         _staffPermsMap = d.permissoes_disponiveis || {};
         _buildPermsCheckboxes([]);
@@ -8734,7 +8734,7 @@ function abrirModalStaff() {
 async function abrirEditarStaff(id) {
   // Buscar dados atuais do staff da lista já carregada
   try {
-    const r = await fetch(BASE + '/api/admin/staff', { headers: _adminHeaders() });
+    const r = await fetch('/api/admin/staff', { headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() } });
     const d = await r.json();
     const s = (d.staff || []).find(x => x.id === id);
     if (!s) { alert('Funcionário não encontrado'); return; }
@@ -8769,13 +8769,13 @@ async function salvarStaff() {
       url     = BASE + '/api/admin/staff/editar';
       payload = { id: _staffEditId, nome, email, permissoes: perms };
     } else {
-      url     = BASE + '/api/admin/staff';
+      url     = '/api/admin/staff';
       payload = { nome, email, permissoes: perms };
     }
 
     const r = await fetch(url, {
       method: 'POST',
-      headers: { ...{ 'Content-Type': 'application/json' }, ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
       body: JSON.stringify(payload)
     });
     const d = await r.json();
@@ -8803,7 +8803,7 @@ async function staffToggle(id, ativo) {
   try {
     const r = await fetch(BASE + '/api/admin/staff/toggle', {
       method: 'POST',
-      headers: { ...{ 'Content-Type': 'application/json' }, ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
       body: JSON.stringify({ id, ativo })
     });
     const d = await r.json();
@@ -8818,7 +8818,7 @@ async function staffRegenToken(id) {
   try {
     const r = await fetch(BASE + '/api/admin/staff/regen-token', {
       method: 'POST',
-      headers: { ...{ 'Content-Type': 'application/json' }, ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
       body: JSON.stringify({ id })
     });
     const d = await r.json();
@@ -8833,7 +8833,7 @@ async function staffDeletar(id, nome) {
   try {
     const r = await fetch(BASE + '/api/admin/staff/deletar', {
       method: 'POST',
-      headers: { ...{ 'Content-Type': 'application/json' }, ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': ADMIN_SECRET() },
       body: JSON.stringify({ id })
     });
     const d = await r.json();
