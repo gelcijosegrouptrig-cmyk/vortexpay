@@ -12764,6 +12764,21 @@ _ESPN_LEAGUES = {
     '61':  ('fra.1',               'Ligue 1'),
 }
 
+# Mapeamento reverso: league_id (ESPN) → liga_key (_ADMIN_LIGAS_MAP)
+# Usado para verificar se a liga está suspensa antes de retornar tabela/fixtures
+_ESPN_LEAGUE_ID_TO_KEY = {
+    '71':  'soccer_brazil_campeonato',
+    '75':  'soccer_brazil_serie_b',
+    '13':  'soccer_conmebol_copa_libertadores',
+    '11':  'soccer_conmebol_sudamericana',
+    '2':   'soccer_uefa_champs_league',
+    '39':  'soccer_epl',
+    '140': 'soccer_spain_la_liga',
+    '135': 'soccer_italy_serie_a',
+    '78':  'soccer_germany_bundesliga',
+    '61':  'soccer_france_ligue_one',
+}
+
 # Sport fixtures map: sport_key → (espn_slug, nome_liga, espn_category)
 # espn_category: 'soccer'(default), 'basketball', 'football', 'mma', 'tennis'
 _ESPN_FIXTURES = {
@@ -13007,6 +13022,18 @@ async def route_tsdb_tabela(request):
     cfg = _ESPN_LEAGUES.get(league_param)
     if not cfg:
         return web.json_response({'success': False, 'standings': [], 'error': f'Liga {league_param} não mapeada'})
+
+    # ── Verificar se liga está suspensa pelo admin ──
+    _liga_key_check = _ESPN_LEAGUE_ID_TO_KEY.get(league_param)
+    if _liga_key_check:
+        _liga_cfg_check = _admin_get_liga_config(_liga_key_check)
+        if _liga_cfg_check.get('suspensa', False):
+            return web.json_response({
+                'success': False,
+                'suspended': True,
+                'standings': [],
+                'error': 'Liga temporariamente suspensa pelo administrador.'
+            })
 
     espn_slug, league_name = cfg
     cache_key = league_param

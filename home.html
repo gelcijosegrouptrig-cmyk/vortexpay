@@ -1060,16 +1060,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
     <div class="view" id="view-tabela">
       <button class="btn-voltar" onclick="navTo('apostas')" title="Voltar"><span class="bv-ico">‹</span> Apostas</button>
       <div class="liga-chips" id="liga-chips">
-        <div class="liga-chip active" data-league="71" onclick="chipLiga(this)">🇧🇷 Série A</div>
-        <div class="liga-chip" data-league="75" onclick="chipLiga(this)">🇧🇷 Série B</div>
-        <div class="liga-chip" data-league="13" onclick="chipLiga(this)">🏆 Libertadores</div>
-        <div class="liga-chip" data-league="11" onclick="chipLiga(this)">🌎 Sul-Americana</div>
-        <div class="liga-chip" data-league="2" onclick="chipLiga(this)">⭐ Champions</div>
-        <div class="liga-chip" data-league="39" onclick="chipLiga(this)">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</div>
-        <div class="liga-chip" data-league="140" onclick="chipLiga(this)">🇪🇸 La Liga</div>
-        <div class="liga-chip" data-league="135" onclick="chipLiga(this)">🇮🇹 Serie A</div>
-        <div class="liga-chip" data-league="78" onclick="chipLiga(this)">🇩🇪 Bundesliga</div>
-        <div class="liga-chip" data-league="61" onclick="chipLiga(this)">🇫🇷 Ligue 1</div>
+        <div class="loading-center" style="width:100%;padding:8px 0;font-size:12px;color:var(--muted)"><div class="spinner2" style="width:14px;height:14px"></div>Carregando ligas...</div>
       </div>
       <div id="tabela-titulo" style="font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:700"></div>
       <div id="tabela-box">
@@ -1481,9 +1472,9 @@ function navTo(view, extra){
       carregarAoVivo();break;
     case 'tabela':
       showView('tabela');setHnActive('hn-tabela');setSbActive('sb-tabela');
+      carregarChipsTabela();
       const chip=document.querySelector('.liga-chip.active');
-      if(chip)carregarTabela(chip.dataset.league,chip.textContent.trim());
-      else carregarTabela('71','🇧🇷 Brasileirão Série A');
+      // Liga carregada por carregarChipsTabela()
       break;
     case 'sorteio':
       showView('sorteio');setHnActive('hn-sorteios');setSbActive('sb-sorteio');
@@ -2833,6 +2824,46 @@ async function carregarAoVivo(_silent){
 }
 
 /* ══ TABELA ══ */
+
+// Mapeamento liga_key → {league_id, nome, emoji}
+const _TABELA_LIGA_MAP = {
+  'soccer_brazil_campeonato':          {id:'71',  nome:'Brasileirão Série A', emoji:'🇧🇷'},
+  'soccer_brazil_serie_b':             {id:'75',  nome:'Série B',             emoji:'🇧🇷'},
+  'soccer_conmebol_copa_libertadores': {id:'13',  nome:'Libertadores',        emoji:'🏆'},
+  'soccer_conmebol_sudamericana':      {id:'11',  nome:'Sul-Americana',       emoji:'🌎'},
+  'soccer_uefa_champs_league':         {id:'2',   nome:'Champions League',    emoji:'⭐'},
+  'soccer_epl':                        {id:'39',  nome:'Premier League',      emoji:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
+  'soccer_spain_la_liga':              {id:'140', nome:'La Liga',             emoji:'🇪🇸'},
+  'soccer_italy_serie_a':              {id:'135', nome:'Serie A',             emoji:'🇮🇹'},
+  'soccer_germany_bundesliga':         {id:'78',  nome:'Bundesliga',          emoji:'🇩🇪'},
+  'soccer_france_ligue_one':           {id:'61',  nome:'Ligue 1',             emoji:'🇫🇷'},
+};
+
+async function carregarChipsTabela(){
+  const container = document.getElementById('liga-chips');
+  if(!container) return;
+  try{
+    const r = await fetch(BASE+'/api/ligas/ativas?_t='+Date.now());
+    const d = await r.json();
+    const ligas = (d.ligas||[]).filter(l=>_TABELA_LIGA_MAP[l.key]);
+    if(!ligas.length){
+      container.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px">🚫 Nenhuma liga disponível no momento.</div>';
+      return;
+    }
+    let firstChip = null;
+    container.innerHTML = ligas.map((l,i)=>{
+      const info = _TABELA_LIGA_MAP[l.key];
+      const active = i===0?' active':'';
+      return `<div class="liga-chip${active}" data-league="${info.id}" data-key="${l.key}" onclick="chipLiga(this)">${info.emoji} ${info.nome}</div>`;
+    }).join('');
+    // Carregar tabela da primeira liga ativa automaticamente
+    const first = container.querySelector('.liga-chip');
+    if(first) carregarTabela(first.dataset.league, first.textContent.trim());
+  }catch(e){
+    container.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px">⚠️ Erro ao carregar ligas.</div>';
+  }
+}
+
 function chipLiga(el){
   document.querySelectorAll('.liga-chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
@@ -2861,6 +2892,15 @@ async function carregarTabela(league,titulo,_retry){
     if(!r.ok){throw new Error('HTTP '+r.status);}
     const d=await r.json();
     // Verificar dados: aceitar se tem standings OU grupos (grupos de copa)
+    // ── Liga suspensa? ──
+    if(d.suspended){
+      box.innerHTML='<div class="loading-center" style="text-align:center">'+
+        '<div style="font-size:36px;margin-bottom:12px">🚫</div>'+
+        '<div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:6px">Liga suspensa</div>'+
+        '<div style="font-size:13px;color:var(--muted)">Esta liga foi temporariamente desativada pelo administrador.</div>'+
+        '</div>';
+      return;
+    }
     const temStandings=d.success&&d.standings&&d.standings.length>0;
     const temGrupos=d.success&&d.has_groups&&d.grupos&&d.grupos.length>0;
     if(!temStandings&&!temGrupos){
