@@ -145,9 +145,21 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 .feat-ico.g{filter:hue-rotate(30deg)}
 
 /* jogo mini */
-.content{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
+.content{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}
 @media(max-width:900px){.content{grid-template-columns:1fr}}
 .jogos-mini{display:flex;flex-direction:column;gap:6px}
+/* ── DOCK DE ATALHOS RÁPIDOS ── */
+.dock-atalhos{display:flex;justify-content:space-around;align-items:center;
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:12px 8px;margin:0 0 20px;gap:4px}
+.atalho-btn{display:flex;flex-direction:column;align-items:center;gap:5px;
+  flex:1;padding:8px 4px;border-radius:12px;cursor:pointer;
+  transition:background .15s,transform .1s;border:none;background:transparent}
+.atalho-btn:hover,.atalho-btn:active{background:var(--bg3);transform:scale(.95)}
+.atalho-ico{font-size:22px;line-height:1}
+.atalho-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.4px;white-space:nowrap}
+.atalho-sep{width:1px;height:36px;background:var(--border);flex-shrink:0}
 .jogo-mini{background:var(--card);border:1px solid var(--border);border-radius:10px;
   padding:10px 12px;cursor:pointer;transition:border-color .2s;
   display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px}
@@ -897,6 +909,39 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
         </div>
       </div>
 
+      <!-- ══ DOCK DE ATALHOS RÁPIDOS ══ -->
+      <div class="dock-atalhos">
+        <div class="atalho-btn" onclick="sbNav('apostas','upcoming')">
+          <div class="atalho-ico">⚽</div>
+          <div class="atalho-lbl">Apostas</div>
+        </div>
+        <div class="atalho-sep"></div>
+        <div class="atalho-btn" onclick="sbNav('live')">
+          <div class="atalho-ico">🔴</div>
+          <div class="atalho-lbl">Ao Vivo</div>
+        </div>
+        <div class="atalho-sep"></div>
+        <div class="atalho-btn" onclick="sbNav('depositar')">
+          <div class="atalho-ico">💳</div>
+          <div class="atalho-lbl">Depositar</div>
+        </div>
+        <div class="atalho-sep"></div>
+        <div class="atalho-btn" onclick="sbNav('sacar')">
+          <div class="atalho-ico">💰</div>
+          <div class="atalho-lbl">Sacar</div>
+        </div>
+        <div class="atalho-sep"></div>
+        <div class="atalho-btn" onclick="sbNav('bilhetes')">
+          <div class="atalho-ico">🎟️</div>
+          <div class="atalho-lbl">Bilhetes</div>
+        </div>
+        <div class="atalho-sep"></div>
+        <div class="atalho-btn" onclick="sbNav('sorteio')">
+          <div class="atalho-ico">🎲</div>
+          <div class="atalho-lbl">Sorteio</div>
+        </div>
+      </div>
+
       <!-- Content grid -->
       <div class="content">
         <div>
@@ -915,17 +960,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
             <div class="loading-center"><div class="spinner2"></div>Carregando jogos...</div>
           </div>
         </div>
-        <div>
-          <div class="sec-head" style="margin-bottom:8px"><div class="accent" style="background:var(--blue)"></div><h3>Acesso Rápido</h3></div>
-          <div class="quick-links">
-            <div class="ql-item" onclick="sbNav('apostas','upcoming')"><span class="ql-ico">⚽</span>Apostas Esportivas<span class="ql-arrow">›</span></div>
-            <div class="ql-item" onclick="sbNav('depositar')"><span class="ql-ico">💳</span>Depositar via Pix<span class="ql-arrow">›</span></div>
-            <div class="ql-item" onclick="sbNav('sacar')"><span class="ql-ico">💰</span>Sacar Ganhos<span class="ql-arrow">›</span></div>
-            <div class="ql-item" onclick="sbNav('bilhetes')"><span class="ql-ico">📋</span>Meus Bilhetes<span class="ql-arrow">›</span></div>
-            <div class="ql-item" onclick="sbNav('live')"><span class="ql-ico">🔴</span>Jogos Ao Vivo<span class="ql-arrow">›</span></div>
-            <div class="ql-item" onclick="sbNav('tabela')"><span class="ql-ico">🏆</span>Tabela de Ligas<span class="ql-arrow">›</span></div>
-          </div>
-        </div>
+
       </div>
     </div><!-- /view-home -->
 
