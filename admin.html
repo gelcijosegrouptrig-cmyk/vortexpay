@@ -2176,11 +2176,12 @@ function toggleLoginSenha() {
                   <th>Permissões</th>
                   <th>Último acesso</th>
                   <th>Status</th>
+                  <th style="width:90px">Link</th>
                   <th style="width:160px">Ações</th>
                 </tr>
               </thead>
               <tbody id="staff-tbody">
-                <tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>
+                <tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -2236,16 +2237,54 @@ function toggleLoginSenha() {
 
         <!-- Modal Token (exibido após criar ou regen) -->
         <div id="modal-token" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;padding:16px">
-          <div style="background:var(--card);border:1px solid #8b5cf6;border-radius:16px;padding:28px;width:500px;max-width:100%">
-            <h3 style="margin:0 0 8px;color:#c4b5fd">🔑 Token de Acesso</h3>
-            <p style="color:var(--text2);font-size:12px;margin:0 0 16px">⚠️ Copie agora! Este token <strong style="color:#f59e0b">não será exibido novamente</strong>. Envie ao funcionário com segurança.</p>
-            <div style="background:#0d0d1a;border:1px solid #8b5cf6;border-radius:8px;padding:14px;font-family:monospace;font-size:13px;color:#c4b5fd;word-break:break-all;margin-bottom:16px" id="token-display"></div>
+          <div style="background:var(--card);border:1px solid #8b5cf6;border-radius:16px;padding:28px;width:540px;max-width:100%">
+            <h3 style="margin:0 0 8px;color:#c4b5fd">🔑 Acesso do Funcionário</h3>
+            <p style="color:var(--text2);font-size:12px;margin:0 0 16px">⚠️ Copie agora! O token <strong style="color:#f59e0b">não será exibido novamente</strong>. Envie o link de acesso direto ao funcionário.</p>
+
+            <!-- Token bruto -->
+            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">🔐 Token (não compartilhe publicamente)</label>
+            <div style="background:#0d0d1a;border:1px solid #8b5cf6;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#c4b5fd;word-break:break-all;margin-bottom:12px" id="token-display"></div>
+
+            <!-- Link de acesso completo -->
+            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">🔗 Link de Acesso Direto (envie este para o funcionário)</label>
+            <div style="display:flex;gap:6px;margin-bottom:16px">
+              <div style="flex:1;background:#0d0d1a;border:1px solid #4ade80;border-radius:8px;padding:12px;font-family:monospace;font-size:11px;color:#4ade80;word-break:break-all;overflow:hidden" id="link-display"></div>
+              <button onclick="copiarLink()" title="Copiar link" style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);border-radius:8px;color:#4ade80;padding:8px 12px;cursor:pointer;font-size:18px;white-space:nowrap">🔗</button>
+            </div>
+
             <div style="display:flex;gap:10px">
-              <button onclick="copiarToken()" style="flex:1;background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;padding:11px;cursor:pointer">
+              <button onclick="copiarToken()" style="flex:1;background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;padding:11px;cursor:pointer">
                 📋 Copiar Token
               </button>
-              <button onclick="fecharModalToken()" style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:14px;padding:11px;cursor:pointer">
-                ✅ Já copiei
+              <button onclick="copiarLink()" style="flex:1;background:linear-gradient(135deg,#065f46,#047857);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;padding:11px;cursor:pointer">
+                🔗 Copiar Link
+              </button>
+              <button onclick="fecharModalToken()" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:13px;padding:11px 16px;cursor:pointer">
+                ✅ Ok
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Link Acesso (para funcionários existentes) -->
+        <div id="modal-staff-link" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;padding:16px">
+          <div style="background:var(--card);border:1px solid #4ade80;border-radius:16px;padding:28px;width:540px;max-width:100%">
+            <h3 style="margin:0 0 8px;color:#4ade80">🔗 Link de Acesso</h3>
+            <p style="color:var(--text2);font-size:12px;margin:0 0 4px">Funcionário: <strong id="modal-link-nome" style="color:#fff"></strong></p>
+            <p style="color:var(--text2);font-size:11px;margin:0 0 16px">Envie este link diretamente ao funcionário para que ele acesse o painel.</p>
+
+            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">🔗 Link de Acesso Direto</label>
+            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <div style="flex:1;background:#0d0d1a;border:1px solid #4ade80;border-radius:8px;padding:12px;font-family:monospace;font-size:11px;color:#4ade80;word-break:break-all" id="modal-link-url"></div>
+            </div>
+            <p style="color:var(--text2);font-size:10px;margin:0 0 16px">💡 Para gerar um novo link/token, use o botão 🔑 na tabela.</p>
+
+            <div style="display:flex;gap:10px">
+              <button onclick="copiarLinkStaff()" style="flex:1;background:linear-gradient(135deg,#065f46,#047857);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;padding:12px;cursor:pointer">
+                🔗 Copiar Link
+              </button>
+              <button onclick="document.getElementById('modal-staff-link').style.display='none'" style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:14px;padding:12px;cursor:pointer">
+                ✅ Fechar
               </button>
             </div>
           </div>
@@ -8736,7 +8775,7 @@ let _tokenAtual      = '';     // token exibido no modal de token
 async function loadStaff() {
   const tbody  = document.getElementById('staff-tbody');
   const legenda = document.getElementById('staff-perms-legenda');
-  tbody.innerHTML = '<tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>';
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>';
 
   try {
     const r = await fetch('/api/admin/staff', { headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() } });
@@ -8760,7 +8799,7 @@ async function loadStaff() {
     }
 
     if (!d.staff || !d.staff.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text2)">Nenhum funcionário cadastrado ainda.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text2)">Nenhum funcionário cadastrado ainda.</td></tr>';
       return;
     }
 
@@ -8783,6 +8822,14 @@ async function loadStaff() {
         ? `<button onclick="staffToggle(${s.id},false)" title="Revogar acesso" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:6px;color:#f87171;padding:4px 8px;cursor:pointer;font-size:11px">🚫 Revogar</button>`
         : `<button onclick="staffToggle(${s.id},true)"  title="Ativar acesso"  style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);border-radius:6px;color:#4ade80;padding:4px 8px;cursor:pointer;font-size:11px">✅ Ativar</button>`;
 
+      const linkBtn = s.ativo
+        ? `<button onclick="verLinkStaff(${s.id},'${escHtml(s.nome)}')"
+              title="Ver/copiar link de acesso"
+              style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.3);border-radius:6px;color:#4ade80;padding:4px 10px;cursor:pointer;font-size:14px">
+              🔗
+            </button>`
+        : `<span style="color:var(--text2);font-size:12px;padding:4px 6px">—</span>`;
+
       return `<tr>
         <td style="color:var(--text2);font-size:11px">#${s.id}</td>
         <td><strong>${escHtml(s.nome)}</strong></td>
@@ -8790,11 +8837,12 @@ async function loadStaff() {
         <td><div style="display:flex;flex-wrap:wrap;gap:3px">${permsHtml}</div></td>
         <td style="font-size:11px">${ultimoAcesso}</td>
         <td>${statusBadge}</td>
+        <td style="text-align:center">${linkBtn}</td>
         <td>
           <div style="display:flex;gap:4px;flex-wrap:wrap">
             <button onclick="abrirEditarStaff(${s.id})" title="Editar" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:#fff;padding:4px 8px;cursor:pointer;font-size:11px">✏️</button>
             ${toggleBtn}
-            <button onclick="staffRegenToken(${s.id})" title="Gerar novo token" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#fbbf24;padding:4px 8px;cursor:pointer;font-size:11px">🔑</button>
+            <button onclick="staffRegenToken(${s.id})" title="Gerar novo token/link" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#fbbf24;padding:4px 8px;cursor:pointer;font-size:11px">🔑</button>
             <button onclick="staffDeletar(${s.id},'${escHtml(s.nome)}')" title="Remover" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#f87171;padding:4px 8px;cursor:pointer;font-size:11px">🗑️</button>
           </div>
         </td>
@@ -8802,7 +8850,7 @@ async function loadStaff() {
     }).join('');
 
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#f87171">Erro: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:#f87171">Erro: ${e.message}</td></tr>`;
   }
 }
 
@@ -8973,7 +9021,10 @@ async function staffDeletar(id, nome) {
 
 function exibirModalToken(token) {
   _tokenAtual = token;
+  const link = `${location.origin}/admin?staff_token=${token}`;
   document.getElementById('token-display').textContent = token;
+  const linkEl = document.getElementById('link-display');
+  if (linkEl) linkEl.textContent = link;
   document.getElementById('modal-token').style.display = 'flex';
 }
 
@@ -8985,11 +9036,59 @@ function copiarToken() {
   navigator.clipboard.writeText(_tokenAtual).then(() => {
     _showToast('Token copiado!', 'success');
   }).catch(() => {
-    // Fallback
     const ta = document.createElement('textarea');
     ta.value = _tokenAtual; document.body.appendChild(ta);
     ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
     _showToast('Token copiado!', 'success');
+  });
+}
+
+function copiarLink() {
+  const link = `${location.origin}/admin?staff_token=${_tokenAtual}`;
+  navigator.clipboard.writeText(link).then(() => {
+    _showToast('🔗 Link de acesso copiado!', 'success');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = link; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    _showToast('🔗 Link de acesso copiado!', 'success');
+  });
+}
+
+/* ── Ver link de acesso de funcionário existente ── */
+async function verLinkStaff(id, nome) {
+  try {
+    const r = await fetch(`/api/admin/staff/link?id=${id}`, {
+      headers: { 'X-PaynexBet-Secret': ADMIN_SECRET() }
+    });
+    const d = await r.json();
+    if (!d.ok) {
+      showToastAdmin(d.error || 'Erro ao buscar link', 'red');
+      return;
+    }
+    const link = `${location.origin}/admin?staff_token=${d.token}`;
+    document.getElementById('modal-link-nome').textContent = nome;
+    document.getElementById('modal-link-url').textContent = link;
+    document.getElementById('modal-staff-link')._token = d.token;
+    document.getElementById('modal-staff-link').style.display = 'flex';
+  } catch(e) {
+    showToastAdmin('Erro ao buscar link: ' + e.message, 'red');
+  }
+}
+
+function copiarLinkStaff() {
+  const token = document.getElementById('modal-staff-link')._token;
+  if (!token) return;
+  const link = `${location.origin}/admin?staff_token=${token}`;
+  navigator.clipboard.writeText(link).then(() => {
+    _showToast('🔗 Link de acesso copiado!', 'success');
+    document.getElementById('modal-staff-link').style.display = 'none';
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = link; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    _showToast('🔗 Link de acesso copiado!', 'success');
+    document.getElementById('modal-staff-link').style.display = 'none';
   });
 }
 

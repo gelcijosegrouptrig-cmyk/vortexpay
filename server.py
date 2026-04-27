@@ -4384,6 +4384,35 @@ async def route_admin_staff_regen_token(request):
         return _safe_json({'ok': False, 'error': str(e)}, status=500)
 
 
+async def route_admin_staff_get_link(request):
+    """GET /api/admin/staff/link?id=X — retorna o link de acesso atual do funcionário."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        fid = int(request.rel_url.query.get('id', 0))
+        if not fid:
+            return _safe_json({'ok': False, 'error': 'id obrigatório'}, status=400)
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_staff_table(cur, conn)
+        cur.execute("SELECT id, nome, email, token, ativo FROM funcionarios WHERE id=%s", (fid,))
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if not row:
+            return _safe_json({'ok': False, 'error': 'Funcionário não encontrado'}, status=404)
+        fid2, nome, email, token, ativo = row
+        if not ativo:
+            return _safe_json({'ok': False, 'error': 'Funcionário com acesso revogado'}, status=403)
+        return _safe_json({
+            'ok': True,
+            'id': fid2,
+            'nome': nome,
+            'email': email,
+            'token': token,
+        })
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
+
+
 async def route_admin_staff_deletar(request):
     """POST /api/admin/staff/deletar — remove funcionário permanentemente."""
     if not _admin_auth(request):
@@ -17145,6 +17174,7 @@ async def main():
     app.router.add_post('/api/admin/staff/editar',      route_admin_staff_editar)
     app.router.add_post('/api/admin/staff/toggle',      route_admin_staff_toggle)
     app.router.add_post('/api/admin/staff/regen-token', route_admin_staff_regen_token)
+    app.router.add_get ('/api/admin/staff/link',        route_admin_staff_get_link)
     app.router.add_post('/api/admin/staff/deletar',     route_admin_staff_deletar)
     app.router.add_get ('/api/staff/me',                route_staff_me)   # público — funcionário consulta suas perms
     # Margem de lucro por liga
