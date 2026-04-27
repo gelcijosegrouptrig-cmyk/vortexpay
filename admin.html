@@ -7196,15 +7196,25 @@ function showTab(tab) {
   if (sessionStorage.getItem('vp_staff_token')) {
     const _permsStaff = JSON.parse(sessionStorage.getItem('vp_staff_perms') || '[]');
     const _abasPermStaff = {
-      'dashboard':        _permsStaff.includes('apostas_ver') || _permsStaff.includes('depositos_ver') || _permsStaff.includes('saques_ver'),
-      'depositos':        _permsStaff.includes('depositos_ver'),
-      'saques':           _permsStaff.includes('saques_ver') || _permsStaff.includes('saques_aprovar'),
-      'apostas-mgr':      _permsStaff.includes('apostas_ver') || _permsStaff.includes('apostas_resolver'),
-      'multi':            _permsStaff.includes('apostas_ver') || _permsStaff.includes('apostas_resolver'),
-      'bolao':            _permsStaff.includes('bolao_ver') || _permsStaff.includes('bolao_gerir'),
-      'usuarios-mgr':     _permsStaff.includes('usuarios_ver') || _permsStaff.includes('usuarios_ajustar') || _permsStaff.includes('usuarios_suspender'),
-      'pnl':              _permsStaff.includes('relatorios_ver'),
-      'bonus':            _permsStaff.includes('bonus_criar'),
+      // Abas originais
+      'dashboard':          _permsStaff.includes('apostas_ver') || _permsStaff.includes('depositos_ver') || _permsStaff.includes('saques_ver'),
+      'depositos':          _permsStaff.includes('depositos_ver'),
+      'saques':             _permsStaff.includes('saques_ver') || _permsStaff.includes('saques_aprovar'),
+      'apostas-mgr':        _permsStaff.includes('apostas_ver') || _permsStaff.includes('apostas_resolver'),
+      'multi':              _permsStaff.includes('apostas_ver') || _permsStaff.includes('apostas_resolver'),
+      'bolao':              _permsStaff.includes('bolao_ver') || _permsStaff.includes('bolao_gerir'),
+      'usuarios-mgr':       _permsStaff.includes('usuarios_ver') || _permsStaff.includes('usuarios_ajustar') || _permsStaff.includes('usuarios_suspender'),
+      'pnl':                _permsStaff.includes('relatorios_ver'),
+      'bonus':              _permsStaff.includes('bonus_criar'),
+      // Novas abas adicionadas
+      'sorteio':            _permsStaff.includes('sorteio_ver'),
+      'campeonatos':        _permsStaff.includes('campeonatos_ver'),
+      'config-pagamento':   _permsStaff.includes('config_ver'),
+      'limites':            _permsStaff.includes('limites_ver'),
+      'alertas':            _permsStaff.includes('alertas_ver'),
+      'jogo-responsavel':   _permsStaff.includes('jogo_responsavel_ver'),
+      'afiliados':          _permsStaff.includes('afiliados_ver'),
+      'notificacoes':       _permsStaff.includes('notificacoes_ver'),
     };
     // Se a aba não está na whitelist ou está false → bloqueada
     if (!_abasPermStaff[tab]) {
