@@ -10702,17 +10702,20 @@ async function _autoLoginStaff(token) {
   }
 }
 
-// Abas liberadas por permissão
+// Abas liberadas por permissão (nomes reais do backend)
 const _STAFF_ABA_PERM = {
-  'ver_apostas_lucro':    'apostas',
-  'ver_depositos':        'depositos',
-  'ver_saques':           'saques',
-  'aprovar_saques':       'saques',
-  'ver_bolao':            'boloes',
-  'criar_jogos_bolao':    'boloes',
-  'ver_sorteio':          'sorteio',
-  'ver_usuarios':         'usuarios',
-  'ver_relatorios':       'relatorios',
+  'apostas_ver':        'apostas',
+  'apostas_resolver':   'apostas',
+  'depositos_ver':      'depositos',
+  'saques_ver':         'saques',
+  'saques_aprovar':     'saques',
+  'bolao_ver':          'boloes',
+  'bolao_gerir':        'boloes',
+  'usuarios_ver':       'usuarios',
+  'usuarios_ajustar':   'usuarios',
+  'usuarios_suspender': 'usuarios',
+  'relatorios_ver':     'relatorios',
+  'bonus_criar':        'bonus',
 };
 
 function _abaPermitida(perms) {
@@ -10744,20 +10747,21 @@ function _aplicarModoFuncionario(staff) {
   // Ocultar itens de nav que o funcionário não tem permissão
   const perms = staff.permissoes || [];
   const navMap = {
-    'dashboard':        perms.includes('ver_apostas_lucro') || perms.includes('ver_depositos'),
-    'carteira':         false,  // somente admin
-    'depositos':        perms.includes('ver_depositos'),
-    'saques':           perms.includes('ver_saques') || perms.includes('aprovar_saques'),
-    'sorteio':          perms.includes('ver_sorteio'),
+    'dashboard':        perms.includes('apostas_ver') || perms.includes('depositos_ver') || perms.includes('saques_ver'),
+    'carteira':         false,
+    'depositos':        perms.includes('depositos_ver'),
+    'saques':           perms.includes('saques_ver') || perms.includes('saques_aprovar'),
+    'sorteio':          false,
     'paypix':           false,
     'paypixcob':        false,
-    'apostas':          perms.includes('ver_apostas_lucro'),
-    'boloes':           perms.includes('ver_bolao') || perms.includes('criar_jogos_bolao'),
-    'usuarios':         perms.includes('ver_usuarios'),
-    'funcionarios':     false,  // nunca para funcionários
+    'apostas':          perms.includes('apostas_ver') || perms.includes('apostas_resolver'),
+    'boloes':           perms.includes('bolao_ver') || perms.includes('bolao_gerir'),
+    'usuarios':         perms.includes('usuarios_ver') || perms.includes('usuarios_ajustar') || perms.includes('usuarios_suspender'),
+    'funcionarios':     false,
     'config-pagamento': false,
     'config-sistema':   false,
-    'relatorios':       perms.includes('ver_relatorios'),
+    'relatorios':       perms.includes('relatorios_ver'),
+    'bonus':            perms.includes('bonus_criar'),
   };
 
   // Ocultar nav-items não permitidos
