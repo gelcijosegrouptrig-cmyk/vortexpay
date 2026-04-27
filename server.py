@@ -2731,6 +2731,49 @@ async def route_sorteio_comprar_com_saldo(request):
         traceback.print_exc()
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
+async def route_sorteio_ganhadores(request):
+    """GET /api/sorteio/ganhadores?limit=N — Retorna os últimos ganhadores do sorteio"""
+    import psycopg2 as _pg2
+    try:
+        limit = min(int(request.rel_url.query.get('limit', 5)), 20)
+        DATABASE_URL = os.environ.get('DATABASE_URL', '')
+        if not DATABASE_URL:
+            return web.json_response({'ganhadores': []})
+        conn = _pg2.connect(DATABASE_URL, connect_timeout=10)
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT ganhador_nome, ganhador_cpf, premio_pago, data_sorteio,
+                       ganhador_numero, total_participantes
+                FROM sorteios_realizados
+                WHERE ganhador_nome IS NOT NULL
+                ORDER BY data_sorteio DESC
+                LIMIT %s
+            """, (limit,))
+            rows = cur.fetchall()
+            ganhadores = []
+            for r in rows:
+                nome = str(r[0] or '').strip()
+                # Mascarar nome: "João S." → preserva privacidade
+                partes = nome.split()
+                if len(partes) >= 2:
+                    nome_mask = partes[0] + ' ' + partes[-1][0] + '.'
+                else:
+                    nome_mask = nome[:4] + '***' if len(nome) > 4 else nome
+                ganhadores.append({
+                    'nome': nome_mask,
+                    'premio': float(r[2] or 0),
+                    'criado_em': r[3].isoformat() if r[3] else None,
+                    'numero': r[4],
+                    'participantes': r[5],
+                })
+        finally:
+            conn.close()
+        return web.json_response({'ganhadores': ganhadores})
+    except Exception as e:
+        print(f'route_sorteio_ganhadores error: {e}', flush=True)
+        return web.json_response({'ganhadores': []})
+
 async def route_sorteio_meus_bilhetes(request):
     """GET /api/sorteio/meus-bilhetes?cpf=XXX — Retorna bilhetes do usuário por CPF (público)"""
     import json as _json
@@ -17778,6 +17821,7 @@ async def main():
     app.router.add_post('/api/sorteio/config/limpar-manuais', route_sorteio_limpar_manuais)
     app.router.add_get('/api/sorteio/participantes', route_sorteio_participantes)
     app.router.add_get('/api/sorteio/meus-bilhetes', route_sorteio_meus_bilhetes)
+    app.router.add_get('/api/sorteio/ganhadores', route_sorteio_ganhadores)
     app.router.add_post('/api/sorteio/acumular', route_sorteio_acumular)
     app.router.add_post('/api/sorteio/set-acumulado', route_sorteio_set_acumulado)
     app.router.add_post('/api/sorteio/reparar-participante', route_sorteio_reparar_participante)

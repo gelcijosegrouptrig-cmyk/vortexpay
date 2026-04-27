@@ -1647,11 +1647,11 @@ async function fazerLogin() {
               <thead>
                 <tr>
                   <th>#</th><th>Usuário</th><th>Jogo</th><th>Seleção</th>
-                  <th>Odd</th><th>Apostado</th><th>Retorno</th><th>Status</th><th>Liga</th><th>Ações</th>
+                  <th>Odd</th><th>Apostado</th><th>Retorno</th><th>Status</th><th>Data</th><th>Liga</th><th>Ações</th>
                 </tr>
               </thead>
               <tbody id="table-apostas-recentes">
-                <tr class="loading-row"><td colspan="10"><div class="spinner"></div></td></tr>
+                <tr class="loading-row"><td colspan="11"><div class="spinner"></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -2959,10 +2959,29 @@ async function fazerLogin() {
           </div>
         </div>
 
+        <!-- Ganhadores Recentes -->
+        <div class="table-card" style="margin-bottom:20px">
+          <div class="table-header" style="display:flex;justify-content:space-between;align-items:center">
+            <h3>🏆 Ganhadores Recentes</h3>
+            <button onclick="carregarGanhadoresAdmin()" class="action-btn" style="font-size:12px;padding:6px 12px">🔄 Atualizar</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead><tr>
+                <th>Data</th><th>Ganhador</th><th>Nº Sorte</th>
+                <th>Prêmio</th><th>Participantes</th>
+              </tr></thead>
+              <tbody id="ganhadores-recentes-tbody">
+                <tr><td colspan="5" style="text-align:center;color:#666;padding:20px">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Histórico de sorteios -->
         <div class="table-card">
           <div class="table-header">
-            <h3>📋 Histórico de Sorteios</h3>
+            <h3>📋 Histórico Completo de Sorteios</h3>
           </div>
           <div style="overflow-x:auto">
             <table class="data-table">
@@ -6343,6 +6362,22 @@ async function fazerLogin() {
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
             <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
             <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/set-acumulado</code>
+            </div>
+            <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+              <span style="background:#22c55e22;color:#4ade80;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;margin-right:8px">GET</span>
+              <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/meus-bilhetes?cpf=XXX</code>
+              <div style="font-size:11px;color:#666;margin-top:4px">Bilhetes do usuário por CPF (público)</div>
+            </div>
+            <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+              <span style="background:#f59e0b22;color:#fbbf24;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;margin-right:8px">POST</span>
+              <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/comprar-com-saldo</code>
+              <div style="font-size:11px;color:#666;margin-top:4px">Debita saldo da conta e gera bilhetes do sorteio</div>
+            </div>
+            <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+              <span style="background:#22c55e22;color:#4ade80;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;margin-right:8px">GET</span>
+              <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/ganhadores?limit=N</code>
+              <div style="font-size:11px;color:#666;margin-top:4px">Lista últimos ganhadores do sorteio (público)</div>
+            <div style="display:none">
           </div>
           <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Define valor acumulado manualmente. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
@@ -9028,7 +9063,7 @@ async function loadApostasDash() {
     // Tabela de apostas recentes
     if (tbody) {
       if (!d.ultimas_apostas || !d.ultimas_apostas.length) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text2)">Nenhuma aposta registrada ainda</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text2)">Nenhuma aposta registrada ainda</td></tr>';
       } else {
         tbody.innerHTML = d.ultimas_apostas.map(a => {
           const statusColor = {WON:'#4ade80', LOST:'#f87171', pendente:'#fbbf24', CANCELADA:'#94a3b8'}[a.status] || '#94a3b8';
@@ -9049,6 +9084,7 @@ async function loadApostasDash() {
             <td style="text-align:right">R$ ${parseFloat(a.valor).toFixed(2)}</td>
             <td style="text-align:right;color:#60a5fa">R$ ${parseFloat(a.retorno).toFixed(2)}</td>
             <td><span style="color:${statusColor};font-size:11px;font-weight:600">${statusLabel}</span></td>
+            <td style="font-size:10px;color:var(--text2)">${a.criado_em ? new Date(a.criado_em).toLocaleDateString('pt-BR') : '—'}</td>
             <td style="font-size:10px;color:var(--text2);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nomeLiga}">${nomeLiga}</td>
             <td>${botoesResolver}</td>
           </tr>`;
@@ -9057,7 +9093,7 @@ async function loadApostasDash() {
     }
   } catch(e) {
     showToastAdmin('Erro ao carregar apostas: ' + e.message, 'red');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#f87171;padding:20px">Erro de conexão — verifique o servidor</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#f87171;padding:20px">Erro de conexão — verifique o servidor</td></tr>';
   }
 }
 
@@ -10991,6 +11027,9 @@ async function carregarSorteioAdmin() {
 
   // Participantes
   await carregarParticipantes();
+
+  // Ganhadores recentes
+  await carregarGanhadoresAdmin();
 }
 
 function renderHistoricoSorteio(hist) {
@@ -11072,6 +11111,35 @@ async function limparManuais() {
     if (d.success) { toast('🗑️ Valores manuais removidos — usando cálculo automático'); setTimeout(() => carregarSorteioAdmin(), 600); }
     else toast('❌ ' + (d.error||'Erro'), 'error');
   } catch(e) { toast('❌ Erro de conexão', 'error'); }
+}
+
+async function carregarGanhadoresAdmin() {
+  const tbody = document.getElementById('ganhadores-recentes-tbody');
+  if (!tbody) return;
+  try {
+    const r = await fetch(`${BASE}/api/sorteio/ganhadores?limit=10`);
+    if (!r.ok) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#666;padding:20px">Erro ao carregar</td></tr>'; return; }
+    const d = await r.json();
+    const items = d.ganhadores || [];
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#666;padding:20px">Nenhum ganhador ainda</td></tr>';
+      return;
+    }
+    tbody.innerHTML = items.map((g, i) => {
+      const premio = parseFloat(g.premio || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+      const data = g.criado_em ? new Date(g.criado_em).toLocaleString('pt-BR') : '—';
+      const medalha = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}º`;
+      return `<tr>
+        <td style="font-size:11px;color:var(--text2)">${data}</td>
+        <td><strong>${medalha} ${g.nome || '—'}</strong></td>
+        <td style="font-family:monospace;color:#FFD700;font-weight:800">${g.numero || '—'}</td>
+        <td style="color:#4ade80;font-weight:700">${premio}</td>
+        <td style="text-align:center">${g.participantes || '—'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;padding:20px">Erro de conexão</td></tr>';
+  }
 }
 
 async function salvarConfigSorteio() {
