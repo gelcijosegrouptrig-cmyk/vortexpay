@@ -10068,7 +10068,7 @@ async function processarSaque(id, aprovado) {
   try {
     const r = await fetch(`${BASE}/api/mp2/saques/processar?${_authQuery()}`, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({saque_id: id, aprovado: aprovado, obs: ''})
     });
     const d = await r.json();
@@ -10357,7 +10357,7 @@ async function testEndpoint(tipo) {
         if (!txid) { toast('⚠️ Digite um tx_id', 'error'); break; }
         r = await fetch(`${BASE}/webhook/confirmar`, {
           method:'POST',
-          headers:{'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+          headers: _authHeaders(),
           body: JSON.stringify({tx_id: txid, status:'pago'})
         });
         data = await r.json();
@@ -10400,7 +10400,7 @@ async function confirmarDeposito(txId) {
   try {
     const r = await fetch(`${BASE}/api/deposito/confirmar`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ tx_id: txId })
     });
     const d = await r.json();
@@ -10953,7 +10953,7 @@ async function salvarConfigPaypix() {
     const paypix_min = parseFloat(minEl ? minEl.value : 5) || 5;
     const r = await fetch(`${BASE}/api/paypix/config`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ paypix_pct: pct, paypix_ativo: ativo, paypix_descricao: desc, paypix_min: paypix_min })
     });
     const d = await r.json();
@@ -11025,7 +11025,7 @@ async function _togglePaypixAtivo(ativo) {
     const desc = cfg.paypix_descricao || ('Gere seu Pix e receba ' + pct + '% do valor');
     const r = await fetch(`${BASE}/api/paypix/config`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ paypix_pct: pct, paypix_ativo: ativo, paypix_descricao: desc })
     });
     const d = await r.json();
@@ -11175,7 +11175,7 @@ async function ppSolicitarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/pp/solicitar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({ phone }),
     });
     const d = await r.json();
@@ -11204,7 +11204,7 @@ async function ppConfirmarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/pp/confirmar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({ code }),
     });
     const d = await r.json();
@@ -11234,7 +11234,7 @@ async function ppConfirmar2FA() {
   try {
     const r = await fetch(`${BASE}/api/pp/confirmar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({ code, password: senha }),
     });
     const d = await r.json();
@@ -11278,7 +11278,7 @@ async function ppCriarParceiro() {
   try {
     const r = await fetch(`${BASE}/api/pp/parceiros`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ nome, codigo: codigo || undefined, chave_pix: chavePix, tipo_chave: tipoChave, comissao_pct: comissao })
     });
     const d = await r.json();
@@ -11558,7 +11558,7 @@ async function ppSalvarEdicao(codigo) {
   try {
     const r = await fetch(`${BASE}/api/pp/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct, modo_pagamento: modo, valor_fixo_parceiro: vfp, permitir_assinatura: permitirAssn })
     });
     const d = await r.json();
@@ -11580,7 +11580,7 @@ async function ppToggleParceiro(codigo, nome, ativar) {
   try {
     const r = await fetch(`${BASE}/api/pp/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ ativo: ativar })
     });
     const d = await r.json();
@@ -11608,7 +11608,7 @@ Digite OK para continuar.`)) return;
   try {
     const r = await fetch(`${BASE}/api/pp/parceiros/${encodeURIComponent(codigo)}/excluir`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() }
+      headers: _authHeaders()
     });
     const d = await r.json();
     if (d.success) {
@@ -11729,7 +11729,7 @@ async function b2SalvarChaves() {
     const csec   = (document.getElementById('b2-client-secret')  || {}).value || '';
     const r = await fetch(`${BASE}/api/mp2/config`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({
         access_token:  token  || '__keep__',
         public_key:    pubkey || '__keep__',
@@ -11801,7 +11801,7 @@ async function ppSalvarChaves() {
     const csec   = (document.getElementById('pp-client-secret')  || {}).value || '';
     const r = await fetch(`${BASE}/api/pp/config`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({
         access_token:  token  || '__keep__',
         public_key:    pubkey || '__keep__',
@@ -11935,7 +11935,7 @@ async function salvarConfigPaypixCob() {
     const paypix_min = parseFloat(minEl ? minEl.value : 5) || 5;
     const r = await fetch(`${BASE}/api/pc/config`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ paypix_pct: pct, paypix_ativo: ativo, paypix_descricao: desc, paypix_min: paypix_min })
     });
     const d = await r.json();
@@ -12007,7 +12007,7 @@ async function _togglePaypixCobAtivo(ativo) {
     const desc = cfg.paypix_descricao || ('Gere seu Pix e receba ' + pct + '% do valor');
     const r = await fetch(`${BASE}/api/pc/config`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ paypix_pct: pct, paypix_ativo: ativo, paypix_descricao: desc })
     });
     const d = await r.json();
@@ -12157,7 +12157,7 @@ async function pcSolicitarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/pc/solicitar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({ phone }),
     });
     const d = await r.json();
@@ -12186,7 +12186,7 @@ async function pcConfirmarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/pc/confirmar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({ code }),
     });
     const d = await r.json();
@@ -12216,7 +12216,7 @@ async function pcConfirmar2FA() {
   try {
     const r = await fetch(`${BASE}/api/pc/confirmar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({ code, password: senha }),
     });
     const d = await r.json();
@@ -12260,7 +12260,7 @@ async function pcCriarParceiro() {
   try {
     const r = await fetch(`${BASE}/api/pc/parceiros`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ nome, codigo: codigo || undefined, chave_pix: chavePix, tipo_chave: tipoChave, comissao_pct: comissao })
     });
     const d = await r.json();
@@ -12533,7 +12533,7 @@ async function pcSalvarEdicao(codigo) {
   try {
     const r = await fetch(`${BASE}/api/pc/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct, modo_pagamento: modo, valor_fixo_parceiro: vfp, permitir_assinatura: permitirAssn })
     });
     const d = await r.json();
@@ -12555,7 +12555,7 @@ async function pcToggleParceiro(codigo, nome, ativar) {
   try {
     const r = await fetch(`${BASE}/api/pc/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ ativo: ativar })
     });
     const d = await r.json();
@@ -12583,7 +12583,7 @@ Digite OK para continuar.`)) return;
   try {
     const r = await fetch(`${BASE}/api/pc/parceiros/${encodeURIComponent(codigo)}/excluir`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() }
+      headers: _authHeaders()
     });
     const d = await r.json();
     if (d.success) {
@@ -12761,7 +12761,7 @@ async function b2SalvarChaves() {
     const csec   = (document.getElementById('b2-client-secret')  || {}).value || '';
     const r = await fetch(`${BASE}/api/mp2/config`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({
         access_token:  token  || '__keep__',
         public_key:    pubkey || '__keep__',
@@ -12833,7 +12833,7 @@ async function pcSalvarChaves() {
     const csec   = (document.getElementById('pc-client-secret')  || {}).value || '';
     const r = await fetch(`${BASE}/api/pc/config`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({
         access_token:  token  || '__keep__',
         public_key:    pubkey || '__keep__',
@@ -12993,7 +12993,7 @@ async function b2SolicitarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/mp2/solicitar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({ phone }),
     });
     const d = await r.json();
@@ -13022,7 +13022,7 @@ async function b2ConfirmarCodigo() {
   try {
     const r = await fetch(`${BASE}/api/mp2/confirmar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({ code }),
     });
     const d = await r.json();
@@ -13052,7 +13052,7 @@ async function b2Confirmar2FA() {
   try {
     const r = await fetch(`${BASE}/api/mp2/confirmar-codigo`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({ code, password: senha }),
     });
     const d = await r.json();
@@ -13096,7 +13096,7 @@ async function b2CriarParceiro() {
   try {
     const r = await fetch(`${BASE}/api/mp2/parceiros`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ nome, codigo: codigo || undefined, chave_pix: chavePix, tipo_chave: tipoChave, comissao_pct: comissao })
     });
     const d = await r.json();
@@ -13374,7 +13374,7 @@ async function b2SalvarEdicao(codigo) {
   try {
     const r = await fetch(`${BASE}/api/mp2/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: pct, modo_pagamento: modo, valor_fixo_parceiro: vfp, permitir_assinatura: permitirAssn })
     });
     const d = await r.json();
@@ -13396,7 +13396,7 @@ async function b2ToggleParceiro(codigo, nome, ativar) {
   try {
     const r = await fetch(`${BASE}/api/mp2/parceiros/${encodeURIComponent(codigo)}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ ativo: ativar })
     });
     const d = await r.json();
@@ -13424,7 +13424,7 @@ Digite OK para continuar.`)) return;
   try {
     const r = await fetch(`${BASE}/api/mp2/parceiros/${encodeURIComponent(codigo)}/excluir`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() }
+      headers: _authHeaders()
     });
     const d = await r.json();
     if (d.success) {
@@ -13563,7 +13563,7 @@ async function b3SalvarTokenBot() {
   if(msg) msg.innerHTML = '<span style="color:#aaa">Validando token...</span>';
   try {
     const r = await fetch(`${BASE}/api/bot3/token?${_authQuery()}`, {
-      method: 'POST', headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      method: 'POST', headers: _authHeaders(),
       body: JSON.stringify({token})
     });
     const d = await r.json();
@@ -13585,7 +13585,7 @@ async function b3RegistrarWebhook() {
   if(msg) msg.innerHTML = '<span style="color:#aaa">Registrando webhook...</span>';
   try {
     const r = await fetch(`${BASE}/api/bot3/set-webhook?${_authQuery()}`, {
-      method: 'POST', headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      method: 'POST', headers: _authHeaders(),
       body: JSON.stringify({ url: `${BASE}/webhook/bot3` })
     });
     const d = await r.json();
@@ -13610,7 +13610,7 @@ async function b3SalvarChaves() {
   try {
     const r = await fetch(`${BASE}/api/mp3/config?${_authQuery()}`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({
         access_token:  accessToken  || '__keep__',
         public_key:    publicKey    || '__keep__',
@@ -13727,7 +13727,7 @@ async function b3ProcessarSaque(saqueId, acao) {
   try {
     const r = await fetch(`${BASE}/api/mp3/saques/processar?${_authQuery()}`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({saque_id: saqueId, acao})
     });
     const d = await r.json();
@@ -13785,7 +13785,7 @@ async function b3CriarParceiro() {
   try {
     const r = await fetch(`${BASE}/api/mp3/parceiros?${_authQuery()}`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': SECRET()},
+      headers: _authHeaders(),
       body: JSON.stringify({nome, chave_pix: chave, tipo_chave: tipo, comissao_pct: comissao})
     });
     const d = await r.json();
@@ -14114,7 +14114,7 @@ async function qrSalvarConfig() {
   try {
     const r = await fetch(`${BASE}/api/assinar/config`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ titulo, descricao: desc, valor, dia_cobranca: dia, beneficios: beneficios.split('\n').filter(Boolean) })
     });
     const d = await r.json();
@@ -14252,7 +14252,7 @@ async function recCancelarAssinatura(id) {
   try {
     const r = await fetch(`${BASE}/api/recorrente/cancelar`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ id })
     });
     const d = await r.json();
@@ -14303,7 +14303,7 @@ async function recCriarPlanoMP() {
   try {
     const r = await fetch(`${BASE}/api/assinar/criar-plano`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify({ titulo, valor, dia_cobranca: dia, beneficios: bens.split(/[\n,]/).map(b=>b.trim()).filter(Boolean) })
     });
     const d = await r.json();
@@ -14406,7 +14406,7 @@ async function botConfigSalvar() {
 
     const r = await fetch(`${BASE}/api/paypix/config`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': SECRET() },
+      headers: _authHeaders(),
       body: JSON.stringify(body)
     });
     const d = await r.json();
@@ -14555,10 +14555,7 @@ async function railwayAdicionarDominio() {
   try {
     const r = await fetch(`${BASE}/api/railway/add-domain?${_authQuery()}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-PaynexBet-Secret': SECRET()
-      },
+      headers: _authHeaders(),
       body: JSON.stringify({
         railway_token: token,
         domain: domain,
