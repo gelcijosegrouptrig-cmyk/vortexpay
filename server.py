@@ -14770,7 +14770,8 @@ async def route_bet_saldo(request):
         apostas = [{'jogo': r[0], 'selecao': r[1], 'odd': float(r[2] or 0),
                     'valor': float(r[3] or 0), 'retorno': float(r[4] or 0),
                     'status': r[5], 'resultado': r[6],
-                    'data': r[7].strftime('%d/%m/%Y %H:%M') if r[7] else ''} for r in cur.fetchall()]
+                    'data': r[7].strftime('%d/%m/%Y %H:%M') if r[7] else '',
+                    'criado_em': r[7].isoformat() if r[7] else ''} for r in cur.fetchall()]
         # Últimos depósitos
         cur.execute("""
             SELECT valor, status, pago_em, criado_em FROM depositos_suit
