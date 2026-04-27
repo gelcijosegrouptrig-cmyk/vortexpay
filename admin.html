@@ -10830,21 +10830,28 @@ function _aplicarModoFuncionario(staff) {
     'sistema':          false,
   };
 
-  // Ocultar nav-items não permitidos
+  // Mostrar/ocultar nav-items conforme permissão
   // Regra de segurança: se a aba NÃO está mapeada, oculta por padrão (whitelist)
   document.querySelectorAll('.nav-item').forEach(el => {
     const onclick = el.getAttribute('onclick') || '';
     const m = onclick.match(/showTab\(['"]([^'"]+)['"]\)/);
     if (m) {
       const tabName = m[1];
-      // Se não mapeado ou explicitamente false → ocultar
-      if (navMap[tabName] === false || navMap[tabName] === undefined) {
+      if (navMap[tabName] === true) {
+        // Garantir visibilidade (pode ter sido ocultado em sessão anterior)
+        el.style.display = '';
+      } else {
+        // false ou undefined → ocultar
         el.style.display = 'none';
       }
     }
   });
 
-  // Ocultar nav-sections (labels de categoria) que não têm nenhum item visível abaixo
+  // Mostrar/ocultar nav-sections (labels de categoria) baseado em itens visíveis
+  // Primeiro, mostrar todas as sections (reset), depois ocultar as vazias
+  document.querySelectorAll('.nav-section').forEach(section => {
+    section.style.display = '';
+  });
   document.querySelectorAll('.nav-section').forEach(section => {
     let next = section.nextElementSibling;
     let temItemVisivel = false;
