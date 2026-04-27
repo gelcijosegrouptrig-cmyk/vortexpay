@@ -5957,7 +5957,7 @@ async def route_stats(request):
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
-        ok_staff, _ = _staff_auth(request, permissao_exigida=None)
+        ok_staff, _ = _staff_auth(request)
         if not ok_staff:
             return web.json_response({'error': 'Não autorizado'}, status=401)
     try:

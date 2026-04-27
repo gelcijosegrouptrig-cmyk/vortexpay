@@ -10836,6 +10836,20 @@ function _aplicarModoFuncionario(staff) {
     }
   });
 
+  // Ocultar nav-sections (labels de categoria) que não têm nenhum item visível abaixo
+  document.querySelectorAll('.nav-section').forEach(section => {
+    let next = section.nextElementSibling;
+    let temItemVisivel = false;
+    while (next && !next.classList.contains('nav-section')) {
+      if (next.classList.contains('nav-item') && next.style.display !== 'none') {
+        temItemVisivel = true;
+        break;
+      }
+      next = next.nextElementSibling;
+    }
+    if (!temItemVisivel) section.style.display = 'none';
+  });
+
   // Banner identificador no topo
   const adminScreen = document.getElementById('admin-screen');
   const bannerExist = document.getElementById('staff-banner');
