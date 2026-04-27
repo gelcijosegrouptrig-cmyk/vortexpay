@@ -801,10 +801,11 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 
   /* ── Header mobile ── */
   .sidebar{display:none}
-  .header{padding:0 8px}
+  .header{padding:0 6px}
   .header-logo{width:auto;font-size:14px;padding:0 4px 0 2px;gap:4px}
   .header-logo .ico{font-size:17px}
   .header-nav{display:none}
+  .btn-hamburger{display:flex}
   .header-actions{padding:0 2px;gap:4px}
   .btn-in{padding:5px 10px;font-size:11px;border-radius:7px}
   .btn-out{padding:5px 10px;font-size:11px;border-radius:7px}
@@ -1008,12 +1009,149 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 .main{scroll-behavior:smooth}
 /* Bottom nav: esconder em desktop */
 .bottom-nav{display:none}
+
+/* ══ MOBILE DRAWER ══════════════════════════════════════════════ */
+.btn-hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--text);
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.btn-hamburger:hover { background: #ffffff12; }
+.btn-hamburger span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: all .25s;
+}
+
+/* Overlay escuro */
+.drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  z-index: 900;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity .25s;
+}
+.drawer-overlay.open {
+  display: block;
+  opacity: 1;
+}
+
+/* Drawer lateral */
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 78vw;
+  max-width: 300px;
+  height: 100dvh;
+  height: 100vh;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  z-index: 901;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 0 40px;
+  transform: translateX(-100%);
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+  will-change: transform;
+}
+.mobile-drawer.open {
+  transform: translateX(0);
+}
+.mobile-drawer::-webkit-scrollbar { width: 3px; }
+.mobile-drawer::-webkit-scrollbar-thumb { background: #ffffff15; border-radius: 3px; }
+
+/* Cabeçalho do drawer */
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg2);
+  z-index: 1;
+}
+.drawer-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.btn-close-drawer {
+  background: #ffffff12;
+  border: none;
+  color: var(--text);
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+}
+.btn-close-drawer:hover { background: #ffffff22; }
+
+/* Nav rápida horizontal no topo do drawer */
+.drawer-quicknav {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.dqn-btn {
+  flex: 1;
+  min-width: calc(50% - 3px);
+  padding: 8px 6px;
+  background: #ffffff08;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+}
+.dqn-btn:hover, .dqn-btn.active {
+  background: #FFD70018;
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
 </style>
 </head>
 <body>
 
 <!-- ══ HEADER ══ -->
 <header class="header">
+  <!-- Botão hamburger: só visível no mobile -->
+  <button class="btn-hamburger" id="btn-hamburger" onclick="abrirDrawerMobile()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
   <div class="header-logo" onclick="navTo('home')">
     <span class="ico">🎰</span> PaynexBet
   </div>
@@ -4764,6 +4902,139 @@ setInterval(async()=>{
     if(cnt){cnt.textContent=n;cnt.style.display=n?'inline':'none'}
   }catch(e){}
 },30000);
+</script>
+
+<!-- ══ MOBILE DRAWER ══ -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="fecharDrawerMobile()"></div>
+<div class="mobile-drawer" id="mobile-drawer">
+  <!-- Cabeçalho do drawer -->
+  <div class="drawer-head">
+    <div class="drawer-title">🎰 PaynexBet</div>
+    <button class="btn-close-drawer" onclick="fecharDrawerMobile()">✕</button>
+  </div>
+
+  <!-- Nav rápida -->
+  <div class="drawer-quicknav">
+    <button class="dqn-btn" onclick="fecharDrawerMobile();navTo('apostas')">⚽ Apostas</button>
+    <button class="dqn-btn" onclick="fecharDrawerMobile();navTo('sorteio')">🎲 Sorteios</button>
+    <button class="dqn-btn" onclick="fecharDrawerMobile();navTo('live')">🔴 Ao Vivo</button>
+    <button class="dqn-btn" onclick="fecharDrawerMobile();navTo('tabela')">🏆 Tabela</button>
+  </div>
+
+  <!-- Conteúdo da sidebar -->
+  <div class="sb-section">
+    <div class="sb-label">Em Alta</div>
+    <div class="sb-item" onclick="fecharDrawerMobile();sbNav('apostas','destaque')"><span class="ico">🔥</span>Em Destaque</div>
+    <div id="drawer-ligas-em-alta"></div>
+  </div>
+  <div class="sb-divider"></div>
+  <div class="sb-section">
+    <div class="sb-label">Esportes</div>
+    <div id="drawer-ligas-esportes"></div>
+  </div>
+  <div class="sb-divider"></div>
+  <div class="sb-section">
+    <div class="sb-label">Sorteios</div>
+    <div class="sb-item" onclick="fecharDrawerMobile();sbNav('sorteio')"><span class="ico">🎰</span>Participar Agora <span class="badge" id="drawer-prize">R$750</span></div>
+    <div class="sb-item" onclick="fecharDrawerMobile();sbNav('bilhetes')"><span class="ico">📋</span>Meus Bilhetes</div>
+    <div class="sb-item" onclick="fecharDrawerMobile();sbNav('bolao')"><span class="ico">🎯</span>Bolão Placar</div>
+    <div class="sb-item" onclick="fecharDrawerMobile();sbNav('ganhadores')"><span class="ico">🏅</span>Ganhadores</div>
+  </div>
+  <div class="sb-divider"></div>
+  <div class="sb-section">
+    <div class="sb-label">Minha Conta</div>
+    <div class="sb-item" onclick="fecharDrawerMobile();sbNav('depositar')"><span class="ico">💳</span>Depositar (Pix)</div>
+    <div class="sb-item" onclick="fecharDrawerMobile();sbNav('sacar')"><span class="ico">💰</span>Sacar</div>
+    <div class="sb-item" onclick="fecharDrawerMobile();sbNav('minhas-apostas')"><span class="ico">🎯</span>Minhas Apostas</div>
+    <div class="sb-item" onclick="fecharDrawerMobile();sbNav('historico')"><span class="ico">📊</span>Histórico</div>
+  </div>
+  <div class="sb-divider"></div>
+  <div class="sb-section">
+    <div class="sb-label">Navegação</div>
+    <div class="sb-item" onclick="fecharDrawerMobile();sbNav('live')"><span class="ico">🔴</span>Ao Vivo</div>
+    <div class="sb-item" onclick="fecharDrawerMobile();sbNav('tabela')"><span class="ico">📊</span>Tabela</div>
+  </div>
+</div>
+
+<script>
+// ══ MOBILE DRAWER ══
+(function() {
+  var _drawerOpen = false;
+  var _touchStartX = 0;
+  var _touchStartY = 0;
+
+  window.abrirDrawerMobile = function() {
+    _drawerOpen = true;
+    var drawer = document.getElementById('mobile-drawer');
+    var overlay = document.getElementById('drawer-overlay');
+    if (!drawer || !overlay) return;
+    overlay.style.display = 'block';
+    void overlay.offsetWidth; // reflow para animação
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    // Sincronizar prêmio do sorteio
+    var prize = document.getElementById('sb-prize');
+    var drawerPrize = document.getElementById('drawer-prize');
+    if (prize && drawerPrize) drawerPrize.textContent = prize.textContent;
+    // Sincronizar ligas
+    _sincronizarLigasDrawer();
+  };
+
+  window.fecharDrawerMobile = function() {
+    _drawerOpen = false;
+    var drawer = document.getElementById('mobile-drawer');
+    var overlay = document.getElementById('drawer-overlay');
+    if (!drawer || !overlay) return;
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+    setTimeout(function() { overlay.style.display = 'none'; }, 280);
+  };
+
+  function _sincronizarLigasDrawer() {
+    var srcEmAlta = document.getElementById('sb-ligas-em-alta');
+    var dstEmAlta = document.getElementById('drawer-ligas-em-alta');
+    if (srcEmAlta && dstEmAlta) {
+      dstEmAlta.innerHTML = srcEmAlta.innerHTML;
+      dstEmAlta.querySelectorAll('.sb-item').forEach(function(el) {
+        var orig = el.getAttribute('onclick') || '';
+        if (orig && orig.indexOf('fecharDrawerMobile') === -1) {
+          el.setAttribute('onclick', 'fecharDrawerMobile();' + orig);
+        }
+      });
+    }
+    var srcEsportes = document.getElementById('sb-ligas-esportes');
+    var dstEsportes = document.getElementById('drawer-ligas-esportes');
+    if (srcEsportes && dstEsportes) {
+      dstEsportes.innerHTML = srcEsportes.innerHTML;
+      dstEsportes.querySelectorAll('.sb-item').forEach(function(el) {
+        var orig = el.getAttribute('onclick') || '';
+        if (orig && orig.indexOf('fecharDrawerMobile') === -1) {
+          el.setAttribute('onclick', 'fecharDrawerMobile();' + orig);
+        }
+      });
+    }
+  }
+
+  // Swipe para fechar (arrastar para a esquerda fecha o drawer)
+  document.addEventListener('touchstart', function(e) {
+    _touchStartX = e.touches[0].clientX;
+    _touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', function(e) {
+    if (!_drawerOpen) return;
+    var dx = e.changedTouches[0].clientX - _touchStartX;
+    var dy = Math.abs(e.changedTouches[0].clientY - _touchStartY);
+    if (dx < -60 && dy < 80) window.fecharDrawerMobile();
+  }, { passive: true });
+
+  // Fechar com Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && _drawerOpen) window.fecharDrawerMobile();
+  });
+})();
 </script>
 </body>
 </html>
