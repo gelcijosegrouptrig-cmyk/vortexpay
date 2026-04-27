@@ -7822,10 +7822,9 @@ async function loadPnL() {
   const tbody  = document.getElementById('table-pnl-liga');
   if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="6"><div class="spinner"></div></td></tr>';
   try {
-    const params = new URLSearchParams({secret: sessionStorage.getItem('vp_secret')||''});
-    if (inicio) params.set('inicio', inicio);
-    if (fim)    params.set('fim',    fim);
-    const r = await fetch(`/api/admin/bet/pnl?${params}`);
+    const params = new URLSearchParams({...(inicio ? {inicio} : {}), ...(fim ? {fim} : {})});
+    const pnlQuery = _authQuery() + (params.toString() ? '&' + params.toString() : '');
+    const r = await fetch(`/api/admin/bet/pnl?${pnlQuery}`, { headers: _authHeaders() });
     const d = await r.json();
     if (!d.ok) { showToastAdmin('Erro: '+(d.error||'falha'), 'red'); return; }
     const el = id => document.getElementById(id);
@@ -7861,10 +7860,9 @@ async function loadPnL() {
 function exportarRelatorio() {
   const inicio = document.getElementById('pnl-inicio')?.value || '';
   const fim    = document.getElementById('pnl-fim')?.value || '';
-  const params = new URLSearchParams({secret: sessionStorage.getItem('vp_secret')||''});
-  if (inicio) params.set('inicio', inicio);
-  if (fim)    params.set('fim',    fim);
-  window.open(`/api/admin/export/apostas.csv?${params}`, '_blank');
+  const params = new URLSearchParams({...(inicio ? {inicio} : {}), ...(fim ? {fim} : {})});
+  const expQuery = _authQuery() + (params.toString() ? '&' + params.toString() : '');
+  window.open(`/api/admin/export/apostas.csv?${expQuery}`, '_blank');
 }
 
 // ═══════════════════════════════════════════════
