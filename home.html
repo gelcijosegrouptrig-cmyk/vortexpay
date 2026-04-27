@@ -1396,6 +1396,10 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
       <div class="bs-valor-lbl">Valor da aposta (R$)</div>
       <input class="bs-valor-input" type="number" id="bs-valor" placeholder="0,00" min="2" step="0.50" oninput="calcRetorno()">
     </div>
+    <!-- Saldo disponível para apostar -->
+    <div id="bs-saldo-disp" style="text-align:right;font-size:11px;color:#94a3b8;margin-top:-6px;margin-bottom:4px">
+      Saldo disponível: <span id="bs-saldo-val" style="color:#22c55e;font-weight:700">—</span>
+    </div>
     <div class="bs-rapidos">
       <div class="bs-r" onclick="setValorAposta(5)">R$5</div>
       <div class="bs-r" onclick="setValorAposta(10)">R$10</div>
@@ -1535,6 +1539,10 @@ setInterval(syncSaldoBackground, 60000);
 function renderHeader(){
   const u=loadSession();
   const el=document.getElementById('header-actions');
+  // Atualizar saldo exibido no bet-slip
+  const bsSaldoEl=document.getElementById('bs-saldo-val');
+  if(bsSaldoEl && u) bsSaldoEl.textContent=_fmt(u.saldo||0);
+  else if(bsSaldoEl) bsSaldoEl.textContent='—';
   if(u){
     const ini=u.nome?u.nome.trim().split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase():'?';
     el.innerHTML='<div class="user-chip" onclick="toggleDD()"><div class="uc-avatar">'+ini+'</div><span class="uc-name">'+u.nome.split(' ')[0]+'</span><span class="uc-saldo">'+_fmt(u.saldo)+'</span></div>';
