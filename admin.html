@@ -7172,16 +7172,15 @@ function showTab(tab) {
   if (sessionStorage.getItem('vp_staff_token')) {
     const _permsStaff = JSON.parse(sessionStorage.getItem('vp_staff_perms') || '[]');
     const _abasPermStaff = {
-      'dashboard':   _permsStaff.includes('apostas_ver') || _permsStaff.includes('depositos_ver') || _permsStaff.includes('saques_ver'),
-      'depositos':   _permsStaff.includes('depositos_ver'),
-      'saques':      _permsStaff.includes('saques_ver') || _permsStaff.includes('saques_aprovar'),
-      'apostas':     _permsStaff.includes('apostas_ver') || _permsStaff.includes('apostas_resolver'),
-      'apostas-mgr': _permsStaff.includes('apostas_ver') || _permsStaff.includes('apostas_resolver'),
-      'boloes':      _permsStaff.includes('bolao_ver') || _permsStaff.includes('bolao_gerir'),
-      'usuarios':    _permsStaff.includes('usuarios_ver') || _permsStaff.includes('usuarios_ajustar') || _permsStaff.includes('usuarios_suspender'),
-      'usuarios-mgr':_permsStaff.includes('usuarios_ver') || _permsStaff.includes('usuarios_ajustar') || _permsStaff.includes('usuarios_suspender'),
-      'relatorios':  _permsStaff.includes('relatorios_ver'),
-      'bonus':       _permsStaff.includes('bonus_criar'),
+      'dashboard':        _permsStaff.includes('apostas_ver') || _permsStaff.includes('depositos_ver') || _permsStaff.includes('saques_ver'),
+      'depositos':        _permsStaff.includes('depositos_ver'),
+      'saques':           _permsStaff.includes('saques_ver') || _permsStaff.includes('saques_aprovar'),
+      'apostas-mgr':      _permsStaff.includes('apostas_ver') || _permsStaff.includes('apostas_resolver'),
+      'multi':            _permsStaff.includes('apostas_ver') || _permsStaff.includes('apostas_resolver'),
+      'bolao':            _permsStaff.includes('bolao_ver') || _permsStaff.includes('bolao_gerir'),
+      'usuarios-mgr':     _permsStaff.includes('usuarios_ver') || _permsStaff.includes('usuarios_ajustar') || _permsStaff.includes('usuarios_suspender'),
+      'pnl':              _permsStaff.includes('relatorios_ver'),
+      'bonus':            _permsStaff.includes('bonus_criar'),
     };
     // Se a aba não está na whitelist ou está false → bloqueada
     if (!_abasPermStaff[tab]) {
@@ -10726,19 +10725,19 @@ async function _autoLoginStaff(token) {
   }
 }
 
-// Abas liberadas por permissão (nomes reais do backend)
+// Abas liberadas por permissão (nomes reais das abas no HTML: showTab('xxx'))
 const _STAFF_ABA_PERM = {
-  'apostas_ver':        'apostas',
-  'apostas_resolver':   'apostas',
+  'apostas_ver':        'apostas-mgr',
+  'apostas_resolver':   'apostas-mgr',
   'depositos_ver':      'depositos',
   'saques_ver':         'saques',
   'saques_aprovar':     'saques',
-  'bolao_ver':          'boloes',
-  'bolao_gerir':        'boloes',
-  'usuarios_ver':       'usuarios',
-  'usuarios_ajustar':   'usuarios',
-  'usuarios_suspender': 'usuarios',
-  'relatorios_ver':     'relatorios',
+  'bolao_ver':          'bolao',
+  'bolao_gerir':        'bolao',
+  'usuarios_ver':       'usuarios-mgr',
+  'usuarios_ajustar':   'usuarios-mgr',
+  'usuarios_suspender': 'usuarios-mgr',
+  'relatorios_ver':     'pnl',
   'bonus_criar':        'bonus',
 };
 
@@ -10778,21 +10777,24 @@ function _aplicarModoFuncionario(staff) {
     'sorteio':          false,
     'paypix':           false,
     'paypixcob':        false,
-    'apostas':          perms.includes('apostas_ver') || perms.includes('apostas_resolver'),
-    'boloes':           perms.includes('bolao_ver') || perms.includes('bolao_gerir'),
-    'usuarios':         perms.includes('usuarios_ver') || perms.includes('usuarios_ajustar') || perms.includes('usuarios_suspender'),
-    'funcionarios':     false,
-    'campeonatos':      false,   // ← NUNCA visível para funcionários
-    'config-pagamento': false,
-    'config-sistema':   false,
-    'relatorios':       perms.includes('relatorios_ver'),
-    'bonus':            perms.includes('bonus_criar'),
-    'apostas-mgr':      perms.includes('apostas_ver') || perms.includes('apostas_resolver'),
-    'usuarios-mgr':     perms.includes('usuarios_ver') || perms.includes('usuarios_ajustar') || perms.includes('usuarios_suspender'),
-    'sistema':          false,
-    'api':              false,
     'bot2':             false,
     'bot3':             false,
+    'campeonatos':      false,
+    'apostas-mgr':      perms.includes('apostas_ver') || perms.includes('apostas_resolver'),
+    'usuarios-mgr':     perms.includes('usuarios_ver') || perms.includes('usuarios_ajustar') || perms.includes('usuarios_suspender'),
+    'funcionarios':     false,
+    'config-pagamento': false,
+    'limites':          false,
+    'bonus':            perms.includes('bonus_criar'),
+    'alertas':          false,
+    'jogo-responsavel': false,
+    'pnl':              perms.includes('relatorios_ver'),
+    'afiliados':        false,
+    'multi':            perms.includes('apostas_ver') || perms.includes('apostas_resolver'),
+    'bolao':            perms.includes('bolao_ver') || perms.includes('bolao_gerir'),
+    'notificacoes':     false,
+    'api':              false,
+    'sistema':          false,
   };
 
   // Ocultar nav-items não permitidos
