@@ -1482,6 +1482,7 @@ let _liveTimer = null;
 let _selecoes = [];
 let _betTipo = 'simples'; // 'simples' | 'multi'
 let _todosJogos = [];   // cache de todos os jogos carregados (para pesquisa)
+let _apostaPendente = null; // guarda aposta quando usuário vai depositar por saldo insuficiente
 
 /* ══ SESSION ══ */
 function saveSession(u){localStorage.setItem('pnb_user',JSON.stringify(u))}
@@ -1555,7 +1556,13 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('.user-chip')&&!e.target.closest('.user-dropdown'))
     document.getElementById('user-dropdown').classList.remove('open');
 });
-function logout(){clearSession();renderHeader();navTo('home')}
+function logout(){
+  clearSession();
+  _apostaPendente = null;
+  if(_pixVerifTimer){ clearInterval(_pixVerifTimer); _pixVerifTimer=null; }
+  renderHeader();
+  navTo('home');
+}
 
 /* ══ NAVEGAÇÃO SPA ══ */
 function showView(id){
@@ -1637,7 +1644,7 @@ function navTo(view, extra){
     case 'depositar':
       if(!loadSession()){openModal('login');return}
       showView('depositar');setSbActive('sb-depositar');
-      syncSaldo(); // Atualiza saldo ao entrar na aba depositar
+      _verificarSaldoDepositar(); // Atualiza saldo e mostra aviso/botão inteligente
       break;
     case 'sacar':
       if(!loadSession()){openModal('login');return}
@@ -2519,7 +2526,17 @@ async function confirmarAposta(){
   if(!valor || valor < 2){ _showBsMsg('Valor mínimo R$ 2,00.', true); return; }
   const saldoAtual = Number(u.saldo || 0);
   if(valor > saldoAtual){
-    _showBsMsg(`Saldo insuficiente. Saldo disponível: R$ ${saldoAtual.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}. Deposite para apostar.`, true);
+    // Salvar aposta pendente para retomar após depósito
+    const falta = Math.max(0, valor - saldoAtual);
+    _apostaPendente = {valor, selecoes: [..._selecoes], tipo: _betTipo};
+    // Fechar slip e ir para depósito com valor faltante pré-preenchido
+    toggleSlip(false);
+    sbNav('depositar');
+    setTimeout(()=>{
+      const inp = document.getElementById('dep-valor');
+      if(inp) inp.value = Math.ceil(falta) >= 10 ? Math.ceil(falta) : 10;
+      _showDepositoAviso(saldoAtual, valor);
+    }, 150);
     return;
   }
 
@@ -3330,6 +3347,8 @@ async function fazerDeposito(){
       }
       document.getElementById('pix-display').style.display='block';
       showMsgEl('dep-ok','✅ PIX gerado! Copie o código ou escaneie o QR Code.',false);
+      // Se houver aposta pendente, iniciar verificação periódica de saldo
+      if(_apostaPendente) _iniciarVerificacaoPosPix();
     } else {
       // Fallback: API retornou success mas sem código (raro)
       showMsgEl('dep-ok','Depósito registrado! Aguarde a confirmação.',false);
@@ -3348,6 +3367,124 @@ function copiarPix(){
       document.execCommand('copy');document.body.removeChild(ta);
       showMsgEl('dep-ok','✅ Copiado!',false);
     });
+}
+
+/* ══ DEPÓSITO INTELIGENTE — aviso e botão de usar saldo ══ */
+function _showDepositoAviso(saldoAtual, valorAposta){
+  // Remover aviso anterior se existir
+  const old = document.getElementById('dep-saldo-aviso');
+  if(old) old.remove();
+
+  const falta = valorAposta - saldoAtual;
+  const deposCard = document.querySelector('#view-depositar .conta-card');
+  if(!deposCard) return;
+
+  const aviso = document.createElement('div');
+  aviso.id = 'dep-saldo-aviso';
+  aviso.style.cssText = 'background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;';
+
+  if(saldoAtual >= valorAposta){
+    // Tem saldo suficiente → botão para apostar direto
+    aviso.innerHTML = `
+      <div style="color:#4ade80;font-weight:700;margin-bottom:8px">✅ Você tem saldo suficiente!</div>
+      <div style="color:#94a3b8;margin-bottom:10px">Saldo disponível: <strong style="color:#22c55e">R$ ${saldoAtual.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong></div>
+      <button onclick="_usarSaldoParaApostar()" style="width:100%;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:8px;padding:11px;color:#000;font-weight:900;font-size:14px;cursor:pointer">
+        🎯 Apostar com Saldo da Conta
+      </button>`;
+  } else if(saldoAtual > 0){
+    // Tem saldo parcial → mostrar quanto falta
+    aviso.innerHTML = `
+      <div style="color:#f59e0b;font-weight:700;margin-bottom:6px">⚠️ Saldo insuficiente para esta aposta</div>
+      <div style="color:#94a3b8;font-size:12px;margin-bottom:4px">Saldo atual: <strong style="color:#fbbf24">R$ ${saldoAtual.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong></div>
+      <div style="color:#94a3b8;font-size:12px;margin-bottom:10px">Falta depositar: <strong style="color:#f87171">R$ ${falta.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong></div>
+      <div style="font-size:11px;color:#94a3b8">Deposite o valor acima e depois clique em <strong>Apostar com Saldo</strong></div>`;
+  } else {
+    // Sem saldo
+    aviso.innerHTML = `
+      <div style="color:#f87171;font-weight:700;margin-bottom:4px">💳 Sem saldo para apostar</div>
+      <div style="color:#94a3b8;font-size:12px">Deposite via Pix para liberar sua aposta.</div>`;
+  }
+
+  // Inserir antes do formulário
+  const formGrp = deposCard.querySelector('.form-grp');
+  if(formGrp) deposCard.insertBefore(aviso, formGrp);
+  else deposCard.prepend(aviso);
+}
+
+/* Usar saldo existente para finalizar aposta pendente */
+async function _usarSaldoParaApostar(){
+  if(!_apostaPendente){
+    sbNav('apostas');
+    return;
+  }
+  // Restaurar seleções e abrir slip
+  _selecoes = [..._apostaPendente.selecoes];
+  _betTipo  = _apostaPendente.tipo;
+  const valorPendente = _apostaPendente.valor;
+  _apostaPendente = null;
+
+  // Remover aviso de depósito
+  const old = document.getElementById('dep-saldo-aviso');
+  if(old) old.remove();
+
+  // Voltar para apostas e abrir slip
+  sbNav('apostas');
+  setTimeout(()=>{
+    renderSlip();
+    toggleSlip(true);
+    const inp = document.getElementById('bs-valor');
+    if(inp){ inp.value = valorPendente; calcRetorno(); }
+    _showBsMsg('✅ Saldo suficiente! Confirme sua aposta.', false);
+  }, 250);
+}
+
+/* Verificar saldo ao entrar na aba depositar (atualiza aviso se aposta pendente) */
+async function _verificarSaldoDepositar(){
+  const u = await syncSaldo() || loadSession();
+  if(!u) return;
+  if(_apostaPendente){
+    _showDepositoAviso(Number(u.saldo||0), _apostaPendente.valor);
+  }
+}
+
+/* Após gerar PIX com aposta pendente: verificar a cada 5s se saldo foi creditado */
+let _pixVerifTimer = null;
+function _iniciarVerificacaoPosPix(){
+  if(_pixVerifTimer) clearInterval(_pixVerifTimer);
+  // Adicionar botão "Já paguei, verificar saldo" abaixo do pix-display
+  const pixEl = document.getElementById('pix-display');
+  if(pixEl && !document.getElementById('btn-verificar-saldo')){
+    const btn = document.createElement('button');
+    btn.id = 'btn-verificar-saldo';
+    btn.textContent = '🔄 Já paguei — verificar saldo';
+    btn.style.cssText = 'width:100%;margin-top:12px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:8px;padding:11px;color:#000;font-weight:900;font-size:14px;cursor:pointer';
+    btn.onclick = _verificarSaldoPosPagamento;
+    pixEl.appendChild(btn);
+  }
+  // Verificar automaticamente a cada 5s por até 3 minutos
+  let checks = 0;
+  _pixVerifTimer = setInterval(async ()=>{
+    checks++;
+    if(checks > 36){ clearInterval(_pixVerifTimer); return; } // para após 3min
+    if(!_apostaPendente){ clearInterval(_pixVerifTimer); return; }
+    await _verificarSaldoPosPagamento(true); // silencioso
+  }, 5000);
+}
+
+async function _verificarSaldoPosPagamento(silencioso){
+  if(!_apostaPendente) return;
+  const u = await syncSaldo() || loadSession();
+  if(!u) return;
+  const saldo = Number(u.saldo||0);
+  if(saldo >= _apostaPendente.valor){
+    // Saldo suficiente! Parar polling e mostrar botão de apostar
+    if(_pixVerifTimer){ clearInterval(_pixVerifTimer); _pixVerifTimer=null; }
+    _showDepositoAviso(saldo, _apostaPendente.valor);
+    showMsgEl('dep-ok',`✅ Saldo creditado! R$ ${saldo.toLocaleString('pt-BR',{minimumFractionDigits:2})} disponível.`,false);
+  } else if(!silencioso){
+    showMsgEl('dep-err',`⏳ Saldo atual: R$ ${saldo.toLocaleString('pt-BR',{minimumFractionDigits:2})}. Aguardando pagamento...`,false);
+    document.getElementById('dep-err').style.color='#f59e0b';
+  }
 }
 
 /* ══ SAQUE ══ */
