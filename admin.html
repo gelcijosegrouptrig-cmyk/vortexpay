@@ -749,7 +749,7 @@
 
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250501a';
+  const VER = '20250501b';
   if (sessionStorage.getItem('adminVer') !== VER) {
     const savedSecret      = sessionStorage.getItem('vp_secret');
     const savedStaffToken  = sessionStorage.getItem('vp_staff_token');
@@ -759,8 +759,10 @@
     if (savedSecret)      sessionStorage.setItem('vp_secret', savedSecret);
     if (savedStaffToken)  sessionStorage.setItem('vp_staff_token', savedStaffToken);
     if (savedAccessToken) sessionStorage.setItem('vp_access_token', savedAccessToken);
-    // Não inclui tokens na URL do reload
-    location.replace(location.pathname + '?v=' + VER);
+    // Só redireciona se não há tokens salvos (não interrompe login em andamento)
+    if (!savedSecret && !savedStaffToken && !savedAccessToken) {
+      location.replace(location.pathname + '?v=' + VER);
+    }
   }
 })();
 
@@ -877,6 +879,16 @@ async function _loginSubmit() {
 
   errEl.textContent = '';
   if (!senha) { errEl.textContent = '⚠️ Digite a senha.'; return; }
+
+  // Segurança: se _loginEmail foi perdido (ex: reload da página), voltar ao step de email
+  if (!_loginEmail) {
+    document.getElementById('login-step-senha').style.display = 'none';
+    document.getElementById('login-step-email').style.display = 'block';
+    document.getElementById('login-senha').value = '';
+    errEl.textContent = '⚠️ Sessão expirada. Por favor, redigite seu e-mail.';
+    setTimeout(() => document.getElementById('login-email').focus(), 80);
+    return;
+  }
 
   btnEl.disabled = true;
   btnEl.textContent = '⏳ Verificando...';
