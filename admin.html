@@ -700,16 +700,29 @@
 </div>
 
 <script>
+// ── Capturar staff_token da URL ANTES de qualquer redirect ──────────────────
+(function(){
+  const urlParams = new URLSearchParams(location.search);
+  const st = urlParams.get('staff_token');
+  if (st && st.length > 10) {
+    sessionStorage.setItem('vp_staff_token', st);
+    // Limpar token da URL sem recarregar (segurança)
+    const cleanUrl = location.pathname;
+    history.replaceState({}, '', cleanUrl);
+  }
+})();
+
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250428b';
+  const VER = '20250428c';
   if (sessionStorage.getItem('adminVer') !== VER) {
-    // Preservar senha antes do reload
-    const savedSecret = sessionStorage.getItem('vp_secret');
-    // Limpar storage mas preservar senha
+    const savedSecret      = sessionStorage.getItem('vp_secret');
+    const savedStaffToken  = sessionStorage.getItem('vp_staff_token');
     sessionStorage.clear();
     sessionStorage.setItem('adminVer', VER);
-    if (savedSecret) sessionStorage.setItem('vp_secret', savedSecret);
+    if (savedSecret)     sessionStorage.setItem('vp_secret', savedSecret);
+    if (savedStaffToken) sessionStorage.setItem('vp_staff_token', savedStaffToken);
+    // Não inclui staff_token na URL do reload (já está no sessionStorage)
     location.replace(location.pathname + '?v=' + VER + '&t=' + Date.now());
   }
 })();
@@ -10632,12 +10645,145 @@ async function realizarSorteio() {
 }
 
 // ═══════════════════════════════════════════════
-//  INIT
+//  INIT — Auto-login (admin secret ou staff token)
 // ═══════════════════════════════════════════════
-// Auto-login se já tem secret
-if (sessionStorage.getItem('vp_secret')) {
+
+// Modo funcionário: auto-login via staff_token salvo no sessionStorage
+const _staffTokenSalvo = sessionStorage.getItem('vp_staff_token');
+if (_staffTokenSalvo) {
+  _autoLoginStaff(_staffTokenSalvo);
+}
+// Modo admin: auto-login se já tem secret
+else if (sessionStorage.getItem('vp_secret')) {
   document.getElementById('login-secret').value = sessionStorage.getItem('vp_secret');
   fazerLogin();
+}
+
+async function _autoLoginStaff(token) {
+  try {
+    // Mostra loading na tela de login
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.textContent = '⏳ Autenticando funcionário...';
+
+    const r = await fetch('/api/staff/me', {
+      headers: { 'X-Staff-Token': token }
+    });
+    const d = await r.json();
+
+    if (!d.ok) {
+      sessionStorage.removeItem('vp_staff_token');
+      if (errEl) errEl.textContent = '❌ Link inválido ou expirado. Solicite um novo link ao administrador.';
+      return;
+    }
+
+    // ── Acesso concedido ──────────────────────────────────────────────
+    const staff = d.staff;
+    const perms = staff.permissoes || [];
+
+    // Salva modo staff no storage
+    sessionStorage.setItem('vp_staff_token', token);
+    sessionStorage.setItem('vp_staff_nome', staff.nome);
+    sessionStorage.setItem('vp_staff_perms', JSON.stringify(perms));
+
+    // Oculta tela de login / exibe painel
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-screen').style.display = 'block';
+
+    // Personalizar header/sidebar com nome do funcionário
+    _aplicarModoFuncionario(staff);
+
+    // Mostrar primeira aba permitida
+    const primeiraAba = _abaPermitida(perms);
+    try { showTab(primeiraAba); } catch(e) {}
+
+  } catch(e) {
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.textContent = '❌ Erro de conexão. Tente novamente.';
+  }
+}
+
+// Abas liberadas por permissão
+const _STAFF_ABA_PERM = {
+  'ver_apostas_lucro':    'apostas',
+  'ver_depositos':        'depositos',
+  'ver_saques':           'saques',
+  'aprovar_saques':       'saques',
+  'ver_bolao':            'boloes',
+  'criar_jogos_bolao':    'boloes',
+  'ver_sorteio':          'sorteio',
+  'ver_usuarios':         'usuarios',
+  'ver_relatorios':       'relatorios',
+};
+
+function _abaPermitida(perms) {
+  for (const p of perms) {
+    if (_STAFF_ABA_PERM[p]) return _STAFF_ABA_PERM[p];
+  }
+  return 'dashboard';
+}
+
+function _aplicarModoFuncionario(staff) {
+  // Atualizar título do sidebar
+  const logoP = document.querySelector('.sidebar-logo p');
+  if (logoP) logoP.textContent = '👤 ' + staff.nome.split(' ')[0];
+
+  // Substituir botão logout por "sair como funcionário"
+  const logoutBtn = document.querySelector('[onclick="adminLogout()"]');
+  if (logoutBtn) {
+    logoutBtn.textContent = '🚪 Sair (' + staff.nome.split(' ')[0] + ')';
+    logoutBtn.onclick = function() {
+      if (confirm('Deseja sair do painel?')) {
+        sessionStorage.removeItem('vp_staff_token');
+        sessionStorage.removeItem('vp_staff_nome');
+        sessionStorage.removeItem('vp_staff_perms');
+        location.reload();
+      }
+    };
+  }
+
+  // Ocultar itens de nav que o funcionário não tem permissão
+  const perms = staff.permissoes || [];
+  const navMap = {
+    'dashboard':        perms.includes('ver_apostas_lucro') || perms.includes('ver_depositos'),
+    'carteira':         false,  // somente admin
+    'depositos':        perms.includes('ver_depositos'),
+    'saques':           perms.includes('ver_saques') || perms.includes('aprovar_saques'),
+    'sorteio':          perms.includes('ver_sorteio'),
+    'paypix':           false,
+    'paypixcob':        false,
+    'apostas':          perms.includes('ver_apostas_lucro'),
+    'boloes':           perms.includes('ver_bolao') || perms.includes('criar_jogos_bolao'),
+    'usuarios':         perms.includes('ver_usuarios'),
+    'funcionarios':     false,  // nunca para funcionários
+    'config-pagamento': false,
+    'config-sistema':   false,
+    'relatorios':       perms.includes('ver_relatorios'),
+  };
+
+  // Ocultar nav-items não permitidos
+  document.querySelectorAll('.nav-item').forEach(el => {
+    const onclick = el.getAttribute('onclick') || '';
+    const m = onclick.match(/showTab\(['"]([^'"]+)['"]\)/);
+    if (m) {
+      const tabName = m[1];
+      if (navMap[tabName] === false) {
+        el.style.display = 'none';
+      }
+    }
+  });
+
+  // Banner identificador no topo
+  const adminScreen = document.getElementById('admin-screen');
+  const bannerExist = document.getElementById('staff-banner');
+  if (!bannerExist && adminScreen) {
+    const banner = document.createElement('div');
+    banner.id = 'staff-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(90deg,#8b5cf6,#6d28d9);color:#fff;text-align:center;padding:6px 16px;font-size:13px;font-weight:700;';
+    banner.innerHTML = '👤 Modo Funcionário: <strong>' + staff.nome + '</strong> &nbsp;|&nbsp; Permissões: ' + staff.permissoes.length + ' &nbsp;<a href="#" onclick="event.preventDefault();sessionStorage.removeItem(\'vp_staff_token\');location.reload();" style="color:#fbbf24;text-decoration:underline;font-weight:700">Sair</a>';
+    document.body.prepend(banner);
+    // Compensar espaço do banner
+    document.querySelector('.main-content') && (document.querySelector('.main-content').style.marginTop = '32px');
+  }
 }
 
 // ═══════════════════════════════════════════════
