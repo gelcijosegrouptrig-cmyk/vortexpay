@@ -14273,6 +14273,17 @@ async def route_admin_reprocessar_saque(request):
     chave_pix   = (body.get('chave_pix') or '').strip()
     tipo_chave  = (body.get('tipo_chave') or 'cpf').strip()
 
+    # Normalizar tipo_chave para o formato SuitPay
+    _SUIT_TYPE_MAP2 = {
+        'cpf': 'document', 'cnpj': 'document', 'document': 'document',
+        'telefone': 'phoneNumber', 'phone': 'phoneNumber', 'celular': 'phoneNumber',
+        'phonenumber': 'phoneNumber', 'fone': 'phoneNumber',
+        'email': 'email',
+        'evp': 'randomKey', 'aleatoria': 'randomKey', 'chave_aleatoria': 'randomKey',
+        'randomkey': 'randomKey',
+    }
+    tipo_chave_suit2 = _SUIT_TYPE_MAP2.get(tipo_chave.lower(), 'document')
+
     if not saque_db_id or not chave_pix or valor <= 0:
         return web.json_response({'success': False, 'error': 'Campos obrigatórios: saque_id, valor, chave_pix'})
 
@@ -14285,7 +14296,7 @@ async def route_admin_reprocessar_saque(request):
         'requestNumber': req_number,
         'value': valor,
         'key': chave_pix,
-        'typeKey': tipo_chave,
+        'typeKey': tipo_chave_suit2,   # Normalizado: document/phoneNumber/email/randomKey
         'callbackUrl': _SUIT_WEBHOOK_URL,
         'client': {'name': 'PaynexBet Admin Reprocess'}
     }
@@ -14346,6 +14357,18 @@ async def route_bet_sacar(request):
     chave_pix   = (body.get('chave_pix') or body.get('pix_key') or '').strip()
     tipo_chave  = (body.get('tipo_chave') or 'cpf').strip()
 
+    # Normalizar tipo_chave para o formato SuitPay
+    # SuitPay aceita: "document" (CPF/CNPJ), "phoneNumber" (telefone), "email", "randomKey" (EVP)
+    _SUIT_TYPE_MAP = {
+        'cpf': 'document', 'cnpj': 'document', 'document': 'document',
+        'telefone': 'phoneNumber', 'phone': 'phoneNumber', 'celular': 'phoneNumber',
+        'phonenumber': 'phoneNumber', 'fone': 'phoneNumber',
+        'email': 'email',
+        'evp': 'randomKey', 'aleatoria': 'randomKey', 'chave_aleatoria': 'randomKey',
+        'randomkey': 'randomKey',
+    }
+    tipo_chave_suit = _SUIT_TYPE_MAP.get(tipo_chave.lower(), 'document')
+
     if not usuario_id:
         return web.json_response({'success': False, 'error': 'Faça login primeiro'})
     if valor < 20:
@@ -14391,7 +14414,7 @@ async def route_bet_sacar(request):
         'requestNumber': req_number,
         'value': valor,
         'key': chave_pix,
-        'typeKey': tipo_chave,
+        'typeKey': tipo_chave_suit,   # Normalizado: document/phoneNumber/email/randomKey
         'callbackUrl': _SUIT_WEBHOOK_URL,
         'client': {'name': nome_usuario}
     }
