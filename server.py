@@ -3868,7 +3868,8 @@ def _admin_save_liga_config(liga_key, cfg):
 
 async def route_admin_ligas_list(request):
     """GET /api/admin/ligas — lista todas as ligas com status e config."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     ligas = []
     for key, info in _ADMIN_LIGAS_MAP.items():
@@ -3887,7 +3888,8 @@ async def route_admin_ligas_list(request):
 
 async def route_admin_ligas_suspender(request):
     """POST /api/admin/ligas/suspender — suspende ou ativa uma liga."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_resolver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         body = await request.json()
@@ -3925,7 +3927,8 @@ async def route_ligas_ativas(request):
 
 async def route_admin_ligas_config(request):
     """POST /api/admin/ligas/config — configura api_pagamento, odds, nota de uma liga."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_resolver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         body = await request.json()
@@ -10732,7 +10735,8 @@ def _salvar_margens_db(margens: dict):
 # ─── Rotas Admin: Margem ──────────────────────────────────────────────────────
 async def route_admin_margem_get(request):
     """GET /api/admin/bet/margem — lista margens por liga."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect()
@@ -10756,7 +10760,8 @@ async def route_admin_margem_get(request):
 
 async def route_admin_margem_set(request):
     """POST /api/admin/bet/margem — define margem % para uma ou mais ligas."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_resolver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         body = await request.json()
@@ -11736,7 +11741,8 @@ async def _notif_telegram_admin(msg: str):
 
 async def route_admin_notif_config_get(request):
     """GET /api/admin/notif-config — retorna config de notificações."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     await _carregar_notif_config()
     cfg = dict(_NOTIF_CONFIG)
@@ -11746,7 +11752,8 @@ async def route_admin_notif_config_get(request):
 
 async def route_admin_notif_config(request):
     """POST /api/admin/notif-config — salva config de notificações."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_resolver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         body = await request.json()
