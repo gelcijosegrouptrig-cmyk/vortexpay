@@ -11308,17 +11308,13 @@ function _aplicarModoFuncionario(staff) {
     if (!temItemVisivel) section.style.display = 'none';
   });
 
-  // Banner identificador no topo
-  const adminScreen = document.getElementById('admin-screen');
+  // Badge discreto já exibido no topbar via _setRoleBadge — sem faixa no topo
   const bannerExist = document.getElementById('staff-banner');
-  if (!bannerExist && adminScreen) {
+  if (!bannerExist) {
     const banner = document.createElement('div');
     banner.id = 'staff-banner';
-    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(90deg,#8b5cf6,#6d28d9);color:#fff;text-align:center;padding:6px 16px;font-size:13px;font-weight:700;';
-    banner.innerHTML = '👤 Modo Funcionário: <strong>' + staff.nome + '</strong> &nbsp;|&nbsp; Permissões: ' + staff.permissoes.length + ' &nbsp;<a href="#" onclick="event.preventDefault();sessionStorage.removeItem(\'vp_staff_token\');location.reload();" style="color:#fbbf24;text-decoration:underline;font-weight:700">Sair</a>';
+    banner.style.cssText = 'display:none';
     document.body.prepend(banner);
-    // Compensar espaço do banner
-    document.querySelector('.main-content') && (document.querySelector('.main-content').style.marginTop = '32px');
   }
 }
 
