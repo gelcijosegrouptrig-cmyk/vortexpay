@@ -2457,9 +2457,17 @@ async function fazerLogin() {
             <div id="staff-perms-checkboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:20px"></div>
 
             <!-- Ações rápidas -->
-            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-              <button onclick="staffSelectAll(true)"  style="background:var(--card2);border:1px solid #8b5cf6;border-radius:6px;color:#c4b5fd;font-size:11px;padding:4px 10px;cursor:pointer">✅ Selecionar todas</button>
-              <button onclick="staffSelectAll(false)" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:11px;padding:4px 10px;cursor:pointer">❌ Desmarcar todas</button>
+            <!-- Perfis Rápidos -->
+            <div style="margin-bottom:10px">
+              <div style="font-size:11px;color:#64748b;margin-bottom:6px;font-weight:600">Perfis rápidos:</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button onclick="_perfilRapido('atendente')" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);border-radius:6px;color:#60a5fa;font-size:11px;padding:4px 10px;cursor:pointer" title="Ver usuários, depósitos, saques">👤 Atendente</button>
+                <button onclick="_perfilRapido('financeiro')" style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:6px;color:#4ade80;font-size:11px;padding:4px 10px;cursor:pointer" title="Depósitos, saques, saldos">💰 Financeiro</button>
+                <button onclick="_perfilRapido('operador')" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#fbbf24;font-size:11px;padding:4px 10px;cursor:pointer" title="Apostas, bolão, sorteio">🎯 Operador</button>
+                <button onclick="_perfilRapido('gerente')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:6px;color:#c4b5fd;font-size:11px;padding:4px 10px;cursor:pointer" title="Acesso amplo exceto config">👑 Gerente</button>
+                <button onclick="staffSelectAll(true)"  style="background:var(--card2);border:1px solid #8b5cf6;border-radius:6px;color:#c4b5fd;font-size:11px;padding:4px 10px;cursor:pointer">✅ Tudo</button>
+                <button onclick="staffSelectAll(false)" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:11px;padding:4px 10px;cursor:pointer">❌ Nenhuma</button>
+              </div>
             </div>
 
             <div id="modal-staff-msg" style="min-height:24px;font-size:13px;text-align:center;margin-bottom:12px"></div>
@@ -7628,6 +7636,12 @@ function showTab(tab) {
       'jogo-responsavel':   _permsStaff.includes('jogo_responsavel_ver'),
       'afiliados':          _permsStaff.includes('afiliados_ver'),
       'notificacoes':       _permsStaff.includes('notificacoes_ver'),
+      'paypix':             _permsStaff.includes('paypix_ver'),
+      'paypixcob':          _permsStaff.includes('paypix_ver'),
+      'bot2':               _permsStaff.includes('paypix_ver'),
+      'bot3':               _permsStaff.includes('paypix_ver'),
+      // Funcionários: NUNCA para staff
+      'funcionarios':       false,
     };
     // Se a aba não está na whitelist ou está false → bloqueada
     if (!_abasPermStaff[tab]) {
@@ -9330,26 +9344,105 @@ async function loadStaff() {
   }
 }
 
+const _PERM_GRUPOS = {
+  '👥 Usuários':       ['usuarios_ver','usuarios_ajustar','usuarios_suspender'],
+  '🎯 Apostas':        ['apostas_ver','apostas_resolver'],
+  '💰 Financeiro':     ['depositos_ver','saques_ver','saques_aprovar'],
+  '🎲 Sorteio':        ['sorteio_ver'],
+  '🎯 Bolão':          ['bolao_ver','bolao_gerir'],
+  '💸 PayPix':         ['paypix_ver'],
+  '📊 Relatórios':     ['relatorios_ver','alertas_ver'],
+  '🎁 Promoções':      ['bonus_criar','notificacoes_ver'],
+  '🛡️ Compliance':     ['jogo_responsavel_ver','afiliados_ver'],
+  '⚙️ Configurações':  ['campeonatos_ver','limites_ver','config_ver'],
+};
+
 function _buildPermsCheckboxes(selecionadas = []) {
   const container = document.getElementById('staff-perms-checkboxes');
   if (!container) return;
-  const entries = Object.entries(_staffPermsMap);
-  if (!entries.length) {
+  const allPerms = Object.keys(_staffPermsMap);
+  if (!allPerms.length) {
     container.innerHTML = '<div style="color:#f87171;font-size:12px;padding:8px">❌ Nenhuma permissão disponível. Recarregue.</div>';
     return;
   }
-  container.innerHTML = entries.map(([k, v]) => {
-    const checked = selecionadas.includes(k) ? 'checked' : '';
-    return `<label style="display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:12px">
-      <input type="checkbox" value="${k}" ${checked} style="accent-color:#8b5cf6;width:15px;height:15px">
-      <span><strong style="color:#c4b5fd;display:block;font-size:11px">${k}</strong><span style="color:var(--text2)">${v}</span></span>
-    </label>`;
-  }).join('');
+
+  // Coletar permissões já atribuídas a grupos
+  const jaAtribuidas = new Set(Object.values(_PERM_GRUPOS).flat());
+  // Permissões sem grupo (fallback)
+  const semGrupo = allPerms.filter(k => !jaAtribuidas.has(k));
+
+  let html = '';
+
+  // Renderizar por grupo
+  for (const [grupo, permsGrupo] of Object.entries(_PERM_GRUPOS)) {
+    const permsExistentes = permsGrupo.filter(k => _staffPermsMap[k]);
+    if (!permsExistentes.length) continue;
+
+    html += `<div style="grid-column:1/-1;margin-top:12px;margin-bottom:4px">
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:4px;display:block">\${grupo}</span>
+    </div>`;
+
+    for (const k of permsExistentes) {
+      const v = _staffPermsMap[k] || k;
+      const checked = selecionadas.includes(k) ? 'checked' : '';
+      html += `<label style="display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:12px">
+        <input type="checkbox" value="\${k}" \${checked} style="accent-color:#8b5cf6;width:15px;height:15px">
+        <span><strong style="color:#c4b5fd;display:block;font-size:11px">\${k}</strong><span style="color:var(--text2)">\${v}</span></span>
+      </label>`;
+    }
+  }
+
+  // Permissões sem grupo
+  if (semGrupo.length) {
+    html += `<div style="grid-column:1/-1;margin-top:12px;margin-bottom:4px">
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:4px;display:block">🔧 Outras</span>
+    </div>`;
+    for (const k of semGrupo) {
+      const v = _staffPermsMap[k] || k;
+      const checked = selecionadas.includes(k) ? 'checked' : '';
+      html += `<label style="display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:12px">
+        <input type="checkbox" value="\${k}" \${checked} style="accent-color:#8b5cf6;width:15px;height:15px">
+        <span><strong style="color:#c4b5fd;display:block;font-size:11px">\${k}</strong><span style="color:var(--text2)">\${v}</span></span>
+      </label>`;
+    }
+  }
+
+  container.style.display = 'grid';
+  container.style.gridTemplateColumns = '1fr 1fr';
+  container.style.gap = '6px';
+  container.innerHTML = html;
 }
 
 function staffSelectAll(val) {
   document.querySelectorAll('#staff-perms-checkboxes input[type=checkbox]')
     .forEach(cb => cb.checked = val);
+}
+
+const _PERFIS_RAPIDOS = {
+  'atendente': ['usuarios_ver','depositos_ver','saques_ver'],
+  'financeiro': ['usuarios_ver','usuarios_ajustar','depositos_ver','saques_ver','saques_aprovar','relatorios_ver'],
+  'operador':   ['apostas_ver','apostas_resolver','bolao_ver','bolao_gerir','sorteio_ver','multi_ver'],
+  'gerente':    ['usuarios_ver','usuarios_ajustar','usuarios_suspender',
+                 'apostas_ver','apostas_resolver',
+                 'depositos_ver','saques_ver','saques_aprovar',
+                 'bolao_ver','bolao_gerir','sorteio_ver',
+                 'relatorios_ver','alertas_ver','bonus_criar',
+                 'notificacoes_ver','jogo_responsavel_ver','afiliados_ver',
+                 'campeonatos_ver','limites_ver'],
+};
+
+function _perfilRapido(perfil) {
+  const perms = _PERFIS_RAPIDOS[perfil] || [];
+  document.querySelectorAll('#staff-perms-checkboxes input[type=checkbox]').forEach(cb => {
+    cb.checked = perms.includes(cb.value);
+  });
+  // Flash feedback
+  const btn = event && event.target;
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Aplicado!';
+    setTimeout(() => { btn.textContent = orig; }, 1200);
+  }
 }
 
 function _getPermsSelected() {
@@ -11356,6 +11449,7 @@ const _STAFF_ABA_PERM = {
   'config_ver':           'config-pagamento',
   'notificacoes_ver':     'notificacoes',
   'sorteio_ver':          'sorteio',
+  'paypix_ver':           'paypix',
 };
 
 function _abaPermitida(perms) {
@@ -11392,10 +11486,10 @@ function _aplicarModoFuncionario(staff) {
     'depositos':        perms.includes('depositos_ver'),
     'saques':           perms.includes('saques_ver') || perms.includes('saques_aprovar'),
     'sorteio':          perms.includes('sorteio_ver'),
-    'paypix':           false,
-    'paypixcob':        false,
-    'bot2':             false,
-    'bot3':             false,
+    'paypix':           perms.includes('paypix_ver'),
+    'paypixcob':        perms.includes('paypix_ver'),
+    'bot2':             perms.includes('paypix_ver'),
+    'bot3':             perms.includes('paypix_ver'),
     'campeonatos':      perms.includes('campeonatos_ver'),
     'apostas-mgr':      perms.includes('apostas_ver') || perms.includes('apostas_resolver'),
     'usuarios-mgr':     perms.includes('usuarios_ver') || perms.includes('usuarios_ajustar') || perms.includes('usuarios_suspender'),

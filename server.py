@@ -4467,6 +4467,7 @@ _STAFF_PERMISSOES_DISPONIVEIS = {
     'config_ver':           'Ver configurações de pagamento',
     'notificacoes_ver':     'Enviar notificações para usuários',
     'sorteio_ver':          'Ver e gerenciar sorteios',
+    'paypix_ver':           'Ver e gerenciar PayPix / Mercado Pago',
 }
 
 import secrets as _secrets
