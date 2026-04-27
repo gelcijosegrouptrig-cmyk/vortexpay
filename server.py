@@ -2299,95 +2299,138 @@ async def route_sorteio_page(request):
     return web.Response(text=load_sorteio_html(), content_type='text/html', charset='utf-8')
 
 async def route_sorteio_info(request):
-    """Info pública + dados do participante por CPF"""
+    """Info pública + dados do participante por CPF — 100% PostgreSQL"""
 
     import json as _json
-    cpf = request.rel_url.query.get('cpf', '').strip()
-    config = get_sorteio_config()
+    import psycopg2 as _pg2
 
-    conn = sqlite3_connect()
-    cur1 = conn.execute("SELECT COUNT(*), COALESCE(SUM(total_depositado),0), COALESCE(SUM(total_numeros),0) FROM sorteio_participantes WHERE sorteio_id='atual'")
-    total_part, total_dep, total_bilhetes = cur1.fetchone()
-    cur2 = conn.execute("SELECT * FROM sorteio_historico ORDER BY data_sorteio DESC LIMIT 5")
-    hist_rows = cur2.fetchall()
-    conn.close()
+    cpf = re.sub(r'\D', '', request.rel_url.query.get('cpf', '').strip())
 
-    hist_cols = ['id','sorteio_id','data_sorteio','ganhador_cliente_id','ganhador_nome',
-                 'ganhador_cpf','ganhador_numero','ganhador_chave_pix','ganhador_tipo_chave',
-                 'premio_pago','saque_id','saque_status','total_participantes',
-                 'total_bilhetes','total_depositado','observacao']
-    historico = []
-    for r in hist_rows:
-        d = {}
-        for i, col in enumerate(hist_cols):
-            d[col] = r[i] if i < len(r) else None
-        historico.append(d)
+    try:
+        conn = _pg2.connect(DATABASE_URL, connect_timeout=10)
+        cur  = conn.cursor()
 
-    vp = float(config.get('valor_por_numero') or 5.0)
-    # Prêmio = o acumulado total (que já cresce 50% a cada depósito confirmado)
-    # Se premio_fixo > 0, usa fixo. Caso contrário, usa o acumulado salvo.
-    _premio_fixo = float(config.get('premio_fixo') or 0)
-    _acumulado   = float(config.get('premio_acumulado') or 0)
-    _percentual  = float(config.get('percentual') or 50)
+        # ── 1. Config do sorteio ──
+        cur.execute("""
+            SELECT ativo, valor_por_numero, premio_fixo, percentual,
+                   usar_media, dias_media, descricao, proximo_sorteio,
+                   premio_acumulado, acumulativo, min_participantes,
+                   part_manual, bilhetes_manual, deposito_manual, premio_manual
+            FROM sorteio_config WHERE id=1
+        """)
+        cfg = cur.fetchone()
+        if not cfg:
+            cur.close(); conn.close()
+            return web.json_response({'sorteio': {'ativo': False}, 'historico': []})
 
-    if _premio_fixo > 0:
-        # Modo prêmio fixo: ignora acumulado
-        premio = _premio_fixo
-        premio_base = _premio_fixo
-    elif _acumulado > 0:
-        # Modo acumulativo: o prêmio É o acumulado (já foi somando 50% de cada depósito)
-        premio = round(_acumulado, 2)
-        premio_base = premio
-    else:
-        # Fallback: calcular 50% do total depositado quando acumulado ainda é zero
-        premio_base = round(total_dep * _percentual / 100, 2)
-        premio_base = max(premio_base, 1.0)
-        premio = premio_base
-    premio = max(premio, 1.0)
+        (ativo, vp, premio_fixo, percentual, usar_media, dias_media,
+         descricao, proximo_sorteio, premio_acumulado, acumulativo,
+         min_participantes, part_manual, bilhetes_manual,
+         deposito_manual, premio_manual) = cfg
 
-    resp = {
-        'sorteio': {
-            'ativo': bool(config.get('ativo', 1)),
-            'descricao': config.get('descricao', 'Sorteio PaynexBet'),
-            'valor_por_numero': vp,
-            'percentual': float(config.get('percentual') or 50),
-            'premio_fixo': float(config.get('premio_fixo') or 0),
-            'usar_media': int(config.get('usar_media') or 0),
-            'dias_media': int(config.get('dias_media') or 30),
-            'proximo_sorteio': config.get('proximo_sorteio'),
-            'total_participantes': int(total_part),
-            'total_bilhetes': int(total_bilhetes),
-            'total_depositado': round(total_dep, 2),
-            'premio_estimado_total': premio,
-            'premio_acumulado': round(_acumulado, 2),
-            'acumulativo': bool(int(config.get('acumulativo') or 1)),
-            'min_participantes': int(config.get('min_participantes') or 1),
-            # Ajustes manuais dos cards (None = usar calculado)
-            'part_manual':     int(config['part_manual'])     if config.get('part_manual')     is not None else None,
-            'bilhetes_manual': int(config['bilhetes_manual']) if config.get('bilhetes_manual') is not None else None,
-            'deposito_manual': float(config['deposito_manual']) if config.get('deposito_manual') is not None else None,
-            'premio_manual':   float(config['premio_manual'])   if config.get('premio_manual')   is not None else None,
-        },
-        'historico': historico,
-    }
+        vp              = float(vp or 5.0)
+        percentual      = float(percentual or 50.0)
+        premio_acumulado= float(premio_acumulado or 0.0)
+        premio_fixo_val = float(premio_fixo or 0.0)
 
-    if cpf:
-        part = get_participante(cpf)
-        if part:
-            resp['participante'] = {
-                'cpf': part['cpf'],
-                'nome': part['nome'],
-                'chave_pix': part['chave_pix'],
-                'tipo_chave': part['tipo_chave'],
-                'total_depositado': part['total_depositado'],
-                'total_numeros': part['total_numeros'],
-                'numeros_sorte': part['numeros_sorte'],
-                'participando': True,
-            }
+        # ── 2. Estatísticas de participantes e bilhetes (PostgreSQL real) ──
+        cur.execute("""
+            SELECT COUNT(*),
+                   COALESCE(SUM(total_depositado), 0),
+                   COALESCE(SUM(total_numeros), 0)
+            FROM sorteio_participantes
+        """)
+        total_part, total_dep, total_bilhetes = cur.fetchone()
+        total_part     = int(total_part     or 0)
+        total_dep      = float(total_dep    or 0)
+        total_bilhetes = int(total_bilhetes or 0)
+
+        # ── 3. Histórico de sorteios ──
+        cur.execute("""
+            SELECT id, sorteio_id, data_sorteio,
+                   ganhador_cliente_id, ganhador_nome, ganhador_cpf,
+                   ganhador_numero, ganhador_chave_pix, ganhador_tipo_chave,
+                   premio_pago, saque_id, saque_status,
+                   total_participantes, total_bilhetes, total_depositado, observacao
+            FROM sorteio_historico
+            ORDER BY data_sorteio DESC LIMIT 5
+        """)
+        hist_cols = ['id','sorteio_id','data_sorteio','ganhador_cliente_id','ganhador_nome',
+                     'ganhador_cpf','ganhador_numero','ganhador_chave_pix','ganhador_tipo_chave',
+                     'premio_pago','saque_id','saque_status','total_participantes',
+                     'total_bilhetes','total_depositado','observacao']
+        historico = []
+        for row in cur.fetchall():
+            d = dict(zip(hist_cols, row))
+            d['data_sorteio'] = str(d['data_sorteio']) if d['data_sorteio'] else None
+            d['premio_pago']  = float(d['premio_pago'] or 0)
+            historico.append(d)
+
+        # ── 4. Calcular prêmio ──
+        if premio_fixo_val > 0:
+            premio = premio_fixo_val
+        elif premio_acumulado > 0:
+            premio = round(premio_acumulado, 2)
         else:
-            resp['participante'] = {'participando': False, 'cpf': cpf}
+            premio = max(round(total_dep * percentual / 100, 2), 1.0)
+        premio = max(premio, 1.0)
 
-    return web.json_response(resp)
+        resp = {
+            'sorteio': {
+                'ativo'               : bool(ativo),
+                'descricao'           : descricao or 'Sorteio PaynexBet',
+                'valor_por_numero'    : vp,
+                'percentual'          : percentual,
+                'premio_fixo'         : premio_fixo_val,
+                'usar_media'          : int(usar_media or 0),
+                'dias_media'          : int(dias_media or 30),
+                'proximo_sorteio'     : str(proximo_sorteio) if proximo_sorteio else None,
+                'total_participantes' : total_part,
+                'total_bilhetes'      : total_bilhetes,
+                'total_depositado'    : round(total_dep, 2),
+                'premio_estimado_total': premio,
+                'premio_acumulado'    : round(premio_acumulado, 2),
+                'acumulativo'         : bool(acumulativo),
+                'min_participantes'   : int(min_participantes or 1),
+                'part_manual'         : int(part_manual)        if part_manual     is not None else None,
+                'bilhetes_manual'     : int(bilhetes_manual)    if bilhetes_manual is not None else None,
+                'deposito_manual'     : float(deposito_manual)  if deposito_manual is not None else None,
+                'premio_manual'       : float(premio_manual)    if premio_manual   is not None else None,
+            },
+            'historico': historico,
+        }
+
+        # ── 5. Dados do participante logado (se CPF fornecido) ──
+        if cpf and len(cpf) == 11:
+            cur.execute("""
+                SELECT nome, cpf, chave_pix, tipo_chave,
+                       total_depositado, total_numeros, numeros_sorte
+                FROM sorteio_participantes WHERE cpf=%s
+            """, (cpf,))
+            part = cur.fetchone()
+            if part:
+                nums = []
+                try: nums = _json.loads(part[6] or '[]')
+                except: pass
+                resp['participante'] = {
+                    'cpf'            : part[1],
+                    'nome'           : part[0],
+                    'chave_pix'      : part[2],
+                    'tipo_chave'     : part[3],
+                    'total_depositado': float(part[4] or 0),
+                    'total_numeros'  : int(part[5] or 0),
+                    'numeros_sorte'  : nums,
+                    'participando'   : True,
+                }
+            else:
+                resp['participante'] = {'participando': False, 'cpf': cpf}
+
+        cur.close(); conn.close()
+        return web.json_response(resp)
+
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return web.json_response({'error': str(e)}, status=500)
 
 async def route_sorteio_cadastrar(request):
     """Cadastrar participante com Nome, CPF e Chave Pix"""
