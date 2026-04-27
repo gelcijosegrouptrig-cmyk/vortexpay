@@ -9174,10 +9174,8 @@ async function loadUsuariosMgr() {
   tbody.innerHTML = '<tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>';
   try {
     const params = new URLSearchParams({ limit, offset });
-    params.append('_auth', '1'); // placeholder
     if (busca) params.set('busca', busca);
-    const authQ = _authQuery();
-    const r = await fetch(`/api/admin/usuarios?${params}&${authQ}`);
+    const r = await fetch(`/api/admin/usuarios?${params}`, { headers: _authHeaders() });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error);
     document.getElementById('badge-users-mgr').textContent = d.total;
@@ -10729,7 +10727,7 @@ async function _autoLoginStaff(token) {
     const staff = d.staff;
     const perms = staff.permissoes || [];
 
-    // Salva modo staff no storage
+    // Salva modo staff no storage PRIMEIRO (antes de qualquer chamada de API)
     sessionStorage.setItem('vp_staff_token', token);
     sessionStorage.setItem('vp_staff_nome', staff.nome);
     sessionStorage.setItem('vp_staff_perms', JSON.stringify(perms));
@@ -10740,6 +10738,9 @@ async function _autoLoginStaff(token) {
 
     // Personalizar header/sidebar com nome do funcionário
     _aplicarModoFuncionario(staff);
+
+    // Pequena pausa para garantir que sessionStorage está sincronizado antes de carregar dados
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     // Mostrar primeira aba permitida
     const primeiraAba = _abaPermitida(perms);
