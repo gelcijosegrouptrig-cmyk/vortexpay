@@ -8966,10 +8966,14 @@ async function abrirModalStaff() {
 }
 
 async function abrirEditarStaff(id) {
-  // Buscar dados atuais do staff da lista já carregada
+  // Buscar dados atuais do staff + permissões disponíveis
   try {
     const r = await fetch('/api/admin/staff', { headers: _authHeaders() });
     const d = await r.json();
+    // CRÍTICO: sempre atualizar _staffPermsMap para garantir todos os checkboxes
+    if (d.permissoes_disponiveis && Object.keys(d.permissoes_disponiveis).length) {
+      _staffPermsMap = d.permissoes_disponiveis;
+    }
     const s = (d.staff || []).find(x => x.id === id);
     if (!s) { alert('Funcionário não encontrado'); return; }
     _staffEditId = id;
@@ -10530,10 +10534,9 @@ function renderHistoricoSorteio(hist) {
 }
 
 async function carregarParticipantes() {
-  const secret = sessionStorage.getItem('vp_secret');
   const tbody = document.getElementById('participantes-tbody');
   try {
-    const r = await fetch(`${BASE}/api/sorteio/participantes?secret=${encodeURIComponent(secret)}`);
+    const r = await fetch(`${BASE}/api/sorteio/participantes`, { headers: _authHeaders() });
     const data = await r.json();
     const lista = data.participantes || [];
     const semPix = data.sem_pix || 0;
@@ -10582,11 +10585,10 @@ async function limparManuais() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  const secret = sessionStorage.getItem('vp_secret');
   try {
     const r = await fetch(`${BASE}/api/sorteio/config/limpar-manuais`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret}
+      headers: _authHeaders()
     });
     const d = await r.json();
     if (d.success) { toast('🗑️ Valores manuais removidos — usando cálculo automático'); setTimeout(() => carregarSorteioAdmin(), 600); }
@@ -10595,7 +10597,6 @@ async function limparManuais() {
 }
 
 async function salvarConfigSorteio() {
-  const secret = sessionStorage.getItem('vp_secret');
   const proxVal = document.getElementById('sc-proximo').value;
   // Aceita formatos pt-BR: "10.000", "10000", "1.500,50" → número JS
   const _toNum = (id) => {
@@ -10624,7 +10625,7 @@ async function salvarConfigSorteio() {
   try {
     const r = await fetch(`${BASE}/api/sorteio/config`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-PaynexBet-Secret': secret},
+      headers: _authHeaders(),
       body: JSON.stringify(body)
     });
     const data = await r.json();
@@ -10639,7 +10640,6 @@ async function salvarConfigSorteio() {
 }
 
 async function realizarSorteio() {
-  const secret = sessionStorage.getItem('vp_secret');
   const el = document.getElementById('resultado-sorteio');
 
   if (!confirm('⚠️ Confirmar realização do sorteio agora?\nEsta ação é irreversível!')) return;
@@ -10649,7 +10649,7 @@ async function realizarSorteio() {
   try {
     const r = await fetch(`${BASE}/api/sorteio/realizar`, {
       method: 'POST',
-      headers: {'X-PaynexBet-Secret': secret}
+      headers: _authHeaders()
     });
     const data = await r.json();
 
@@ -10752,18 +10752,26 @@ async function _autoLoginStaff(token) {
 
 // Abas liberadas por permissão (nomes reais das abas no HTML: showTab('xxx'))
 const _STAFF_ABA_PERM = {
-  'apostas_ver':        'apostas-mgr',
-  'apostas_resolver':   'apostas-mgr',
-  'depositos_ver':      'depositos',
-  'saques_ver':         'saques',
-  'saques_aprovar':     'saques',
-  'bolao_ver':          'bolao',
-  'bolao_gerir':        'bolao',
-  'usuarios_ver':       'usuarios-mgr',
-  'usuarios_ajustar':   'usuarios-mgr',
-  'usuarios_suspender': 'usuarios-mgr',
-  'relatorios_ver':     'pnl',
-  'bonus_criar':        'bonus',
+  'apostas_ver':          'apostas-mgr',
+  'apostas_resolver':     'apostas-mgr',
+  'depositos_ver':        'depositos',
+  'saques_ver':           'saques',
+  'saques_aprovar':       'saques',
+  'bolao_ver':            'bolao',
+  'bolao_gerir':          'bolao',
+  'usuarios_ver':         'usuarios-mgr',
+  'usuarios_ajustar':     'usuarios-mgr',
+  'usuarios_suspender':   'usuarios-mgr',
+  'relatorios_ver':       'pnl',
+  'bonus_criar':          'bonus',
+  'alertas_ver':          'alertas',
+  'jogo_responsavel_ver': 'jogo-responsavel',
+  'afiliados_ver':        'afiliados',
+  'campeonatos_ver':      'campeonatos',
+  'limites_ver':          'limites',
+  'config_ver':           'config-pagamento',
+  'notificacoes_ver':     'notificacoes',
+  'sorteio_ver':          'sorteio',
 };
 
 function _abaPermitida(perms) {
@@ -10799,25 +10807,25 @@ function _aplicarModoFuncionario(staff) {
     'carteira':         false,
     'depositos':        perms.includes('depositos_ver'),
     'saques':           perms.includes('saques_ver') || perms.includes('saques_aprovar'),
-    'sorteio':          false,
+    'sorteio':          perms.includes('sorteio_ver'),
     'paypix':           false,
     'paypixcob':        false,
     'bot2':             false,
     'bot3':             false,
-    'campeonatos':      false,
+    'campeonatos':      perms.includes('campeonatos_ver'),
     'apostas-mgr':      perms.includes('apostas_ver') || perms.includes('apostas_resolver'),
     'usuarios-mgr':     perms.includes('usuarios_ver') || perms.includes('usuarios_ajustar') || perms.includes('usuarios_suspender'),
     'funcionarios':     false,
-    'config-pagamento': false,
-    'limites':          false,
+    'config-pagamento': perms.includes('config_ver'),
+    'limites':          perms.includes('limites_ver'),
     'bonus':            perms.includes('bonus_criar'),
-    'alertas':          false,
-    'jogo-responsavel': false,
+    'alertas':          perms.includes('alertas_ver'),
+    'jogo-responsavel': perms.includes('jogo_responsavel_ver'),
     'pnl':              perms.includes('relatorios_ver'),
-    'afiliados':        false,
+    'afiliados':        perms.includes('afiliados_ver'),
     'multi':            perms.includes('apostas_ver') || perms.includes('apostas_resolver'),
     'bolao':            perms.includes('bolao_ver') || perms.includes('bolao_gerir'),
-    'notificacoes':     false,
+    'notificacoes':     perms.includes('notificacoes_ver'),
     'api':              false,
     'sistema':          false,
   };

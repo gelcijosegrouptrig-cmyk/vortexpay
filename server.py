@@ -2720,9 +2720,8 @@ async def _executar_sorteio_completo():
 async def route_sorteio_realizar(request):
     """ADMIN - Realizar o sorteio e executar saque automático"""
 
-    auth = (request.headers.get('X-PaynexBet-Secret', '') or
-            request.rel_url.query.get('secret', ''))
-    if auth != WEBHOOK_SECRET:
+    _ok, _staff = _staff_auth(request, 'sorteio_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         resultado = await _executar_sorteio_completo()
@@ -2836,9 +2835,8 @@ async def reprocessar_saques_pendentes_sorteio():
 async def route_sorteio_config(request):
     """ADMIN - Configurar parâmetros do sorteio"""
 
-    auth = (request.headers.get('X-PaynexBet-Secret', '') or
-            request.rel_url.query.get('secret', ''))
-    if auth != WEBHOOK_SECRET:
+    _ok, _staff = _staff_auth(request, 'sorteio_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         data = await request.json()
@@ -2925,9 +2923,8 @@ async def route_sorteio_config(request):
 async def route_sorteio_limpar_manuais(request):
     """ADMIN - Limpar todos os valores manuais dos cards (volta ao cálculo automático)"""
 
-    auth = (request.headers.get('X-PaynexBet-Secret', '') or
-            request.rel_url.query.get('secret', ''))
-    if auth != WEBHOOK_SECRET:
+    _ok, _staff = _staff_auth(request, 'sorteio_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         if _USE_PG and DATABASE_URL:
@@ -3074,9 +3071,8 @@ async def route_sorteio_reparar_participante(request):
 async def route_sorteio_set_acumulado(request):
     """ADMIN - Definir valor acumulado manualmente"""
 
-    auth = (request.headers.get('X-PaynexBet-Secret', '') or
-            request.rel_url.query.get('secret', ''))
-    if auth != WEBHOOK_SECRET:
+    _ok, _staff = _staff_auth(request, 'sorteio_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         data = await request.json()
@@ -3094,9 +3090,8 @@ async def route_sorteio_set_acumulado(request):
 async def route_sorteio_participantes(request):
     """ADMIN - Listar todos os participantes"""
 
-    auth = (request.headers.get('X-PaynexBet-Secret', '') or
-            request.rel_url.query.get('secret', ''))
-    if auth != WEBHOOK_SECRET:
+    _ok, _staff = _staff_auth(request, 'sorteio_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     import json as _json
     conn = sqlite3_connect()
@@ -3868,7 +3863,7 @@ def _admin_save_liga_config(liga_key, cfg):
 
 async def route_admin_ligas_list(request):
     """GET /api/admin/ligas — lista todas as ligas com status e config."""
-    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    _ok, _staff = _staff_auth(request, 'campeonatos_ver', 'apostas_ver')
     if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     ligas = []
@@ -4131,18 +4126,26 @@ async def route_admin_usuarios_suspender(request):
 # ─────────────────────────────────────────────────────────────────────────────
 
 _STAFF_PERMISSOES_DISPONIVEIS = {
-    'usuarios_ver':       'Ver usuários e saldos',
-    'usuarios_ajustar':   'Ajustar saldo de usuários',
-    'usuarios_suspender': 'Suspender/ativar contas',
-    'apostas_ver':        'Ver apostas e lucro',
-    'apostas_resolver':   'Resolver apostas',
-    'depositos_ver':      'Ver depósitos',
-    'saques_ver':         'Ver saques',
-    'saques_aprovar':     'Aprovar/rejeitar saques',
-    'bolao_ver':          'Ver bolão placar',
-    'bolao_gerir':        'Criar e publicar jogos do bolão',
-    'relatorios_ver':     'Ver relatórios e P&L',
-    'bonus_criar':        'Criar bônus para usuários',
+    'usuarios_ver':         'Ver usuários e saldos',
+    'usuarios_ajustar':     'Ajustar saldo de usuários',
+    'usuarios_suspender':   'Suspender/ativar contas',
+    'apostas_ver':          'Ver apostas e lucro',
+    'apostas_resolver':     'Resolver apostas',
+    'depositos_ver':        'Ver depósitos',
+    'saques_ver':           'Ver saques',
+    'saques_aprovar':       'Aprovar/rejeitar saques',
+    'bolao_ver':            'Ver bolão placar',
+    'bolao_gerir':          'Criar e publicar jogos do bolão',
+    'relatorios_ver':       'Ver relatórios e P&L',
+    'bonus_criar':          'Criar bônus para usuários',
+    'alertas_ver':          'Ver alertas de risco',
+    'jogo_responsavel_ver': 'Ver jogo responsável',
+    'afiliados_ver':        'Ver afiliados',
+    'campeonatos_ver':      'Ver e gerenciar campeonatos',
+    'limites_ver':          'Ver e editar limites de aposta',
+    'config_ver':           'Ver configurações de pagamento',
+    'notificacoes_ver':     'Enviar notificações para usuários',
+    'sorteio_ver':          'Ver e gerenciar sorteios',
 }
 
 import secrets as _secrets
@@ -4190,9 +4193,10 @@ def _staff_get_by_token(token: str):
     except Exception:
         return None
 
-def _staff_auth(request, permissao_exigida: str = None):
+def _staff_auth(request, *permissoes_exigidas):
     """
     Autentica um funcionário pelo header X-Staff-Token.
+    Aceita múltiplas permissões (qualquer uma delas basta).
     Retorna (True, staff_dict)  se autorizado.
     Retorna (False, mensagem)   se não autorizado.
     O admin geral (WEBHOOK_SECRET) sempre passa.
@@ -4216,8 +4220,11 @@ def _staff_auth(request, permissao_exigida: str = None):
     if not staff['ativo']:
         return False, 'Acesso revogado pelo administrador'
 
-    if permissao_exigida and permissao_exigida not in staff['permissoes']:
-        return False, f'Sem permissão: {permissao_exigida}'
+    # Verificar permissões: qualquer uma das exigidas basta
+    if permissoes_exigidas:
+        tem_permissao = any(p in staff['permissoes'] for p in permissoes_exigidas if p)
+        if not tem_permissao:
+            return False, f'Sem permissão: {permissoes_exigidas[0]}'
 
     # Atualizar último acesso (assíncrono — não bloquear a requisição)
     try:
@@ -11348,7 +11355,7 @@ def _ensure_limites_table(cur, conn):
 
 async def route_admin_limites_get(request):
     """GET /api/admin/bet/limites — lista limites por liga."""
-    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    _ok, _staff = _staff_auth(request, 'limites_ver', 'apostas_ver')
     if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
@@ -11499,7 +11506,7 @@ async def route_admin_bonus_cancelar(request):
 # ═══════════════════════════════════════════════════════════════════════════════
 async def route_admin_alertas(request):
     """GET /api/admin/alertas — detecta apostadores suspeitos."""
-    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    _ok, _staff = _staff_auth(request, 'alertas_ver', 'apostas_ver')
     if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
@@ -11598,7 +11605,7 @@ def _ensure_jogo_resp_table(cur, conn):
 
 async def route_admin_jogo_resp_list(request):
     """GET /api/admin/jogo-responsavel — lista usuários com restrições ativas."""
-    _ok, _staff = _staff_auth(request, 'usuarios_ver')
+    _ok, _staff = _staff_auth(request, 'jogo_responsavel_ver', 'usuarios_ver')
     if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
@@ -11680,7 +11687,7 @@ async def route_admin_jogo_resp_set(request):
 # ═══════════════════════════════════════════════════════════════════════════════
 async def route_admin_afiliados_list(request):
     """GET /api/admin/afiliados — lista afiliados com métricas."""
-    _ok, _staff = _staff_auth(request, 'relatorios_ver')
+    _ok, _staff = _staff_auth(request, 'afiliados_ver', 'relatorios_ver')
     if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
@@ -11748,7 +11755,7 @@ async def _notif_telegram_admin(msg: str):
 
 async def route_admin_notif_config_get(request):
     """GET /api/admin/notif-config — retorna config de notificações."""
-    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    _ok, _staff = _staff_auth(request, 'notificacoes_ver', 'apostas_ver')
     if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     await _carregar_notif_config()
@@ -16854,8 +16861,8 @@ async def route_bet_dbcheck(request):
 
 async def route_bet_config_get(request):
     """GET /api/bet/config — retorna status das chaves (sem expor valores)"""
-    secret = request.headers.get('X-PaynexBet-Secret','') or request.headers.get('x-paynexbet-secret','')
-    if secret != WEBHOOK_SECRET:
+    _ok, _staff = _staff_auth(request, 'config_ver')
+    if not _ok:
         return web.json_response({'ok': False, 'error': 'Não autorizado'}, status=403)
     odds_key = _get_odds_key()
     suit_ci, suit_cs = _get_suit_keys()
