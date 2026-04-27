@@ -2518,6 +2518,133 @@ async def route_sorteio_adicionar_deposito(request):
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
 
+async def route_sorteio_comprar_com_saldo(request):
+    """POST /api/sorteio/comprar-com-saldo — debita saldo da conta e gera bilhetes do sorteio"""
+    import json as _json
+    import psycopg2 as _pg2
+
+    try:
+        data = await request.json()
+        usuario_id = data.get('usuario_id')
+        valor      = float(data.get('valor', 0))
+        nome       = str(data.get('nome', '')).strip()
+        cpf        = re.sub(r'\D', '', str(data.get('cpf', ''))).strip()
+        chave_pix  = str(data.get('chave_pix', cpf)).strip() or cpf
+        tipo_chave = str(data.get('tipo_chave', 'cpf')).strip().lower()
+
+        if not usuario_id:
+            return web.json_response({'success': False, 'error': 'usuario_id obrigatório'}, status=400)
+        if valor < 5:
+            return web.json_response({'success': False, 'error': 'Valor mínimo é R$ 5,00 (1 bilhete)'}, status=400)
+        if not cpf or len(cpf) < 11:
+            return web.json_response({'success': False, 'error': 'CPF inválido'}, status=400)
+
+        # Verificar se sorteio está ativo
+        config = get_sorteio_config()
+        if not config.get('ativo', 1):
+            return web.json_response({'success': False, 'error': 'Sorteio não está ativo no momento'}, status=400)
+
+        vp = float(config.get('valor_por_numero') or 5.0)
+        bilhetes_a_gerar = int(valor // vp)
+        if bilhetes_a_gerar < 1:
+            return web.json_response({'success': False, 'error': f'Valor mínimo R$ {vp:.0f},00 por bilhete'}, status=400)
+
+        # ── 1. Debitar saldo do usuário no PostgreSQL ──
+        conn_pg = _pg2.connect(DATABASE_URL, connect_timeout=10)
+        conn_pg.autocommit = False
+        try:
+            cur = conn_pg.cursor()
+            cur.execute('SELECT saldo FROM usuarios WHERE id=%s FOR UPDATE', (usuario_id,))
+            row = cur.fetchone()
+            if not row:
+                cur.close(); conn_pg.close()
+                return web.json_response({'success': False, 'error': 'Usuário não encontrado'}, status=404)
+            saldo_atual = float(row[0] or 0)
+            if saldo_atual < valor:
+                cur.close(); conn_pg.close()
+                return web.json_response({
+                    'success': False,
+                    'error': f'Saldo insuficiente. Disponível: R$ {saldo_atual:.2f}',
+                    'saldo': saldo_atual
+                }, status=400)
+            # Debitar
+            cur.execute('UPDATE usuarios SET saldo = saldo - %s WHERE id=%s', (valor, usuario_id))
+            conn_pg.commit()
+            cur.execute('SELECT saldo FROM usuarios WHERE id=%s', (usuario_id,))
+            novo_saldo = float(cur.fetchone()[0] or 0)
+            cur.close(); conn_pg.close()
+        except Exception as e_pg:
+            try: conn_pg.close()
+            except: pass
+            return web.json_response({'success': False, 'error': f'Erro ao debitar saldo: {e_pg}'}, status=500)
+
+        # ── 2. Cadastrar/atualizar participante no SQLite do sorteio ──
+        try:
+            cliente_id = f"cli_{cpf}"
+            now = datetime.now().isoformat()
+            existente = get_participante(cpf)
+            conn_sq = sqlite3_connect()
+            if existente:
+                conn_sq.execute(
+                    "UPDATE sorteio_participantes SET nome=?, chave_pix=?, tipo_chave=?, updated_at=? WHERE cpf=? AND sorteio_id='atual'",
+                    (nome or existente['nome'], chave_pix, tipo_chave, now, cpf)
+                )
+            else:
+                conn_sq.execute(
+                    "INSERT INTO sorteio_participantes (cliente_id,nome,cpf,chave_pix,tipo_chave,total_depositado,total_numeros,numeros_sorte,created_at,updated_at,sorteio_id) VALUES (?,?,?,?,?,0,0,'[]',?,?,'atual')",
+                    (cliente_id, nome, cpf, chave_pix, tipo_chave, now, now)
+                )
+            conn_sq.commit(); conn_sq.close()
+
+            # ── 3. Adicionar depósito e gerar bilhetes ──
+            part = get_participante(cpf)
+            novo_total_dep = (part['total_depositado'] or 0) + valor
+            numeros_antes  = int(part['total_numeros'] or 0)
+            numeros_total  = calcular_numeros(novo_total_dep, vp)
+            novos          = numeros_total - numeros_antes
+            numeros_atuais = list(part['numeros_sorte'] or [])
+            novos_numeros  = []
+            if novos > 0:
+                novos_numeros = gerar_bilhetes_unicos(cliente_id, novos)
+                numeros_atuais.extend(novos_numeros)
+
+            conn_sq2 = sqlite3_connect()
+            conn_sq2.execute(
+                "UPDATE sorteio_participantes SET total_depositado=?,total_numeros=?,numeros_sorte=?,updated_at=? WHERE cpf=? AND sorteio_id='atual'",
+                (novo_total_dep, numeros_total, _json.dumps(numeros_atuais), now, cpf)
+            )
+            conn_sq2.commit(); conn_sq2.close()
+
+            # Acumular 50% no prêmio
+            novo_acum = _acumular_premio_deposito(valor)
+
+            print(f'[sorteio/saldo] usuario_id={usuario_id} cpf={cpf} valor=R${valor:.2f} bilhetes={novos} saldo_novo=R${novo_saldo:.2f}', flush=True)
+
+            return web.json_response({
+                'success': True,
+                'bilhetes_gerados': novos,
+                'novos_numeros': novos_numeros,
+                'total_numeros': numeros_total,
+                'total_depositado': novo_total_dep,
+                'saldo': novo_saldo,
+                'premio_acumulado': novo_acum,
+                'msg': f'✅ {novos} bilhete(s) gerado(s)! Números: {novos_numeros}. Saldo restante: R$ {novo_saldo:.2f}'
+            })
+        except Exception as e_sq:
+            # Reverter débito se SQLite falhar
+            try:
+                conn_rev = _pg2.connect(DATABASE_URL, connect_timeout=10)
+                cur_rev = conn_rev.cursor()
+                cur_rev.execute('UPDATE usuarios SET saldo = saldo + %s WHERE id=%s', (valor, usuario_id))
+                conn_rev.commit(); cur_rev.close(); conn_rev.close()
+                print(f'[sorteio/saldo] ROLLBACK saldo usuario_id={usuario_id} valor=R${valor:.2f}', flush=True)
+            except Exception as e_rev:
+                print(f'[sorteio/saldo] ERRO rollback: {e_rev}', flush=True)
+            return web.json_response({'success': False, 'error': f'Erro ao gerar bilhetes: {e_sq}'}, status=500)
+
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
 async def route_sorteio_participar(request):
     """Alias público: buscar dados do participante por CPF"""
 
@@ -17493,6 +17620,7 @@ async def main():
     app.router.add_get('/api/sorteio/info', route_sorteio_info)
     app.router.add_post('/api/sorteio/cadastrar', route_sorteio_cadastrar)
     app.router.add_post('/api/sorteio/participar', route_sorteio_participar)
+    app.router.add_post('/api/sorteio/comprar-com-saldo', route_sorteio_comprar_com_saldo)
     app.router.add_post('/api/sorteio/deposito', route_sorteio_adicionar_deposito)
     app.router.add_post('/api/sorteio/realizar', route_sorteio_realizar)
     app.router.add_post('/api/sorteio/config', route_sorteio_config)

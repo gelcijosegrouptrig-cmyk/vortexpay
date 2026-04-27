@@ -1163,11 +1163,10 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
           <div class="sh-prog"><div class="sh-prog-fill" id="sv-prog" style="width:65%"></div></div>
           <button class="btn-sortear" onclick="participarSorteio()">🎲 Participar do Sorteio →</button>
         </div>
-        <div style="text-align:center;color:var(--muted);font-size:13px">
-          Para participar do sorteio, deposite via Pix e você receberá bilhetes automaticamente.
-          <br><br>
-          <button class="btn-hs secondary" onclick="sbNav('depositar')" style="margin:0 auto">💳 Depositar via Pix</button>
-        </div>
+
+        <!-- Painel inteligente de participação (injetado por JS) -->
+        <div id="sorteio-participar-panel"></div>
+
       </div>
     </div><!-- /view-sorteio -->
 
@@ -1634,6 +1633,10 @@ function navTo(view, extra){
       break;
     case 'sorteio':
       showView('sorteio');setHnActive('hn-sorteios');setSbActive('sb-sorteio');
+      // Limpar painel ao entrar
+      const _spanel = document.getElementById('sorteio-participar-panel');
+      if(_spanel) _spanel.innerHTML = '';
+      window._sorteioCtx = null;
       loadSorteioInfo();break;
     case 'bilhetes':
       showView('bilhetes');setSbActive('sb-bilhetes');carregarBilhetes();break;
@@ -1876,15 +1879,202 @@ async function loadSorteioInfo(){
 }
 
 function irSorteio(){
-  // Mostra a tela do sorteio sem exigir login (login é pedido só ao participar)
+  // Mostra a tela do sorteio sem exigir login
   sbNav('sorteio');
 }
 
-function participarSorteio(){
-  // Exige login para participar (depositar)
-  const u=loadSession();
-  if(!u){openModal('login');return}
-  sbNav('depositar');
+async function participarSorteio(){
+  const u = loadSession();
+  if(!u){ openModal('login'); return; }
+
+  // Sincronizar saldo antes de decidir
+  const us = await syncSaldo() || loadSession();
+  const saldo = Number(us?.saldo || 0);
+
+  // Buscar config do sorteio para saber valor por bilhete
+  let valorBilhete = 5; // padrão R$5
+  try{
+    const rc = await fetch(BASE+'/api/sorteio/info');
+    const dc = await rc.json();
+    const cfg = dc.sorteio || dc;
+    if(cfg.valor_por_numero) valorBilhete = Number(cfg.valor_por_numero);
+  }catch(e){}
+
+  const panel = document.getElementById('sorteio-participar-panel');
+  if(!panel) return;
+
+  if(saldo >= valorBilhete){
+    // ✅ TEM SALDO — mostrar painel de compra com saldo
+    _renderSorteioComprarComSaldo(panel, saldo, valorBilhete, us);
+  } else {
+    // ❌ SEM SALDO — mostrar painel de depósito PIX
+    _renderSorteioPix(panel, saldo, valorBilhete);
+  }
+  // Rolar até o painel
+  panel.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function _renderSorteioComprarComSaldo(panel, saldo, valorBilhete, u){
+  const maxBilhetes = Math.floor(saldo / valorBilhete);
+  panel.innerHTML = `
+    <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.35);border-radius:14px;padding:18px;margin-top:16px">
+      <div style="color:#4ade80;font-weight:800;font-size:15px;margin-bottom:4px">✅ Você tem saldo disponível!</div>
+      <div style="color:#94a3b8;font-size:13px;margin-bottom:14px">
+        Saldo: <strong style="color:#22c55e">R$ ${saldo.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>
+        &nbsp;•&nbsp; R$ ${valorBilhete.toFixed(0)} por bilhete
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:6px">Quantos bilhetes deseja comprar?</label>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px" id="sorteio-qtd-rapidos">
+          ${[1,3,5,10].filter(n => n <= maxBilhetes).map(n =>
+            `<button onclick="setSorteioQtd(${n})" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted2);border-radius:8px;padding:8px;cursor:pointer;font-weight:700;font-size:13px">${n}</button>`
+          ).join('')}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="sorteio-qtd" min="1" max="${maxBilhetes}" value="1"
+            style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-size:14px"
+            oninput="calcSorteioTotal()">
+          <span style="color:#94a3b8;font-size:13px;white-space:nowrap">× R$ ${valorBilhete.toFixed(0)} =
+            <strong style="color:#22c55e" id="sorteio-total">R$ ${valorBilhete.toFixed(2)}</strong>
+          </span>
+        </div>
+      </div>
+
+      <button id="btn-comprar-sorteio" onclick="confirmarComprarSorteio()"
+        style="width:100%;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:10px;padding:13px;color:#000;font-weight:900;font-size:15px;cursor:pointer;margin-bottom:8px">
+        🎟️ Comprar Bilhetes com Saldo
+      </button>
+      <button onclick="_renderSorteioPix(document.getElementById('sorteio-participar-panel'), ${saldo}, ${valorBilhete})"
+        style="width:100%;background:transparent;border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--muted);font-size:13px;cursor:pointer">
+        💳 Prefiro depositar via Pix
+      </button>
+
+      <div id="sorteio-compra-msg" style="margin-top:10px;font-size:13px;text-align:center;min-height:20px"></div>
+    </div>`;
+  // Guardar dados para uso na confirmação
+  window._sorteioCtx = {saldo, valorBilhete, u, maxBilhetes};
+}
+
+function setSorteioQtd(n){
+  const inp = document.getElementById('sorteio-qtd');
+  if(inp){ inp.value = n; calcSorteioTotal(); }
+  // Destacar botão ativo
+  document.querySelectorAll('#sorteio-qtd-rapidos button').forEach((b,i)=>{
+    b.style.background = (b.textContent == n) ? 'var(--green)' : 'var(--bg3)';
+    b.style.color = (b.textContent == n) ? '#000' : 'var(--muted2)';
+  });
+}
+
+function calcSorteioTotal(){
+  if(!window._sorteioCtx) return;
+  const qtd = parseInt(document.getElementById('sorteio-qtd')?.value || 1);
+  const total = qtd * window._sorteioCtx.valorBilhete;
+  const el = document.getElementById('sorteio-total');
+  if(el) el.textContent = 'R$ ' + total.toLocaleString('pt-BR',{minimumFractionDigits:2});
+}
+
+async function confirmarComprarSorteio(){
+  if(!window._sorteioCtx) return;
+  const {valorBilhete, u} = window._sorteioCtx;
+  const qtd   = parseInt(document.getElementById('sorteio-qtd')?.value || 1);
+  const valor = qtd * valorBilhete;
+  const msgEl = document.getElementById('sorteio-compra-msg');
+  const btn   = document.getElementById('btn-comprar-sorteio');
+
+  if(qtd < 1){ msgEl.style.color='#f87171'; msgEl.textContent='Informe ao menos 1 bilhete.'; return; }
+
+  btn.disabled = true; btn.textContent = '⏳ Processando...';
+  msgEl.style.color = 'var(--muted)'; msgEl.textContent = '⏳ Gerando seus bilhetes...';
+
+  try{
+    const r = await fetch(BASE+'/api/sorteio/comprar-com-saldo', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        usuario_id: u.id,
+        valor,
+        nome: u.nome || '',
+        cpf:  u.cpf  || '',
+        chave_pix:  u.cpf || '',
+        tipo_chave: 'cpf'
+      })
+    });
+    const d = await r.json();
+    btn.disabled = false;
+    if(d.success){
+      // Atualizar saldo na sessão
+      u.saldo = Number(d.saldo || 0);
+      saveSession(u); renderHeader();
+
+      msgEl.style.color = '#4ade80';
+      msgEl.textContent = d.msg || `✅ ${d.bilhetes_gerados} bilhete(s) comprado(s)!`;
+
+      // Mostrar números gerados
+      const panel = document.getElementById('sorteio-participar-panel');
+      if(panel && d.novos_numeros && d.novos_numeros.length){
+        const nums = d.novos_numeros.join(' • ');
+        panel.innerHTML += `
+          <div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);border-radius:10px;padding:14px;margin-top:10px;text-align:center">
+            <div style="color:#a78bfa;font-weight:700;margin-bottom:8px">🎟️ Seus números da sorte:</div>
+            <div style="font-size:16px;font-weight:900;color:#fff;letter-spacing:2px">${nums}</div>
+            <div style="color:#94a3b8;font-size:12px;margin-top:8px">Total acumulado: ${d.total_numeros} bilhete(s)</div>
+          </div>`;
+      }
+      // Atualizar contador de bilhetes no hero
+      const svTick = document.getElementById('sv-tick');
+      if(svTick) svTick.textContent = d.total_numeros || '--';
+
+      btn.textContent = '🎟️ Comprar Bilhetes com Saldo';
+    } else {
+      msgEl.style.color = '#f87171';
+      msgEl.textContent = d.error || 'Erro ao processar. Tente novamente.';
+      btn.textContent = '🎟️ Comprar Bilhetes com Saldo';
+
+      // Se saldo insuficiente, atualizar painel
+      if(d.error && d.error.includes('insuficiente')){
+        await syncSaldo();
+        const us2 = loadSession();
+        const saldo2 = Number(us2?.saldo || 0);
+        if(saldo2 < valorBilhete){
+          setTimeout(()=> _renderSorteioPix(document.getElementById('sorteio-participar-panel'), saldo2, valorBilhete), 1500);
+        }
+      }
+    }
+  } catch(e){
+    btn.disabled = false;
+    btn.textContent = '🎟️ Comprar Bilhetes com Saldo';
+    msgEl.style.color = '#f87171';
+    msgEl.textContent = 'Falha na conexão. Tente novamente.';
+  }
+}
+
+function _renderSorteioPix(panel, saldo, valorBilhete){
+  const falta = saldo < valorBilhete ? valorBilhete - saldo : 0;
+  panel.innerHTML = `
+    <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.3);border-radius:14px;padding:18px;margin-top:16px;text-align:center">
+      ${saldo > 0
+        ? `<div style="color:#f59e0b;font-weight:700;font-size:14px;margin-bottom:6px">⚠️ Saldo insuficiente para 1 bilhete</div>
+           <div style="color:#94a3b8;font-size:13px;margin-bottom:12px">
+             Saldo atual: <strong style="color:#fbbf24">R$ ${saldo.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>
+             — Falta: <strong style="color:#f87171">R$ ${falta.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>
+           </div>`
+        : `<div style="color:#94a3b8;font-size:13px;margin-bottom:12px">
+             Deposite via Pix e receba bilhetes automaticamente.<br>
+             Cada <strong>R$ ${valorBilhete.toFixed(0)}</strong> = <strong>1 bilhete</strong>
+           </div>`
+      }
+      <button onclick="sbNav('depositar')"
+        style="width:100%;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;border-radius:10px;padding:13px;color:#fff;font-weight:900;font-size:15px;cursor:pointer;margin-bottom:8px">
+        💳 Depositar via Pix
+      </button>
+      ${saldo >= valorBilhete
+        ? `<button onclick="participarSorteio()"
+             style="width:100%;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:10px;padding:10px;color:#000;font-weight:700;font-size:13px;cursor:pointer">
+             🎟️ Usar Saldo da Conta
+           </button>`
+        : ''}
+    </div>`;
 }
 
 /* ══ MAPA DE LABELS POR SPORT ══ */
