@@ -2519,8 +2519,9 @@ async def route_sorteio_adicionar_deposito(request):
         return web.json_response({'error': str(e)}, status=500)
 
 async def route_sorteio_comprar_com_saldo(request):
-    """POST /api/sorteio/comprar-com-saldo — debita saldo da conta e gera bilhetes do sorteio"""
+    """POST /api/sorteio/comprar-com-saldo — debita saldo da conta e gera bilhetes (100% PostgreSQL)"""
     import json as _json
+    import hashlib as _hashlib
     import psycopg2 as _pg2
 
     try:
@@ -2529,7 +2530,7 @@ async def route_sorteio_comprar_com_saldo(request):
         valor      = float(data.get('valor', 0))
         nome       = str(data.get('nome', '')).strip()
         cpf        = re.sub(r'\D', '', str(data.get('cpf', ''))).strip()
-        chave_pix  = str(data.get('chave_pix', cpf)).strip() or cpf
+        chave_pix  = str(data.get('chave_pix', '')).strip() or cpf
         tipo_chave = str(data.get('tipo_chave', 'cpf')).strip().lower()
 
         if not usuario_id:
@@ -2539,110 +2540,152 @@ async def route_sorteio_comprar_com_saldo(request):
         if not cpf or len(cpf) < 11:
             return web.json_response({'success': False, 'error': 'CPF inválido'}, status=400)
 
-        # Verificar se sorteio está ativo
-        config = get_sorteio_config()
-        if not config.get('ativo', 1):
-            return web.json_response({'success': False, 'error': 'Sorteio não está ativo no momento'}, status=400)
-
-        vp = float(config.get('valor_por_numero') or 5.0)
-        bilhetes_a_gerar = int(valor // vp)
-        if bilhetes_a_gerar < 1:
-            return web.json_response({'success': False, 'error': f'Valor mínimo R$ {vp:.0f},00 por bilhete'}, status=400)
-
-        # ── 1. Debitar saldo do usuário no PostgreSQL ──
-        conn_pg = _pg2.connect(DATABASE_URL, connect_timeout=10)
-        conn_pg.autocommit = False
+        conn = _pg2.connect(DATABASE_URL, connect_timeout=10)
+        conn.autocommit = False
         try:
-            cur = conn_pg.cursor()
-            cur.execute('SELECT saldo FROM usuarios WHERE id=%s FOR UPDATE', (usuario_id,))
+            cur = conn.cursor()
+
+            # ── 1. Ler config do sorteio e descobrir sorteio_id real ──
+            cur.execute('SELECT ativo, valor_por_numero, premio_acumulado, percentual FROM sorteio_config WHERE id=1')
+            cfg = cur.fetchone()
+            if not cfg or not cfg[0]:
+                cur.close(); conn.close()
+                return web.json_response({'success': False, 'error': 'Sorteio não está ativo no momento'}, status=400)
+            vp         = float(cfg[1] or 5.0)
+            acum_atual = float(cfg[2] or 0.0)
+            pct        = float(cfg[3] or 50.0) / 100.0
+
+            # Descobrir sorteio_id real (o que está sendo usado nos participantes e bilhetes)
+            cur.execute("SELECT sorteio_id FROM sorteio_participantes ORDER BY id DESC LIMIT 1")
+            sid_row = cur.fetchone()
+            if not sid_row:
+                # Fallback: sorteio_id baseado em timestamp atual
+                cur.execute("SELECT sorteio_id FROM sorteio_bilhetes ORDER BY id DESC LIMIT 1")
+                sid_row = cur.fetchone()
+            sorteio_id_real = sid_row[0] if sid_row else f'sorteio_{int(datetime.now().timestamp())}'
+
+            bilhetes_novos = int(valor // vp)
+            if bilhetes_novos < 1:
+                cur.close(); conn.close()
+                return web.json_response({'success': False, 'error': f'Valor mínimo R$ {vp:.0f},00 por bilhete'}, status=400)
+
+            # ── 2. Verificar e debitar saldo do usuário (com lock) ──
+            cur.execute('SELECT saldo, nome FROM usuarios WHERE id=%s FOR UPDATE', (usuario_id,))
             row = cur.fetchone()
             if not row:
-                cur.close(); conn_pg.close()
+                cur.close(); conn.close()
                 return web.json_response({'success': False, 'error': 'Usuário não encontrado'}, status=404)
-            saldo_atual = float(row[0] or 0)
+            saldo_atual  = float(row[0] or 0)
+            nome_usuario = str(row[1] or nome)
+            if not nome:
+                nome = nome_usuario
+
             if saldo_atual < valor:
-                cur.close(); conn_pg.close()
+                cur.close(); conn.close()
                 return web.json_response({
                     'success': False,
-                    'error': f'Saldo insuficiente. Disponível: R$ {saldo_atual:.2f}',
-                    'saldo': saldo_atual
+                    'error' : f'Saldo insuficiente. Disponível: R$ {saldo_atual:.2f}',
+                    'saldo' : saldo_atual
                 }, status=400)
-            # Debitar
+
             cur.execute('UPDATE usuarios SET saldo = saldo - %s WHERE id=%s', (valor, usuario_id))
-            conn_pg.commit()
             cur.execute('SELECT saldo FROM usuarios WHERE id=%s', (usuario_id,))
             novo_saldo = float(cur.fetchone()[0] or 0)
-            cur.close(); conn_pg.close()
-        except Exception as e_pg:
-            try: conn_pg.close()
-            except: pass
-            return web.json_response({'success': False, 'error': f'Erro ao debitar saldo: {e_pg}'}, status=500)
 
-        # ── 2. Cadastrar/atualizar participante no SQLite do sorteio ──
-        try:
-            cliente_id = f"cli_{cpf}"
-            now = datetime.now().isoformat()
-            existente = get_participante(cpf)
-            conn_sq = sqlite3_connect()
-            if existente:
-                conn_sq.execute(
-                    "UPDATE sorteio_participantes SET nome=?, chave_pix=?, tipo_chave=?, updated_at=? WHERE cpf=? AND sorteio_id='atual'",
-                    (nome or existente['nome'], chave_pix, tipo_chave, now, cpf)
-                )
-            else:
-                conn_sq.execute(
-                    "INSERT INTO sorteio_participantes (cliente_id,nome,cpf,chave_pix,tipo_chave,total_depositado,total_numeros,numeros_sorte,created_at,updated_at,sorteio_id) VALUES (?,?,?,?,?,0,0,'[]',?,?,'atual')",
-                    (cliente_id, nome, cpf, chave_pix, tipo_chave, now, now)
-                )
-            conn_sq.commit(); conn_sq.close()
+            # ── 3. Upsert participante usando sorteio_id REAL ──
+            cliente_id = f'cli_{cpf}'
+            now        = datetime.now().isoformat()
 
-            # ── 3. Adicionar depósito e gerar bilhetes ──
-            part = get_participante(cpf)
-            novo_total_dep = (part['total_depositado'] or 0) + valor
-            numeros_antes  = int(part['total_numeros'] or 0)
-            numeros_total  = calcular_numeros(novo_total_dep, vp)
-            novos          = numeros_total - numeros_antes
-            numeros_atuais = list(part['numeros_sorte'] or [])
-            novos_numeros  = []
-            if novos > 0:
-                novos_numeros = gerar_bilhetes_unicos(cliente_id, novos)
-                numeros_atuais.extend(novos_numeros)
+            cur.execute('''
+                INSERT INTO sorteio_participantes
+                    (cliente_id, nome, cpf, chave_pix, tipo_chave,
+                     total_depositado, total_numeros, numeros_sorte,
+                     created_at, updated_at, sorteio_id)
+                VALUES (%s, %s, %s, %s, %s, 0, 0, %s, %s, %s, %s)
+                ON CONFLICT (cliente_id) DO UPDATE SET
+                    nome       = CASE WHEN sorteio_participantes.nome IS NULL OR sorteio_participantes.nome = ''
+                                      THEN EXCLUDED.nome ELSE sorteio_participantes.nome END,
+                    chave_pix  = EXCLUDED.chave_pix,
+                    updated_at = EXCLUDED.updated_at
+            ''', (cliente_id, nome, cpf, chave_pix, tipo_chave, '[]', now, now, sorteio_id_real))
 
-            conn_sq2 = sqlite3_connect()
-            conn_sq2.execute(
-                "UPDATE sorteio_participantes SET total_depositado=?,total_numeros=?,numeros_sorte=?,updated_at=? WHERE cpf=? AND sorteio_id='atual'",
-                (novo_total_dep, numeros_total, _json.dumps(numeros_atuais), now, cpf)
+            # ── 4. Ler totais atuais do participante (sem filtrar por sorteio_id pois a constraint é só cliente_id) ──
+            cur.execute(
+                'SELECT total_depositado, total_numeros, numeros_sorte FROM sorteio_participantes WHERE cliente_id=%s',
+                (cliente_id,)
             )
-            conn_sq2.commit(); conn_sq2.close()
+            part = cur.fetchone()
+            total_dep_antes = float(part[0] or 0)
+            numeros_antes   = int(part[1] or 0)
+            numeros_atuais  = _json.loads(part[2] or '[]')
 
-            # Acumular 50% no prêmio
-            novo_acum = _acumular_premio_deposito(valor)
+            novo_total_dep = total_dep_antes + valor
+            numeros_total  = int(novo_total_dep // vp)
+            novos          = numeros_total - numeros_antes
 
-            print(f'[sorteio/saldo] usuario_id={usuario_id} cpf={cpf} valor=R${valor:.2f} bilhetes={novos} saldo_novo=R${novo_saldo:.2f}', flush=True)
+            # ── 5. Gerar bilhetes únicos usando sorteio_id REAL ──
+            cur.execute('SELECT numero FROM sorteio_bilhetes WHERE sorteio_id=%s', (sorteio_id_real,))
+            usados = set(r[0] for r in cur.fetchall())
+            novos_numeros = []
+            tentativa = 0
+            import time as _time
+            salt = str(int(_time.time() * 1000))
+            while len(novos_numeros) < novos:
+                seed = _hashlib.md5(f'{cliente_id}{sorteio_id_real}{tentativa}{salt}'.encode()).hexdigest()
+                num  = int(seed[:8], 16) % 900000 + 100000
+                if num not in usados:
+                    usados.add(num)
+                    novos_numeros.append(num)
+                tentativa += 1
+                if tentativa > 9999999:
+                    break
+
+            for num in novos_numeros:
+                cur.execute(
+                    'INSERT INTO sorteio_bilhetes (cliente_id, numero, sorteio_id, created_at) VALUES (%s,%s,%s,%s)',
+                    (cliente_id, num, sorteio_id_real, now)
+                )
+
+            numeros_atuais.extend(novos_numeros)
+
+            # ── 6. Atualizar totais do participante ──
+            cur.execute(
+                'UPDATE sorteio_participantes SET total_depositado=%s, total_numeros=%s, numeros_sorte=%s, updated_at=%s WHERE cliente_id=%s',
+                (novo_total_dep, numeros_total, _json.dumps(numeros_atuais), now, cliente_id)
+            )
+
+            # ── 7. Acumular prêmio (% configurado do valor) ──
+            incremento = round(valor * pct, 2)
+            novo_acum  = round(acum_atual + incremento, 2)
+            cur.execute('UPDATE sorteio_config SET premio_acumulado=%s WHERE id=1', (novo_acum,))
+
+            conn.commit()
+            cur.close(); conn.close()
+
+            print(f'[sorteio/saldo] usuario_id={usuario_id} cpf={cpf} valor=R${valor:.2f} bilhetes={novos} saldo=R${novo_saldo:.2f} sorteio={sorteio_id_real}', flush=True)
 
             return web.json_response({
-                'success': True,
+                'success'         : True,
                 'bilhetes_gerados': novos,
-                'novos_numeros': novos_numeros,
-                'total_numeros': numeros_total,
+                'novos_numeros'   : novos_numeros,
+                'total_numeros'   : numeros_total,
                 'total_depositado': novo_total_dep,
-                'saldo': novo_saldo,
+                'saldo'           : novo_saldo,
                 'premio_acumulado': novo_acum,
-                'msg': f'✅ {novos} bilhete(s) gerado(s)! Números: {novos_numeros}. Saldo restante: R$ {novo_saldo:.2f}'
+                'sorteio_id'      : sorteio_id_real,
+                'msg'             : f'✅ {novos} bilhete(s) gerado(s)! Números: {novos_numeros}. Saldo restante: R$ {novo_saldo:.2f}'
             })
-        except Exception as e_sq:
-            # Reverter débito se SQLite falhar
-            try:
-                conn_rev = _pg2.connect(DATABASE_URL, connect_timeout=10)
-                cur_rev = conn_rev.cursor()
-                cur_rev.execute('UPDATE usuarios SET saldo = saldo + %s WHERE id=%s', (valor, usuario_id))
-                conn_rev.commit(); cur_rev.close(); conn_rev.close()
-                print(f'[sorteio/saldo] ROLLBACK saldo usuario_id={usuario_id} valor=R${valor:.2f}', flush=True)
-            except Exception as e_rev:
-                print(f'[sorteio/saldo] ERRO rollback: {e_rev}', flush=True)
-            return web.json_response({'success': False, 'error': f'Erro ao gerar bilhetes: {e_sq}'}, status=500)
+
+        except Exception as e_inner:
+            try: conn.rollback()
+            except: pass
+            try: conn.close()
+            except: pass
+            raise e_inner
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
 async def route_sorteio_participar(request):
