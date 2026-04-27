@@ -17912,76 +17912,16 @@ async def main():
     # Worker de splits PayPix pendentes - tenta a cada 5 min até finalizar
     asyncio.create_task(_worker_paypix_fila())
 
-    # ── CRON: Resolver apostas múltiplas automaticamente a cada 15min ──────
+    # ── CRON: Resolver apostas automaticamente a cada 15min ──────────────────
     async def _cron_resolver_apostas_auto():
         import asyncio as _asyncio
         while True:
             await _asyncio.sleep(900)  # 15 minutos
             try:
-                import json as _json
-                conn = await _bet_db()
-                if not conn:
-                    continue
-                cur = conn.cursor()
-                cur.execute("""
-                    SELECT id, usuario_id, valor, retorno_potencial, selecoes
-                    FROM bet_multi WHERE status='pendente' ORDER BY criado_em ASC LIMIT 30
-                """)
-                pendentes = cur.fetchall()
-                resolvidas = 0
-                for row in pendentes:
-                    mid, uid, valor, retorno, sels_json = row
-                    try:
-                        sels = _json.loads(sels_json or '[]')
-                        resultados = []
-                        for s in sels:
-                            res = await _verificar_resultado_espn(
-                                s.get('jogo_id',''), s.get('tipo',''),
-                                s.get('league_key',''), s.get('jogo',''))
-                            resultados.append(res)
-                        if 'LOST' in resultados:
-                            novo_status = 'LOST'
-                        elif all(r == 'WON' for r in resultados):
-                            novo_status = 'WON'
-                        else:
-                            continue
-                        cur.execute("UPDATE bet_multi SET status=%s, resolvido_em=NOW() WHERE id=%s", (novo_status, mid))
-                        if novo_status == 'WON':
-                            cur.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (retorno, uid))
-                        conn.commit()
-                        resolvidas += 1
-                        print(f'[cron_resolver] multi #{mid} → {novo_status}', flush=True)
-                    except Exception as _e:
-                        print(f'[cron_resolver] erro multi #{mid}: {_e}', flush=True)
-                # Resolver apostas simples pendentes
-                try:
-                    cur.execute("""
-                        SELECT id, usuario_id, jogo_id, selecao, league_key, retorno_potencial, jogo_nome
-                        FROM apostas WHERE status='pendente' ORDER BY criado_em ASC LIMIT 30
-                    """)
-                    simples_pendentes = cur.fetchall()
-                    for row in simples_pendentes:
-                        sid, suid, jid, selecao, lk, retorno_s, jnome = row
-                        try:
-                            tipo_map = {'Casa': 'C', 'Empate': 'X', 'Fora': 'F'}
-                            tipo = 'C'
-                            for tk, tv in tipo_map.items():
-                                if tk.lower() in (selecao or '').lower():
-                                    tipo = tv; break
-                            res = await _verificar_resultado_espn(jid, tipo, lk or '', jnome or '')
-                            if res in ('WON', 'LOST'):
-                                cur.execute("UPDATE apostas SET status=%s, resultado=%s, resolvido_em=NOW() WHERE id=%s",
-                                    ('ganhou' if res == 'WON' else 'perdeu', res, sid))
-                                if res == 'WON':
-                                    cur.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (float(retorno_s or 0), suid))
-                                conn.commit()
-                                print(f'[cron_resolver] simples #{sid} → {res}', flush=True)
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-                cur.close(); conn.close()
-                if resolvidas: print(f'[cron_resolver] ✅ {resolvidas} acumuladoras resolvidas', flush=True)
+                # Usa a função correta que já possui aiohttp session e assinatura certa
+                resolvidas = await _auto_resolver_apostas_pendentes()
+                if resolvidas:
+                    print(f'[cron_resolver] ✅ {resolvidas} aposta(s) resolvidas automaticamente', flush=True)
             except Exception as _e:
                 print(f'[cron_resolver] erro geral: {_e}', flush=True)
 

@@ -407,6 +407,9 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 .conta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:760px}
 @media(max-width:600px){.conta-grid{grid-template-columns:1fr}}
 .conta-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px}
+.btn-filtro-rapido{background:rgba(30,41,59,0.8);border:1px solid rgba(100,116,139,0.3);color:#64748b;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;transition:all .2s}
+.btn-filtro-rapido:hover{background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.4);color:#60a5fa}
+.btn-filtro-rapido.ativo{background:rgba(96,165,250,0.2);border-color:rgba(96,165,250,0.5);color:#60a5fa}
 .cc-title{font-size:13px;font-weight:700;color:var(--muted2);text-transform:uppercase;
   letter-spacing:.8px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .cc-title .ico{font-size:16px}
@@ -1175,7 +1178,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
       <button class="btn-voltar" onclick="navBack('home')" title="Voltar"><span class="bv-ico">‹</span> Voltar</button>
       <div class="sec-head"><div class="accent"></div><h3>Meus Bilhetes</h3></div>
       <!-- Tabs: Apostas normais / Bolão -->
-      <div style="display:flex;gap:8px;margin-bottom:16px">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
         <button id="btab-apostas" onclick="switchBilhetesTab('apostas')"
           style="flex:1;padding:10px;background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.4);border-radius:10px;color:#60a5fa;font-size:13px;font-weight:700;cursor:pointer">
           ⚽ Apostas
@@ -1184,6 +1187,43 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
           style="flex:1;padding:10px;background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.2);border-radius:10px;color:#94a3b8;font-size:13px;font-weight:700;cursor:pointer">
           🎯 Bolão Placar
         </button>
+      </div>
+      <!-- ── Filtro por data ── -->
+      <div id="bilhetes-filtro-bar" style="background:rgba(15,23,42,0.7);border:1px solid rgba(96,165,250,0.2);border-radius:12px;padding:12px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+          <span style="font-size:13px;color:#94a3b8;font-weight:600">📅 Filtrar por data</span>
+          <button onclick="limparFiltroData()" id="btn-limpar-filtro"
+            style="margin-left:auto;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:11px;display:none">
+            ✕ Limpar
+          </button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="flex:1">
+            <label style="font-size:10px;color:#64748b;display:block;margin-bottom:3px">De</label>
+            <input type="date" id="filtro-data-inicio"
+              style="width:100%;background:rgba(30,41,59,0.8);border:1px solid rgba(100,116,139,0.35);border-radius:8px;color:#e2e8f0;padding:7px 9px;font-size:13px;box-sizing:border-box"
+              onchange="aplicarFiltroData()">
+          </div>
+          <div style="flex:1">
+            <label style="font-size:10px;color:#64748b;display:block;margin-bottom:3px">Até</label>
+            <input type="date" id="filtro-data-fim"
+              style="width:100%;background:rgba(30,41,59,0.8);border:1px solid rgba(100,116,139,0.35);border-radius:8px;color:#e2e8f0;padding:7px 9px;font-size:13px;box-sizing:border-box"
+              onchange="aplicarFiltroData()">
+          </div>
+          <div style="padding-top:14px">
+            <button onclick="aplicarFiltroData()"
+              style="background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.4);color:#60a5fa;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px;white-space:nowrap">
+              🔍
+            </button>
+          </div>
+        </div>
+        <!-- Filtros rápidos -->
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <button onclick="filtroRapido('hoje')" class="btn-filtro-rapido">Hoje</button>
+          <button onclick="filtroRapido('semana')" class="btn-filtro-rapido">7 dias</button>
+          <button onclick="filtroRapido('mes')" class="btn-filtro-rapido">30 dias</button>
+          <button onclick="filtroRapido('todos')" class="btn-filtro-rapido" style="color:#94a3b8">Todos</button>
+        </div>
       </div>
       <div id="bilhetes-lista">
         <div class="loading-center"><div class="spinner2"></div>Carregando seus bilhetes...</div>
@@ -3501,8 +3541,12 @@ async function carregarBilhetes(){
     if(apostas.length){
       const stIcon=s=>s==='ganhou'?'🏆':s==='perdeu'?'❌':s==='cancelada'?'🚫':'⏳';
       const stColor=s=>s==='ganhou'?'#4ade80':s==='perdeu'?'#f87171':s==='cancelada'?'#94a3b8':'#f59e0b';
+      const stLabel=s=>s==='ganhou'?'✅ Ganhou':s==='perdeu'?'❌ Perdeu':s==='cancelada'?'🚫 Cancelada':'⏳ Aguard. jogo';
+      const pendentes=apostas.filter(a=>(a.status||'pendente')==='pendente');
       html+='<div class="conta-card" style="margin-bottom:14px">'+
         '<div class="cc-title"><span class="ico">⚽</span>Apostas Esportivas ('+apostas.length+')</div>'+
+        (pendentes.length?'<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:11px;color:#f59e0b">'+
+          '⏳ <b>'+pendentes.length+' aposta(s) pendente(s)</b> — aguardando o resultado do jogo. O sistema resolve automaticamente após o término da partida.</div>':'')+
         apostas.map(a=>{
           const st=a.status||'pendente';
           return '<div style="border-bottom:1px solid rgba(255,255,255,0.06);padding:12px 0;display:flex;justify-content:space-between;align-items:flex-start">'+
@@ -3512,9 +3556,10 @@ async function carregarBilhetes(){
                 (a.selecao?'<span style="color:#60a5fa">'+a.selecao+'</span> · ':'')+
                 'Odd <b style="color:#e2e8f0">'+Number(a.odd).toFixed(2)+'</b> · '+a.data+
               '</div>'+
+              (st==='pendente'?'<div style="font-size:10px;color:#64748b;margin-top:2px">🔄 Resolução automática após o fim do jogo</div>':'')+
             '</div>'+
             '<div style="text-align:right;margin-left:12px;flex-shrink:0">'+
-              '<div style="font-size:12px;color:'+stColor(st)+';font-weight:700">'+stIcon(st)+' '+st+'</div>'+
+              '<div style="font-size:11px;color:'+stColor(st)+';font-weight:700;white-space:nowrap">'+stLabel(st)+'</div>'+
               '<div style="font-size:13px;color:#e2e8f0;font-weight:700">'+_fmt(a.valor)+'</div>'+
               '<div style="font-size:11px;color:#94a3b8">retorno '+_fmt(a.retorno)+'</div>'+
             '</div>'+
