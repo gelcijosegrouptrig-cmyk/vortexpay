@@ -44,6 +44,8 @@ API_HASH = 'a5fb75fd2a4497eab273c2a2f7b41d49'
 BOT_USERNAME = 'VortexBank_bot'
 PORT = int(os.environ.get('PORT', 8080))
 WEBHOOK_SECRET = os.environ.get('WEBHOOK_SECRET', 'vortex_webhook_2024')
+# Email do administrador geral (usado para identificar o admin na tela de login)
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@paynexbet.com').strip().lower()
 
 # ─── ASAAS ────────────────────────────────────────────────────────────────────
 ASAAS_API_KEY  = os.environ.get('ASAAS_API_KEY', '')   # $aact_xxx (produção) ou $aasa_xxx (sandbox)
@@ -4535,6 +4537,126 @@ async def route_staff_login(request):
                 'id': int(fid),
                 'nome': nome,
                 'email': femail,
+                'permissoes': permissoes,
+                'descricoes': {p: _STAFF_PERMISSOES_DISPONIVEIS.get(p,'') for p in permissoes},
+            }
+        })
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_auth_resolve_email(request):
+    """POST /api/auth/resolve-email — detecta se o email é admin ou funcionário.
+    Retorna: tipo='admin' | 'staff' | 'desconhecido'
+    Não confirma nem nega a senha — apenas informa o tipo para a UI adaptar.
+    """
+    try:
+        import json as _j
+        body = await request.json()
+        email = (body.get('email') or '').strip().lower()
+        if not email:
+            return _safe_json({'ok': False, 'error': 'Email obrigatório'}, status=400)
+
+        # Verificar se é o admin
+        if email == ADMIN_EMAIL:
+            return _safe_json({'ok': True, 'tipo': 'admin', 'label': 'Administrador'})
+
+        # Verificar se é funcionário cadastrado
+        try:
+            conn = _admin_db_connect(); cur = conn.cursor()
+            _ensure_staff_table(cur, conn)
+            cur.execute("SELECT id, nome, ativo, senha_hash FROM funcionarios WHERE email=%s", (email,))
+            row = cur.fetchone()
+            cur.close(); conn.close()
+            if row:
+                fid, nome, ativo, senha_hash = row
+                if not ativo:
+                    return _safe_json({'ok': True, 'tipo': 'revogado',
+                                       'label': 'Acesso revogado',
+                                       'msg': 'Seu acesso foi revogado pelo administrador.'})
+                tem_senha = bool(senha_hash)
+                return _safe_json({'ok': True, 'tipo': 'staff',
+                                   'label': nome.split()[0].title(),
+                                   'tem_senha': tem_senha,
+                                   'msg': None if tem_senha else 'Senha não configurada. Solicite ao administrador.'})
+        except Exception:
+            pass
+
+        return _safe_json({'ok': True, 'tipo': 'desconhecido',
+                           'label': None,
+                           'msg': 'Email não encontrado no sistema.'})
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_auth_login(request):
+    """POST /api/auth/login — login unificado: detecta admin ou funcionário pelo email.
+    Body: { email, senha }
+    - Se email == ADMIN_EMAIL → valida senha contra WEBHOOK_SECRET
+    - Senão → valida como funcionário (email+senha_hash)
+    """
+    try:
+        import json as _j
+        body = await request.json()
+        email = (body.get('email') or '').strip().lower()
+        senha = (body.get('senha') or '').strip()
+
+        if not email or not senha:
+            return _safe_json({'ok': False, 'error': 'Email e senha são obrigatórios'}, status=400)
+
+        # ── ADMIN ───────────────────────────────────────────────────────────────
+        if email == ADMIN_EMAIL:
+            if senha == WEBHOOK_SECRET:
+                return _safe_json({'ok': True, 'tipo': 'admin',
+                                   'secret': WEBHOOK_SECRET,
+                                   'nome': 'Administrador'})
+            else:
+                return _safe_json({'ok': False, 'error': 'Senha incorreta'}, status=401)
+
+        # ── FUNCIONÁRIO ──────────────────────────────────────────────────────────
+        try:
+            conn = _admin_db_connect(); cur = conn.cursor()
+            _ensure_staff_table(cur, conn)
+            cur.execute(
+                "SELECT id, nome, email, token, permissoes, ativo, senha_hash FROM funcionarios WHERE email=%s",
+                (email,)
+            )
+            row = cur.fetchone()
+            cur.close(); conn.close()
+        except Exception as e:
+            return _safe_json({'ok': False, 'error': f'Erro de banco: {e}'}, status=500)
+
+        if not row:
+            return _safe_json({'ok': False, 'error': 'Email ou senha incorretos'}, status=401)
+
+        fid, nome, femail, token, permissoes_raw, ativo, senha_hash = row
+
+        if not ativo:
+            return _safe_json({'ok': False, 'error': 'Acesso revogado pelo administrador'}, status=403)
+
+        if not senha_hash:
+            return _safe_json({'ok': False,
+                               'error': 'Senha não configurada. Solicite ao administrador definir sua senha.'}, status=403)
+
+        if not _staff_verificar_senha(senha, senha_hash):
+            return _safe_json({'ok': False, 'error': 'Email ou senha incorretos'}, status=401)
+
+        # Atualizar último acesso
+        try:
+            conn2 = _admin_db_connect(); cur2 = conn2.cursor()
+            cur2.execute("UPDATE funcionarios SET ultimo_acesso=NOW() WHERE id=%s", (fid,))
+            conn2.commit(); cur2.close(); conn2.close()
+        except Exception:
+            pass
+
+        permissoes = _j.loads(permissoes_raw) if permissoes_raw else []
+        print(f'[auth] Login staff: {nome} ({femail}) ID={fid}', flush=True)
+        return _safe_json({
+            'ok': True,
+            'tipo': 'staff',
+            'token': token,
+            'staff': {
+                'id': int(fid), 'nome': nome, 'email': femail,
                 'permissoes': permissoes,
                 'descricoes': {p: _STAFF_PERMISSOES_DISPONIVEIS.get(p,'') for p in permissoes},
             }
@@ -17363,7 +17485,9 @@ async def main():
     app.router.add_get ('/api/admin/staff/link',        route_admin_staff_get_link)
     app.router.add_post('/api/admin/staff/deletar',     route_admin_staff_deletar)
     app.router.add_get ('/api/staff/me',                route_staff_me)         # funcionário consulta suas perms
-    app.router.add_post('/api/staff/login',             route_staff_login)      # login email+senha do funcionário
+    app.router.add_post('/api/staff/login',             route_staff_login)      # login email+senha do funcionário (legado)
+    app.router.add_post('/api/auth/resolve-email',      route_auth_resolve_email)  # detecta tipo pelo email
+    app.router.add_post('/api/auth/login',              route_auth_login)          # login unificado admin/staff
     app.router.add_post('/api/admin/staff/set-senha',   route_admin_staff_set_senha)  # admin define senha do funcionário
     # Margem de lucro por liga
     app.router.add_get('/api/admin/bet/margem',         route_admin_margem_get)

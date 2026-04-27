@@ -676,56 +676,55 @@
     <h2>PaynexBet Admin</h2>
     <p>Painel de controle financeiro</p>
 
-    <!-- Abas de modo de login -->
-    <div style="display:flex;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:22px;width:100%">
-      <button id="tab-login-admin" onclick="setLoginMode('admin')"
-        style="flex:1;padding:10px;border:none;cursor:pointer;font-size:13px;font-weight:700;transition:all 0.2s;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff">
-        🔑 Admin
-      </button>
-      <button id="tab-login-staff" onclick="setLoginMode('staff')"
-        style="flex:1;padding:10px;border:none;cursor:pointer;font-size:13px;font-weight:700;transition:all 0.2s;background:var(--card2);color:var(--text2)">
-        👤 Funcionário
+    <!-- STEP 1: Email -->
+    <div id="login-step-email" style="width:100%">
+      <div style="position:relative;width:100%">
+        <input id="login-email" class="login-input" type="email"
+          placeholder="Digite seu e-mail"
+          autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false"
+          style="width:100%;padding-right:44px;box-sizing:border-box"
+          oninput="_loginEmailChange()" onkeydown="if(event.key==='Enter') _loginEmailNext()">
+        <!-- Indicador de tipo detectado -->
+        <span id="login-email-badge" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:13px;display:none"></span>
+      </div>
+      <button class="login-btn" id="btn-email-next" onclick="_loginEmailNext()" style="margin-top:14px">
+        Continuar →
       </button>
     </div>
 
-    <!-- Modo Admin: senha secreta -->
-    <div id="login-mode-admin" style="width:100%">
+    <!-- STEP 2: Senha (aparece após detectar o email) -->
+    <div id="login-step-senha" style="display:none;width:100%">
+      <!-- Card de quem está entrando -->
+      <div id="login-user-card" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;cursor:pointer" onclick="_loginVoltarEmail()">
+        <div id="login-user-avatar" style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div id="login-user-nome" style="font-size:13px;font-weight:700;color:var(--text)"></div>
+          <div id="login-user-email-show" style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+        </div>
+        <span style="font-size:11px;color:var(--text2)">✏️</span>
+      </div>
+      <!-- Campo de senha -->
       <div style="position:relative;width:100%">
-        <input id="login-secret" class="login-input" type="password" placeholder="Senha de acesso admin"
+        <input id="login-senha" class="login-input" type="password"
+          placeholder="Senha"
           autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false"
-          style="width:100%;padding-right:48px;box-sizing:border-box"
-          onkeydown="if(event.key==='Enter') fazerLogin()">
-        <button onclick="toggleLoginSenha()" id="btn-toggle-senha" title="Mostrar/ocultar senha"
+          style="width:100%;padding-right:44px;box-sizing:border-box"
+          onkeydown="if(event.key==='Enter') _loginSubmit()">
+        <button onclick="_loginToggleSenha()" title="Mostrar/ocultar"
           style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#aaa;padding:4px">
           👁️
         </button>
       </div>
-      <button class="login-btn" id="btn-login" onclick="fazerLogin()" style="margin-top:14px">🔐 Entrar como Admin</button>
+      <button class="login-btn" id="btn-login-submit" onclick="_loginSubmit()" style="margin-top:14px">
+        🔐 Entrar
+      </button>
     </div>
 
-    <!-- Modo Funcionário: email + senha -->
-    <div id="login-mode-staff" style="display:none;width:100%">
-      <input id="login-staff-email" class="login-input" type="email" placeholder="Seu e-mail"
-        autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false"
-        style="width:100%;margin-bottom:10px;box-sizing:border-box"
-        onkeydown="if(event.key==='Enter') fazerLoginStaff()">
-      <div style="position:relative;width:100%">
-        <input id="login-staff-senha" class="login-input" type="password" placeholder="Sua senha"
-          autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false"
-          style="width:100%;padding-right:48px;box-sizing:border-box"
-          onkeydown="if(event.key==='Enter') fazerLoginStaff()">
-        <button onclick="toggleLoginSenhaStaff()" title="Mostrar/ocultar senha"
-          style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#aaa;padding:4px">
-          👁️
-        </button>
-      </div>
-      <button class="login-btn" id="btn-login-staff" onclick="fazerLoginStaff()" style="margin-top:14px">🔐 Entrar como Funcionário</button>
-    </div>
+    <!-- Mensagem de erro / status -->
+    <div id="login-error" class="login-error" style="margin-top:10px"></div>
 
-    <div id="login-error" class="login-error"></div>
-    <div id="login-hint" style="font-size:11px;color:#666;margin-top:12px;line-height:1.8;display:none">
-      💡 <strong style="color:#f7931e">Dica:</strong> Use as credenciais fornecidas pelo administrador.
-    </div>
+    <!-- inputs legacy ocultos (mantidos para compatibilidade com fazerLogin) -->
+    <input id="login-secret" type="hidden">
   </div>
 </div>
 
@@ -757,67 +756,193 @@
   }
 })();
 
-function toggleLoginSenha() {
-  const inp = document.getElementById('login-secret');
-  const btn = document.getElementById('btn-toggle-senha');
-  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
-  else { inp.type = 'password'; btn.textContent = '👁️'; }
-}
+// ═══════════════════════════════════════════════
+//  LOGIN INTELIGENTE — detecta admin ou funcionário pelo email
+// ═══════════════════════════════════════════════
+let _loginTipo = null;   // 'admin' | 'staff'
+let _loginEmail = '';
 
-function toggleLoginSenhaStaff() {
-  const inp = document.getElementById('login-staff-senha');
+function _loginToggleSenha() {
+  const inp = document.getElementById('login-senha');
   inp.type = (inp.type === 'password') ? 'text' : 'password';
 }
 
-function setLoginMode(mode) {
-  const isAdmin = mode === 'admin';
-  document.getElementById('login-mode-admin').style.display = isAdmin ? 'block' : 'none';
-  document.getElementById('login-mode-staff').style.display = isAdmin ? 'none' : 'block';
-  document.getElementById('tab-login-admin').style.background = isAdmin
-    ? 'linear-gradient(135deg,#ff6b35,#f7931e)' : 'var(--card2)';
-  document.getElementById('tab-login-admin').style.color = isAdmin ? '#fff' : 'var(--text2)';
-  document.getElementById('tab-login-staff').style.background = isAdmin
-    ? 'var(--card2)' : 'linear-gradient(135deg,#6366f1,#8b5cf6)';
-  document.getElementById('tab-login-staff').style.color = isAdmin ? 'var(--text2)' : '#fff';
+// Chamada a cada keystroke no campo email — limpa estado anterior
+function _loginEmailChange() {
+  const badge = document.getElementById('login-email-badge');
+  badge.style.display = 'none';
+  _loginTipo = null;
   document.getElementById('login-error').textContent = '';
-  // Focar no campo correto
-  setTimeout(() => {
-    const el = isAdmin
-      ? document.getElementById('login-secret')
-      : document.getElementById('login-staff-email');
-    if (el) el.focus();
-  }, 50);
 }
 
-async function fazerLoginStaff() {
-  const email = (document.getElementById('login-staff-email').value || '').trim();
-  const senha = (document.getElementById('login-staff-senha').value || '').trim();
+// Avança para o step 2 (senha)
+async function _loginEmailNext() {
+  const email = (document.getElementById('login-email').value || '').trim().toLowerCase();
   const errEl = document.getElementById('login-error');
-  const btnEl = document.getElementById('btn-login-staff');
+  const btn = document.getElementById('btn-email-next');
 
   errEl.textContent = '';
-  if (!email || !senha) { errEl.textContent = '⚠️ Preencha e-mail e senha.'; return; }
+  if (!email || !email.includes('@')) {
+    errEl.textContent = '⚠️ Digite um e-mail válido.';
+    return;
+  }
 
-  btnEl.disabled = true; btnEl.textContent = '⏳ Verificando...';
+  btn.disabled = true; btn.textContent = '⏳ Verificando...';
 
   try {
-    const r = await fetch(window.location.origin + '/api/staff/login', {
+    const r = await fetch('/api/auth/resolve-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, senha })
+      body: JSON.stringify({ email })
     });
     const d = await r.json();
-    if (d.ok && d.token) {
-      // Login bem-sucedido — usar fluxo de autoLogin
-      await _autoLoginStaff(d.token);
-    } else {
-      errEl.textContent = '❌ ' + (d.error || 'Erro ao fazer login');
-      btnEl.disabled = false; btnEl.textContent = '🔐 Entrar como Funcionário';
+
+    btn.disabled = false; btn.textContent = 'Continuar →';
+
+    if (!d.ok) { errEl.textContent = '❌ Erro ao verificar email.'; return; }
+
+    if (d.tipo === 'revogado') {
+      errEl.textContent = '🚫 ' + (d.msg || 'Acesso revogado pelo administrador.');
+      return;
     }
+
+    if (d.tipo === 'desconhecido') {
+      errEl.textContent = '❌ ' + (d.msg || 'Email não encontrado no sistema.');
+      return;
+    }
+
+    if (d.tipo === 'staff' && !d.tem_senha) {
+      errEl.textContent = '⚠️ ' + (d.msg || 'Senha não configurada. Solicite ao administrador.');
+      return;
+    }
+
+    // ✅ Email válido — avançar para step de senha
+    _loginTipo = d.tipo;
+    _loginEmail = email;
+
+    // Preencher card do usuário
+    const isAdmin = (d.tipo === 'admin');
+    document.getElementById('login-user-avatar').textContent = isAdmin ? '🔑' : '👤';
+    document.getElementById('login-user-avatar').style.background = isAdmin
+      ? 'linear-gradient(135deg,#ff6b35,#f7931e)' : 'linear-gradient(135deg,#6366f1,#8b5cf6)';
+    document.getElementById('login-user-nome').textContent = isAdmin
+      ? 'Administrador' : (d.label || email.split('@')[0]);
+    document.getElementById('login-user-email-show').textContent = email;
+
+    // Ajustar botão conforme tipo
+    const btnSubmit = document.getElementById('btn-login-submit');
+    if (isAdmin) {
+      btnSubmit.style.background = 'linear-gradient(135deg,#ff6b35,#f7931e)';
+      btnSubmit.textContent = '🔑 Entrar como Admin';
+    } else {
+      btnSubmit.style.background = 'linear-gradient(135deg,#6366f1,#8b5cf6)';
+      btnSubmit.textContent = '👤 Entrar como Funcionário';
+    }
+
+    // Trocar steps
+    document.getElementById('login-step-email').style.display = 'none';
+    document.getElementById('login-step-senha').style.display = 'block';
+    setTimeout(() => document.getElementById('login-senha').focus(), 80);
+
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Continuar →';
+    errEl.textContent = '❌ Erro de conexão: ' + e.message;
+  }
+}
+
+// Voltar ao step de email
+function _loginVoltarEmail() {
+  _loginTipo = null;
+  _loginEmail = '';
+  document.getElementById('login-step-senha').style.display = 'none';
+  document.getElementById('login-step-email').style.display = 'block';
+  document.getElementById('login-senha').value = '';
+  document.getElementById('login-error').textContent = '';
+  setTimeout(() => document.getElementById('login-email').focus(), 80);
+}
+
+// Submete o login
+async function _loginSubmit() {
+  const senha = (document.getElementById('login-senha').value || '').trim();
+  const errEl = document.getElementById('login-error');
+  const btnEl = document.getElementById('btn-login-submit');
+
+  errEl.textContent = '';
+  if (!senha) { errEl.textContent = '⚠️ Digite a senha.'; return; }
+
+  btnEl.disabled = true;
+  btnEl.textContent = '⏳ Verificando...';
+
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: _loginEmail, senha })
+    });
+    const d = await r.json();
+
+    if (!d.ok) {
+      errEl.textContent = '❌ ' + (d.error || 'Credenciais incorretas');
+      btnEl.disabled = false;
+      btnEl.textContent = _loginTipo === 'admin' ? '🔑 Entrar como Admin' : '👤 Entrar como Funcionário';
+      // Shake na senha
+      const inp = document.getElementById('login-senha');
+      inp.style.borderColor = '#f87171';
+      setTimeout(() => inp.style.borderColor = '', 1500);
+      return;
+    }
+
+    if (d.tipo === 'admin') {
+      // Login admin com secret
+      sessionStorage.setItem('vp_secret', d.secret);
+      document.getElementById('login-senha').value = d.secret; // compatibilidade fazerLogin
+      document.getElementById('login-secret').value = d.secret;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('admin-screen').style.display = 'block';
+      _setRoleBadge('admin');
+      try { showTab('dashboard'); } catch(e) {}
+      try { loadAll(); } catch(e) {}
+      try { setInterval(loadAll, 30000); } catch(e) {}
+      try { iniciarPollingPix(); } catch(e) {}
+    } else {
+      // Login staff
+      await _autoLoginStaff(d.token);
+    }
+
   } catch(e) {
     errEl.textContent = '❌ Erro de conexão: ' + e.message;
-    btnEl.disabled = false; btnEl.textContent = '🔐 Entrar como Funcionário';
+    btnEl.disabled = false;
+    btnEl.textContent = _loginTipo === 'admin' ? '🔑 Entrar como Admin' : '👤 Entrar como Funcionário';
   }
+}
+
+// ── Funções legadas mantidas para compatibilidade ─────────────────────────────
+function toggleLoginSenha() {
+  const inp = document.getElementById('login-secret');
+  if (inp) inp.type = (inp.type === 'password') ? 'text' : 'password';
+}
+function setLoginMode(mode) {} // legado — não faz nada
+async function fazerLoginStaff() { await _loginSubmit(); } // legado
+
+async function fazerLogin() {
+  // Legado: chamado pelo auto-login do sessionStorage
+  const secret = document.getElementById('login-secret').value.trim();
+  if (!secret) return;
+  const errEl = document.getElementById('login-error');
+  const base = window.location.origin;
+  fetch(base + '/api/transacoes?secret=' + encodeURIComponent(secret))
+    .then(r => {
+      if (r.ok) {
+        sessionStorage.setItem('vp_secret', secret);
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('admin-screen').style.display = 'block';
+        _setRoleBadge('admin');
+        try { showTab('dashboard'); } catch(e) {}
+        try { loadAll(); } catch(e) {}
+        try { setInterval(loadAll, 30000); } catch(e) {}
+        try { iniciarPollingPix(); } catch(e) {}
+      }
+    }).catch(() => {});
 }
 </script>
 
