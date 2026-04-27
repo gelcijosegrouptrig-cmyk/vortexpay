@@ -12562,16 +12562,17 @@ function atualizarInputPaypixCob(val) {
 
 async function _legacyCarregarPaypixCobAdmin() {
   try {
-    const r = await fetch(`${BASE}/api/pc/config`);
-    const d = await r.json();
-    _pcCfg = d;
-    const pct = Math.round((d.paypix_pct || 0.6) * 100);
+    // Carregar % via endpoint público (sem auth)
+    const rPub = await fetch(`${BASE}/api/pc/config-publica`);
+    const dPub = await rPub.json();
+    _pcCfg = dPub;
+    const pct = Math.round((dPub.paypix_pct || 0.6) * 100);
     const platPct = 100 - pct;
 
     // Métricas
     document.getElementById('pc-pct-display').textContent = pct + '%';
     document.getElementById('pc-plat-display').textContent = platPct + '%';
-    const ativo = d.paypix_ativo !== false;
+    const ativo = dPub.paypix_ativo !== false;
     const statusEl = document.getElementById('pc-status-display');
     statusEl.textContent = ativo ? '✅ Ativo' : '🔴 Inativo';
     statusEl.style.color = ativo ? '#22c55e' : '#ef4444';
@@ -12581,12 +12582,12 @@ async function _legacyCarregarPaypixCobAdmin() {
     // Formulário
     atualizarSliderPaypixCob(pct);
     document.getElementById('pc-ativo').value = ativo ? '1' : '0';
-    document.getElementById('pc-descricao').value = d.paypix_descricao || '';
-    document.getElementById('pc-preview-desc').textContent = d.paypix_descricao || 'Gere seu Pix e receba ' + pct + '% do valor';
+    document.getElementById('pc-descricao').value = dPub.paypix_descricao || '';
+    document.getElementById('pc-preview-desc').textContent = dPub.paypix_descricao || 'Gere seu Pix e receba ' + pct + '% do valor';
     document.getElementById('pc-preview-pct').textContent = pct + '%';
     // Valor mínimo
     const minEl = document.getElementById('pc-min-input');
-    if (minEl) minEl.value = typeof d.paypix_min === 'number' ? d.paypix_min : 5;
+    if (minEl) minEl.value = typeof dPub.paypix_min === 'number' ? dPub.paypix_min : 5;
 
     // Carregar transações PayPix
     await carregarTxPaypixCob();

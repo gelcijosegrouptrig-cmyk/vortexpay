@@ -8329,25 +8329,52 @@ async def route_pc_config_save(request):
             return web.json_response({'success': False,
                                       'error': 'Access Token do PayPix-Cob é obrigatório!'})
 
+        # Campos de % (opcionais — só atualiza se enviados)
+        paypix_pct_raw  = body.get('paypix_pct')
+        paypix_ativo    = body.get('paypix_ativo')
+        paypix_descricao = body.get('paypix_descricao')
+        paypix_min_raw  = body.get('paypix_min')
+
         pares = [
             ('pc_access_token',  token_final),
             ('pc_public_key',    pubkey_final),
             ('pc_client_id',     cid_final),
             ('pc_client_secret', csec_final),
         ]
+        # Adicionar campos de % se enviados
+        if paypix_pct_raw is not None:
+            pct_val = max(0.01, min(0.99, float(paypix_pct_raw) / 100.0))
+            pares.append(('pc_pct', str(round(pct_val, 4))))
+        if paypix_ativo is not None:
+            pares.append(('pc_ativo', '1' if paypix_ativo else '0'))
+        if paypix_descricao is not None:
+            pares.append(('pc_descricao', str(paypix_descricao).strip()))
+        if paypix_min_raw is not None:
+            pares.append(('pc_min', str(max(1.0, float(paypix_min_raw)))))
+
         for chave, valor in pares:
-            if valor:
+            if valor is not None:
                 cur.execute('''
                     INSERT INTO pc_config (chave, valor, atualizado_em)
                     VALUES (%s, %s, NOW())
                     ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = NOW()
                 ''', (chave, valor))
         conn.commit()
+
+        # Retornar configuração atualizada
+        cur.execute("SELECT valor FROM pc_config WHERE chave='pc_pct'")
+        r_pct = cur.fetchone()
+        pct_atual = float(r_pct[0]) if r_pct else 0.6
         cur.close(); conn.close()
 
         suffix = token_final[-6:] if token_final else '???'
-        print(f'✅ [pc_config] Chaves PayPix-Cob atualizadas. Token: ...{suffix}', flush=True)
-        return web.json_response({'success': True, 'mensagem': 'Chaves PayPix-Cob salvas com sucesso!'})
+        print(f'✅ [pc_config] PayPix-Cob atualizado. Token: ...{suffix} | pct: {pct_atual:.0%}', flush=True)
+        return web.json_response({
+            'success': True,
+            'mensagem': 'PayPix-Cob salvo com sucesso!',
+            'paypix_pct': pct_atual,
+            'paypix_pct_display': f'{round(pct_atual * 100)}%',
+        })
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)})
 
@@ -8394,6 +8421,48 @@ async def route_pc_testar(request):
             return web.json_response({'success': False, 'error': f'MP retornou {resp.status_code}: {resp.text[:200]}'})
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)})
+
+
+
+async def route_pc_config_publica(request):
+    """GET /api/pc/config-publica — Retorna % e status do PayPix-Cob para a página pública (sem auth)."""
+    try:
+        import psycopg2 as _pg_pc
+        conn = _pg_pc.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        config = {}
+        for chave in ['pc_pct', 'pc_ativo', 'pc_descricao', 'pc_min']:
+            try:
+                cur.execute("SELECT valor FROM pc_config WHERE chave=%s", (chave,))
+                row = cur.fetchone()
+                config[chave] = (row[0] or '').strip() if row else ''
+            except Exception:
+                config[chave] = ''
+        cur.close(); conn.close()
+
+        pct = float(config.get('pc_pct') or 0.6)
+        ativo = config.get('pc_ativo', '1') not in ('0', 'false', 'False')
+        descricao = config.get('pc_descricao') or f'Gere seu Pix e receba {round(pct*100)}% do valor'
+        min_val = float(config.get('pc_min') or 5.0)
+
+        return web.json_response({
+            'success': True,
+            'paypix_pct':      pct,
+            'paypix_pct_display': f'{round(pct * 100)}%',
+            'paypix_ativo':    ativo,
+            'paypix_descricao': descricao,
+            'paypix_min':      min_val,
+        })
+    except Exception as e:
+        return web.json_response({
+            'success': False,
+            'paypix_pct': 0.6,
+            'paypix_pct_display': '60%',
+            'paypix_ativo': True,
+            'paypix_descricao': 'Gere seu Pix e receba 60% do valor',
+            'paypix_min': 5.0,
+            'error': str(e),
+        })
 
 
 async def route_mp2_testar(request):
@@ -17685,6 +17754,7 @@ async def main():
     app.router.add_get('/api/pc/stats',                     route_mp2_stats)
     app.router.add_get('/api/pc/config',                    route_pc_config_get)
     app.router.add_post('/api/pc/config',                   route_pc_config_save)
+    app.router.add_get('/api/pc/config-publica',            route_pc_config_publica)
     app.router.add_get('/api/pc/testar',                    route_pc_testar)
     app.router.add_get('/api/pc/parceiros',                 route_mp2_parceiros_listar)
     app.router.add_post('/api/pc/parceiros',                route_mp2_parceiros_criar)
@@ -17726,6 +17796,7 @@ async def main():
     app.router.add_route('OPTIONS', '/api/mp3/gerar',       lambda r: web.Response(status=200, headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'}))
     # ── Bot PIX - página pública @paypix_nexbot ──
     app.router.add_get('/bot',                              route_bot_pix_page)
+    app.router.add_get('/paypixcob',                        route_bot_pix_page)  # alias público
     app.router.add_get('/pix',                              route_pix_page)
     app.router.add_post('/api/bot/gerar',                   route_bot_gerar)
     app.router.add_get('/api/bot/status/{payment_id}',      route_bot_status)
