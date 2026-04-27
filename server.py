@@ -16002,10 +16002,10 @@ function toast(msg, type) {
 
 async def route_bet_config(request):
     """POST /api/bet/config — salva ODDS_API_KEY e SUITPAY_CI/CS no PostgreSQL
-       Protegido por X-PaynexBet-Secret
+       Protegido por X-PaynexBet-Secret ou staff token com config_ver
     """
-    secret = request.headers.get('X-PaynexBet-Secret','') or request.headers.get('x-paynexbet-secret','')
-    if secret != WEBHOOK_SECRET:
+    _ok, _staff = _staff_auth(request, 'config_ver')
+    if not _ok:
         return web.json_response({'ok': False, 'error': 'Não autorizado'}, status=403)
     try:
         body = await request.json()
