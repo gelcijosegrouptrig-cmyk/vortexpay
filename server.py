@@ -5954,12 +5954,16 @@ async def route_stats(request):
     """Dashboard completo com métricas consolidadas — Mercado Pago (mp2_*)"""
 
     # Aceita admin secret OU staff token (qualquer permissão)
-    auth = (request.headers.get('X-PaynexBet-Secret', '') or
-            request.rel_url.query.get('secret', ''))
-    if auth != WEBHOOK_SECRET:
-        ok_staff, _ = _staff_auth(request)
-        if not ok_staff:
-            return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        auth = (request.headers.get('X-PaynexBet-Secret', '') or
+                request.rel_url.query.get('secret', ''))
+        if auth != WEBHOOK_SECRET:
+            ok_staff, _ = _staff_auth(request)
+            if not ok_staff:
+                return web.json_response({'error': 'Não autorizado'}, status=401)
+    except Exception as _auth_err:
+        print(f'[route_stats] auth error: {_auth_err}', flush=True)
+        return web.json_response({'error': 'Erro interno de autenticação'}, status=500)
     try:
         from mp2_api import _get_conn as mp2_conn
         import psycopg2.extras
