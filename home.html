@@ -3634,95 +3634,118 @@ function _renderBilhetes(){
   };
 
   if(sorteio.length){
-    const numCols=Math.min(4,sorteioFiltFinal.length||1);
-    const totalFiltro=_filtroAtivo&&sorteio.length!==sorteioFilt.length;
     const temBuscaData=_filtroSorteioData!==null;
 
-    // Cabeçalho clicável com contador e pesquisa inline
     html+='<div class="conta-card" id="card-sorteio">'+
 
-      // ── Título com botão de busca ──
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
+      // ── Linha compacta: ícone + título + total + botão Pesquisar ──
+      '<div style="display:flex;align-items:center;gap:8px">'+
         '<span style="font-size:16px">\u{1F3AB}</span>'+
         '<div style="flex:1">'+
           '<span style="font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px">Sorteio</span>'+
-          ' <span style="font-size:13px;font-weight:700;color:#e2e8f0">\u2014 '+
-            (temBuscaData?sorteioFiltFinal.length:sorteioFilt.length)+' bilhete(s)'+
-            (temBuscaData?' <span style="font-size:10px;color:#60a5fa">(filtrado)</span>':
-              totalFiltro?' <span style="font-size:10px;color:#64748b">de '+sorteio.length+' total</span>':
-              sorteio.length>sorteioFilt.length?' <span style="font-size:10px;color:#64748b">de '+sorteio.length+' total</span>':''
-            )+
-          '</span>'+
+          ' <span style="font-size:13px;font-weight:700;color:#e2e8f0">\u2014 '+sorteio.length+' bilhete(s)</span>'+
+          (temBuscaData?
+            ' <span style="font-size:10px;color:#60a5fa;font-weight:600">\u00b7 '+sorteioFiltFinal.length+' filtrado(s)</span>':
+            datasUnicas.length>1?
+              ' <span style="font-size:10px;color:#475569">em '+datasUnicas.length+' datas</span>':''
+          )+
         '</div>'+
         '<button onclick="toggleBuscaSorteio()" id="btn-busca-sorteio-toggle"'+
-          ' style="background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,'+(temBuscaData?'0.6)':'0.3)')+';'+
-          'color:'+(temBuscaData?'#93c5fd':'#60a5fa')+';padding:5px 10px;border-radius:8px;cursor:pointer;font-size:12px;white-space:nowrap;font-weight:'+(temBuscaData?'700':'400')+'">'+
-          (temBuscaData?'\u{1F50D} filtrado':'📅 Data')+
+          ' title="Pesquisar bilhetes por data"'+
+          ' style="'+
+            'background:'+(temBuscaData?'rgba(96,165,250,0.2)':'rgba(30,41,59,0.6)')+';'+
+            'border:1px solid rgba(96,165,250,'+(temBuscaData?'0.6':'0.2')+');'+
+            'color:'+(temBuscaData?'#93c5fd':'#94a3b8')+';'+
+            'padding:6px 11px;border-radius:8px;cursor:pointer;font-size:12px;'+
+            'font-weight:'+(temBuscaData?'700':'400')+';white-space:nowrap">'+
+          (temBuscaData?'\u{1F50D} '+sorteioFiltFinal.length+'/'+sorteio.length:'📅 Pesquisar')+
         '</button>'+
       '</div>'+
 
-      // ── Painel de busca (inicialmente oculto) ──
-      '<div id="sorteio-busca-painel" style="display:'+(temBuscaData?'block':'none')+';margin-bottom:12px;'+
-        'background:rgba(15,23,42,0.8);border:1px solid rgba(96,165,250,0.25);border-radius:10px;padding:12px">'+
-        '<div style="font-size:11px;color:#64748b;margin-bottom:8px;font-weight:600">🔍 Pesquisar bilhetes por data</div>'+
+      // ── Hint estático (só quando nenhuma data selecionada) ──
+      (!temBuscaData?
+        '<div style="margin-top:10px;padding:9px 11px;background:rgba(96,165,250,0.04);'+
+          'border:1px dashed rgba(96,165,250,0.15);border-radius:8px;'+
+          'display:flex;align-items:center;gap:9px">'+
+          '<span style="font-size:1.1rem">\u{1F4C5}</span>'+
+          '<div style="font-size:12px;color:#475569">'+
+            'Clique em <b style="color:#60a5fa">📅 Pesquisar</b> para ver bilhetes por data.'+
+            (datasUnicas.length>0?' <span style="color:#334155">('+datasUnicas.length+' data(s) disponíveis)</span>':'')+
+          '</div>'+
+        '</div>'
+      :'')+
 
-        // Input de data manual
-        '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">'+
-          '<input type="date" id="sorteio-busca-input"'+
-            ' value="'+(temBuscaData?new Date(_filtroSorteioData).toISOString().slice(0,10):'')+'\"'+
-            ' style="flex:1;background:rgba(30,41,59,0.9);border:1px solid rgba(96,165,250,0.3);'+
-            'border-radius:8px;color:#e2e8f0;padding:8px 10px;font-size:13px"'+
-            ' onchange="aplicarBuscaSorteio(this.value)">'+
-          '<button onclick="limparBuscaSorteio()"'+
-            ' style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);'+
-            'color:#f87171;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:12px">✕</button>'+
+      // ── Painel de busca + resultado ──
+      '<div id="sorteio-busca-painel" style="display:'+(temBuscaData?'block':'none')+';margin-top:12px">'+
+
+        // Seletor de datas
+        '<div style="background:rgba(15,23,42,0.85);border:1px solid rgba(96,165,250,0.2);border-radius:10px;padding:11px;margin-bottom:10px">'+
+          '<div style="display:flex;gap:8px;align-items:center;margin-bottom:9px">'+
+            '<input type="date" id="sorteio-busca-input"'+
+              ' value="'+(temBuscaData?new Date(_filtroSorteioData).toISOString().slice(0,10):'')+'"'+
+              ' style="flex:1;background:rgba(30,41,59,0.9);border:1px solid rgba(96,165,250,0.3);'+
+              'border-radius:8px;color:#e2e8f0;padding:7px 10px;font-size:13px"'+
+              ' onchange="aplicarBuscaSorteio(this.value)">'+
+            '<button onclick="limparBuscaSorteio()"'+
+              ' title="Fechar"'+
+              ' style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);'+
+              'color:#f87171;padding:7px 11px;border-radius:8px;cursor:pointer;font-size:13px">\u2715</button>'+
+          '</div>'+
+          (datasUnicas.length>0?
+            '<div style="font-size:10px;color:#334155;margin-bottom:6px">\u{1F4CC} Datas disponíveis:</div>'+
+            '<div style="display:flex;flex-wrap:wrap;gap:5px">'+
+              datasUnicas.map(dt=>{
+                const iso=toIsoVal(dt);
+                const isAtivo=temBuscaData &&
+                  new Date(_filtroSorteioData).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})===dt;
+                const qtd=sorteio.filter(b=>{
+                  if(!b.criado_em) return false;
+                  return new Date(b.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})===dt;
+                }).length;
+                return '<button onclick="aplicarBuscaSorteio(\''+iso+'\')"'+
+                  ' style="background:'+(isAtivo?'rgba(96,165,250,0.25)':'rgba(30,41,59,0.8)')+';'+
+                  'border:1px solid rgba(96,165,250,'+(isAtivo?'0.6':'0.18')+');'+
+                  'color:'+(isAtivo?'#e2e8f0':'#94a3b8')+';'+
+                  'padding:5px 11px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:'+(isAtivo?'700':'400')+'">'+ 
+                  '\u{1F4C5} '+dt.slice(0,5)+
+                  ' <span style="background:rgba(96,165,250,'+(isAtivo?'0.3':'0.1')+');color:'+(isAtivo?'#93c5fd':'#60a5fa')+';'+
+                  'padding:1px 6px;border-radius:10px;font-size:10px;margin-left:3px">'+qtd+'</span>'+
+                '</button>';
+              }).join('')+
+            '</div>'
+          :'<span style="font-size:11px;color:#334155">Nenhuma data.</span>')+
         '</div>'+
 
-        // Botões de datas disponíveis (chips)
-        (datasUnicas.length>0?
-          '<div style="font-size:10px;color:#475569;margin-bottom:6px">Datas com bilhetes:</div>'+
-          '<div style="display:flex;flex-wrap:wrap;gap:5px">'+
-            datasUnicas.map(dt=>{
-              const iso=toIsoVal(dt);
-              const isAtivo=_filtroSorteioData && new Date(_filtroSorteioData).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})===dt;
-              const qtd=sorteio.filter(b=>{
-                if(!b.criado_em) return false;
-                return new Date(b.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})===dt;
-              }).length;
-              return '<button onclick="aplicarBuscaSorteio(\''+iso+'\')"'+
-                ' style="background:'+(isAtivo?'rgba(96,165,250,0.3)':'rgba(30,41,59,0.8)')+';'+
-                'border:1px solid rgba(96,165,250,'+(isAtivo?'0.6':'0.2')+');'+
-                'color:'+(isAtivo?'#93c5fd':'#94a3b8')+';padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:'+(isAtivo?'700':'400')+'">'+
-                dt.slice(0,5)+' <span style="color:'+(isAtivo?'#60a5fa':'#475569')+'">'+qtd+'</span></button>';
-            }).join('')+
-          '</div>'
-        :'<div style="font-size:11px;color:#475569">Nenhuma data disponível.</div>')+
+        // Grid de bilhetes (só quando data selecionada)
+        (temBuscaData?
+          sorteioFiltFinal.length?
+            '<div style="display:grid;grid-template-columns:repeat('+Math.min(4,sorteioFiltFinal.length)+',1fr);gap:6px;margin-bottom:8px">'+
+              sorteioFiltFinal.map(b=>{
+                const dtB=b.criado_em?new Date(b.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'';
+                return '<div style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.28);'+
+                  'border-radius:8px;padding:8px 4px;text-align:center">'+
+                  '<div style="font-size:15px;font-weight:700;color:#60a5fa;letter-spacing:1px">'+(b.numero||'\u2014')+'</div>'+
+                  (dtB?'<div style="font-size:9px;color:#475569;margin-top:1px">'+dtB+'</div>':'')+
+                '</div>';
+              }).join('')+
+            '</div>'
+          :
+            '<div style="text-align:center;padding:14px;background:rgba(30,41,59,0.4);border-radius:8px;margin-bottom:8px">'+
+              '<div style="font-size:1.2rem;margin-bottom:4px">\u{1F50D}</div>'+
+              '<div style="font-size:12px;color:#64748b">Nenhum bilhete nesta data.</div>'+
+            '</div>'
+        :'')+
+
       '</div>'+
 
-      // ── Grid de bilhetes ──
-      (sorteioFiltFinal.length?
-        '<div style="display:grid;grid-template-columns:repeat('+numCols+',1fr);gap:6px;margin:8px 0">'+
-          sorteioFiltFinal.map(b=>{
-            const dtB=b.criado_em?new Date(b.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'';
-            return '<div style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.25);border-radius:8px;padding:8px 4px;text-align:center">'+
-              '<div style="font-size:16px;font-weight:700;color:#60a5fa;letter-spacing:1px">'+(b.numero||'\u2014')+'</div>'+
-              (dtB?'<div style="font-size:9px;color:#475569;margin-top:1px">'+dtB+'</div>':'<div style="font-size:9px;color:#64748b;margin-top:1px">Bilhete</div>')+
-            '</div>';
-          }).join('')+
-        '</div>'
-      :
-        '<div style="text-align:center;padding:16px">'+
-          '<div style="font-size:1.4rem;margin-bottom:6px">\u{1F50D}</div>'+
-          '<div style="font-size:12px;color:#94a3b8">Nenhum bilhete nesta data.</div>'+
-          '<button onclick="limparBuscaSorteio()" style="margin-top:8px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:11px">\u{1F504} Ver todos</button>'+
-        '</div>'
-      )+
-
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">'+
-        (sorteio.length>0?'<span style="font-size:11px;color:#475569">Total: '+sorteio.length+' bilhete(s)</span>':'')+
-        '<button onclick="sbNav(\'sorteio\')" style="margin-left:auto;background:none;border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:12px">\u2795 Mais bilhetes</button>'+
+      // Rodapé
+      '<div style="display:flex;justify-content:flex-end;margin-top:'+(temBuscaData?'4':'10')+'px">'+
+        '<button onclick="sbNav(\'sorteio\')" style="background:none;border:1px solid rgba(96,165,250,0.22);'+
+          'color:#60a5fa;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:12px">\u2795 Comprar mais</button>'+
       '</div>'+
+
     '</div>';
+  } else {
   } else {
     const temFiltroS=_filtroAtivo&&sorteio.length>0;
     html+='<div class="conta-card" style="text-align:center;padding:16px">'+
