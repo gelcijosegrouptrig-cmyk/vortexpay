@@ -5825,1538 +5825,1615 @@ async function fazerLogin() {
 
       </div><!-- /tab-bot3 -->
 
-      <div id="tab-api" class="tab-content">
-        <div style="max-width:960px;margin:0 auto;padding:12px 8px 40px">
+            <!-- ══════════════════════════════════════════════════
+           ABA: API & Webhooks
+      ══════════════════════════════════════════════════ -->
+      <div id="tab-api" class="tab-content" style="display:none;">
+        <h2 style="margin-bottom:8px;">🔌 API &amp; Webhooks</h2>
+        <p style="color:#aaa;margin-bottom:20px;font-size:14px;">
+          Documentação completa de todas as rotas disponíveis em
+          <strong>https://paynexbet.com</strong>
+        </p>
 
-    <!-- Cabeçalho -->
-    <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:14px;padding:28px 28px 22px;margin-bottom:24px;color:#fff">
-      <h2 style="margin:0 0 6px;font-size:1.55rem">🔌 API &amp; Webhooks</h2>
-      <p style="margin:0 0 14px;opacity:.8;font-size:.92rem">Documentação completa de todas as rotas — PaynexBet v3</p>
-      <div style="display:flex;flex-wrap:wrap;gap:10px">
-        <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px 14px;font-size:.82rem">
-          🌐 <strong>Base URL:</strong> <span id="apiBaseUrl" style="font-family:monospace;color:#7dd3fc">https://paynexbet.com</span>
+        <!-- ── AUTENTICAÇÃO ── -->
+        <h3 style="color:#f59e0b;margin:24px 0 12px;">🔑 Autenticação</h3>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:16px;">
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">
+            <strong style="color:#f8fafc;">Admin:</strong>
+            Header <code style="background:#0f172a;padding:2px 6px;border-radius:4px;">X-PaynexBet-Secret: SEU_WEBHOOK_SECRET</code>
+            <br>ou query string <code style="background:#0f172a;padding:2px 6px;border-radius:4px;">?secret=SEU_WEBHOOK_SECRET</code>
+          </p>
+          <p style="color:#94a3b8;font-size:13px;margin:0;">
+            <strong style="color:#f8fafc;">Funcionário:</strong>
+            Header <code style="background:#0f172a;padding:2px 6px;border-radius:4px;">X-Staff-Token: TOKEN_DO_FUNCIONARIO</code>
+          </p>
         </div>
-        <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px 14px;font-size:.82rem">
-          🔑 <strong>Auth Header:</strong> <span style="font-family:monospace;color:#86efac">X-PaynexBet-Secret: &lt;sua-chave&gt;</span>
-        </div>
-        <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px 14px;font-size:.82rem">
-          🔄 <strong>Alternativa:</strong> <span style="font-family:monospace;color:#fde68a">?secret=&lt;sua-chave&gt;</span>
-        </div>
-      </div>
-    </div>
 
-    <!-- Índice de Navegação -->
-    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px 20px;margin-bottom:24px">
-      <p style="margin:0 0 10px;font-weight:700;color:#0369a1;font-size:.9rem">📋 CATEGORIAS</p>
-      <div style="display:flex;flex-wrap:wrap;gap:8px">
-        <a href="#api-pix" style="background:#3b82f6;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">💸 PIX Depósito</a>
-        <a href="#api-saldo" style="background:#10b981;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">💰 Saldo &amp; Saques</a>
-        <a href="#api-transacoes" style="background:#8b5cf6;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">📊 Transações</a>
-        <a href="#api-webhooks" style="background:#ef4444;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">🪝 Webhooks</a>
-        <a href="#api-mp2" style="background:#f59e0b;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">🏦 Mercado Pago</a>
-        <a href="#api-assinatura" style="background:#06b6d4;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">🔁 Débito Automático</a>
-        <a href="#api-recorrente" style="background:#6366f1;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">📅 Recorrências</a>
-        <a href="#api-paypix" style="background:#ec4899;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">🤝 PayPix Parceiros</a>
-        <a href="#api-sorteio" style="background:#84cc16;color:#000;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">🎰 Sorteio</a>
-        <a href="#api-admin" style="background:#64748b;color:#fff;border-radius:20px;padding:4px 12px;text-decoration:none;font-size:.8rem">⚙️ Admin</a>
-      </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════════════
-         💸 PIX DEPÓSITO
-    ══════════════════════════════════════════════════ -->
-    <div id="api-pix" class="api-section">
-      <div class="api-section-header" style="background:linear-gradient(90deg,#1d4ed8,#3b82f6)">
-        💸 PIX Depósito
-      </div>
-
-      <!-- POST /api/pix -->
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/pix</code>
-          <span class="api-desc">Gerar cobrança PIX</span>
+        <!-- ── MENU RÁPIDO ── -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px;">
+          <a href="#api-auth" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">🔐 Auth</a>
+          <a href="#api-pix" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">💸 PIX</a>
+          <a href="#api-saldo" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">💰 Saldo &amp; Saques</a>
+          <a href="#api-apostas" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">🎯 Apostas</a>
+          <a href="#api-sorteio" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">🎰 Sorteio &amp; Bolão</a>
+          <a href="#api-mp" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">💳 Mercado Pago</a>
+          <a href="#api-paypix" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">🏦 PayPix</a>
+          <a href="#api-assinar" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">🔄 Assinaturas</a>
+          <a href="#api-recorrente" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">📅 Recorrências</a>
+          <a href="#api-staff" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">👥 Funcionários</a>
+          <a href="#api-admin" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">⚙️ Admin</a>
+          <a href="#api-webhooks" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">🪝 Webhooks</a>
+          <a href="#api-bots" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">🤖 Bots</a>
+          <a href="#api-railway" style="background:#1e293b;color:#60a5fa;padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid #334155;">🚂 Railway</a>
         </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Nenhuma (público)</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{
-  "valor": 50.00,
-  "cliente_id": "user_123",
-  "webhook_url": "https://seusite.com/webhook"
-}</pre>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "tx_id": "txn_abc123",
-  "pix_code": "00020126...",
-  "valor": "R$ 50.00",
-  "status": "pendente",
-  "qr_image": "data:image/png;base64,..."
-}</pre>
-            </div>
+
+        <!-- ══ AUTENTICAÇÃO ══ -->
+        <h3 id="api-auth" style="color:#f59e0b;margin:24px 0 12px;">🔐 Autenticação</h3>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/auth/resolve-email</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Detecta se o e-mail é de admin ou funcionário. <em>Não requer autenticação.</em></p>
+          <p style="color:#64748b;font-size:12px;margin-bottom:6px;">Body:</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"email": "user@exemplo.com"}</pre>
+          <p style="color:#64748b;font-size:12px;margin-top:8px;margin-bottom:6px;">Resposta (admin):</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"type": "admin"}</pre>
+          <p style="color:#64748b;font-size:12px;margin-top:8px;margin-bottom:6px;">Resposta (staff):</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"type": "staff", "has_senha": true}</pre>
         </div>
-      </div>
 
-      <!-- GET /api/status/{tx_id} -->
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/status/{tx_id}</code>
-          <span class="api-desc">Status de uma transação</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Nenhuma (público)</p>
-              <p class="api-label">📌 Parâmetros URL</p>
-              <p class="api-value"><code>tx_id</code> — ID da transação</p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "tx_id": "txn_abc123",
-  "valor": 50.0,
-  "status": "pago",
-  "created_at": "2024-04-11T13:00:00",
-  "paid_at": "2024-04-11T13:05:00"
-}</pre>
-              <p class="api-label">⚠️ Status possíveis</p>
-              <p class="api-value"><code>pendente</code> · <code>pago</code> · <code>cancelado</code></p>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/auth/login</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Login unificado para admin (secret) e funcionário (email+senha). <em>Não requer autenticação.</em></p>
+          <p style="color:#64748b;font-size:12px;margin-bottom:6px;">Body (admin):</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"email": "admin@paynexbet.com", "senha": "WEBHOOK_SECRET"}</pre>
+          <p style="color:#64748b;font-size:12px;margin-top:8px;margin-bottom:6px;">Body (funcionário):</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"email": "func@paynexbet.com", "senha": "senha123"}</pre>
+          <p style="color:#64748b;font-size:12px;margin-top:8px;margin-bottom:6px;">Resposta (funcionário):</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"ok": true, "token": "abc123...", "nome": "João", "perms": ["depositos_ver", ...]}</pre>
         </div>
-      </div>
 
-      <!-- GET /api/pix/status/{tx_id} -->
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/pix/status/{tx_id}</code>
-          <span class="api-desc">Polling rápido (light) de geração do PIX</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Nenhuma (público)</p>
-              <p class="api-label">💡 Uso</p>
-              <p class="api-value">Use para checar se o QR Code foi gerado (campos <code>pix_code</code> e <code>status</code>)</p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "tx_id": "txn_abc123",
-  "valor": 50.0,
-  "pix_code": "00020126...",
-  "status": "pendente"
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/staff/login</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Login legado de funcionário por email+senha.</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"email": "func@paynexbet.com", "senha": "senha123"}</pre>
         </div>
-      </div>
 
-      <!-- Exemplo JS -->
-      <div class="api-card api-example">
-        <div class="api-card-title">
-          <span class="badge-js">JS</span>
-          <span class="api-desc">Exemplo completo: gerar + polling</span>
-        </div>
-        <div class="api-card-body">
-          <pre class="api-pre">const BASE = 'https://paynexbet.com';
-
-// 1. Gerar cobrança
-const res = await fetch(`${BASE}/api/pix`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ valor: 50.00, cliente_id: 'user_123' })
-});
-const { tx_id, pix_code, qr_image } = await res.json();
-
-// 2. Polling até pagamento confirmar
-const poll = setInterval(async () => {
-  const s = await fetch(`${BASE}/api/status/${tx_id}`).then(r => r.json());
-  if (s.status === 'pago') {
-    clearInterval(poll);
-    console.log('✅ Pago!');
-  }
-}, 3000);</pre>
-        </div>
-      </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════════════
-         💰 SALDO & SAQUES
-    ══════════════════════════════════════════════════ -->
-    <div id="api-saldo" class="api-section">
-      <div class="api-section-header" style="background:linear-gradient(90deg,#065f46,#10b981)">
-        💰 Saldo &amp; Saques
-      </div>
-
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/saldo</code>
-          <span class="api-desc">Saldo calculado pelo banco local</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Nenhuma (público)</p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "saldo": 37.92,
-  "disponivel": 34.89,
-  "total_depositado": 500.00,
-  "total_sacado": 462.08
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/staff/me</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Retorna dados do funcionário autenticado. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">X-Staff-Token</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"ok": true, "nome": "João", "perms": [...], "id": 1}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/saldo/bot</code>
-          <span class="api-desc">Saldo real do bot Telegram (cache + atualização em background)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Header <code>X-PaynexBet-Secret</code> ou <code>?secret=</code></p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "saldo": 37.92,
-  "fonte": "telegram_cache",
-  "atualizado_em": "2024-04-11T13:00:00"
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/check-auth</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Verifica se a autenticação admin está válida. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">X-PaynexBet-Secret</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"ok": true}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/saque</code>
-          <span class="api-desc">Solicitar saque via bot Telegram</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Header <code>X-PaynexBet-Secret</code></p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{
-  "valor": 30.00,
-  "chave_pix": "email@exemplo.com",
-  "tipo_chave": "email"
-}</pre>
-              <p class="api-label">🔑 tipo_chave</p>
-              <p class="api-value"><code>cpf</code> · <code>email</code> · <code>telefone</code> · <code>aleatorio</code></p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "saque_id": "saq_xyz",
-  "status": "enviado",
-  "valor": 30.00
-}</pre>
-            </div>
+        <!-- ══ PIX DEPÓSITO ══ -->
+        <h3 id="api-pix" style="color:#f59e0b;margin:24px 0 12px;">💸 PIX Depósito</h3>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/pix</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Gera cobrança PIX para depósito.</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"valor": 50.00, "usuario_id": "abc123", "nome": "João Silva"}</pre>
+          <p style="color:#64748b;font-size:12px;margin-top:8px;margin-bottom:6px;">Resposta:</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"success": true, "tx_id": "txn_abc", "qr_code": "...", "copia_cola": "..."}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/saques</code>
-          <span class="api-desc">Listar todos os saques (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Obrigatória (<code>X-PaynexBet-Secret</code>)</p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "saques": [...],
-  "total": 5,
-  "processados": 4,
-  "valor_pago": 120.00
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/pix/status/{tx_id}</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Consulta status de uma transação PIX.</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"status": "pago", "valor": 50.00, "tx_id": "txn_abc"}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/saque/{saque_id}/cancelar</code>
-          <span class="api-desc">Cancelar saque pendente (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Obrigatória</p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{ "success": true, "saque_id": "saq_xyz" }</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/status/{tx_id}</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Consulta genérica de status por tx_id.</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"status": "pago", "valor": 50.00}</pre>
         </div>
-      </div>
-    </div>
 
-    <!-- ══════════════════════════════════════════════════
-         📊 TRANSAÇÕES
-    ══════════════════════════════════════════════════ -->
-    <div id="api-transacoes" class="api-section">
-      <div class="api-section-header" style="background:linear-gradient(90deg,#4c1d95,#8b5cf6)">
-        📊 Transações &amp; Stats
-      </div>
-
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/transacoes</code>
-          <span class="api-desc">Listar transações (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Obrigatória</p>
-              <p class="api-label">📌 Query Params</p>
-              <p class="api-value"><code>?status=pago</code> · <code>?limite=50</code></p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "transacoes": [...],
-  "total": 10,
-  "pagos": 8,
-  "pendentes": 2,
-  "valor_pendente": 50.0,
-  "valor_recebido": 320.0
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/deposito/confirmar</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Confirma depósito manualmente. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"tx_id": "txn_abc"}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/stats</code>
-          <span class="api-desc">Dashboard completo com métricas consolidadas (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Obrigatória</p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "depositos_hoje": 5,
-  "valor_hoje": 250.00,
-  "assinantes_ativos": 12,
-  "mrr": 360.00,
-  "saldo_total": 1500.00,
-  ...
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/debug-pix</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Debug de configuração PIX. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/exportar</code>
-          <span class="api-desc">Exportar dados em CSV (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Obrigatória</p>
-              <p class="api-label">📌 Query Params</p>
-              <p class="api-value"><code>?tipo=depositos</code> (padrão) · <code>?tipo=saques</code></p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta</p>
-              <p class="api-value">Arquivo <code>text/csv</code> com todos os registros</p>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/debug/pix</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Testa geração de PIX. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
-    </div>
 
-    <!-- ══════════════════════════════════════════════════
-         🪝 WEBHOOKS
-    ══════════════════════════════════════════════════ -->
-    <div id="api-webhooks" class="api-section">
-      <div class="api-section-header" style="background:linear-gradient(90deg,#991b1b,#ef4444)">
-        🪝 Webhooks Recebidos
-      </div>
+        <!-- ══ SALDO & SAQUES ══ -->
+        <h3 id="api-saldo" style="color:#f59e0b;margin:24px 0 12px;">💰 Saldo &amp; Saques</h3>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/webhook/confirmar</code>
-          <span class="api-desc">Confirmar pagamento manualmente (sistema interno)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Header obrigatório: <code>X-PaynexBet-Secret</code></p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{
-  "tx_id": "txn_abc123",
-  "status": "pago"
-}</pre>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "message": "Pagamento txn_abc123 confirmado"
-}</pre>
-              <p class="api-label">❌ Resposta 401</p>
-              <pre class="api-pre">{ "error": "Não autorizado" }</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/saldo</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Retorna saldo atual da carteira. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"saldo": 1500.00, "pendente": 200.00}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/webhook/mp2</code>
-          <span class="api-desc">Webhook do Mercado Pago (PIX confirmados)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Automática via assinatura MP</p>
-              <p class="api-label">💡 Cadastrar no MP</p>
-              <p class="api-value"><code>https://paynexbet.com/webhook/mp2</code></p>
-              <p class="api-label">📌 Eventos suportados</p>
-              <p class="api-value"><code>payment</code></p>
-            </div>
-            <div>
-              <p class="api-label">📥 Payload recebido (MP)</p>
-              <pre class="api-pre">{
-  "type": "payment",
-  "data": { "id": "12345678" }
-}</pre>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{ "received": true }</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/saldo/bot</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Saldo do bot de pagamentos. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/webhook/preapproval</code>
-          <span class="api-desc">Webhook do MP — mudanças de status de débito automático</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Automática via MP</p>
-              <p class="api-label">💡 Cadastrar no MP</p>
-              <p class="api-value"><code>https://paynexbet.com/webhook/preapproval</code></p>
-              <p class="api-label">📌 Eventos suportados</p>
-              <p class="api-value"><code>preapproval</code> · <code>subscription_preapproval</code></p>
-            </div>
-            <div>
-              <p class="api-label">📥 Payload recebido</p>
-              <pre class="api-pre">{
-  "type": "preapproval",
-  "data": { "id": "dca1eca6..." }
-}</pre>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{ "received": true }</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/stats</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Estatísticas gerais (depósitos, saques, usuários). <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"depositos_hoje": 10, "valor_hoje": 500.00, "saques_pendentes": 3}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/webhook/asaas</code>
-          <span class="api-desc">Webhook Asaas — confirmação de pagamentos do sorteio</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Automática via Asaas</p>
-              <p class="api-label">💡 Cadastrar no Asaas</p>
-              <p class="api-value"><code>https://paynexbet.com/webhook/asaas</code></p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{ "received": true }</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/transacoes</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista transações. Aceita <code>?secret=</code> ou header. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <!-- Box de configuração de webhooks no MP -->
-      <div class="api-card" style="border-left:4px solid #f59e0b;background:#fffbeb">
-        <div class="api-card-title" style="color:#92400e">
-          <span style="font-size:1.1rem">⚙️</span>
-          <strong>Como configurar Webhooks no Mercado Pago</strong>
-        </div>
-        <div class="api-card-body">
-          <ol style="margin:0 0 0 18px;padding:0;line-height:2;font-size:.88rem;color:#78350f">
-            <li>Acesse <strong>mercadopago.com.br/developers/panel</strong></li>
-            <li>Vá em <strong>Suas integrações → Webhooks</strong></li>
-            <li>URL para PIX: <code style="background:#fef3c7;padding:2px 6px;border-radius:4px">https://paynexbet.com/webhook/mp2</code></li>
-            <li>URL para Débito Automático: <code style="background:#fef3c7;padding:2px 6px;border-radius:4px">https://paynexbet.com/webhook/preapproval</code></li>
-            <li>Eventos: marque <strong>payment</strong> e <strong>preapproval</strong></li>
-          </ol>
-        </div>
-      </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════════════
-         🏦 MERCADO PAGO (MP2)
-    ══════════════════════════════════════════════════ -->
-    <div id="api-mp2" class="api-section">
-      <div class="api-section-header" style="background:linear-gradient(90deg,#78350f,#f59e0b)">
-        🏦 Mercado Pago — PayPixNex (MP2)
-      </div>
-
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/mp2/status</code>
-          <span class="api-desc">Status geral do sistema MP2</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Nenhuma (público)</p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "configurado": true,
-  "bot2_token": true,
-  "access_token_ok": true,
-  "public_key_ok": true
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/saques</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista saques pendentes/aprovados. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/mp2/stats</code>
-          <span class="api-desc">Estatísticas de pagamentos MP2 (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Obrigatória</p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "total_pagamentos": 120,
-  "valor_total": 6000.00,
-  "pagos_hoje": 8,
-  "pendentes": 2
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/saque</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Solicita saque de usuário.</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"usuario_id": "abc", "valor": 100.00, "chave_pix": "user@email.com"}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/mp2/config</code>
-          <span class="api-desc">Ver chaves MP2 mascaradas (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Obrigatória</p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "access_token": "...abc123",
-  "public_key":   "...xyz789",
-  "client_id":    "...111",
-  "configurado":  true
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/saque/{saque_id}/cancelar</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Cancela um saque específico. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/mp2/config</code>
-          <span class="api-desc">Salvar chaves MP2 (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p>
-              <p class="api-value">Obrigatória</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{
-  "access_token": "APP_USR-...",
-  "public_key":   "APP_USR-...",
-  "client_id":    "12345",
-  "client_secret":"abc"
-}</pre>
-              <p class="api-label">💡 Dica</p>
-              <p class="api-value">Envie <code>"__keep__"</code> ou omita um campo para manter o valor já salvo</p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "message": "Chaves MP2 salvas e recarregadas"
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/reprocessar-saque</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Reprocessa saque manualmente. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"saque_id": 5}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/mp2/testar</code>
-          <span class="api-desc">Testar conexão com API Mercado Pago (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "saldo": 150.00,
-  "email": "conta@mp.com"
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/exportar</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Exporta transações em CSV. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <!-- Parceiros -->
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/mp2/parceiros</code>
-          <span class="api-desc">Listar parceiros / afiliados ativos (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">[
-  {
-    "codigo": "PARCEIRO01",
-    "nome":   "João Silva",
-    "comissao_pct": 10,
-    "chave_pix": "joao@email.com",
-    "ativo": true
-  }
-]</pre>
-            </div>
+        <!-- ══ APOSTAS ══ -->
+        <h3 id="api-apostas" style="color:#f59e0b;margin:24px 0 12px;">🎯 Apostas (Bet)</h3>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/jogos</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista jogos disponíveis para apostas.</p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/mp2/parceiros</code>
-          <span class="api-desc">Criar parceiro / afiliado (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{
-  "codigo":       "PARCEIRO01",
-  "nome":         "João Silva",
-  "comissao_pct": 10,
-  "chave_pix":    "joao@email.com"
-}</pre>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{ "success": true, "codigo": "PARCEIRO01" }</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/live</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Jogos ao vivo disponíveis.</p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-patch">PATCH</span>
-          <code>/api/mp2/parceiros/{codigo}</code>
-          <span style="margin-left:8px;color:#6b7280;font-size:.83rem">Editar parceiro</span>
-          &nbsp;&nbsp;
-          <span class="badge-delete">DELETE</span>
-          <code>/api/mp2/parceiros/{codigo}</code>
-          <span style="margin-left:8px;color:#6b7280;font-size:.83rem">Remover parceiro</span>
-        </div>
-        <div class="api-card-body">
-          <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória para ambos</p>
-        </div>
-      </div>
-
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/mp2/comissoes</code>
-          <span class="api-desc">Listar comissões dos parceiros (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">[
-  {
-    "id": 1,
-    "parceiro_codigo": "PARCEIRO01",
-    "valor": 5.00,
-    "status": "pendente",
-    "tx_id": "txn_abc"
-  }
-]</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/fixtures</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Fixtures de jogos agendados.</p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/mp2/comissoes/pagar</code>
-          <span class="api-desc">Marcar comissão como paga manualmente (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{ "comissao_id": 1 }</pre>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{ "success": true }</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/standings</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Classificação dos campeonatos.</p>
         </div>
-      </div>
 
-      <!-- Bot MP2 -->
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/bot/gerar</code>
-          <span class="api-desc">Gerar PIX via bot MP (@paypix_nexbot)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma (público)</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{
-  "valor": 50.00,
-  "descricao": "Depósito",
-  "ref": "PARCEIRO01"
-}</pre>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "pix_copia_cola": "00020126...",
-  "qr_base64": "data:image/png;...",
-  "payment_id": "12345678",
-  "external_ref": "pay_abc"
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/tabela</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Tabela de classificação.</p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/bot/status/{payment_id}</code>
-          <span class="api-desc">Status do pagamento MP</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "status": "approved",
-  "confirmado": true,
-  "valor": 50.00
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/predictions</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Previsões de resultados.</p>
         </div>
-      </div>
-    </div>
 
-    <!-- ══════════════════════════════════════════════════
-         🔁 DÉBITO AUTOMÁTICO (PREAPPROVAL / ASSINAR)
-    ══════════════════════════════════════════════════ -->
-    <div id="api-assinatura" class="api-section">
-      <div class="api-section-header" style="background:linear-gradient(90deg,#0e7490,#06b6d4)">
-        🔁 Débito Automático — Assinatura Mensal
-      </div>
-
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/assinar/criar-plano</code>
-          <span class="api-desc">Criar/recriar plano no Mercado Pago (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
-              <p class="api-label">💡 Quando usar</p>
-              <p class="api-value">Chame 1× após configurar o plano no painel. Cria o <code>preapproval_plan</code> no MP com PIX obrigatório.</p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "plan_id": "2c93808...",
-  "init_point": "https://www.mercadopago.com.br/..."
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/crest</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Escudos de times. Parâmetro: <code>?team_id=33</code></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/assinar/plano</code>
-          <span class="api-desc">Dados do plano ativo (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "plan_id": "2c93808...",
-  "titulo": "Mensalidade VIP",
-  "valor": 29.90,
-  "dia_cobranca": 5,
-  "init_point": "https://..."
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/saldo/{usuario_id}</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Saldo de apostas do usuário.</p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/assinar/config</code>
-          <span class="api-desc">Config pública do plano de assinatura</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma (público)</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "titulo": "Mensalidade VIP",
-  "descricao": "Acesso total ao grupo",
-  "valor": 29.90,
-  "dia": 5,
-  "beneficios": "📊 Sinais diários\n🎯 Suporte VIP",
-  "cor": "#2563eb",
-  "ativo": true
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/minhas</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Apostas simples do usuário. Parâmetro: <code>?usuario_id=abc</code></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/assinar/config</code>
-          <span class="api-desc">Salvar config do plano (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
-              <p class="api-label">📨 Body JSON (todos opcionais)</p>
-              <pre class="api-pre">{
-  "titulo":     "Mensalidade VIP",
-  "descricao":  "Acesso total",
-  "valor":      29.90,
-  "dia":        5,
-  "beneficios": "📊 Sinais\n🎯 Suporte",
-  "cor":        "#2563eb",
-  "ativo":      true
-}</pre>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{ "success": true }</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/multi/minhas</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Apostas múltiplas do usuário. Parâmetro: <code>?usuario_id=abc</code></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/assinar/preapproval</code>
-          <span class="api-desc">Registrar interesse do cliente (página /assinar)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma (público)</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{
-  "nome":     "João Silva",
-  "email":    "joao@email.com",
-  "telefone": "11999999999",
-  "ref":      "PARCEIRO01"
-}</pre>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "preapproval_id": "pending_rec_42",
-  "init_point": "https://www.mercadopago.com.br/...",
-  "recorrente_id": 42
-}</pre>
-              <p class="api-label">💡 Fluxo</p>
-              <p class="api-value">Redirecione o cliente para <code>init_point</code> — ele autoriza o débito no app MP</p>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/apostar</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Realiza aposta simples.</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"usuario_id": "abc", "fixture_id": 123, "tipo": "casa", "valor": 20.00}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/assinar/status/{preapproval_id}</code>
-          <span class="api-desc">Verificar status da autorização</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p>
-              <p class="api-label">💡 ID aceitos</p>
-              <p class="api-value">ID real do MP ou <code>pending_rec_{id}</code></p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "status": "authorized",
-  "preapproval_id": "dca1eca6...",
-  "nome": "João Silva"
-}</pre>
-              <p class="api-label">📌 Status possíveis</p>
-              <p class="api-value"><code>authorized</code> · <code>pending</code> · <code>paused</code> · <code>cancelled</code></p>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/multi</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Realiza aposta múltipla.</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"usuario_id": "abc", "selecoes": [...], "valor": 20.00}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/assinar/qr</code>
-          <span class="api-desc">QR Code da página /assinar</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p></div>
-            <div>
-              <p class="api-label">✅ Resposta</p>
-              <p class="api-value">Imagem PNG com QR Code da URL <code>paynexbet.com/assinar</code></p>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/deposito</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Depósito para carteira de apostas.</p>
         </div>
-      </div>
-    </div>
 
-    <!-- ══════════════════════════════════════════════════
-         📅 RECORRÊNCIAS MANUAIS
-    ══════════════════════════════════════════════════ -->
-    <div id="api-recorrente" class="api-section">
-      <div class="api-section-header" style="background:linear-gradient(90deg,#312e81,#6366f1)">
-        📅 Recorrências Manuais
-      </div>
-
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/recorrente/criar</code>
-          <span class="api-desc">Cadastrar assinante recorrente manual</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma (público)</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{
-  "nome":          "Maria Costa",
-  "valor":         29.90,
-  "dia_vencimento": 5,
-  "chave_pix":     "maria@email.com",
-  "tipo_chave":    "email",
-  "ref":           "PARCEIRO01"
-}</pre>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "recorrente_id": 15,
-  "link_pagamento": "https://paynexbet.com/pagar/15"
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/sacar</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Saque da carteira de apostas.</p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/recorrente/listar</code>
-          <span class="api-desc">Listar assinantes recorrentes (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
-              <p class="api-label">📌 Query Params</p>
-              <p class="api-value"><code>?status=ativo</code> · <code>?status=cancelado</code> · <code>?status=pausado</code></p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">[
-  {
-    "id": 15,
-    "nome": "Maria Costa",
-    "valor": 29.90,
-    "dia_vencimento": 5,
-    "status": "ativo",
-    "ultimo_pagamento": "2024-04-05"
-  }
-]</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/login</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Login de usuário para apostas.</p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/recorrente/cancelar</code>
-          <span class="api-desc">Cancelar assinatura (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{ "recorrente_id": 15 }</pre>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{ "success": true }</pre>
-            </div>
+        <!-- ══ ADMIN APOSTAS ══ -->
+        <h4 style="color:#94a3b8;margin:16px 0 10px;font-size:14px;">⚙️ Admin — Apostas</h4>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bet/dashboard</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Dashboard de apostas. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/recorrente/stats</code>
-          <span class="api-desc">Estatísticas de recorrências (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "ativos": 45,
-  "pausados": 3,
-  "cancelados": 7,
-  "mrr": 1345.50,
-  "total_cobrado_mes": 1200.00
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bet/charts</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Gráficos de apostas. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/recorrente/job</code>
-          <span class="api-desc">Disparar job de cobranças manualmente (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "cobrados": 8,
-  "erros": 0
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bet/pnl</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lucro/Prejuízo de apostas. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/pagar/{id}</code>
-          <span class="api-desc">Página de pagamento individual (link enviado ao cliente)</span>
-        </div>
-        <div class="api-card-body">
-          <p class="api-label">💡 Uso</p>
-          <p class="api-value">Link enviado automaticamente ao assinante quando há cobrança pendente. Exibe QR Code + código Pix copia e cola.</p>
-        </div>
-      </div>
-
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/recorrente/autocadastro</code>
-          <span class="api-desc">Auto-cadastro pela página /assinar (público)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{
-  "nome":  "Carlos Mendes",
-  "email": "carlos@email.com",
-  "ref":   "PARCEIRO01"
-}</pre>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "recorrente_id": 22
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bet/limites</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Limites de apostas configurados. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
-    </div>
 
-    <!-- ══════════════════════════════════════════════════
-         🤝 PAYPIX PARCEIROS
-    ══════════════════════════════════════════════════ -->
-    <div id="api-paypix" class="api-section">
-      <div class="api-section-header" style="background:linear-gradient(90deg,#831843,#ec4899)">
-        🤝 PayPix — Parceiros com Split
-      </div>
-
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/paypix/gerar</code>
-          <span class="api-desc">Gerar PIX para parceiro (com split automático)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{
-  "chave_pix":  "parceiro@email.com",
-  "tipo_chave": "email",
-  "valor":      100.00,
-  "descricao":  "Pagamento parceiro"
-}</pre>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "tx_id": "pp_xyz",
-  "pix_code": "00020126...",
-  "valor_total": 100.00,
-  "valor_split": 5.00
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bet/limites</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Define limites de apostas. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"min": 5.00, "max": 1000.00}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/paypix/status/{tx_id}</code>
-          <span class="api-desc">Status da transação PayPix</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "tx_id": "pp_xyz",
-  "status": "pago",
-  "pix_code": "00020126...",
-  "valor": 100.00
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bet/resolver</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Resolve apostas simples de um jogo. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"fixture_id": 123, "resultado": "casa"}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/paypix/config</code>
-          <span class="api-desc">Ver config PayPix (% split, descrição)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma (GET público)</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "split_pct": 5,
-  "descricao": "PayPix Parceiro"
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bet/resolver-auto</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Resolve apostas automaticamente. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/paypix/config</code>
-          <span class="api-desc">Atualizar % split e descrição (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{ "split_pct": 5, "descricao": "PayPix" }</pre>
-            </div>
-            <div><p class="api-label">✅ Resposta 200</p><pre class="api-pre">{ "success": true }</pre></div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bet/multi/resolver</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Resolve apostas múltiplas. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
-    </div>
 
-    <!-- ══════════════════════════════════════════════════
-         🎰 SORTEIO
-    ══════════════════════════════════════════════════ -->
-    <div id="api-sorteio" class="api-section">
-      <div class="api-section-header" style="background:linear-gradient(90deg,#365314,#84cc16);color:#000">
-        🎰 Sorteio
-      </div>
-
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/sorteio/info</code>
-          <span class="api-desc">Informações públicas do sorteio</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p>
-              <p class="api-label">📌 Query Params</p>
-              <p class="api-value"><code>?cpf=12345678901</code> (opcional)</p>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "ativo": true,
-  "premio": 500.00,
-  "valor_numero": 5.00,
-  "numeros_disponiveis": 80,
-  "participante": { ... }
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/ligas</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista ligas ativas. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/sorteio/cadastrar</code>
-          <span class="api-desc">Cadastrar participante</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{
-  "nome":      "Ana Lima",
-  "cpf":       "12345678901",
-  "chave_pix": "ana@email.com"
-}</pre>
-            </div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "participante_id": 8,
-  "numeros": []
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/ligas/config</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Configura ligas. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/sorteio/config</code>
-          <span class="api-desc">Configurar parâmetros do sorteio (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{
-  "ativo": true,
-  "premio": 1000.00,
-  "valor_por_numero": 10.00,
-  "max_numeros": 100,
-  "titulo": "Mega Sorteio"
-}</pre>
-            </div>
-            <div><p class="api-label">✅ Resposta 200</p><pre class="api-pre">{ "success": true }</pre></div>
+        <!-- ══ SORTEIO & BOLÃO ══ -->
+        <h3 id="api-sorteio" style="color:#f59e0b;margin:24px 0 12px;">🎰 Sorteio &amp; Bolão</h3>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/info</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Informações do sorteio atual.</p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/sorteio/realizar</code>
-          <span class="api-desc">Realizar o sorteio + saque automático (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "success": true,
-  "ganhador": "Ana Lima",
-  "numero": 42,
-  "premio_enviado": true
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/participantes</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista participantes do sorteio.</p>
         </div>
-      </div>
-    </div>
 
-    <!-- ══════════════════════════════════════════════════
-         ⚙️ ADMIN / SISTEMA
-    ══════════════════════════════════════════════════ -->
-    <div id="api-admin" class="api-section">
-      <div class="api-section-header" style="background:linear-gradient(90deg,#1e293b,#64748b)">
-        ⚙️ Admin &amp; Sistema
-      </div>
-
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/health</code>
-          &nbsp;/&nbsp;
-          <span class="badge-get">GET</span>
-          <code>/api/status</code>
-          <span class="api-desc">Status do servidor</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "status": "online",
-  "bot": "conectado",
-  "db": "postgresql",
-  "versao": "3.0"
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/cadastrar</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Cadastra usuário no sorteio.</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"nome": "João", "telefone": "11999999999", "cpf": "..."}</pre>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/deposito/confirmar</code>
-          <span class="api-desc">Confirmar depósito manualmente (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{ "tx_id": "txn_abc123" }</pre>
-            </div>
-            <div><p class="api-label">✅ Resposta 200</p><pre class="api-pre">{ "success": true }</pre></div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/participar</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Confirma participação com depósito.</p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/asaas/configurar</code>
-          <span class="api-desc">Injetar ASAAS_API_KEY em runtime (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{ "api_key": "$aact_...", "env": "sandbox" }</pre>
-            </div>
-            <div><p class="api-label">✅ Resposta 200</p><pre class="api-pre">{ "success": true, "env": "sandbox" }</pre></div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/realizar</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Realiza o sorteio. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/asaas/status</code>
-          <span class="api-desc">Verificar se Asaas está configurado e operacional</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Nenhuma</p></div>
-            <div>
-              <p class="api-label">✅ Resposta 200</p>
-              <pre class="api-pre">{
-  "configurado": true,
-  "env": "production",
-  "saldo": 200.00
-}</pre>
-            </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/config</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Configura parâmetros do sorteio. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-get">GET</span>
-          <code>/api/mp2/saques</code>
-          <span class="api-desc">Listar saques MP pendentes (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div><p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p></div>
-            <div><p class="api-label">✅ Resposta 200</p><pre class="api-pre">{ "saques": [...], "total": 3 }</pre></div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/deposito</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Adiciona depósito ao sorteio. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
 
-      <div class="api-card">
-        <div class="api-card-title">
-          <span class="badge-post">POST</span>
-          <code>/api/mp2/saques/processar</code>
-          <span class="api-desc">Processar saque MP manualmente (admin)</span>
-        </div>
-        <div class="api-card-body">
-          <div class="api-cols">
-            <div>
-              <p class="api-label">🔐 Autenticação</p><p class="api-value">Obrigatória</p>
-              <p class="api-label">📨 Body JSON</p>
-              <pre class="api-pre">{ "saque_id": 5 }</pre>
-            </div>
-            <div><p class="api-label">✅ Resposta 200</p><pre class="api-pre">{ "success": true }</pre></div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/acumular</code>
           </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Acumula prêmio do sorteio. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
         </div>
-      </div>
-    </div>
 
-    <!-- Rodapé -->
-    <div style="text-align:center;padding:24px;color:#94a3b8;font-size:.8rem;border-top:1px solid #ffffff15;margin-top:24px">
-      PaynexBet API v3 &nbsp;·&nbsp; Todas as rotas com autenticação exigem o header <code style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#7dd3fc">X-PaynexBet-Secret</code> ou <code style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#7dd3fc">?secret=</code>
-    </div>
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/set-acumulado</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Define valor acumulado manualmente. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/asaas/status/{tx_id}</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Status de pagamento Asaas do sorteio.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/asaas/pix</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Gera PIX Asaas para sorteio.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/sorteio/asaas/saque</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Saque prêmio via Asaas. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <!-- BOLÃO -->
+        <h4 style="color:#94a3b8;margin:16px 0 10px;font-size:14px;">🏆 Bolão</h4>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bolao/jogos</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista jogos do bolão disponíveis.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bolao/bilhetes</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Bilhetes do usuário. <code>?usuario_id=abc</code></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bolao/comprar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Compra bilhete do bolão.</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"usuario_id": "abc", "jogo_id": 1, "palpites": {...}}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bolao/jogos</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Admin: lista jogos do bolão. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bolao/jogos-disponiveis</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Jogos disponíveis para criar bolão. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bolao/jogo</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Cria novo bolão. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bolao/fechar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Fecha bolão para novos bilhetes. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bolao/publicar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Publica resultado do bolão. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bolao/resolver-auto</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Resolve bolão automaticamente. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bolao/deletar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Deleta bolão. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <!-- ══ MERCADO PAGO ══ -->
+        <h3 id="api-mp" style="color:#f59e0b;margin:24px 0 12px;">💳 Mercado Pago (MP2 / MP3)</h3>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/config</code>
+            <code style="color:#64748b;font-size:12px;">| /api/mp3/config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Configuração MP. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/config</code>
+            <code style="color:#64748b;font-size:12px;">| /api/mp3/config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Salva configuração MP. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"access_token": "APP_USR-...", "webhook_url": "https://..."}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/status</code>
+            <code style="color:#64748b;font-size:12px;">| /api/mp3/status</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Status da integração MP. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/stats</code>
+            <code style="color:#64748b;font-size:12px;">| /api/mp3/stats</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Estatísticas MP. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/depositos</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista depósitos MP2. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp3/status/{tx_id}</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Status de transação específica MP3.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp3/gerar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Gera cobrança PIX via MP3.</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"valor": 50.00, "usuario_id": "abc", "nome": "João"}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/saques</code>
+            <code style="color:#64748b;font-size:12px;">| /api/mp3/saques</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Saques pendentes MP. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/saques/processar</code>
+            <code style="color:#64748b;font-size:12px;">| /api/mp3/saques/processar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Processa saque via MP. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"saque_id": 5}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/comissoes</code>
+            <code style="color:#64748b;font-size:12px;">| /api/mp3/comissoes</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Comissões de parceiros. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/comissoes/pagar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Paga comissão manual. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/parceiros</code>
+            <code style="color:#64748b;font-size:12px;">| /api/mp3/parceiros</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista parceiros MP. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/parceiros</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Cria parceiro MP. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#f59e0b;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">PATCH</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/parceiros/{codigo}</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Edita parceiro MP. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#ef4444;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">DELETE</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp2/parceiros/{codigo}</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Remove parceiro MP. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/mp3/config-publica</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Config pública MP3 (sem auth).</p>
+        </div>
+
+        <!-- ══ PAYPIX ══ -->
+        <h3 id="api-paypix" style="color:#f59e0b;margin:24px 0 12px;">🏦 PayPix Parceiros</h3>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/paypix/config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Configuração PayPix. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/paypix/config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Salva configuração PayPix. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/paypix/gerar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Gera cobrança PayPix.</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"valor": 50.00, "usuario_id": "abc"}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/paypix/status/{tx_id}</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Status de transação PayPix.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/paypix/fila</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Fila de processamento PayPix. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/paypix/afiliados</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista afiliados PayPix. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/paypix/afiliados</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Cria afiliado PayPix. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/paypix/vortex/config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Config Vortex PayPix. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/parceiro/{codigo}</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Info pública de parceiro (sem auth).</p>
+        </div>
+
+        <!-- ══ ASSINATURAS ══ -->
+        <h3 id="api-assinar" style="color:#f59e0b;margin:24px 0 12px;">🔄 Assinaturas (Débito Automático)</h3>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/assinar/config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Config de assinatura. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/assinar/config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Salva config de assinatura. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/assinar/criar-plano</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Cria plano de assinatura no MP. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/assinar/plano</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Info do plano atual.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/assinar/preapproval</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Assina um plano (preapproval).</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/assinar/status/{preapproval_id}</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Status de assinatura.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/assinar/qr</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">QR code do último pagamento de assinatura.</p>
+        </div>
+
+        <!-- ══ RECORRÊNCIAS ══ -->
+        <h3 id="api-recorrente" style="color:#f59e0b;margin:24px 0 12px;">📅 Recorrências (Cobrança Automática)</h3>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/recorrente/listar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista cobranças recorrentes. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/recorrente/stats</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Estatísticas de recorrências. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/recorrente/criar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Cria recorrência. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/recorrente/cobrar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Aciona cobrança manual. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/recorrente/pausar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Pausa recorrência. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/recorrente/cancelar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Cancela recorrência. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/recorrente/autocadastro</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Autocadastro de cliente recorrente.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/recorrente/job</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Executa job de cobrança manual. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/pagar/{id}</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Página de pagamento de recorrência pública.</p>
+        </div>
+
+        <!-- ══ FUNCIONÁRIOS ══ -->
+        <h3 id="api-staff" style="color:#f59e0b;margin:24px 0 12px;">👥 Funcionários (Staff)</h3>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/staff</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista todos os funcionários. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">[{"id": 1, "nome": "João", "email": "...", "ativo": true, "perms": [...]}]</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/staff</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Cria novo funcionário. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"nome": "Ana", "email": "ana@email.com", "perms": ["depositos_ver", "saques_ver"]}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/staff/editar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Edita dados do funcionário. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"id": 1, "nome": "Ana Silva", "perms": [...]}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/staff/deletar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Remove funcionário. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"id": 1}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/staff/toggle</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Ativa/desativa funcionário. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"id": 1, "ativo": false}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/staff/regen-token</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Regenera token de acesso do funcionário. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"id": 1}</pre>
+          <p style="color:#64748b;font-size:12px;margin-top:8px;margin-bottom:6px;">Resposta:</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"success": true, "token": "novo_token_hash"}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/staff/set-senha</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Define senha do funcionário para login. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"id": 1, "senha": "nova_senha_segura"}</pre>
+          <p style="color:#64748b;font-size:12px;margin-top:8px;margin-bottom:6px;">Resposta:</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"success": true, "msg": "Senha definida com sucesso"}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/staff/link</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Gera link de acesso com token do funcionário. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <p style="color:#64748b;font-size:12px;margin-bottom:6px;">Query: <code>?id=1</code></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"link": "https://paynexbet.com/admin?staff_token=TOKEN"}</pre>
+        </div>
+
+        <!-- ══ ADMIN GERAL ══ -->
+        <h3 id="api-admin" style="color:#f59e0b;margin:24px 0 12px;">⚙️ Admin — Painel Geral</h3>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/depositos</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista depósitos. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/saques</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista saques. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/usuarios</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista usuários. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/usuarios/ajustar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Ajusta saldo de usuário. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"usuario_id": "abc", "valor": 100.00, "tipo": "credito", "motivo": "bonus"}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/usuarios/suspender</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Suspende/ativa usuário. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"usuario_id": "abc", "suspender": true}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bonus</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista bônus ativos. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bonus/criar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Cria bônus. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"tipo": "primeiro_deposito", "valor_pct": 100, "limite": 200.00}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/bonus/cancelar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Cancela bônus. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"bonus_id": 1}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/afiliados</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista afiliados. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/alertas</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Alertas do sistema. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/alertas/ignorar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Ignora um alerta. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/canais</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Status dos canais de pagamento. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/criar-canais</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Cria canais de notificação. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/jogo-responsavel</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista configurações de jogo responsável. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/notif-config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Config de notificações. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/gerar-link</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Gera link de acesso temporário (24h) para o admin. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;"># sem body necessário</pre>
+          <p style="color:#64748b;font-size:12px;margin-top:8px;margin-bottom:6px;">Resposta:</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"success": true, "link": "https://paynexbet.com/admin?t=TOKEN", "expires_in": 86400}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/validar-link</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Valida um access_token de link. Query: <code>?t=TOKEN</code></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"valid": true, "expires_in": 82000}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/export/apostas.csv</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Exporta apostas em CSV. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/export/depositos.csv</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Exporta depósitos em CSV. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/export/usuarios.csv</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Exporta usuários em CSV. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/patch-admin-html</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Atualiza admin.html no banco. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"html": "<!DOCTYPE html>..."}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/admin/db-migrate</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Executa migração de banco de dados. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <!-- ══ WEBHOOKS ══ -->
+        <h3 id="api-webhooks" style="color:#f59e0b;margin:24px 0 12px;">🪝 Webhooks</h3>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/webhook/confirmar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Confirmação manual de pagamento. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">X-PaynexBet-Secret</kbd></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"tx_id": "txn_abc123", "status": "pago"}</pre>
+          <p style="color:#64748b;font-size:12px;margin-top:8px;margin-bottom:6px;">Resposta:</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"success": true, "message": "Pagamento txn_abc123 confirmado"}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/webhook/mp2</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Webhook Mercado Pago PIX. Autenticação automática via assinatura.</p>
+          <p style="color:#64748b;font-size:12px;margin-bottom:6px;">Endpoint para configurar no MP:</p>
+          <code style="background:#0f172a;padding:4px 8px;border-radius:4px;font-size:12px;color:#60a5fa;">https://paynexbet.com/webhook/mp2</code>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;margin-top:8px;color:#86efac;">{"type": "payment", "data": {"id": "12345678"}}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/webhook/mp3</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Webhook MP3.</p>
+          <code style="background:#0f172a;padding:4px 8px;border-radius:4px;font-size:12px;color:#60a5fa;">https://paynexbet.com/webhook/mp3</code>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/webhook/preapproval</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Webhook de assinaturas (preapproval). Eventos: <code>payment</code>, <code>subscription_preapproval</code></p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"type": "preapproval", "data": {"id": "dca1eca6..."}}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/webhook/asaas</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Webhook Asaas para confirmar pagamentos do sorteio.</p>
+          <code style="background:#0f172a;padding:4px 8px;border-radius:4px;font-size:12px;color:#60a5fa;">https://paynexbet.com/webhook/asaas</code>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/webhook/suitpay</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Webhook SuitPay.</p>
+          <code style="background:#0f172a;padding:4px 8px;border-radius:4px;font-size:12px;color:#60a5fa;">https://paynexbet.com/webhook/suitpay</code>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/webhook/pp</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Webhook PP (alias de mp2).</p>
+        </div>
+
+        <!-- ══ BOTS ══ -->
+        <h3 id="api-bots" style="color:#f59e0b;margin:24px 0 12px;">🤖 Bots de Pagamento</h3>
+
+        <h4 style="color:#94a3b8;margin:16px 0 10px;font-size:14px;">🤖 Bot 1 (Telegram PIX)</h4>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot/config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Config do bot. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot/config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Salva config do bot. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot/gerar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Gera PIX via bot.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot/status/{payment_id}</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Status de pagamento do bot.</p>
+        </div>
+
+        <h4 style="color:#94a3b8;margin:16px 0 10px;font-size:14px;">🤖 Bot 2</h4>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot2/config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Config bot2. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot2/status</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Status bot2. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot2/saldo</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Saldo bot2. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot2/pix</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Gera PIX via bot2.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot2/solicitar-codigo</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Solicita código de verificação bot2. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot2/confirmar-codigo</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Confirma código de verificação bot2. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot2/set-webhook</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Configura webhook bot2. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/webhook/bot2</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Recebe notificações do bot2.</p>
+        </div>
+
+        <h4 style="color:#94a3b8;margin:16px 0 10px;font-size:14px;">🤖 Bot 3</h4>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot3/config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Config bot3. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bot3/set-webhook</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Configura webhook bot3. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/webhook/bot3</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Recebe notificações do bot3.</p>
+        </div>
+
+        <!-- ══ TELEGRAM ══ -->
+        <h4 style="color:#94a3b8;margin:16px 0 10px;font-size:14px;">📱 Telegram</h4>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/telegram/sessao-atual</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Sessão Telegram atual. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/telegram/solicitar-codigo</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Solicita código de login Telegram. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/telegram/confirmar-codigo</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Confirma código Telegram. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <!-- ══ RAILWAY ══ -->
+        <h3 id="api-railway" style="color:#f59e0b;margin:24px 0 12px;">🚂 Railway &amp; Sistema</h3>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/railway/info</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Informações do ambiente Railway. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/railway/domain-status</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Status do domínio Railway. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/railway/add-domain</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Adiciona domínio no Railway. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/railway/set-vars</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Define variáveis de ambiente no Railway. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/status</code>
+            <code style="color:#64748b;font-size:12px;">| /health</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Health check do servidor.</p>
+          <pre style="background:#0f172a;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;color:#86efac;">{"status": "ok", "version": "..."}</pre>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/restart</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Reinicia o servidor. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/self-update</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Atualização do servidor via git. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/server-ip</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">IP público do servidor.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/reconectar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Reconecta ao banco de dados. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/atualizar-sessao</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Atualiza sessão ativa.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/asaas/status</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Status da integração Asaas. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#2563eb;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">POST</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/asaas/configurar</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Configura integração Asaas. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <!-- ══ LIGAS PÚBLICAS ══ -->
+        <h4 style="color:#94a3b8;margin:16px 0 10px;font-size:14px;">🏆 Ligas &amp; Público</h4>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/ligas/ativas</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Lista ligas ativas para a home. <em>Público — sem auth.</em></p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/config</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Config pública de apostas.</p>
+        </div>
+
+        <div class="api-card" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;">GET</span>
+            <code style="color:#e2e8f0;font-size:14px;">/api/bet/dbcheck</code>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:8px;">Verifica banco de dados de apostas. <kbd style="background:#334155;padding:2px 6px;border-radius:3px;font-size:11px;">Admin</kbd></p>
+        </div>
+
+        <!-- ══ RODAPÉ ══ -->
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-top:32px;color:#64748b;font-size:12px;">
+          <p style="margin:0 0 8px;font-weight:600;color:#94a3b8;">📌 Total: 285 rotas registradas</p>
+          <p style="margin:0;">Última atualização automática da documentação baseada em server.py</p>
+        </div>
+
       </div><!-- /tab-api -->
 
     </div><!-- /content -->
