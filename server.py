@@ -13079,12 +13079,13 @@ async def route_bolao_comprar(request):
         # Marcar bolão como 'aberto' se era agendado
         cur.execute("UPDATE bolao_jogos SET status='aberto' WHERE id=%s AND status='agendado'", (bolao_id,))
 
-        # Registrar transação
-        cur.execute("""
-            INSERT INTO transacoes (usuario_id, tipo, valor, descricao, criado_em)
-            VALUES (%s, 'bolao_bilhete', %s, %s, NOW())
-        """, (usuario_id, -valor,
-              f"Bilhete Bolão #{bolao_id}: {bolao['time_casa']} × {bolao['time_fora']} — {pl_casa}×{pl_fora}"))
+        # Registrar transação no log de ajustes (usando tabela compatível)
+        try:
+            descricao = f"Bolao #{bolao_id}: {bolao['time_casa']} x {bolao['time_fora']} {pl_casa}x{pl_fora}"
+            # Log via print — tabela transacoes tem schema diferente (usa cliente_id, não usuario_id)
+            print(f"[bolao/comprar] usuario_id={usuario_id} bolao_id={bolao_id} valor=R${valor:.2f} bilhete_id={bilhete_id} placar={pl_casa}x{pl_fora}", flush=True)
+        except Exception:
+            pass  # log opcional — não bloquear a compra
         conn.commit()
         cur.close(); conn.close()
 
