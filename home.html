@@ -3558,9 +3558,9 @@ function _renderBilhetes(){
   const btnLimpar=document.getElementById('btn-limpar-filtro');
   if(btnLimpar) btnLimpar.style.display=_filtroAtivo?'inline-block':'none';
 
-  const stIcon=s=>s==='ganhou'?'\u{1F3C6}':s==='perdeu'?'\u274C':s==='cancelada'?'\u{1F6AB}':'\u23F3';
+  const stIcon=s=>s==='ganhou'?'🏆':s==='perdeu'?'\u274C':s==='cancelada'?'🚫':'\u23F3';
   const stColor=s=>s==='ganhou'?'#4ade80':s==='perdeu'?'#f87171':s==='cancelada'?'#94a3b8':'#f59e0b';
-  const stLabel=s=>s==='ganhou'?'\u{1F3C6} Ganhou':s==='perdeu'?'\u274C Perdeu':s==='cancelada'?'\u{1F6AB} Cancelada':'\u23F3 Aguard. jogo';
+  const stLabel=s=>s==='ganhou'?'🏆 Ganhou':s==='perdeu'?'\u274C Perdeu':s==='cancelada'?'🚫 Cancelada':'\u23F3 Aguard. jogo';
 
   let html='';
 
@@ -3585,8 +3585,8 @@ function _renderBilhetes(){
               (a.selecao?'<span style="color:#60a5fa">'+a.selecao+'</span> \u00b7 ':'')+
               'Odd <b style="color:#e2e8f0">'+Number(a.odd).toFixed(2)+'</b>'+
             '</div>'+
-            '<div style="font-size:10px;color:#475569;margin-top:2px">\u{1F4C5} '+dataExib+'</div>'+
-            (st==='pendente'?'<div style="font-size:10px;color:#64748b;margin-top:2px">\u{1F504} Resolu\u00e7\u00e3o autom\u00e1tica ap\u00f3s o jogo</div>':'')+
+            '<div style="font-size:10px;color:#475569;margin-top:2px">📅 '+dataExib+'</div>'+
+            (st==='pendente'?'<div style="font-size:10px;color:#64748b;margin-top:2px">🔄 Resolu\u00e7\u00e3o autom\u00e1tica ap\u00f3s o jogo</div>':'')+
           '</div>'+
           '<div style="text-align:right;margin-left:12px;flex-shrink:0">'+
             '<div style="font-size:11px;color:'+stColor(st)+';font-weight:700;white-space:nowrap">'+stLabel(st)+'</div>'+
@@ -3599,10 +3599,10 @@ function _renderBilhetes(){
   } else {
     const temFiltro=_filtroAtivo&&apostas.length>0;
     html+='<div class="conta-card" style="text-align:center;padding:20px;margin-bottom:14px">'+
-      '<div style="font-size:2rem;margin-bottom:8px">'+(temFiltro?'\u{1F50D}':'\u26BD')+'</div>'+
+      '<div style="font-size:2rem;margin-bottom:8px">'+(temFiltro?'🔍':'\u26BD')+'</div>'+
       '<div style="font-weight:700;color:#94a3b8">'+(temFiltro?'Nenhuma aposta no per\u00edodo selecionado.':'Nenhuma aposta esportiva ainda.')+'</div>'+
-      (temFiltro?'<button onclick="limparFiltroData()" style="margin-top:10px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:12px">\u{1F504} Mostrar todas</button>':
-        '<button onclick="navTo(\'home\')" style="margin-top:10px;background:var(--blue);border:none;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px">\u{1F3E0} Ver Jogos</button>')+
+      (temFiltro?'<button onclick="limparFiltroData()" style="margin-top:10px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:12px">🔄 Mostrar todas</button>':
+        '<button onclick="navTo(\'home\')" style="margin-top:10px;background:var(--blue);border:none;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px">🏠 Ver Jogos</button>')+
     '</div>';
   }
 
@@ -3629,7 +3629,7 @@ function _renderBilhetes(){
   const toIsoVal=dtStr=>{
     if(!dtStr) return '';
     const p=dtStr.split('/');
-    if(p.length===3) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+    if(p.length===3) return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
     return '';
   };
 
@@ -3640,7 +3640,7 @@ function _renderBilhetes(){
 
       // ── Linha compacta: ícone + título + total + botão Pesquisar ──
       '<div style="display:flex;align-items:center;gap:8px">'+
-        '<span style="font-size:16px">\u{1F3AB}</span>'+
+        '<span style="font-size:16px">🎫</span>'+
         '<div style="flex:1">'+
           '<span style="font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px">Sorteio</span>'+
           ' <span style="font-size:13px;font-weight:700;color:#e2e8f0">\u2014 '+sorteio.length+' bilhete(s)</span>'+
@@ -3658,7 +3658,7 @@ function _renderBilhetes(){
             'color:'+(temBuscaData?'#93c5fd':'#94a3b8')+';'+
             'padding:6px 11px;border-radius:8px;cursor:pointer;font-size:12px;'+
             'font-weight:'+(temBuscaData?'700':'400')+';white-space:nowrap">'+
-          (temBuscaData?'\u{1F50D} '+sorteioFiltFinal.length+'/'+sorteio.length:'📅 Pesquisar')+
+          (temBuscaData?'🔍 '+sorteioFiltFinal.length+'/'+sorteio.length:'📅 Pesquisar')+
         '</button>'+
       '</div>'+
 
@@ -3667,7 +3667,7 @@ function _renderBilhetes(){
         '<div style="margin-top:10px;padding:9px 11px;background:rgba(96,165,250,0.04);'+
           'border:1px dashed rgba(96,165,250,0.15);border-radius:8px;'+
           'display:flex;align-items:center;gap:9px">'+
-          '<span style="font-size:1.1rem">\u{1F4C5}</span>'+
+          '<span style="font-size:1.1rem">📅</span>'+
           '<div style="font-size:12px;color:#475569">'+
             'Clique em <b style="color:#60a5fa">📅 Pesquisar</b> para ver bilhetes por data.'+
             (datasUnicas.length>0?' <span style="color:#334155">('+datasUnicas.length+' data(s) disponíveis)</span>':'')+
@@ -3692,7 +3692,7 @@ function _renderBilhetes(){
               'color:#f87171;padding:7px 11px;border-radius:8px;cursor:pointer;font-size:13px">\u2715</button>'+
           '</div>'+
           (datasUnicas.length>0?
-            '<div style="font-size:10px;color:#334155;margin-bottom:6px">\u{1F4CC} Datas disponíveis:</div>'+
+            '<div style="font-size:10px;color:#334155;margin-bottom:6px">📌 Datas disponíveis:</div>'+
             '<div style="display:flex;flex-wrap:wrap;gap:5px">'+
               datasUnicas.map(dt=>{
                 const iso=toIsoVal(dt);
@@ -3707,7 +3707,7 @@ function _renderBilhetes(){
                   'border:1px solid rgba(96,165,250,'+(isAtivo?'0.6':'0.18')+');'+
                   'color:'+(isAtivo?'#e2e8f0':'#94a3b8')+';'+
                   'padding:5px 11px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:'+(isAtivo?'700':'400')+'">'+ 
-                  '\u{1F4C5} '+dt.slice(0,5)+
+                  '📅 '+dt.slice(0,5)+
                   ' <span style="background:rgba(96,165,250,'+(isAtivo?'0.3':'0.1')+');color:'+(isAtivo?'#93c5fd':'#60a5fa')+';'+
                   'padding:1px 6px;border-radius:10px;font-size:10px;margin-left:3px">'+qtd+'</span>'+
                 '</button>';
@@ -3731,7 +3731,7 @@ function _renderBilhetes(){
             '</div>'
           :
             '<div style="text-align:center;padding:14px;background:rgba(30,41,59,0.4);border-radius:8px;margin-bottom:8px">'+
-              '<div style="font-size:1.2rem;margin-bottom:4px">\u{1F50D}</div>'+
+              '<div style="font-size:1.2rem;margin-bottom:4px">🔍</div>'+
               '<div style="font-size:12px;color:#64748b">Nenhum bilhete nesta data.</div>'+
             '</div>'
         :'')+
@@ -3749,10 +3749,10 @@ function _renderBilhetes(){
   } else {
     const temFiltroS=_filtroAtivo&&sorteio.length>0;
     html+='<div class="conta-card" style="text-align:center;padding:16px">'+
-      '<div style="font-size:1.6rem;margin-bottom:6px">'+(temFiltroS?'\u{1F50D}':'\u{1F3AB}')+'</div>'+
+      '<div style="font-size:1.6rem;margin-bottom:6px">'+(temFiltroS?'🔍':'🎫')+'</div>'+
       '<div style="font-size:13px;color:#94a3b8">'+(temFiltroS?'Nenhum bilhete no per\u00edodo selecionado.':'Sem bilhetes de sorteio ainda.')+'</div>'+
-      (temFiltroS?'<button onclick="limparFiltroData()" style="margin-top:8px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px">\u{1F504} Mostrar todos</button>':
-        '<button onclick="sbNav(\'sorteio\')" style="margin-top:8px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px">\u{1F3AF} Participar do Sorteio</button>')+
+      (temFiltroS?'<button onclick="limparFiltroData()" style="margin-top:8px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px">🔄 Mostrar todos</button>':
+        '<button onclick="sbNav(\'sorteio\')" style="margin-top:8px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px">🎯 Participar do Sorteio</button>')+
     '</div>';
   }
 
@@ -3817,7 +3817,7 @@ function limparFiltroData(){
 function filtroRapido(tipo){
   const hoje=new Date(); hoje.setHours(0,0,0,0);
   const fimHoje=new Date(); fimHoje.setHours(23,59,59,999);
-  const toIsoDate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const toIsoDate=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   document.querySelectorAll('.btn-filtro-rapido').forEach(b=>b.classList.remove('ativo'));
   if(tipo==='todos'){ limparFiltroData(); return; }
   let inicio=new Date(hoje);
