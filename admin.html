@@ -739,20 +739,28 @@
     const cleanUrl = location.pathname;
     history.replaceState({}, '', cleanUrl);
   }
+  // ── Capturar access_token de link admin (?t=...) ──────────────────────────
+  const at = urlParams.get('t');
+  if (at && at.length > 10) {
+    sessionStorage.setItem('vp_access_token', at);
+    history.replaceState({}, '', location.pathname);
+  }
 })();
 
 // Anti-cache: força reload se versão antiga
 (function(){
-  const VER = '20250428c';
+  const VER = '20250501a';
   if (sessionStorage.getItem('adminVer') !== VER) {
     const savedSecret      = sessionStorage.getItem('vp_secret');
     const savedStaffToken  = sessionStorage.getItem('vp_staff_token');
+    const savedAccessToken = sessionStorage.getItem('vp_access_token');
     sessionStorage.clear();
     sessionStorage.setItem('adminVer', VER);
-    if (savedSecret)     sessionStorage.setItem('vp_secret', savedSecret);
-    if (savedStaffToken) sessionStorage.setItem('vp_staff_token', savedStaffToken);
-    // Não inclui staff_token na URL do reload (já está no sessionStorage)
-    location.replace(location.pathname + '?v=' + VER + '&t=' + Date.now());
+    if (savedSecret)      sessionStorage.setItem('vp_secret', savedSecret);
+    if (savedStaffToken)  sessionStorage.setItem('vp_staff_token', savedStaffToken);
+    if (savedAccessToken) sessionStorage.setItem('vp_access_token', savedAccessToken);
+    // Não inclui tokens na URL do reload
+    location.replace(location.pathname + '?v=' + VER);
   }
 })();
 
@@ -1076,11 +1084,16 @@ async function fazerLogin() {
         <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
         <h1 id="page-title">Dashboard</h1>
       </div>
-      <div class="topbar-right">
+      <div class=\"topbar-right\">
         <!-- Badge de papel do usuário logado -->
-        <span id="user-role-badge" style="display:none;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px"></span>
-        <span class="last-update" id="last-update"></span>
-        <button class="refresh-btn" onclick="loadAll()">🔄 Atualizar</button>
+        <span id=\"user-role-badge\" style=\"display:none;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px\"></span>
+        <span class=\"last-update\" id=\"last-update\"></span>
+        <!-- Botão Gerar Link (visível apenas para admin) -->
+        <button id=\"btn-gerar-link-admin\" onclick=\"abrirModalGerarLink()\" title=\"Gerar link de acesso para este painel\"
+          style=\"display:none;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap\">
+          🔗 Gerar Link
+        </button>
+        <button class=\"refresh-btn\" onclick=\"loadAll()\">🔄 Atualizar</button>
       </div>
     </div>
 
@@ -2397,12 +2410,11 @@ async function fazerLogin() {
                   <th>Permissões</th>
                   <th>Último acesso</th>
                   <th>Status</th>
-                  <th style="width:90px">Link</th>
-                  <th style="width:160px">Ações</th>
+                  <th style="width:180px">Ações</th>
                 </tr>
               </thead>
               <tbody id="staff-tbody">
-                <tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>
+                <tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -2456,62 +2468,115 @@ async function fazerLogin() {
           </div>
         </div>
 
-        <!-- Modal Token (exibido após criar ou regen) -->
-        <div id="modal-token" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;padding:16px">
-          <div style="background:var(--card);border:1px solid #8b5cf6;border-radius:16px;padding:28px;width:540px;max-width:100%">
-            <h3 style="margin:0 0 8px;color:#c4b5fd">🔑 Acesso do Funcionário</h3>
-            <p style="color:var(--text2);font-size:12px;margin:0 0 16px">⚠️ Copie agora! O token <strong style="color:#f59e0b">não será exibido novamente</strong>. Envie o link de acesso direto ao funcionário.</p>
+        <!-- Modal Definir Senha do Funcionário -->
+        <div id="modal-staff-senha" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1001;align-items:center;justify-content:center;padding:16px">
+          <div style="background:var(--card);border:1px solid #6366f1;border-radius:16px;padding:28px;width:420px;max-width:100%">
+            <h3 style="margin:0 0 4px;color:#a5b4fc">🔒 Definir Senha</h3>
+            <p style="color:var(--text2);font-size:12px;margin:0 0 20px">Funcionário: <strong id="modal-senha-nome" style="color:#fff"></strong></p>
 
-            <!-- Token bruto -->
-            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">🔐 Token (não compartilhe publicamente)</label>
-            <div style="background:#0d0d1a;border:1px solid #8b5cf6;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#c4b5fd;word-break:break-all;margin-bottom:12px" id="token-display"></div>
-
-            <!-- Link de acesso completo -->
-            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">🔗 Link de Acesso Direto (envie este para o funcionário)</label>
-            <div style="display:flex;gap:6px;margin-bottom:16px">
-              <div style="flex:1;background:#0d0d1a;border:1px solid #4ade80;border-radius:8px;padding:12px;font-family:monospace;font-size:11px;color:#4ade80;word-break:break-all;overflow:hidden" id="link-display"></div>
-              <button onclick="copiarLink()" title="Copiar link" style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);border-radius:8px;color:#4ade80;padding:8px 12px;cursor:pointer;font-size:18px;white-space:nowrap">🔗</button>
+            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:6px">Nova senha (mín. 6 caracteres)</label>
+            <div style="position:relative;margin-bottom:12px">
+              <input id="modal-senha-nova" type="password" placeholder="Digite a nova senha"
+                style="width:100%;padding:10px 40px 10px 12px;background:#0d0d1a;border:1px solid #6366f1;border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box"
+                onkeydown="if(event.key==='Enter') document.getElementById('modal-senha-confirmar').focus()">
+              <button onclick="this.previousElementSibling.type=this.previousElementSibling.type==='password'?'text':'password'"
+                style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#aaa;font-size:16px">👁️</button>
             </div>
+
+            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:6px">Confirmar senha</label>
+            <div style="position:relative;margin-bottom:18px">
+              <input id="modal-senha-confirmar" type="password" placeholder="Repita a senha"
+                style="width:100%;padding:10px 40px 10px 12px;background:#0d0d1a;border:1px solid #6366f1;border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box"
+                onkeydown="if(event.key==='Enter') _modalSenhaSalvar()">
+              <button onclick="this.previousElementSibling.type=this.previousElementSibling.type==='password'?'text':'password'"
+                style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#aaa;font-size:16px">👁️</button>
+            </div>
+
+            <div id="modal-senha-erro" style="color:#f87171;font-size:12px;margin-bottom:12px;display:none"></div>
 
             <div style="display:flex;gap:10px">
-              <button onclick="copiarToken()" style="flex:1;background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;padding:11px;cursor:pointer">
-                📋 Copiar Token
+              <button onclick="_modalSenhaSalvar()" id="modal-senha-btn-salvar"
+                style="flex:1;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;padding:12px;cursor:pointer">
+                💾 Salvar Senha
               </button>
-              <button onclick="copiarLink()" style="flex:1;background:linear-gradient(135deg,#065f46,#047857);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;padding:11px;cursor:pointer">
-                🔗 Copiar Link
-              </button>
-              <button onclick="fecharModalToken()" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:13px;padding:11px 16px;cursor:pointer">
-                ✅ Ok
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Modal Link Acesso (para funcionários existentes) -->
-        <div id="modal-staff-link" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;padding:16px">
-          <div style="background:var(--card);border:1px solid #4ade80;border-radius:16px;padding:28px;width:540px;max-width:100%">
-            <h3 style="margin:0 0 8px;color:#4ade80">🔗 Link de Acesso</h3>
-            <p style="color:var(--text2);font-size:12px;margin:0 0 4px">Funcionário: <strong id="modal-link-nome" style="color:#fff"></strong></p>
-            <p style="color:var(--text2);font-size:11px;margin:0 0 16px">Envie este link diretamente ao funcionário para que ele acesse o painel.</p>
-
-            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">🔗 Link de Acesso Direto</label>
-            <div style="display:flex;gap:6px;margin-bottom:8px">
-              <div style="flex:1;background:#0d0d1a;border:1px solid #4ade80;border-radius:8px;padding:12px;font-family:monospace;font-size:11px;color:#4ade80;word-break:break-all" id="modal-link-url"></div>
-            </div>
-            <p style="color:var(--text2);font-size:10px;margin:0 0 16px">💡 Para gerar um novo link/token, use o botão 🔑 na tabela.</p>
-
-            <div style="display:flex;gap:10px">
-              <button onclick="copiarLinkStaff()" style="flex:1;background:linear-gradient(135deg,#065f46,#047857);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;padding:12px;cursor:pointer">
-                🔗 Copiar Link
-              </button>
-              <button onclick="document.getElementById('modal-staff-link').style.display='none'" style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:14px;padding:12px;cursor:pointer">
-                ✅ Fechar
+              <button onclick="document.getElementById('modal-staff-senha').style.display='none'"
+                style="background:var(--card2);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:13px;padding:12px 16px;cursor:pointer">
+                Cancelar
               </button>
             </div>
           </div>
         </div>
 
       </div><!-- /tab-funcionarios -->
+
+<!-- ═══ MODAL: TOKEN DE FUNCIONÁRIO ═══ -->
+<div id="modal-token" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:2000;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:480px;width:100%">
+    <h3 style="margin:0 0 6px;color:#fff">🔑 Token de Acesso</h3>
+    <p style="color:var(--text2);font-size:12px;margin:0 0 16px">Compartilhe o link abaixo com o funcionário. O link já inclui o token de acesso.</p>
+    <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text2);word-break:break-all;margin-bottom:8px">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Token</div>
+      <div id="token-display" style="color:#fff;font-family:monospace"></div>
+    </div>
+    <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text2);word-break:break-all;margin-bottom:16px">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Link direto</div>
+      <div id="link-display" style="color:#4ade80;font-family:monospace"></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button onclick="copiarToken()" style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:10px;font-size:13px;cursor:pointer">📋 Copiar Token</button>
+      <button onclick="copiarLink()" style="flex:1;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:8px;color:#fff;padding:10px;font-size:13px;font-weight:700;cursor:pointer">🔗 Copiar Link</button>
+      <button onclick="fecharModalToken()" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:10px 16px;font-size:13px;cursor:pointer">✕ Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: LINK DE STAFF EXISTENTE ═══ -->
+<div id="modal-staff-link" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:2000;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:480px;width:100%">
+    <h3 style="margin:0 0 6px;color:#fff">🔗 Link de Acesso</h3>
+    <p style="color:var(--text2);font-size:12px;margin:0 0 4px">Funcionário: <strong id="modal-link-nome" style="color:#fff"></strong></p>
+    <p style="color:var(--text2);font-size:11px;margin:0 0 16px">Este link dá acesso direto ao painel (sem precisar de senha).</p>
+    <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:#4ade80;word-break:break-all;margin-bottom:16px;font-family:monospace" id="modal-link-url"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="copiarLinkStaff()" style="flex:1;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:8px;color:#fff;padding:10px;font-size:13px;font-weight:700;cursor:pointer">📋 Copiar Link</button>
+      <button onclick="document.getElementById('modal-staff-link').style.display='none'" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;color:#fff;padding:10px 16px;font-size:13px;cursor:pointer">✕ Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: GERAR LINK DE ACESSO ADMIN ═══ -->
+<div id="modal-gerar-link" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:2001;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:500px;width:100%">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#ff6b35,#f7931e);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🔗</div>
+      <div>
+        <h3 style="margin:0;color:#fff;font-size:16px">Gerar Link de Acesso</h3>
+        <p style="margin:0;color:var(--text2);font-size:12px">Link válido por 24 horas · Acesso como Admin</p>
+      </div>
+    </div>
+    <p style="color:var(--text2);font-size:13px;margin:0 0 16px;line-height:1.5">
+      Gera um link especial para acessar este painel usando <strong style="color:#fff">email + senha</strong>, sem precisar do token de funcionário.<br>
+      Compartilhe com outro dispositivo ou salve para acesso rápido.
+    </p>
+    <div id="modal-link-resultado" style="display:none;background:var(--card2);border:1px solid rgba(74,222,128,0.3);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">🔗 Link gerado</div>
+      <div id="modal-link-gerado-url" style="color:#4ade80;font-family:monospace;font-size:12px;word-break:break-all;line-height:1.6"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px" id="modal-link-expiry"></div>
+    </div>
+    <div id="modal-link-erro" style="display:none;color:#f87171;font-size:12px;margin-bottom:12px;padding:10px;background:rgba(248,113,113,0.1);border-radius:8px;border:1px solid rgba(248,113,113,0.2)"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button id="btn-gerar-link-confirm" onclick="_gerarLinkAdmin()" style="flex:1;background:linear-gradient(135deg,#ff6b35,#f7931e);border:none;border-radius:10px;color:#fff;padding:12px;font-size:14px;font-weight:700;cursor:pointer">
+        ⚡ Gerar Link
+      </button>
+      <button id="btn-copiar-link-gerado" onclick="_copiarLinkGerado()" style="display:none;flex:1;background:linear-gradient(135deg,#4ade80,#22c55e);border:none;border-radius:10px;color:#000;padding:12px;font-size:14px;font-weight:700;cursor:pointer">
+        📋 Copiar Link
+      </button>
+      <button onclick="fecharModalGerarLink()" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;color:#fff;padding:12px 18px;font-size:14px;cursor:pointer">
+        ✕ Fechar
+      </button>
+    </div>
+  </div>
+</div>
 
       <!-- ═══ CONFIG PAGAMENTO ═══ -->
       <div id="tab-config-pagamento" class="tab-content">
@@ -7304,14 +7369,19 @@ const SECRET = () => sessionStorage.getItem('vp_secret') || '';
 function _setRoleBadge(role) {
   const badge = document.getElementById('user-role-badge');
   if (!badge) return;
+  const btnLink = document.getElementById('btn-gerar-link-admin');
   if (role === 'admin') {
     badge.textContent = '🔑 ADMIN';
     badge.style.cssText = 'display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;letter-spacing:0.5px';
+    // Mostrar botão de gerar link para admin
+    if (btnLink) btnLink.style.display = 'inline-flex';
   } else {
     const nome = sessionStorage.getItem('vp_staff_nome') || 'Funcionário';
     const primeiro = nome.split(' ')[0];
     badge.textContent = `👤 ${primeiro}`;
     badge.style.cssText = 'display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.5px';
+    // Ocultar botão de gerar link para funcionário
+    if (btnLink) btnLink.style.display = 'none';
   }
 }
 
@@ -9114,13 +9184,7 @@ async function loadStaff() {
         ? `<button onclick="staffToggle(${s.id},false)" title="Revogar acesso" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:6px;color:#f87171;padding:4px 8px;cursor:pointer;font-size:11px">🚫 Revogar</button>`
         : `<button onclick="staffToggle(${s.id},true)"  title="Ativar acesso"  style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);border-radius:6px;color:#4ade80;padding:4px 8px;cursor:pointer;font-size:11px">✅ Ativar</button>`;
 
-      const linkBtn = s.ativo
-        ? `<button onclick="verLinkStaff(${s.id},'${escHtml(s.nome)}')"
-              title="Ver/copiar link de acesso"
-              style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.3);border-radius:6px;color:#4ade80;padding:4px 10px;cursor:pointer;font-size:14px">
-              🔗
-            </button>`
-        : `<span style="color:var(--text2);font-size:12px;padding:4px 6px">—</span>`;
+      // linkBtn removido — acesso agora é por email+senha
 
       return `<tr>
         <td style="color:var(--text2);font-size:11px">#${s.id}</td>
@@ -9129,13 +9193,11 @@ async function loadStaff() {
         <td><div style="display:flex;flex-wrap:wrap;gap:3px">${permsHtml}</div></td>
         <td style="font-size:11px">${ultimoAcesso}</td>
         <td>${statusBadge}</td>
-        <td style="text-align:center">${linkBtn}</td>
         <td>
           <div style="display:flex;gap:4px;flex-wrap:wrap">
             <button onclick="abrirEditarStaff(${s.id})" title="Editar" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:#fff;padding:4px 8px;cursor:pointer;font-size:11px">✏️</button>
             ${toggleBtn}
             <button onclick="staffSetSenha(${s.id},'${escHtml(s.nome)}')" title="Definir senha de login" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35);border-radius:6px;color:#a5b4fc;padding:4px 8px;cursor:pointer;font-size:11px">🔒 Senha</button>
-            <button onclick="staffRegenToken(${s.id})" title="Gerar novo token/link" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#fbbf24;padding:4px 8px;cursor:pointer;font-size:11px">🔑</button>
             <button onclick="staffDeletar(${s.id},'${escHtml(s.nome)}')" title="Remover" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#f87171;padding:4px 8px;cursor:pointer;font-size:11px">🗑️</button>
           </div>
         </td>
@@ -9419,6 +9481,74 @@ function copiarLinkStaff() {
 
 function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Gerar Link de Acesso Admin ──────────────────────────────────────────── */
+let _linkGeradoAtual = '';
+
+function abrirModalGerarLink() {
+  // Reset estado
+  _linkGeradoAtual = '';
+  document.getElementById('modal-link-resultado').style.display = 'none';
+  document.getElementById('modal-link-erro').style.display = 'none';
+  document.getElementById('btn-gerar-link-confirm').style.display = 'inline-flex';
+  document.getElementById('btn-gerar-link-confirm').textContent = '⚡ Gerar Link';
+  document.getElementById('btn-gerar-link-confirm').disabled = false;
+  document.getElementById('btn-copiar-link-gerado').style.display = 'none';
+  document.getElementById('modal-gerar-link').style.display = 'flex';
+}
+
+function fecharModalGerarLink() {
+  document.getElementById('modal-gerar-link').style.display = 'none';
+}
+
+async function _gerarLinkAdmin() {
+  const btn = document.getElementById('btn-gerar-link-confirm');
+  const errEl = document.getElementById('modal-link-erro');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando...';
+  try {
+    const r = await fetch('/api/admin/gerar-link', {
+      method: 'POST',
+      headers: _authHeaders()
+    });
+    const d = await r.json();
+    if (!d.ok) {
+      errEl.textContent = '❌ ' + (d.error || 'Erro ao gerar link');
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = '⚡ Gerar Link';
+      return;
+    }
+    // Montar link com ?t=TOKEN
+    _linkGeradoAtual = `${location.origin}/admin?t=${d.token}`;
+    document.getElementById('modal-link-gerado-url').textContent = _linkGeradoAtual;
+    const expiry = new Date(Date.now() + (d.expires_in || 86400) * 1000);
+    document.getElementById('modal-link-expiry').textContent =
+      `⏱️ Expira em: ${expiry.toLocaleString('pt-BR')}`;
+    document.getElementById('modal-link-resultado').style.display = 'block';
+    btn.style.display = 'none';
+    document.getElementById('btn-copiar-link-gerado').style.display = 'inline-flex';
+    _showToast('🔗 Link de acesso gerado com sucesso!', 'success');
+  } catch(e) {
+    errEl.textContent = '❌ Erro de conexão: ' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = '⚡ Gerar Link';
+  }
+}
+
+function _copiarLinkGerado() {
+  if (!_linkGeradoAtual) return;
+  navigator.clipboard.writeText(_linkGeradoAtual).then(() => {
+    _showToast('✅ Link copiado! Cole no navegador ou WhatsApp.', 'success');
+    document.getElementById('modal-gerar-link').style.display = 'none';
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = _linkGeradoAtual; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    _showToast('✅ Link copiado!', 'success');
+    document.getElementById('modal-gerar-link').style.display = 'none';
+  });
 }
 
 function _showToast(msg, type) {
@@ -10953,7 +11083,7 @@ async function realizarSorteio() {
 }
 
 // ═══════════════════════════════════════════════
-//  INIT — Auto-login (admin secret ou staff token)
+//  INIT — Auto-login (admin secret, access_token ou staff token)
 // ═══════════════════════════════════════════════
 
 // Modo funcionário: auto-login via staff_token salvo no sessionStorage
@@ -10961,10 +11091,45 @@ const _staffTokenSalvo = sessionStorage.getItem('vp_staff_token');
 if (_staffTokenSalvo) {
   _autoLoginStaff(_staffTokenSalvo);
 }
+// Modo link admin (?t=access_token): valida token e faz auto-login como admin
+else if (sessionStorage.getItem('vp_access_token')) {
+  _autoLoginComLink(sessionStorage.getItem('vp_access_token'));
+}
 // Modo admin: auto-login se já tem secret
 else if (sessionStorage.getItem('vp_secret')) {
   document.getElementById('login-secret').value = sessionStorage.getItem('vp_secret');
   fazerLogin();
+}
+
+/* Auto-login via link de acesso admin (?t=...) */
+async function _autoLoginComLink(accessToken) {
+  const errEl = document.getElementById('login-error');
+  try {
+    if (errEl) errEl.textContent = '⏳ Validando link de acesso...';
+    const r = await fetch('/api/admin/validar-link?t=' + encodeURIComponent(accessToken));
+    const d = await r.json();
+    if (d.ok && d.valid && d.secret) {
+      sessionStorage.removeItem('vp_access_token');       // usar só uma vez
+      sessionStorage.setItem('vp_secret', d.secret);
+      document.getElementById('login-secret').value = d.secret;
+      if (errEl) errEl.textContent = '';
+      // Usar mesmo fluxo de login admin
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('admin-screen').style.display = 'block';
+      _setRoleBadge('admin');
+      try { showTab('dashboard'); } catch(e) {}
+      try { loadAll(); } catch(e) {}
+      try { setInterval(loadAll, 30000); } catch(e) {}
+      try { iniciarPollingPix(); } catch(e) {}
+      try { document.getElementById('btn-gerar-link-admin').style.display = 'inline-flex'; } catch(e) {}
+    } else {
+      sessionStorage.removeItem('vp_access_token');
+      if (errEl) errEl.textContent = '❌ Link expirado ou inválido. Solicite um novo link ao administrador.';
+    }
+  } catch(e) {
+    sessionStorage.removeItem('vp_access_token');
+    if (errEl) errEl.textContent = '❌ Erro ao validar link: ' + e.message;
+  }
 }
 
 async function _autoLoginStaff(token) {

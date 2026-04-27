@@ -4696,6 +4696,55 @@ async def route_admin_staff_set_senha(request):
     except Exception as e:
         return _safe_json({'ok': False, 'error': str(e)}, status=500)
 
+
+# ── Sessões de link temporário para admin ─────────────────────────────────────
+import secrets as _secrets_mod
+import time as _time_mod
+_admin_link_sessions = {}   # token -> expiry_timestamp
+
+def _admin_session_cleanup():
+    """Remove sessões expiradas do dicionário em memória."""
+    now = _time_mod.time()
+    expired = [k for k, v in _admin_link_sessions.items() if v < now]
+    for k in expired:
+        del _admin_link_sessions[k]
+
+async def route_admin_gerar_link(request):
+    """POST /api/admin/gerar-link — admin autenticado gera link de acesso temporário (sem staff_token).
+    Body: { secret } ou usa _admin_auth.
+    Retorna link com access_token válido por 24h.
+    """
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        _admin_session_cleanup()
+        token = _secrets_mod.token_urlsafe(32)
+        expiry = _time_mod.time() + 86400  # 24 horas
+        _admin_link_sessions[token] = expiry
+        print(f'[admin-link] Gerado access_token expiração=+24h', flush=True)
+        return _safe_json({'ok': True, 'token': token, 'expires_in': 86400,
+                           'msg': 'Link válido por 24 horas'})
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_validar_link(request):
+    """GET /api/admin/validar-link?t=TOKEN — valida um access_token de link.
+    Retorna { ok, valid, secret } se válido.
+    """
+    try:
+        _admin_session_cleanup()
+        token = request.rel_url.query.get('t', '').strip()
+        if not token:
+            return _safe_json({'ok': False, 'error': 'Token ausente'}, status=400)
+        if token in _admin_link_sessions and _admin_link_sessions[token] > _time_mod.time():
+            # Token válido — retorna o secret para o front fazer login normal
+            return _safe_json({'ok': True, 'valid': True, 'secret': WEBHOOK_SECRET})
+        return _safe_json({'ok': True, 'valid': False, 'error': 'Link expirado ou inválido'})
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def route_asaas_status(request):
@@ -17488,6 +17537,8 @@ async def main():
     app.router.add_post('/api/staff/login',             route_staff_login)      # login email+senha do funcionário (legado)
     app.router.add_post('/api/auth/resolve-email',      route_auth_resolve_email)  # detecta tipo pelo email
     app.router.add_post('/api/auth/login',              route_auth_login)          # login unificado admin/staff
+    app.router.add_post('/api/admin/gerar-link',        route_admin_gerar_link)    # admin gera link de acesso temporário
+    app.router.add_get ('/api/admin/validar-link',      route_admin_validar_link)  # valida access_token de link
     app.router.add_post('/api/admin/staff/set-senha',   route_admin_staff_set_senha)  # admin define senha do funcionário
     # Margem de lucro por liga
     app.router.add_get('/api/admin/bet/margem',         route_admin_margem_get)
