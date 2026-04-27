@@ -3470,51 +3470,94 @@ async function carregarTabela(league,titulo,_retry){
   }
 }
 
-/* ══ BILHETES ══ */
+/* ══ BILHETES (aba Apostas) ══ */
 async function carregarBilhetes(){
   const el=document.getElementById('bilhetes-lista');
   const u=loadSession();
-  if(!u){el.innerHTML='<div class="loading-center"><a onclick="openModal(\'login\')" style="color:var(--blue2);cursor:pointer">Faça login</a> para ver seus bilhetes.</div>';return}
-  if(!u.cpf){el.innerHTML='<div class="loading-center">⚠️ CPF não encontrado na sessão. Faça login novamente.</div>';return}
-  el.innerHTML='<div class="loading-center"><div class="spinner2"></div>Carregando seus bilhetes...</div>';
+  if(!u){
+    el.innerHTML='<div class="loading-center"><a onclick="openModal(\'login\')" style="color:var(--blue2);cursor:pointer">Faça login</a> para ver suas apostas.</div>';
+    return;
+  }
+  el.innerHTML='<div class="loading-center"><div class="spinner2"></div>Carregando...</div>';
   try{
-    const cpfLimpo=u.cpf.replace(/\D/g,'');
-    const r=await fetch(BASE+'/api/sorteio/meus-bilhetes?cpf='+cpfLimpo);
+    // ── 1. Apostas esportivas ──
+    const r=await fetch(BASE+'/api/bet/saldo/'+u.id);
     const d=await r.json();
-    if(!d.success){el.innerHTML='<div class="loading-center">⚠️ '+( d.error||'Erro ao carregar.')+'</div>';return}
-    const bilhetes=d.bilhetes||[];
-    if(!bilhetes.length){
-      el.innerHTML='<div class="loading-center" style="flex-direction:column;gap:12px">'+
-        '<span style="font-size:2rem">🎫</span>'+
-        '<span>Você ainda não tem bilhetes neste sorteio.</span>'+
-        '<button onclick="sbNav(\'sorteio\')" style="background:var(--blue);border:none;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:14px">🎯 Participar do Sorteio</button>'+
-        '</div>';
-      return;
+    const apostas=(d.apostas||[]);
+
+    // ── 2. Bilhetes do sorteio ──
+    let bilhetesSorteio=[];
+    if(u.cpf){
+      try{
+        const rs=await fetch(BASE+'/api/sorteio/meus-bilhetes?cpf='+u.cpf.replace(/\D/g,''));
+        const ds=await rs.json();
+        if(ds.success) bilhetesSorteio=ds.bilhetes||[];
+      }catch(_){}
     }
-    // Agrupar info
-    const totalDep=d.total_depositado||0;
-    const sorteioId=d.sorteio_id||'';
-    const numCols=Math.min(4, bilhetes.length);
-    el.innerHTML=
-      '<div class="conta-card">'+
-        '<div class="cc-title"><span class="ico">🎫</span>Meus Bilhetes — '+bilhetes.length+' número(s)</div>'+
-        '<div style="display:grid;grid-template-columns:repeat('+numCols+',1fr);gap:8px;margin:12px 0">'+
-          bilhetes.map(b=>
-            '<div style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.3);border-radius:10px;padding:10px 6px;text-align:center">'+
-              '<div style="font-size:18px;font-weight:700;color:#60a5fa;letter-spacing:1px">'+(b.numero||'—')+'</div>'+
-              '<div style="font-size:10px;color:#94a3b8;margin-top:2px">Bilhete</div>'+
+
+    let html='';
+
+    // ── Apostas esportivas ──
+    if(apostas.length){
+      const stIcon=s=>s==='ganhou'?'🏆':s==='perdeu'?'❌':s==='cancelada'?'🚫':'⏳';
+      const stColor=s=>s==='ganhou'?'#4ade80':s==='perdeu'?'#f87171':s==='cancelada'?'#94a3b8':'#f59e0b';
+      html+='<div class="conta-card" style="margin-bottom:14px">'+
+        '<div class="cc-title"><span class="ico">⚽</span>Apostas Esportivas ('+apostas.length+')</div>'+
+        apostas.map(a=>{
+          const st=a.status||'pendente';
+          return '<div style="border-bottom:1px solid rgba(255,255,255,0.06);padding:12px 0;display:flex;justify-content:space-between;align-items:flex-start">'+
+            '<div style="flex:1;min-width:0">'+
+              '<div style="font-size:13px;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+a.jogo+'</div>'+
+              '<div style="font-size:11px;color:#94a3b8;margin-top:3px">'+
+                (a.selecao?'<span style="color:#60a5fa">'+a.selecao+'</span> · ':'')+
+                'Odd <b style="color:#e2e8f0">'+Number(a.odd).toFixed(2)+'</b> · '+a.data+
+              '</div>'+
+            '</div>'+
+            '<div style="text-align:right;margin-left:12px;flex-shrink:0">'+
+              '<div style="font-size:12px;color:'+stColor(st)+';font-weight:700">'+stIcon(st)+' '+st+'</div>'+
+              '<div style="font-size:13px;color:#e2e8f0;font-weight:700">'+_fmt(a.valor)+'</div>'+
+              '<div style="font-size:11px;color:#94a3b8">retorno '+_fmt(a.retorno)+'</div>'+
+            '</div>'+
+          '</div>';
+        }).join('')+
+      '</div>';
+    } else {
+      html+='<div class="conta-card" style="text-align:center;padding:20px;margin-bottom:14px">'+
+        '<div style="font-size:2rem;margin-bottom:8px">⚽</div>'+
+        '<div style="font-weight:700;color:#94a3b8">Nenhuma aposta esportiva ainda.</div>'+
+        '<button onclick="navTo(\'home\')" style="margin-top:10px;background:var(--blue);border:none;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px">🏠 Ver Jogos</button>'+
+      '</div>';
+    }
+
+    // ── Bilhetes do sorteio ──
+    if(bilhetesSorteio.length){
+      const numCols=Math.min(4,bilhetesSorteio.length);
+      html+='<div class="conta-card">'+
+        '<div class="cc-title"><span class="ico">🎫</span>Sorteio — '+bilhetesSorteio.length+' bilhete(s)</div>'+
+        '<div style="display:grid;grid-template-columns:repeat('+numCols+',1fr);gap:6px;margin:10px 0">'+
+          bilhetesSorteio.map(b=>
+            '<div style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.25);border-radius:8px;padding:8px 4px;text-align:center">'+
+              '<div style="font-size:16px;font-weight:700;color:#60a5fa;letter-spacing:1px">'+(b.numero||'—')+'</div>'+
+              '<div style="font-size:9px;color:#64748b;margin-top:1px">Bilhete</div>'+
             '</div>'
           ).join('')+
         '</div>'+
-        '<div style="display:flex;justify-content:space-between;font-size:13px;color:#94a3b8;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07)">'+
-          '<span>💰 Total investido: <b style="color:#4ade80">'+_fmt(totalDep)+'</b></span>'+
-          '<span>🏆 Sorteio ativo</span>'+
+        '<div style="text-align:right;margin-top:4px">'+
+          '<button onclick="sbNav(\'sorteio\')" style="background:none;border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:12px">➕ Mais bilhetes</button>'+
         '</div>'+
-      '</div>'+
-      '<div style="text-align:center;margin-top:8px">'+
-        '<button onclick="sbNav(\'sorteio\')" style="background:var(--blue);border:none;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px">➕ Comprar mais bilhetes</button>'+
       '</div>';
-  }catch(e){el.innerHTML='<div class="loading-center">⚠️ Erro ao carregar bilhetes.</div>'}
+    } else {
+      html+='<div class="conta-card" style="text-align:center;padding:16px">'+
+        '<div style="font-size:1.6rem;margin-bottom:6px">🎫</div>'+
+        '<div style="font-size:13px;color:#94a3b8">Sem bilhetes de sorteio ainda.</div>'+
+        '<button onclick="sbNav(\'sorteio\')" style="margin-top:8px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px">🎯 Participar do Sorteio</button>'+
+      '</div>';
+    }
+
+    el.innerHTML=html;
+  }catch(e){
+    el.innerHTML='<div class="loading-center">⚠️ Erro ao carregar. Tente novamente.</div>';
+  }
 }
 
 /* ══ GANHADORES ══ */
