@@ -3951,7 +3951,8 @@ async def route_admin_ligas_config(request):
 
 async def route_admin_usuarios_list(request):
     """GET /api/admin/usuarios — lista usuários com saldo, apostas, status."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'usuarios_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         busca = request.rel_url.query.get('busca', '').strip()
@@ -4041,7 +4042,8 @@ async def route_admin_usuarios_list(request):
 
 async def route_admin_usuarios_ajustar(request):
     """POST /api/admin/usuarios/ajustar — ajusta saldo de um usuário (crédito ou débito)."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'usuarios_ajustar')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         body = await request.json()
@@ -4072,7 +4074,8 @@ async def route_admin_usuarios_ajustar(request):
 
 async def route_admin_usuarios_suspender(request):
     """POST /api/admin/usuarios/suspender — suspende ou ativa conta de usuário."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'usuarios_suspender')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         body = await request.json()
@@ -10780,7 +10783,8 @@ async def route_admin_margem_set(request):
 # ─── Rotas Admin: Dashboard financeiro de apostas ─────────────────────────────
 async def route_admin_bet_dashboard(request):
     """GET /api/admin/bet/dashboard — GGR, volume, apostas por status."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect()
@@ -10856,7 +10860,8 @@ async def route_admin_bet_dashboard(request):
 # ─── Resolução de apostas ──────────────────────────────────────────────────────
 async def route_admin_bet_resolver(request):
     """POST /api/admin/bet/resolver — resolve aposta manualmente (WON/LOST/cancelada)."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_resolver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         body = await request.json()
@@ -10899,7 +10904,8 @@ async def route_admin_bet_resolver(request):
 
 async def route_admin_bet_resolver_auto(request):
     """POST /api/admin/bet/resolver-auto — tenta resolver todas pendentes via ESPN."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_resolver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     resolved = await _auto_resolver_apostas_pendentes()
     return web.json_response({'ok': True, 'resolved': resolved})
@@ -11021,7 +11027,8 @@ def _extrair_resultado_competidor(comp, selecao):
 # ═══════════════════════════════════════════════════════════════════════════════
 async def route_admin_bet_charts(request):
     """GET /api/admin/bet/charts — dados para gráficos Chart.js."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         dias = int(request.rel_url.query.get('dias', 30))
@@ -11081,7 +11088,8 @@ async def route_admin_bet_charts(request):
 # ═══════════════════════════════════════════════════════════════════════════════
 async def route_admin_bet_pnl(request):
     """GET /api/admin/bet/pnl?inicio=YYYY-MM-DD&fim=YYYY-MM-DD — P&L detalhado."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'relatorios_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         inicio = request.rel_url.query.get('inicio', '')
@@ -11126,7 +11134,8 @@ async def route_admin_bet_pnl(request):
 # ═══════════════════════════════════════════════════════════════════════════════
 async def route_admin_export_apostas_csv(request):
     """GET /api/admin/export/apostas.csv — exporta apostas em CSV."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    if not _ok:
         return web.Response(text='Não autorizado', status=401)
     try:
         import io, csv as _csv
@@ -11157,7 +11166,8 @@ async def route_admin_export_apostas_csv(request):
 
 async def route_admin_export_usuarios_csv(request):
     """GET /api/admin/export/usuarios.csv — exporta usuários em CSV."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'usuarios_ver')
+    if not _ok:
         return web.Response(text='Não autorizado', status=401)
     try:
         import io, csv as _csv
@@ -11184,7 +11194,8 @@ async def route_admin_export_usuarios_csv(request):
 
 async def route_admin_export_depositos_csv(request):
     """GET /api/admin/export/depositos.csv — exporta depósitos em CSV."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'depositos_ver')
+    if not _ok:
         return web.Response(text='Não autorizado', status=401)
     try:
         import io, csv as _csv
@@ -11211,7 +11222,8 @@ async def route_admin_export_depositos_csv(request):
 
 async def route_admin_saques_list(request):
     """GET /api/admin/saques — lista saques da plataforma bet (tabela 'saques')."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'saques_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect(); cur = conn.cursor()
@@ -11255,7 +11267,8 @@ async def route_admin_saques_list(request):
 
 async def route_admin_depositos_list(request):
     """GET /api/admin/depositos — lista depósitos SuitPay da plataforma bet."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'depositos_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect(); cur = conn.cursor()
@@ -11323,7 +11336,8 @@ def _ensure_limites_table(cur, conn):
 
 async def route_admin_limites_get(request):
     """GET /api/admin/bet/limites — lista limites por liga."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect(); cur = conn.cursor()
@@ -11343,7 +11357,8 @@ async def route_admin_limites_get(request):
 
 async def route_admin_limites_set(request):
     """POST /api/admin/bet/limites — define limites por liga."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_resolver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         body = await request.json()
@@ -11401,7 +11416,8 @@ def _ensure_bonus_tables(cur, conn):
 
 async def route_admin_bonus_list(request):
     """GET /api/admin/bonus — lista bônus configurados."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'bonus_criar')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect(); cur = conn.cursor()
@@ -11423,7 +11439,8 @@ async def route_admin_bonus_list(request):
 
 async def route_admin_bonus_criar(request):
     """POST /api/admin/bonus/criar — cria novo bônus."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'bonus_criar')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         body = await request.json()
@@ -11452,7 +11469,8 @@ async def route_admin_bonus_criar(request):
 
 async def route_admin_bonus_cancelar(request):
     """POST /api/admin/bonus/cancelar — desativa bônus."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'bonus_criar')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         body = await request.json()
@@ -11469,7 +11487,8 @@ async def route_admin_bonus_cancelar(request):
 # ═══════════════════════════════════════════════════════════════════════════════
 async def route_admin_alertas(request):
     """GET /api/admin/alertas — detecta apostadores suspeitos."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect(); cur = conn.cursor()
@@ -11541,7 +11560,8 @@ async def route_admin_alertas(request):
 
 async def route_admin_alertas_ignorar(request):
     """POST /api/admin/alertas/ignorar — registra que alerta foi revisado."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     return web.json_response({'ok': True, 'msg': 'Alerta marcado como revisado'})
 
@@ -11566,7 +11586,8 @@ def _ensure_jogo_resp_table(cur, conn):
 
 async def route_admin_jogo_resp_list(request):
     """GET /api/admin/jogo-responsavel — lista usuários com restrições ativas."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'usuarios_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect(); cur = conn.cursor()
@@ -11600,7 +11621,8 @@ async def route_admin_jogo_resp_list(request):
 
 async def route_admin_jogo_resp_set(request):
     """POST /api/admin/jogo-responsavel — define restrições para usuário."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'usuarios_ajustar')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         body = await request.json()
@@ -11646,7 +11668,8 @@ async def route_admin_jogo_resp_set(request):
 # ═══════════════════════════════════════════════════════════════════════════════
 async def route_admin_afiliados_list(request):
     """GET /api/admin/afiliados — lista afiliados com métricas."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'relatorios_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect(); cur = conn.cursor()
@@ -11973,7 +11996,8 @@ async def route_bet_minhas_simples(request):
 async def route_admin_bet_multi_dashboard(request):
     """GET /api/admin/bet/multi — KPIs e lista de acumuladoras para o admin."""
     import json as _json
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect(); cur = conn.cursor()
@@ -12029,7 +12053,8 @@ async def route_admin_bet_multi_dashboard(request):
 
 async def route_admin_bet_multi_resolver(request):
     """POST /api/admin/bet/multi/resolver — resolve aposta múltipla manualmente."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_resolver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         body    = await request.json()
@@ -12068,7 +12093,8 @@ async def route_admin_bet_multi_resolver(request):
 async def route_admin_bet_multi_resolver_auto(request):
     """POST /api/admin/bet/multi/resolver-auto — tenta resolver múltiplas via ESPN."""
     import json as _json
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'apostas_resolver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect(); cur = conn.cursor()
@@ -12592,7 +12618,8 @@ async def route_bolao_meus_bilhetes(request):
 
 async def route_admin_bolao_jogos(request):
     """GET /api/admin/bolao/jogos — todos os jogos (publicados e não publicados)."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'bolao_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect(); cur = conn.cursor()
@@ -12637,7 +12664,8 @@ async def route_admin_bolao_jogos(request):
 
 async def route_admin_bolao_jogos_disponiveis(request):
     """GET /api/admin/bolao/jogos-disponiveis — busca próximos jogos reais da ESPN para o admin escolher."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'bolao_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     import aiohttp, time as _time
     liga_filter = request.rel_url.query.get('liga', '').strip()
@@ -12710,7 +12738,8 @@ async def route_admin_bolao_jogos_disponiveis(request):
 
 async def route_admin_bolao_criar(request):
     """POST /api/admin/bolao/jogo — cria ou edita jogo do bolão."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'bolao_gerir')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         d = await request.json()
@@ -12765,7 +12794,8 @@ async def route_admin_bolao_criar(request):
 
 async def route_admin_bolao_publicar(request):
     """POST /api/admin/bolao/publicar — toggle publicar/despublicar."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'bolao_gerir')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         d = await request.json()
@@ -12782,7 +12812,8 @@ async def route_admin_bolao_publicar(request):
 
 async def route_admin_bolao_bilhetes(request):
     """GET /api/admin/bolao/bilhetes?id=X — bilhetes de um jogo específico."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'bolao_ver')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         bolao_id = int(request.rel_url.query.get('id', 0))
@@ -12813,7 +12844,8 @@ async def route_admin_bolao_bilhetes(request):
 
 async def route_admin_bolao_fechar(request):
     """POST /api/admin/bolao/fechar — fecha rodada com placar manual e distribui."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'bolao_gerir')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         d          = await request.json()
@@ -12830,7 +12862,8 @@ async def route_admin_bolao_fechar(request):
 
 async def route_admin_bolao_resolver_auto(request):
     """POST /api/admin/bolao/resolver-auto — busca placar no ESPN e distribui automaticamente."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'bolao_gerir')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     import aiohttp
     try:
@@ -12862,7 +12895,8 @@ async def route_admin_bolao_resolver_auto(request):
 
 async def route_admin_bolao_deletar(request):
     """POST /api/admin/bolao/deletar — remove jogo sem bilhetes."""
-    if not _admin_auth(request):
+    _ok, _staff = _staff_auth(request, 'bolao_gerir')
+    if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         d = await request.json()
