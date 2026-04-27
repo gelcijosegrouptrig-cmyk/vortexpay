@@ -1154,14 +1154,14 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
       <div class="sorteio-view">
         <div class="sorteio-hero">
           <div class="sh-label">🏆 Prêmio do Sorteio</div>
-          <div class="sh-val" id="sv-prize">R$ 750,00</div>
-          <div class="sh-info" id="sv-info">Próximo sorteio em breve</div>
+          <div class="sh-val" id="sv-prize">R$ —</div>
+          <div class="sh-info" id="sv-info">Carregando...</div>
           <div class="sh-stats">
             <div class="sh-stat"><div class="v" id="sv-part">--</div><div class="l">Participantes</div></div>
             <div class="sh-stat"><div class="v" id="sv-tick">--</div><div class="l">Seus bilhetes</div></div>
           </div>
           <div class="sh-prog"><div class="sh-prog-fill" id="sv-prog" style="width:65%"></div></div>
-          <button class="btn-sortear" onclick="irSorteio()">🎲 Participar do Sorteio →</button>
+          <button class="btn-sortear" onclick="participarSorteio()">🎲 Participar do Sorteio →</button>
         </div>
         <div style="text-align:center;color:var(--muted);font-size:13px">
           Para participar do sorteio, deposite via Pix e você receberá bilhetes automaticamente.
@@ -1766,35 +1766,57 @@ async function loadJogosHome(){
 /* ══ SORTEIO INFO ══ */
 async function loadSorteioInfo(){
   try{
-    const r=await fetch(BASE+'/api/bet/config');
+    // Usa /api/sorteio/info (dados reais do sorteio) em vez de /api/bet/config
+    const r=await fetch(BASE+'/api/sorteio/info');
+    if(!r.ok) return;
     const d=await r.json();
-    const fmt=v=>Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    const s=d.sorteio||{};
+    const fmt=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
     const _el=id=>document.getElementById(id);
-    if(d.premio){
-      // Atualizar só elementos que ainda existem (premio-card foi removido da home)
-      if(_el('sv-prize')) _el('sv-prize').textContent=fmt(d.premio);
-      if(_el('st-premio')) _el('st-premio').textContent='R$ '+Number(d.premio).toLocaleString('pt-BR');
-      if(_el('sb-prize')) _el('sb-prize').textContent='R$'+Number(d.premio).toLocaleString('pt-BR');
+
+    // Prêmio estimado
+    const premio = s.premio_manual || s.premio_acumulado || s.premio_estimado_total || 0;
+    if(_el('sv-prize')) _el('sv-prize').textContent=fmt(premio);
+    if(_el('st-premio')) _el('st-premio').textContent='R$ '+Number(premio).toLocaleString('pt-BR');
+    if(_el('sb-prize')) _el('sb-prize').textContent='R$'+Number(premio).toLocaleString('pt-BR');
+
+    // Participantes
+    const part = s.part_manual != null ? s.part_manual : (s.total_participantes||0);
+    if(_el('sv-part')) _el('sv-part').textContent=part;
+    const pct=Math.min(100,Math.round((part/(s.min_participantes||10))*100));
+    if(_el('sv-prog')) _el('sv-prog').style.width=pct+'%';
+
+    // Data do próximo sorteio
+    if(s.proximo_sorteio && _el('sv-info')){
+      try{
+        const dt=new Date(s.proximo_sorteio);
+        _el('sv-info').textContent='Próximo: '+dt.toLocaleDateString('pt-BR')+' às '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      }catch(_){}
     }
-    if(d.participantes!=null){
-      if(_el('sv-part')) _el('sv-part').textContent=d.participantes;
-      const pct=Math.min(100,Math.round(d.participantes/5));
-      if(_el('sv-prog')) _el('sv-prog').style.width=pct+'%';
-    }
+
+    // Bilhetes do usuário logado
     const u=loadSession();
     if(u){
       const sr=await fetch(BASE+'/api/sorteio/participantes');
-      const sd=await sr.json();
-      const bilhetes=(sd.participantes||[]).filter(p=>p.cpf===u.cpf).length;
-      if(_el('sv-tick')) _el('sv-tick').textContent=bilhetes||'0';
+      if(sr.ok){
+        const sd=await sr.json();
+        const bilhetes=(sd.participantes||[]).filter(p=>p.cpf===u.cpf).reduce((acc,p)=>acc+(p.total_bilhetes||p.total_numeros||0),0);
+        if(_el('sv-tick')) _el('sv-tick').textContent=bilhetes||'0';
+      }
     }
-  }catch(e){}
+  }catch(e){ console.warn('loadSorteioInfo error:',e); }
 }
 
 function irSorteio(){
-  const u=loadSession();
-  if(!u){openModal('cadastro');return}
+  // Mostra a tela do sorteio sem exigir login (login é pedido só ao participar)
   sbNav('sorteio');
+}
+
+function participarSorteio(){
+  // Exige login para participar (depositar)
+  const u=loadSession();
+  if(!u){openModal('login');return}
+  sbNav('depositar');
 }
 
 /* ══ MAPA DE LABELS POR SPORT ══ */
