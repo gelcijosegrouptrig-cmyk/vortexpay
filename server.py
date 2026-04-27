@@ -5956,14 +5956,9 @@ async def route_stats(request):
     # Aceita admin secret OU staff token (qualquer permissão)
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
-    staff_ok = bool(request.headers.get('X-Staff-Token', '') or
-                    request.rel_url.query.get('staff_token', ''))
     if auth != WEBHOOK_SECRET:
-        if staff_ok:
-            ok_staff, _, _ = _staff_auth(request, required_perms=[])
-            if not ok_staff:
-                return web.json_response({'error': 'Não autorizado'}, status=401)
-        else:
+        ok_staff, _ = _staff_auth(request, permissao_exigida=None)
+        if not ok_staff:
             return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         from mp2_api import _get_conn as mp2_conn
