@@ -1867,13 +1867,16 @@ async function loadSorteioInfo(){
 
     // Bilhetes do usuário logado
     const u=loadSession();
-    if(u){
-      const sr=await fetch(BASE+'/api/sorteio/participantes');
-      if(sr.ok){
-        const sd=await sr.json();
-        const bilhetes=(sd.participantes||[]).filter(p=>p.cpf===u.cpf).reduce((acc,p)=>acc+(p.total_bilhetes||p.total_numeros||0),0);
-        if(_el('sv-tick')) _el('sv-tick').textContent=bilhetes||'0';
-      }
+    if(u && u.cpf){
+      try{
+        const cpfLimpo=u.cpf.replace(/\D/g,'');
+        const sr=await fetch(BASE+'/api/sorteio/meus-bilhetes?cpf='+cpfLimpo);
+        if(sr.ok){
+          const sd=await sr.json();
+          const bilhetes=sd.total||0;
+          if(_el('sv-tick')) _el('sv-tick').textContent=bilhetes||'0';
+        }
+      }catch(_){}
     }
   }catch(e){ console.warn('loadSorteioInfo error:',e); }
 }
@@ -3472,13 +3475,45 @@ async function carregarBilhetes(){
   const el=document.getElementById('bilhetes-lista');
   const u=loadSession();
   if(!u){el.innerHTML='<div class="loading-center"><a onclick="openModal(\'login\')" style="color:var(--blue2);cursor:pointer">Faça login</a> para ver seus bilhetes.</div>';return}
+  if(!u.cpf){el.innerHTML='<div class="loading-center">⚠️ CPF não encontrado na sessão. Faça login novamente.</div>';return}
+  el.innerHTML='<div class="loading-center"><div class="spinner2"></div>Carregando seus bilhetes...</div>';
   try{
-    const r=await fetch(BASE+'/api/sorteio/participantes');
+    const cpfLimpo=u.cpf.replace(/\D/g,'');
+    const r=await fetch(BASE+'/api/sorteio/meus-bilhetes?cpf='+cpfLimpo);
     const d=await r.json();
-    const meus=(d.participantes||[]).filter(p=>p.cpf===u.cpf);
-    if(!meus.length){el.innerHTML='<div class="loading-center">📋 Nenhum bilhete encontrado. <button onclick="sbNav(\'depositar\')" style="background:var(--blue);border:none;color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;margin-left:8px">Depositar</button></div>';return}
-    el.innerHTML='<div class="conta-card"><div class="cc-title"><span class="ico">📋</span>Meus Bilhetes ('+meus.length+')</div>'+
-      meus.map(b=>'<div class="hist-item"><span class="hi-tipo">Bilhete #'+b.numero+'</span><span class="hi-val pos">R$'+Number(b.valor||0).toFixed(2)+'</span></div>').join('')+'</div>';
+    if(!d.success){el.innerHTML='<div class="loading-center">⚠️ '+( d.error||'Erro ao carregar.')+'</div>';return}
+    const bilhetes=d.bilhetes||[];
+    if(!bilhetes.length){
+      el.innerHTML='<div class="loading-center" style="flex-direction:column;gap:12px">'+
+        '<span style="font-size:2rem">🎫</span>'+
+        '<span>Você ainda não tem bilhetes neste sorteio.</span>'+
+        '<button onclick="sbNav(\'sorteio\')" style="background:var(--blue);border:none;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:14px">🎯 Participar do Sorteio</button>'+
+        '</div>';
+      return;
+    }
+    // Agrupar info
+    const totalDep=d.total_depositado||0;
+    const sorteioId=d.sorteio_id||'';
+    const numCols=Math.min(4, bilhetes.length);
+    el.innerHTML=
+      '<div class="conta-card">'+
+        '<div class="cc-title"><span class="ico">🎫</span>Meus Bilhetes — '+bilhetes.length+' número(s)</div>'+
+        '<div style="display:grid;grid-template-columns:repeat('+numCols+',1fr);gap:8px;margin:12px 0">'+
+          bilhetes.map(b=>
+            '<div style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.3);border-radius:10px;padding:10px 6px;text-align:center">'+
+              '<div style="font-size:18px;font-weight:700;color:#60a5fa;letter-spacing:1px">'+(b.numero||'—')+'</div>'+
+              '<div style="font-size:10px;color:#94a3b8;margin-top:2px">Bilhete</div>'+
+            '</div>'
+          ).join('')+
+        '</div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:13px;color:#94a3b8;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07)">'+
+          '<span>💰 Total investido: <b style="color:#4ade80">'+_fmt(totalDep)+'</b></span>'+
+          '<span>🏆 Sorteio ativo</span>'+
+        '</div>'+
+      '</div>'+
+      '<div style="text-align:center;margin-top:8px">'+
+        '<button onclick="sbNav(\'sorteio\')" style="background:var(--blue);border:none;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px">➕ Comprar mais bilhetes</button>'+
+      '</div>';
   }catch(e){el.innerHTML='<div class="loading-center">⚠️ Erro ao carregar bilhetes.</div>'}
 }
 

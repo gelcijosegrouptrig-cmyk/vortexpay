@@ -2688,6 +2688,69 @@ async def route_sorteio_comprar_com_saldo(request):
         traceback.print_exc()
         return web.json_response({'success': False, 'error': str(e)}, status=500)
 
+async def route_sorteio_meus_bilhetes(request):
+    """GET /api/sorteio/meus-bilhetes?cpf=XXX — Retorna bilhetes do usuário por CPF (público)"""
+    import json as _json
+    import psycopg2 as _pg2
+
+    cpf = re.sub(r'\D', '', str(request.rel_url.query.get('cpf', ''))).strip()
+    if not cpf or len(cpf) < 11:
+        return web.json_response({'success': False, 'error': 'CPF inválido'}, status=400)
+
+    try:
+        conn = _pg2.connect(DATABASE_URL, connect_timeout=10)
+        cur  = conn.cursor()
+
+        cliente_id = f'cli_{cpf}'
+
+        # Buscar participante
+        cur.execute(
+            'SELECT nome, total_depositado, total_numeros, numeros_sorte, sorteio_id FROM sorteio_participantes WHERE cliente_id=%s',
+            (cliente_id,)
+        )
+        part = cur.fetchone()
+
+        if not part:
+            cur.close(); conn.close()
+            return web.json_response({
+                'success': True,
+                'bilhetes': [],
+                'total': 0,
+                'total_depositado': 0.0,
+                'msg': 'Nenhum bilhete encontrado'
+            })
+
+        nome           = part[0]
+        total_dep      = float(part[1] or 0)
+        total_numeros  = int(part[2] or 0)
+        numeros_sorte  = _json.loads(part[3] or '[]')
+        sorteio_id     = part[4]
+
+        # Buscar todos os bilhetes individuais
+        cur.execute(
+            'SELECT numero, sorteio_id, created_at FROM sorteio_bilhetes WHERE cliente_id=%s ORDER BY id',
+            (cliente_id,)
+        )
+        bilhetes_rows = cur.fetchall()
+        bilhetes = [{'numero': r[0], 'sorteio_id': r[1], 'criado_em': str(r[2])} for r in bilhetes_rows]
+
+        cur.close(); conn.close()
+
+        return web.json_response({
+            'success'        : True,
+            'nome'           : nome,
+            'cpf'            : cpf,
+            'total'          : len(bilhetes),
+            'total_depositado': total_dep,
+            'sorteio_id'     : sorteio_id,
+            'bilhetes'       : bilhetes,
+            'numeros_sorte'  : numeros_sorte,
+        })
+
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
 async def route_sorteio_participar(request):
     """Alias público: buscar dados do participante por CPF"""
 
@@ -17669,6 +17732,7 @@ async def main():
     app.router.add_post('/api/sorteio/config', route_sorteio_config)
     app.router.add_post('/api/sorteio/config/limpar-manuais', route_sorteio_limpar_manuais)
     app.router.add_get('/api/sorteio/participantes', route_sorteio_participantes)
+    app.router.add_get('/api/sorteio/meus-bilhetes', route_sorteio_meus_bilhetes)
     app.router.add_post('/api/sorteio/acumular', route_sorteio_acumular)
     app.router.add_post('/api/sorteio/set-acumulado', route_sorteio_set_acumulado)
     app.router.add_post('/api/sorteio/reparar-participante', route_sorteio_reparar_participante)
