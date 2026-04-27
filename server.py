@@ -4151,7 +4151,7 @@ _STAFF_PERMISSOES_DISPONIVEIS = {
 import secrets as _secrets
 
 def _ensure_staff_table(cur, conn):
-    """Cria a tabela de funcionários se não existir."""
+    """Cria a tabela de funcionários se não existir e adiciona colunas novas."""
     cur.execute("""
         CREATE TABLE IF NOT EXISTS funcionarios (
             id          SERIAL PRIMARY KEY,
@@ -4161,10 +4161,26 @@ def _ensure_staff_table(cur, conn):
             permissoes  TEXT         NOT NULL DEFAULT '[]',
             ativo       BOOLEAN      NOT NULL DEFAULT TRUE,
             criado_em   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-            ultimo_acesso TIMESTAMPTZ
+            ultimo_acesso TIMESTAMPTZ,
+            senha_hash  VARCHAR(128)
         )
     """)
+    # Migração: adiciona coluna senha_hash se não existir (tabela já criada antes)
+    try:
+        cur.execute("ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS senha_hash VARCHAR(128)")
+    except Exception:
+        pass
     conn.commit()
+
+def _staff_hash_senha(senha: str) -> str:
+    """Gera hash SHA-256 da senha do funcionário."""
+    import hashlib
+    return hashlib.sha256(senha.encode('utf-8')).hexdigest()
+
+def _staff_verificar_senha(senha: str, hash_salvo: str) -> bool:
+    """Verifica senha do funcionário."""
+    import hashlib
+    return hashlib.sha256(senha.encode('utf-8')).hexdigest() == hash_salvo
 
 def _staff_gerar_token():
     """Gera token seguro de 32 bytes (64 chars hex)."""
@@ -4465,6 +4481,98 @@ async def route_staff_me(request):
         'permissoes': staff['permissoes'],
         'descricoes': {p: _STAFF_PERMISSOES_DISPONIVEIS.get(p,'') for p in staff['permissoes']},
     }})
+
+async def route_staff_login(request):
+    """POST /api/staff/login — login do funcionário com email + senha."""
+    try:
+        import json as _j
+        body = await request.json()
+        email = (body.get('email') or '').strip().lower()
+        senha = (body.get('senha') or '').strip()
+
+        if not email or not senha:
+            return _safe_json({'ok': False, 'error': 'Email e senha são obrigatórios'}, status=400)
+
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_staff_table(cur, conn)
+        cur.execute(
+            "SELECT id, nome, email, token, permissoes, ativo, senha_hash FROM funcionarios WHERE email=%s",
+            (email,)
+        )
+        row = cur.fetchone()
+        cur.close(); conn.close()
+
+        if not row:
+            return _safe_json({'ok': False, 'error': 'Email ou senha incorretos'}, status=401)
+
+        fid, nome, femail, token, permissoes_raw, ativo, senha_hash = row
+
+        if not ativo:
+            return _safe_json({'ok': False, 'error': 'Acesso revogado pelo administrador'}, status=403)
+
+        if not senha_hash:
+            return _safe_json({'ok': False, 'error': 'Senha não configurada. Solicite ao administrador definir sua senha.'}, status=403)
+
+        if not _staff_verificar_senha(senha, senha_hash):
+            return _safe_json({'ok': False, 'error': 'Email ou senha incorretos'}, status=401)
+
+        # Atualizar último acesso
+        try:
+            conn2 = _admin_db_connect(); cur2 = conn2.cursor()
+            cur2.execute("UPDATE funcionarios SET ultimo_acesso=NOW() WHERE id=%s", (fid,))
+            conn2.commit(); cur2.close(); conn2.close()
+        except Exception:
+            pass
+
+        import json as _j2
+        permissoes = _j2.loads(permissoes_raw) if permissoes_raw else []
+
+        print(f'[staff] Login bem-sucedido: {nome} ({femail}) ID={fid}', flush=True)
+        return _safe_json({
+            'ok': True,
+            'token': token,
+            'staff': {
+                'id': int(fid),
+                'nome': nome,
+                'email': femail,
+                'permissoes': permissoes,
+                'descricoes': {p: _STAFF_PERMISSOES_DISPONIVEIS.get(p,'') for p in permissoes},
+            }
+        })
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_staff_set_senha(request):
+    """POST /api/admin/staff/set-senha — admin define/altera senha de um funcionário."""
+    if not _admin_auth(request):
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        fid   = int(body.get('id', 0))
+        senha = (body.get('senha') or '').strip()
+
+        if not fid:
+            return _safe_json({'ok': False, 'error': 'id obrigatório'}, status=400)
+        if not senha or len(senha) < 6:
+            return _safe_json({'ok': False, 'error': 'Senha deve ter no mínimo 6 caracteres'}, status=400)
+
+        senha_hash = _staff_hash_senha(senha)
+        conn = _admin_db_connect(); cur = conn.cursor()
+        _ensure_staff_table(cur, conn)
+        cur.execute(
+            "UPDATE funcionarios SET senha_hash=%s WHERE id=%s RETURNING nome",
+            (senha_hash, fid)
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return _safe_json({'ok': False, 'error': 'Funcionário não encontrado'}, status=404)
+        conn.commit(); cur.close(); conn.close()
+        print(f'[staff] Senha definida para funcionário ID={fid} ({row[0]})', flush=True)
+        return _safe_json({'ok': True, 'msg': f'Senha de {row[0]} definida com sucesso!'})
+    except Exception as e:
+        return _safe_json({'ok': False, 'error': str(e)}, status=500)
 
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -17254,7 +17362,9 @@ async def main():
     app.router.add_post('/api/admin/staff/regen-token', route_admin_staff_regen_token)
     app.router.add_get ('/api/admin/staff/link',        route_admin_staff_get_link)
     app.router.add_post('/api/admin/staff/deletar',     route_admin_staff_deletar)
-    app.router.add_get ('/api/staff/me',                route_staff_me)   # público — funcionário consulta suas perms
+    app.router.add_get ('/api/staff/me',                route_staff_me)         # funcionário consulta suas perms
+    app.router.add_post('/api/staff/login',             route_staff_login)      # login email+senha do funcionário
+    app.router.add_post('/api/admin/staff/set-senha',   route_admin_staff_set_senha)  # admin define senha do funcionário
     # Margem de lucro por liga
     app.router.add_get('/api/admin/bet/margem',         route_admin_margem_get)
     app.router.add_post('/api/admin/bet/margem',        route_admin_margem_set)

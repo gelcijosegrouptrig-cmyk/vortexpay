@@ -675,26 +675,56 @@
     <div class="logo-icon">⚡</div>
     <h2>PaynexBet Admin</h2>
     <p>Painel de controle financeiro</p>
-    <div style="position:relative;width:100%">
-      <input id="login-secret" class="login-input" type="password" placeholder="Digite sua senha de acesso"
-        autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false"
-        style="width:100%;padding-right:48px;box-sizing:border-box">
-      <button onclick="toggleLoginSenha()" id="btn-toggle-senha" title="Mostrar/ocultar senha"
-        style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#aaa;padding:4px">
-        👁️
+
+    <!-- Abas de modo de login -->
+    <div style="display:flex;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:22px;width:100%">
+      <button id="tab-login-admin" onclick="setLoginMode('admin')"
+        style="flex:1;padding:10px;border:none;cursor:pointer;font-size:13px;font-weight:700;transition:all 0.2s;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff">
+        🔑 Admin
+      </button>
+      <button id="tab-login-staff" onclick="setLoginMode('staff')"
+        style="flex:1;padding:10px;border:none;cursor:pointer;font-size:13px;font-weight:700;transition:all 0.2s;background:var(--card2);color:var(--text2)">
+        👤 Funcionário
       </button>
     </div>
 
-    <button class="login-btn" id="btn-login" onclick="fazerLogin()">🔐 Entrar</button>
+    <!-- Modo Admin: senha secreta -->
+    <div id="login-mode-admin" style="width:100%">
+      <div style="position:relative;width:100%">
+        <input id="login-secret" class="login-input" type="password" placeholder="Senha de acesso admin"
+          autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false"
+          style="width:100%;padding-right:48px;box-sizing:border-box"
+          onkeydown="if(event.key==='Enter') fazerLogin()">
+        <button onclick="toggleLoginSenha()" id="btn-toggle-senha" title="Mostrar/ocultar senha"
+          style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#aaa;padding:4px">
+          👁️
+        </button>
+      </div>
+      <button class="login-btn" id="btn-login" onclick="fazerLogin()" style="margin-top:14px">🔐 Entrar como Admin</button>
+    </div>
+
+    <!-- Modo Funcionário: email + senha -->
+    <div id="login-mode-staff" style="display:none;width:100%">
+      <input id="login-staff-email" class="login-input" type="email" placeholder="Seu e-mail"
+        autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false"
+        style="width:100%;margin-bottom:10px;box-sizing:border-box"
+        onkeydown="if(event.key==='Enter') fazerLoginStaff()">
+      <div style="position:relative;width:100%">
+        <input id="login-staff-senha" class="login-input" type="password" placeholder="Sua senha"
+          autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false"
+          style="width:100%;padding-right:48px;box-sizing:border-box"
+          onkeydown="if(event.key==='Enter') fazerLoginStaff()">
+        <button onclick="toggleLoginSenhaStaff()" title="Mostrar/ocultar senha"
+          style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#aaa;padding:4px">
+          👁️
+        </button>
+      </div>
+      <button class="login-btn" id="btn-login-staff" onclick="fazerLoginStaff()" style="margin-top:14px">🔐 Entrar como Funcionário</button>
+    </div>
+
     <div id="login-error" class="login-error"></div>
     <div id="login-hint" style="font-size:11px;color:#666;margin-top:12px;line-height:1.8;display:none">
-      💡 <strong style="color:#f7931e">Senha padrão:</strong><br>
-      <div onclick="document.getElementById('login-secret').value='vortex_webhook_2024';document.getElementById('login-char-count').textContent='20 chars'"
-        style="background:rgba(255,107,53,0.15);border:1px solid #f7931e44;border-radius:8px;padding:8px 12px;margin:6px 0;cursor:pointer;font-family:monospace;font-size:13px;color:#f7931e;letter-spacing:0.5px">
-        vortex_webhook_2024
-        <span style="font-size:10px;color:#aaa;display:block;font-family:sans-serif;margin-top:2px">👆 Toque para preencher automaticamente</span>
-      </div>
-      <span style="color:#666;font-size:10px">Ou use a variável WEBHOOK_SECRET definida no Railway.</span>
+      💡 <strong style="color:#f7931e">Dica:</strong> Use as credenciais fornecidas pelo administrador.
     </div>
   </div>
 </div>
@@ -730,12 +760,63 @@
 function toggleLoginSenha() {
   const inp = document.getElementById('login-secret');
   const btn = document.getElementById('btn-toggle-senha');
-  if (inp.type === 'password') {
-    inp.type = 'text';
-    btn.textContent = '🙈';
-  } else {
-    inp.type = 'password';
-    btn.textContent = '👁️';
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁️'; }
+}
+
+function toggleLoginSenhaStaff() {
+  const inp = document.getElementById('login-staff-senha');
+  inp.type = (inp.type === 'password') ? 'text' : 'password';
+}
+
+function setLoginMode(mode) {
+  const isAdmin = mode === 'admin';
+  document.getElementById('login-mode-admin').style.display = isAdmin ? 'block' : 'none';
+  document.getElementById('login-mode-staff').style.display = isAdmin ? 'none' : 'block';
+  document.getElementById('tab-login-admin').style.background = isAdmin
+    ? 'linear-gradient(135deg,#ff6b35,#f7931e)' : 'var(--card2)';
+  document.getElementById('tab-login-admin').style.color = isAdmin ? '#fff' : 'var(--text2)';
+  document.getElementById('tab-login-staff').style.background = isAdmin
+    ? 'var(--card2)' : 'linear-gradient(135deg,#6366f1,#8b5cf6)';
+  document.getElementById('tab-login-staff').style.color = isAdmin ? 'var(--text2)' : '#fff';
+  document.getElementById('login-error').textContent = '';
+  // Focar no campo correto
+  setTimeout(() => {
+    const el = isAdmin
+      ? document.getElementById('login-secret')
+      : document.getElementById('login-staff-email');
+    if (el) el.focus();
+  }, 50);
+}
+
+async function fazerLoginStaff() {
+  const email = (document.getElementById('login-staff-email').value || '').trim();
+  const senha = (document.getElementById('login-staff-senha').value || '').trim();
+  const errEl = document.getElementById('login-error');
+  const btnEl = document.getElementById('btn-login-staff');
+
+  errEl.textContent = '';
+  if (!email || !senha) { errEl.textContent = '⚠️ Preencha e-mail e senha.'; return; }
+
+  btnEl.disabled = true; btnEl.textContent = '⏳ Verificando...';
+
+  try {
+    const r = await fetch(window.location.origin + '/api/staff/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, senha })
+    });
+    const d = await r.json();
+    if (d.ok && d.token) {
+      // Login bem-sucedido — usar fluxo de autoLogin
+      await _autoLoginStaff(d.token);
+    } else {
+      errEl.textContent = '❌ ' + (d.error || 'Erro ao fazer login');
+      btnEl.disabled = false; btnEl.textContent = '🔐 Entrar como Funcionário';
+    }
+  } catch(e) {
+    errEl.textContent = '❌ Erro de conexão: ' + e.message;
+    btnEl.disabled = false; btnEl.textContent = '🔐 Entrar como Funcionário';
   }
 }
 </script>
@@ -871,6 +952,8 @@ function toggleLoginSenha() {
         <h1 id="page-title">Dashboard</h1>
       </div>
       <div class="topbar-right">
+        <!-- Badge de papel do usuário logado -->
+        <span id="user-role-badge" style="display:none;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px"></span>
         <span class="last-update" id="last-update"></span>
         <button class="refresh-btn" onclick="loadAll()">🔄 Atualizar</button>
       </div>
@@ -7092,6 +7175,21 @@ const poll = setInterval(async () => {
 // ═══════════════════════════════════════════════
 const SECRET = () => sessionStorage.getItem('vp_secret') || '';
 
+// ── Badge de papel do usuário logado ─────────────────────────────────────────
+function _setRoleBadge(role) {
+  const badge = document.getElementById('user-role-badge');
+  if (!badge) return;
+  if (role === 'admin') {
+    badge.textContent = '🔑 ADMIN';
+    badge.style.cssText = 'display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;letter-spacing:0.5px';
+  } else {
+    const nome = sessionStorage.getItem('vp_staff_nome') || 'Funcionário';
+    const primeiro = nome.split(' ')[0];
+    badge.textContent = `👤 ${primeiro}`;
+    badge.style.cssText = 'display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.5px';
+  }
+}
+
 // ── Helper de autenticação unificada ─────────────────────────────────────────
 // Retorna os headers corretos dependendo do modo (admin secret ou staff token)
 function _authHeaders(extra) {
@@ -7163,12 +7261,13 @@ async function fazerLogin() {
       if (r.ok) {
         // 1. Guardar senha na sessão
         sessionStorage.setItem('vp_secret', secret);
-        // 2. Trocar tela IMEDIATAMENTE (antes de qualquer outra coisa)
+        // 2. Trocar tela IMEDIATAMENTE
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('admin-screen').style.display = 'block';
-        // 2.5 Ativar dashboard explicitamente
+        // 2.5 Badge Admin
+        _setRoleBadge('admin');
+        // 3. Ativar dashboard
         try { showTab('dashboard'); } catch(e) {}
-        // 3. Carregar dados em background (erros aqui não afetam o login)
         try { loadAll(); } catch(e) {}
         try { setInterval(loadAll, 30000); } catch(e) {}
         try { iniciarPollingPix(); } catch(e) {}
@@ -7176,7 +7275,7 @@ async function fazerLogin() {
         errEl.textContent = '❌ Senha incorreta. Verifique e tente novamente.';
         if (hintEl) hintEl.style.display = 'block';
         btnEl.disabled = false;
-        btnEl.textContent = '🔐 Entrar';
+        btnEl.textContent = '🔐 Entrar como Admin';
       }
     })
     .catch(function(err) {
@@ -8910,6 +9009,7 @@ async function loadStaff() {
           <div style="display:flex;gap:4px;flex-wrap:wrap">
             <button onclick="abrirEditarStaff(${s.id})" title="Editar" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:#fff;padding:4px 8px;cursor:pointer;font-size:11px">✏️</button>
             ${toggleBtn}
+            <button onclick="staffSetSenha(${s.id},'${escHtml(s.nome)}')" title="Definir senha de login" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35);border-radius:6px;color:#a5b4fc;padding:4px 8px;cursor:pointer;font-size:11px">🔒 Senha</button>
             <button onclick="staffRegenToken(${s.id})" title="Gerar novo token/link" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#fbbf24;padding:4px 8px;cursor:pointer;font-size:11px">🔑</button>
             <button onclick="staffDeletar(${s.id},'${escHtml(s.nome)}')" title="Remover" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#f87171;padding:4px 8px;cursor:pointer;font-size:11px">🗑️</button>
           </div>
@@ -9088,6 +9188,34 @@ async function staffDeletar(id, nome) {
     if (!d.ok) throw new Error(d.error);
     _showToast(d.msg, 'success');
     loadStaff();
+  } catch(e) { _showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function staffSetSenha(id, nome) {
+  // Modal simples via prompt
+  const senha = prompt(`Definir senha de login para "${nome}":\n(mínimo 6 caracteres)`);
+  if (senha === null) return; // cancelou
+  if (!senha || senha.length < 6) {
+    alert('❌ A senha deve ter no mínimo 6 caracteres.');
+    return;
+  }
+  const confirmar = prompt(`Confirme a senha para "${nome}":`);
+  if (confirmar !== senha) {
+    alert('❌ As senhas não coincidem.');
+    return;
+  }
+  try {
+    const r = await fetch('/api/admin/staff/set-senha', {
+      method: 'POST',
+      headers: _authHeaders(),
+      body: JSON.stringify({ id, senha })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      _showToast(`✅ Senha de ${nome} definida! Agora pode fazer login com email+senha.`, 'success');
+    } else {
+      _showToast('❌ ' + (d.error || 'Erro ao definir senha'), 'error');
+    }
   } catch(e) { _showToast('Erro: ' + e.message, 'error'); }
 }
 
@@ -10743,6 +10871,9 @@ async function _autoLoginStaff(token) {
     // Oculta tela de login / exibe painel
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('admin-screen').style.display = 'block';
+
+    // Badge de funcionário no topbar
+    _setRoleBadge('staff');
 
     // Personalizar header/sidebar com nome do funcionário
     _aplicarModoFuncionario(staff);
