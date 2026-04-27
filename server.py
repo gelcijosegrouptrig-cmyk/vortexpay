@@ -17234,6 +17234,24 @@ async def main():
     app.router.add_post('/api/admin/bolao/resolver-auto',route_admin_bolao_resolver_auto)
     app.router.add_post('/api/admin/bolao/deletar',      route_admin_bolao_deletar)
 
+    # ── Endpoint para descobrir IP público do servidor ─────────────────────
+    async def route_server_ip(request):
+        secret = request.rel_url.query.get('secret', '')
+        if secret != WEBHOOK_SECRET:
+            return web.json_response({'error': 'Não autorizado'}, status=401)
+        import aiohttp as _aiohttp
+        try:
+            async with _aiohttp.ClientSession() as sess:
+                async with sess.get('https://api.ipify.org?format=json', timeout=_aiohttp.ClientTimeout(total=5)) as r:
+                    data = await r.json()
+                    ip_publico = data.get('ip', 'desconhecido')
+        except Exception as e:
+            ip_publico = f'erro: {e}'
+        remote = request.headers.get('X-Forwarded-For', request.remote)
+        return web.json_response({'ip_publico': ip_publico, 'remote': remote})
+
+    app.router.add_get('/api/server-ip', route_server_ip)
+
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', PORT)
