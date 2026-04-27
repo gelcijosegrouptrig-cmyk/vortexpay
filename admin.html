@@ -7167,6 +7167,30 @@ async function fazerLogin() {
 //  NAVEGAÇÃO
 // ═══════════════════════════════════════════════
 function showTab(tab) {
+  // ── BLOQUEIO MODO FUNCIONÁRIO ─────────────────────────────────────────────
+  // Se estiver em modo staff, verificar se a aba é permitida
+  if (sessionStorage.getItem('vp_staff_token')) {
+    const _permsStaff = JSON.parse(sessionStorage.getItem('vp_staff_perms') || '[]');
+    const _abasPermStaff = {
+      'dashboard':   _permsStaff.includes('apostas_ver') || _permsStaff.includes('depositos_ver') || _permsStaff.includes('saques_ver'),
+      'depositos':   _permsStaff.includes('depositos_ver'),
+      'saques':      _permsStaff.includes('saques_ver') || _permsStaff.includes('saques_aprovar'),
+      'apostas':     _permsStaff.includes('apostas_ver') || _permsStaff.includes('apostas_resolver'),
+      'apostas-mgr': _permsStaff.includes('apostas_ver') || _permsStaff.includes('apostas_resolver'),
+      'boloes':      _permsStaff.includes('bolao_ver') || _permsStaff.includes('bolao_gerir'),
+      'usuarios':    _permsStaff.includes('usuarios_ver') || _permsStaff.includes('usuarios_ajustar') || _permsStaff.includes('usuarios_suspender'),
+      'usuarios-mgr':_permsStaff.includes('usuarios_ver') || _permsStaff.includes('usuarios_ajustar') || _permsStaff.includes('usuarios_suspender'),
+      'relatorios':  _permsStaff.includes('relatorios_ver'),
+      'bonus':       _permsStaff.includes('bonus_criar'),
+    };
+    // Se a aba não está na whitelist ou está false → bloqueada
+    if (!_abasPermStaff[tab]) {
+      // Silencioso: não fazer nada (aba nem deveria aparecer no nav)
+      return;
+    }
+  }
+  // ── FIM BLOQUEIO ──────────────────────────────────────────────────────────
+
   // Volta ao topo da página ao trocar de aba
   window.scrollTo(0, 0);
   // Esconde todos os tabs — só via classe, SEM style inline
@@ -10758,19 +10782,28 @@ function _aplicarModoFuncionario(staff) {
     'boloes':           perms.includes('bolao_ver') || perms.includes('bolao_gerir'),
     'usuarios':         perms.includes('usuarios_ver') || perms.includes('usuarios_ajustar') || perms.includes('usuarios_suspender'),
     'funcionarios':     false,
+    'campeonatos':      false,   // ← NUNCA visível para funcionários
     'config-pagamento': false,
     'config-sistema':   false,
     'relatorios':       perms.includes('relatorios_ver'),
     'bonus':            perms.includes('bonus_criar'),
+    'apostas-mgr':      perms.includes('apostas_ver') || perms.includes('apostas_resolver'),
+    'usuarios-mgr':     perms.includes('usuarios_ver') || perms.includes('usuarios_ajustar') || perms.includes('usuarios_suspender'),
+    'sistema':          false,
+    'api':              false,
+    'bot2':             false,
+    'bot3':             false,
   };
 
   // Ocultar nav-items não permitidos
+  // Regra de segurança: se a aba NÃO está mapeada, oculta por padrão (whitelist)
   document.querySelectorAll('.nav-item').forEach(el => {
     const onclick = el.getAttribute('onclick') || '';
     const m = onclick.match(/showTab\(['"]([^'"]+)['"]\)/);
     if (m) {
       const tabName = m[1];
-      if (navMap[tabName] === false) {
+      // Se não mapeado ou explicitamente false → ocultar
+      if (navMap[tabName] === false || navMap[tabName] === undefined) {
         el.style.display = 'none';
       }
     }
