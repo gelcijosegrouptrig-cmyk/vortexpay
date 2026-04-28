@@ -798,7 +798,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 ══════════════════════════════════════════ */
 /* ══ MOBILE DRAWER — CSS completo (inserido antes do @media) ══ */
 .btn-hamburger {
-  display: none;
+  display: flex;
   background: none;
   border: none;
   cursor: pointer;
@@ -891,7 +891,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   .header-logo{width:auto;font-size:14px;padding:0 4px 0 2px;gap:4px}
   .header-logo .ico{font-size:17px}
   .header-nav{display:none}
-  .btn-hamburger{display:flex}
+  .btn-hamburger{display:none !important} /* Oculto no mobile — usa bottom-nav */
   .header-actions{padding:0 2px;gap:4px}
   .btn-in{padding:5px 10px;font-size:11px;border-radius:7px}
   .btn-out{padding:5px 10px;font-size:11px;border-radius:7px}
@@ -926,7 +926,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   .feat-desc{display:none}
 
   /* ── Dock de atalhos ── */
-  .dock-atalhos{padding:8px 2px;margin-bottom:12px;border-radius:14px;gap:0px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .dock-atalhos{display:none} /* Oculto no mobile — itens estão na bottom-nav */
   .atalho-btn{padding:5px 4px;min-width:56px;flex-shrink:0}
   .atalho-ico{font-size:19px}
   .atalho-lbl{font-size:8px;letter-spacing:.1px;line-height:1.2;text-align:center;word-break:break-word;max-width:54px}
@@ -1023,7 +1023,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
     flex:1;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     gap:2px;
-    font-size:8px;font-weight:700;
+    font-size:7px;font-weight:700;
     color:var(--muted);
     cursor:pointer;
     border:none;background:transparent;
@@ -4804,17 +4804,21 @@ document.addEventListener('DOMContentLoaded',()=>{
     <span class="bn-ico">🔴</span>
     <span>Ao Vivo</span>
   </button>
-  <button class="bn-item" id="bn-tabela" onclick="navTo('tabela');bnActive('bn-tabela')">
-    <span class="bn-ico">🏆</span>
-    <span>Tabela</span>
+  <button class="bn-item" id="bn-depositar" onclick="navTo('depositar');bnActive('bn-depositar')">
+    <span class="bn-ico">💳</span>
+    <span>Depositar</span>
+  </button>
+  <button class="bn-item" id="bn-sacar" onclick="navTo('sacar');bnActive('bn-sacar')">
+    <span class="bn-ico">💰</span>
+    <span>Sacar</span>
+  </button>
+  <button class="bn-item" id="bn-bilhetes" onclick="navTo('bilhetes');bnActive('bn-bilhetes')">
+    <span class="bn-ico">🎟️</span>
+    <span>Bilhetes</span>
   </button>
   <button class="bn-item" id="bn-sorteio" onclick="navTo('sorteio');bnActive('bn-sorteio')">
     <span class="bn-ico">🎲</span>
-    <span>Sorteios</span>
-  </button>
-  <button class="bn-item" id="bn-conta" onclick="navTo('conta');bnActive('bn-conta')">
-    <span class="bn-ico">👤</span>
-    <span>Conta</span>
+    <span>Sorteio</span>
   </button>
 </nav>
 
@@ -4829,10 +4833,12 @@ function bnActive(id){
 const _origNavTo = typeof navTo === 'function' ? navTo : null;
 (function(){
   const _navMap = {
-    'apostas':'bn-apostas','live':'bn-live','tabela':'bn-tabela',
-    'sorteio':'bn-sorteio','conta':'bn-conta','depositar':'bn-conta',
-    'sacar':'bn-conta','historico':'bn-conta','minhas-apostas':'bn-conta','bilhetes':'bn-sorteio',
-    'ganhadores':'bn-sorteio'
+    'apostas':'bn-apostas','live':'bn-live',
+    'depositar':'bn-depositar','sacar':'bn-sacar',
+    'bilhetes':'bn-bilhetes','sorteio':'bn-sorteio',
+    'historico':'bn-sacar','minhas-apostas':'bn-bilhetes',
+    'ganhadores':'bn-sorteio','conta':'bn-depositar',
+    'tabela':'bn-apostas'
   };
   const _orig = window.navTo;
   if(typeof _orig === 'function'){
