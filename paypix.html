@@ -227,9 +227,9 @@ async function carregarConfigPaypix() {
     const pctDisplay  = Math.round(_pct * 100) + '%';
     const platDisplay = Math.round((1 - _pct) * 100) + '%';
 
-    // Subtítulo
+    // Subtítulo — sempre dinâmico baseado no % real (ignora descrição hardcoded do banco)
     const subtitulo = document.getElementById('paypix-subtitulo');
-    if (subtitulo) subtitulo.textContent = d.paypix_descricao || `Gere seu Pix e receba ${pctDisplay} do valor`;
+    if (subtitulo) subtitulo.textContent = `Gere seu Pix e receba ${pctDisplay} do valor`;
 
     // Labels split preview
     const lblVoce = document.getElementById('lbl-voce');

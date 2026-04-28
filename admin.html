@@ -11902,8 +11902,11 @@ function atualizarSliderPaypix(val) {
   document.getElementById('pp-bar-parc-txt').textContent = 'Parceiro ' + val + '%';
   document.getElementById('pp-bar-plat-txt').textContent = 'Plataforma ' + (100 - val) + '%';
   document.getElementById('pp-preview-pct').textContent = val + '%';
-  const desc = document.getElementById('pp-descricao').value || 'Gere seu Pix e receba sua % do valor';
-  document.getElementById('pp-preview-desc').textContent = desc.replace(/\d+%/, val + '%');
+  // Preview da descrição sempre dinâmico com o % real
+  document.getElementById('pp-preview-desc').textContent = `Gere seu Pix e receba ${val}% do valor`;
+  // Sincronizar campo de descrição visível ao parceiro (se existir)
+  const descInput = document.getElementById('pp-descricao');
+  if (descInput) descInput.value = `Gere seu Pix e receba ${val}% do valor`;
 }
 
 function atualizarInputPaypix(val) {
@@ -11932,8 +11935,10 @@ async function _legacyCarregarPaypixAdmin() {
     // Formulário
     atualizarSliderPaypix(pct);
     document.getElementById('pp-ativo').value = ativo ? '1' : '0';
-    document.getElementById('pp-descricao').value = d.paypix_descricao || '';
-    document.getElementById('pp-preview-desc').textContent = d.paypix_descricao || 'Gere seu Pix e receba ' + pct + '% do valor';
+    // Descrição sempre dinâmica com o % real — nunca mostra texto hardcoded do banco
+    const descDinamica = `Gere seu Pix e receba ${pct}% do valor`;
+    document.getElementById('pp-descricao').value = descDinamica;
+    document.getElementById('pp-preview-desc').textContent = descDinamica;
     document.getElementById('pp-preview-pct').textContent = pct + '%';
     // Valor mínimo
     const minEl = document.getElementById('pp-min-input');
@@ -15434,10 +15439,17 @@ async function botConfigSalvar() {
   const titulo   = (document.getElementById(`${p}-cfg-titulo`)   || {}).value || '';
   const descricao= (document.getElementById(`${p}-cfg-descricao`)|| {}).value || '';
 
+  // Ler % de comissão atual do painel (pp-pct-input) para sincronizar
+  const pctInput = document.getElementById('pp-pct-input');
+  const pct = pctInput ? (parseInt(pctInput.value) || 60) : 60;
+  const ativoEl = document.getElementById('pp-ativo');
+  const ativo = ativoEl ? (ativoEl.value === '1') : true;
+  const minPaypix = modo === 'livre' ? minValor : (parseFloat((document.getElementById('pp-min-input') || {}).value) || 5);
+
   if (msg) { msg.style.color='#aaa'; msg.textContent='💾 Salvando...'; }
 
   try {
-    const body = { modo, titulo, descricao };
+    const body = { modo, titulo, descricao, paypix_pct: pct, paypix_ativo: ativo, paypix_min: minPaypix };
     if (modo === 'fixo') body.valor = valor;
     else { body.min_valor = minValor; body.max_valor = maxValor; }
 
@@ -15449,8 +15461,11 @@ async function botConfigSalvar() {
     const d = await r.json();
     if (msg) {
       msg.style.color = d.success ? '#4caf50' : '#f44336';
-      msg.textContent = d.success ? '✅ Configuração salva com sucesso!' : ('❌ Erro: ' + (d.error || 'Falha ao salvar'));
+      msg.textContent = d.success
+        ? `✅ Configuração salva! Parceiros receberão ${d.paypix_pct_display || pct+'%'} a partir de agora.`
+        : ('❌ Erro: ' + (d.error || 'Falha ao salvar'));
     }
+    if (d.success) setTimeout(() => { if(msg) msg.textContent=''; }, 4000);
   } catch(e) {
     if (msg) { msg.style.color='#f44336'; msg.textContent='❌ Erro: ' + e.message; }
   }

@@ -6914,7 +6914,9 @@ async def route_paypix_config(request):
             pct = pct_raw / 100.0 if pct_raw > 1 else pct_raw
             pct = max(0.01, min(0.99, pct))  # entre 1% e 99%
             ativo = int(bool(data.get('paypix_ativo', True)))
-            descricao = str(data.get('paypix_descricao', 'Gere seu Pix e receba sua % do valor'))[:200]
+            # Descrição sempre gerada com o % real — ignora qualquer texto enviado
+            pct_display = f'{round(pct * 100)}%'
+            descricao = f'Gere seu Pix e receba {pct_display} do valor'
             paypix_min = float(data.get('paypix_min', 5.0))
             paypix_min = max(1.0, min(10000.0, paypix_min))  # entre R$1 e R$10.000
             conn = sqlite3_connect()
@@ -6943,11 +6945,14 @@ async def route_paypix_config(request):
         # GET - público (paypix.html precisa saber o %)
         cfg = get_paypix_config()
         pct = cfg.get('paypix_pct', 0.6)
+        pct_display = f'{round(pct * 100)}%'
+        # Descrição sempre gerada dinamicamente com o % real — nunca usa texto hardcoded do banco
+        descricao_dinamica = f'Gere seu Pix e receba {pct_display} do valor'
         return web.json_response({
             'paypix_pct':          pct,
             'paypix_pct_display':  f'{round(pct*100, 1)}%',
             'paypix_ativo':        cfg.get('paypix_ativo', True),
-            'paypix_descricao':    cfg.get('paypix_descricao', 'Gere seu Pix e receba sua % do valor'),
+            'paypix_descricao':    descricao_dinamica,
             'paypix_min':          cfg.get('paypix_min', 5.0),
         })
 
