@@ -1929,26 +1929,137 @@ async function fazerLogin() {
 
       <!-- ═══ AFILIADOS ═══ -->
       <div id="tab-afiliados" class="tab-content">
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
           <div class="metric-card green"><div class="metric-icon">🤝</div><div class="metric-label">Total Afiliados</div><div class="metric-value" id="afl-total">—</div><div class="metric-sub">com código ativo</div></div>
           <div class="metric-card blue"><div class="metric-icon">👥</div><div class="metric-label">Total Indicados</div><div class="metric-value" id="afl-indicados">—</div><div class="metric-sub">usuários convertidos</div></div>
-          <div class="metric-card orange"><div class="metric-icon">📊</div><div class="metric-label">Volume Indicados</div><div class="metric-value" id="afl-volume">—</div><div class="metric-sub">total apostado</div></div>
+          <div class="metric-card orange"><div class="metric-icon">📊</div><div class="metric-label">Volume Gerado</div><div class="metric-value" id="afl-volume">—</div><div class="metric-sub">total apostado</div></div>
+          <div class="metric-card purple"><div class="metric-icon">💸</div><div class="metric-label">Comissões Pagas</div><div class="metric-value" id="afl-comissoes">—</div><div class="metric-sub">total creditado</div></div>
         </div>
+
+        <!-- Cadastrar novo afiliado -->
+        <div class="table-card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <h3 style="margin:0">➕ Cadastrar Afiliado</h3>
+            <span style="font-size:11px;color:var(--text2)">Busque um usuário cadastrado e defina a % de comissão</span>
+          </div>
+          <!-- Busca de usuário -->
+          <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:12px">
+            <div style="position:relative">
+              <input type="text" id="afl-busca-input" placeholder="🔍 Buscar por nome ou CPF do usuário..."
+                oninput="aflBuscarUsuario(this.value)"
+                style="width:100%;padding:10px 14px;background:var(--input);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px">
+              <div id="afl-busca-resultado" style="display:none;position:absolute;top:calc(100%+4px);left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px #0006"></div>
+            </div>
+            <button onclick="aflBuscarUsuario(document.getElementById('afl-busca-input').value,true)"
+              style="padding:10px 18px;background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.4);border-radius:10px;color:#60a5fa;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+              🔍 Buscar
+            </button>
+          </div>
+          <!-- Usuário selecionado -->
+          <div id="afl-usuario-selecionado" style="display:none;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:14px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+              <div>
+                <div style="font-weight:700;color:var(--text);font-size:14px" id="afl-sel-nome">—</div>
+                <div style="font-size:11px;color:var(--text2);margin-top:2px">CPF: <span id="afl-sel-cpf">—</span> &nbsp;|&nbsp; ID: <span id="afl-sel-id">—</span></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <div>
+                  <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">% Comissão por aposta ganha</label>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <input type="range" id="afl-pct-slider" min="1" max="50" value="10" step="0.5"
+                      oninput="document.getElementById('afl-pct-val').textContent=this.value+'%'"
+                      style="width:140px;accent-color:var(--green)">
+                    <span id="afl-pct-val" style="font-size:16px;font-weight:800;color:var(--green);min-width:44px">10%</span>
+                  </div>
+                </div>
+                <button onclick="aflCadastrar()"
+                  style="padding:10px 20px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+                  ✅ Cadastrar Afiliado
+                </button>
+              </div>
+            </div>
+          </div>
+          <div id="afl-msg" style="display:none;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600"></div>
+        </div>
+
+        <!-- Tabela de afiliados -->
         <div class="table-card">
           <div class="table-header" style="display:flex;justify-content:space-between;align-items:center">
-            <h3>🤝 Top Afiliados por Indicações</h3>
-            <button onclick="loadAfiliados()" class="refresh-btn">🔄</button>
+            <h3>🤝 Afiliados Cadastrados</h3>
+            <button onclick="loadAfiliados()" class="refresh-btn">🔄 Atualizar</button>
           </div>
-          <div style="padding:10px 16px;background:rgba(16,185,129,0.08);border-bottom:1px solid var(--border);font-size:11px;color:var(--text2)">
-            💡 Cada usuário possui um código único de indicação. Quando alguém se cadastra com esse código, o indicador é creditado automaticamente.
+          <div style="padding:10px 16px;background:rgba(16,185,129,0.06);border-bottom:1px solid var(--border);font-size:11px;color:var(--text2)">
+            💡 Quando alguém se cadastra pelo link do afiliado e ganha uma aposta, a % definida é creditada automaticamente no saldo do afiliado.
           </div>
           <div class="table-wrapper">
             <table>
-              <thead><tr><th>#</th><th>Afiliado</th><th>CPF</th><th>Código</th><th>Indicados</th><th>Volume Gerado</th><th>Cadastrado em</th></tr></thead>
-              <tbody id="table-afiliados"><tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr></tbody>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Afiliado</th>
+                  <th>Código / Link</th>
+                  <th style="text-align:center">% Comissão</th>
+                  <th style="text-align:center">Indicados</th>
+                  <th>Volume Gerado</th>
+                  <th>Comissão Paga</th>
+                  <th style="text-align:center">Status</th>
+                  <th style="text-align:center">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="table-afiliados">
+                <tr class="loading-row"><td colspan="9"><div class="spinner"></div></td></tr>
+              </tbody>
             </table>
           </div>
         </div>
+
+        <!-- Modal editar comissão -->
+        <div id="afl-modal-edit" style="display:none;position:fixed;inset:0;background:#0009;z-index:9999;align-items:center;justify-content:center">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:380px;max-width:95vw;box-shadow:0 20px 60px #000a">
+            <h3 style="margin:0 0 6px;color:var(--text)">✏️ Editar Afiliado</h3>
+            <p id="afl-edit-nome" style="margin:0 0 18px;font-size:13px;color:var(--text2)">—</p>
+            <input type="hidden" id="afl-edit-id">
+            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:6px">% Comissão por aposta ganha do indicado</label>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+              <input type="range" id="afl-edit-slider" min="1" max="50" value="10" step="0.5"
+                oninput="document.getElementById('afl-edit-pct-val').textContent=this.value+'%'"
+                style="flex:1;accent-color:var(--green)">
+              <span id="afl-edit-pct-val" style="font-size:20px;font-weight:800;color:var(--green);min-width:50px">10%</span>
+            </div>
+            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:6px">Status</label>
+            <select id="afl-edit-ativo" style="width:100%;padding:9px 12px;background:var(--input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;margin-bottom:20px">
+              <option value="true">✅ Ativo</option>
+              <option value="false">⏸️ Pausado</option>
+            </select>
+            <div style="display:flex;gap:10px">
+              <button onclick="aflSalvarEdicao()"
+                style="flex:1;padding:10px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+                💾 Salvar
+              </button>
+              <button onclick="document.getElementById('afl-modal-edit').style.display='none'"
+                style="flex:1;padding:10px;background:rgba(100,116,139,0.2);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-size:13px;cursor:pointer">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal comissões -->
+        <div id="afl-modal-com" style="display:none;position:fixed;inset:0;background:#0009;z-index:9999;align-items:center;justify-content:center">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:600px;max-width:95vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px #000a">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <h3 style="margin:0">💸 Histórico de Comissões</h3>
+              <button onclick="document.getElementById('afl-modal-com').style.display='none'"
+                style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>
+            </div>
+            <p id="afl-com-nome" style="margin:0 0 4px;font-weight:700;color:var(--green)">—</p>
+            <p id="afl-com-total" style="margin:0 0 16px;font-size:13px;color:var(--text2)">—</p>
+            <div id="afl-com-lista" style="font-size:12px"></div>
+          </div>
+        </div>
+
       </div>
 
       <!-- ═══ BOLÃO PLACAR EXATO ═══ -->
@@ -8351,33 +8462,255 @@ async function salvarNotifConfig(testar) {
 // ═══════════════════════════════════════════════
 // 9️⃣ ITEM 9 — AFILIADOS
 // ═══════════════════════════════════════════════
+
+// ── Estado local ──
+let _aflUsuarioSelecionado = null;
+let _aflDebounceTimer = null;
+
+// ── Carregar lista ──
 async function loadAfiliados() {
   const tbody = document.getElementById('table-afiliados');
-  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>';
+  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="9"><div class="spinner"></div></td></tr>';
   try {
     const r = await fetch('/api/admin/afiliados', { headers: _authHeaders() });
     const d = await r.json();
     const el = id => document.getElementById(id);
     if (el('afl-total'))     el('afl-total').textContent     = d.total_afiliados || 0;
     if (el('afl-indicados')) el('afl-indicados').textContent = d.total_indicados  || 0;
+    if (el('afl-comissoes')) el('afl-comissoes').textContent = _fmtBRL(d.total_comissao_pago || 0);
     const badge = document.getElementById('badge-afiliados');
     if (badge) badge.textContent = d.total_afiliados || 0;
     const volTotal = d.afiliados?.reduce((s,a)=>s+parseFloat(a.volume_indicados||0),0)||0;
     if (el('afl-volume')) el('afl-volume').textContent = _fmtBRL(volTotal);
     if (tbody) {
       tbody.innerHTML = !d.afiliados?.length
-        ? '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text2)">Nenhum afiliado cadastrado ainda</td></tr>'
+        ? '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text2)">Nenhum afiliado cadastrado ainda</td></tr>'
         : d.afiliados.map((a,i) => `<tr>
             <td style="text-align:center;font-weight:700;color:var(--text2)">${i+1}</td>
-            <td style="font-weight:600">${a.nome}</td>
-            <td style="font-size:11px;color:var(--text2)">${a.cpf||'—'}</td>
-            <td><code style="background:var(--card);padding:2px 8px;border-radius:6px;font-size:12px;color:var(--green)">${a.codigo||'—'}</code></td>
+            <td>
+              <div style="font-weight:600;font-size:13px">${a.nome}</div>
+              <div style="font-size:10px;color:var(--text2)">${_fmtCPF(a.cpf||'')}</div>
+            </td>
+            <td>
+              <code style="background:rgba(16,185,129,0.12);padding:3px 8px;border-radius:6px;font-size:12px;color:var(--green);display:block;margin-bottom:4px">${a.codigo||'—'}</code>
+              <a href="${a.link}" target="_blank" style="font-size:10px;color:#60a5fa;text-decoration:none;word-break:break-all" title="${a.link}">🔗 ${(a.link||'').replace('https://','')}</a>
+              <button onclick="aflCopiarLink('${a.link||''}')" style="margin-left:4px;background:none;border:none;cursor:pointer;font-size:11px;color:var(--text2)" title="Copiar link">📋</button>
+            </td>
+            <td style="text-align:center">
+              <span style="font-size:18px;font-weight:800;color:#f59e0b">${parseFloat(a.comissao_pct||10).toFixed(1)}%</span>
+            </td>
             <td style="text-align:center;font-weight:700;color:#60a5fa">${a.indicados}</td>
-            <td style="color:#4ade80">${_fmtBRL(a.volume_indicados)}</td>
-            <td style="font-size:11px;color:var(--text2)">${a.criado_em||'—'}</td>
+            <td style="color:#4ade80;font-weight:600">${_fmtBRL(a.volume_indicados)}</td>
+            <td style="color:#f59e0b;font-weight:600">${_fmtBRL(a.total_comissao)}</td>
+            <td style="text-align:center">
+              <span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;
+                background:${a.ativo ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.15)'};
+                color:${a.ativo ? '#10b981' : '#64748b'}">
+                ${a.ativo ? '✅ Ativo' : '⏸️ Pausado'}
+              </span>
+            </td>
+            <td style="text-align:center">
+              <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">
+                <button onclick="aflAbrirEdicao(${a.id},'${a.nome}',${a.comissao_pct||10},${a.ativo?'true':'false'})"
+                  style="padding:4px 8px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);border-radius:6px;color:#60a5fa;font-size:11px;cursor:pointer" title="Editar">✏️</button>
+                <button onclick="aflVerComissoes(${a.id},'${a.nome}')"
+                  style="padding:4px 8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#f59e0b;font-size:11px;cursor:pointer" title="Ver comissões">💸</button>
+                <button onclick="aflRemover(${a.id},'${a.nome}')"
+                  style="padding:4px 8px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);border-radius:6px;color:#f87171;font-size:11px;cursor:pointer" title="Desativar">🗑️</button>
+              </div>
+            </td>
           </tr>`).join('');
     }
-  } catch(e) { showToastAdmin('Erro: '+e.message, 'red'); }
+  } catch(e) { showToastAdmin('Erro ao carregar afiliados: '+e.message, 'red'); }
+}
+
+// ── Buscar usuário (com debounce) ──
+function aflBuscarUsuario(q, forcar) {
+  clearTimeout(_aflDebounceTimer);
+  const res = document.getElementById('afl-busca-resultado');
+  if (!q || q.length < 2) { if(res) res.style.display='none'; return; }
+  _aflDebounceTimer = setTimeout(async () => {
+    if(res) { res.style.display='block'; res.innerHTML='<div style="padding:10px;color:var(--text2);font-size:12px">🔍 Buscando...</div>'; }
+    try {
+      const r = await fetch('/api/admin/afiliados/buscar?q='+encodeURIComponent(q), { headers: _authHeaders() });
+      const d = await r.json();
+      if (!d.ok || !d.usuarios?.length) {
+        if(res) res.innerHTML='<div style="padding:12px;color:var(--text2);font-size:12px;text-align:center">Nenhum usuário encontrado</div>';
+        return;
+      }
+      if(res) res.innerHTML = d.usuarios.map(u => `
+        <div onclick="aflSelecionarUsuario(${u.id},'${u.nome.replace(/'/g,"\\'")}','${u.cpf||''}',${u.comissao_pct||10},${u.afiliado})"
+          style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s"
+          onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background=''">
+          <div style="font-weight:600;font-size:13px;color:var(--text)">${u.nome}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">
+            CPF: ${_fmtCPF(u.cpf||'')} &nbsp;·&nbsp; ID: ${u.id}
+            ${u.afiliado ? ' &nbsp;<span style="color:#10b981;font-weight:700">✅ Já afiliado</span>' : ''}
+          </div>
+        </div>`).join('');
+    } catch(e) {
+      if(res) res.innerHTML='<div style="padding:10px;color:#f87171;font-size:12px">Erro: '+e.message+'</div>';
+    }
+  }, forcar ? 0 : 350);
+}
+
+function aflSelecionarUsuario(id, nome, cpf, pct, jaAfiliado) {
+  _aflUsuarioSelecionado = { id, nome, cpf, pct, jaAfiliado };
+  const res = document.getElementById('afl-busca-resultado');
+  if(res) res.style.display='none';
+  const inp = document.getElementById('afl-busca-input');
+  if(inp) inp.value = nome;
+  const box = document.getElementById('afl-usuario-selecionado');
+  if(box) box.style.display='block';
+  const el = id2 => document.getElementById(id2);
+  if(el('afl-sel-nome')) el('afl-sel-nome').textContent = nome + (jaAfiliado ? ' (já afiliado)' : '');
+  if(el('afl-sel-cpf'))  el('afl-sel-cpf').textContent  = _fmtCPF(cpf);
+  if(el('afl-sel-id'))   el('afl-sel-id').textContent   = id;
+  const slider = document.getElementById('afl-pct-slider');
+  const pctVal = document.getElementById('afl-pct-val');
+  if(slider) { slider.value = pct; }
+  if(pctVal) { pctVal.textContent = parseFloat(pct).toFixed(1)+'%'; }
+  // Atualizar oninput do slider
+  if(slider) slider.oninput = function(){ if(pctVal) pctVal.textContent = parseFloat(this.value).toFixed(1)+'%'; };
+}
+
+// ── Cadastrar afiliado ──
+async function aflCadastrar() {
+  if (!_aflUsuarioSelecionado) { aflShowMsg('Selecione um usuário primeiro.', 'red'); return; }
+  const pct = parseFloat(document.getElementById('afl-pct-slider')?.value || 10);
+  aflShowMsg('Cadastrando...', 'blue');
+  try {
+    const r = await fetch('/api/admin/afiliados/cadastrar', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', ..._authHeaders() },
+      body: JSON.stringify({ usuario_id: _aflUsuarioSelecionado.id, comissao_pct: pct })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      aflShowMsg('✅ Afiliado cadastrado! Código: '+d.codigo+' | Link: '+d.link, 'green');
+      _aflUsuarioSelecionado = null;
+      document.getElementById('afl-busca-input').value = '';
+      document.getElementById('afl-usuario-selecionado').style.display = 'none';
+      setTimeout(loadAfiliados, 500);
+    } else {
+      aflShowMsg('❌ '+( d.error||'Erro desconhecido'), 'red');
+    }
+  } catch(e) { aflShowMsg('❌ Erro: '+e.message, 'red'); }
+}
+
+function aflShowMsg(msg, cor) {
+  const el = document.getElementById('afl-msg');
+  if (!el) return;
+  const cores = { red:'rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3)',
+                  green:'rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3)',
+                  blue:'rgba(96,165,250,0.12);color:#60a5fa;border:1px solid rgba(96,165,250,0.25)' };
+  el.style.cssText = 'display:block;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;background:'+( cores[cor]||cores.blue);
+  el.textContent = msg;
+}
+
+// ── Abrir modal edição ──
+function aflAbrirEdicao(id, nome, pct, ativo) {
+  document.getElementById('afl-edit-id').value = id;
+  document.getElementById('afl-edit-nome').textContent = nome;
+  const slider = document.getElementById('afl-edit-slider');
+  const pctEl  = document.getElementById('afl-edit-pct-val');
+  if(slider) { slider.value = pct; slider.oninput = function(){ if(pctEl) pctEl.textContent=parseFloat(this.value).toFixed(1)+'%'; }; }
+  if(pctEl)  pctEl.textContent = parseFloat(pct).toFixed(1)+'%';
+  const selAtivo = document.getElementById('afl-edit-ativo');
+  if(selAtivo) selAtivo.value = ativo ? 'true' : 'false';
+  const modal = document.getElementById('afl-modal-edit');
+  if(modal) { modal.style.display='flex'; }
+}
+
+// ── Salvar edição ──
+async function aflSalvarEdicao() {
+  const id  = parseInt(document.getElementById('afl-edit-id')?.value || 0);
+  const pct = parseFloat(document.getElementById('afl-edit-slider')?.value || 10);
+  const ativo = document.getElementById('afl-edit-ativo')?.value === 'true';
+  if (!id) return;
+  try {
+    const r = await fetch('/api/admin/afiliados/'+id, {
+      method: 'PATCH',
+      headers: { 'Content-Type':'application/json', ..._authHeaders() },
+      body: JSON.stringify({ comissao_pct: pct, ativo })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById('afl-modal-edit').style.display='none';
+      showToastAdmin('✅ Afiliado atualizado!', 'green');
+      setTimeout(loadAfiliados, 400);
+    } else {
+      showToastAdmin('❌ '+(d.error||'Erro'), 'red');
+    }
+  } catch(e) { showToastAdmin('❌ Erro: '+e.message, 'red'); }
+}
+
+// ── Ver histórico de comissões ──
+async function aflVerComissoes(id, nome) {
+  document.getElementById('afl-com-nome').textContent = nome;
+  document.getElementById('afl-com-total').textContent = 'Carregando...';
+  document.getElementById('afl-com-lista').innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner" style="margin:0 auto"></div></div>';
+  const modal = document.getElementById('afl-modal-com');
+  if(modal) modal.style.display='flex';
+  try {
+    const r = await fetch('/api/admin/afiliados/'+id+'/comissoes', { headers: _authHeaders() });
+    const d = await r.json();
+    document.getElementById('afl-com-total').textContent = 'Total creditado: '+_fmtBRL(d.total||0);
+    const lista = document.getElementById('afl-com-lista');
+    if (!d.comissoes?.length) {
+      lista.innerHTML='<div style="text-align:center;padding:20px;color:var(--text2)">Nenhuma comissão registrada ainda</div>';
+      return;
+    }
+    lista.innerHTML = '<table style="width:100%;border-collapse:collapse">'+
+      '<thead><tr style="font-size:11px;color:var(--text2)">'+
+        '<th style="padding:6px 8px;text-align:left">Data</th>'+
+        '<th style="padding:6px 8px;text-align:left">Indicado</th>'+
+        '<th style="padding:6px 8px;text-align:right">Vl. Aposta</th>'+
+        '<th style="padding:6px 8px;text-align:center">%</th>'+
+        '<th style="padding:6px 8px;text-align:right">Comissão</th>'+
+      '</tr></thead><tbody>'+
+      d.comissoes.map(c=>`<tr style="border-top:1px solid var(--border)">
+        <td style="padding:6px 8px;font-size:11px;color:var(--text2)">${c.data||'—'}</td>
+        <td style="padding:6px 8px;font-size:12px">${c.indicado||'—'}</td>
+        <td style="padding:6px 8px;text-align:right;font-size:12px">${_fmtBRL(c.valor_aposta)}</td>
+        <td style="padding:6px 8px;text-align:center;font-size:12px;color:#f59e0b">${c.pct}%</td>
+        <td style="padding:6px 8px;text-align:right;font-size:13px;font-weight:700;color:#10b981">${_fmtBRL(c.valor_comissao)}</td>
+      </tr>`).join('')+
+      '</tbody></table>';
+  } catch(e) {
+    document.getElementById('afl-com-lista').innerHTML='<div style="color:#f87171;padding:12px">Erro: '+e.message+'</div>';
+  }
+}
+
+// ── Remover / desativar afiliado ──
+async function aflRemover(id, nome) {
+  if (!confirm('Desativar afiliado "'+nome+'"? O código e histórico serão mantidos.')) return;
+  try {
+    const r = await fetch('/api/admin/afiliados/'+id, {
+      method: 'DELETE',
+      headers: _authHeaders()
+    });
+    const d = await r.json();
+    if (d.ok) { showToastAdmin('✅ Afiliado desativado.', 'green'); setTimeout(loadAfiliados, 400); }
+    else showToastAdmin('❌ '+(d.error||'Erro'), 'red');
+  } catch(e) { showToastAdmin('❌ Erro: '+e.message, 'red'); }
+}
+
+// ── Copiar link ──
+function aflCopiarLink(link) {
+  if (!link) return;
+  navigator.clipboard.writeText(link).then(()=>showToastAdmin('📋 Link copiado!','green')).catch(()=>{
+    const ta=document.createElement('textarea'); ta.value=link;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); showToastAdmin('📋 Link copiado!','green');
+  });
+}
+
+// ── Helper CPF ──
+function _fmtCPF(cpf) {
+  const c = (cpf||'').replace(/\D/g,'');
+  if (c.length!==11) return cpf||'—';
+  return c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
 }
 
 // ═══════════════════════════════════════════════
