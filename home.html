@@ -870,15 +870,15 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 }
 .btn-close-drawer:hover { background: #ffffff22; }
 .drawer-quicknav {
-  display: flex; gap: 6px; padding: 10px 12px;
-  border-bottom: 1px solid var(--border); flex-wrap: wrap;
+  display: flex; flex-direction: column; gap: 5px; padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
 }
 .dqn-btn {
-  flex: 1; min-width: calc(50% - 3px); padding: 8px 6px;
+  width: 100%; padding: 10px 14px;
   background: #ffffff08; border: 1px solid var(--border);
   border-radius: 10px; color: var(--text2);
-  font-size: 11px; font-weight: 700; cursor: pointer;
-  text-align: center; transition: all .15s;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  text-align: left; transition: all .15s; display: flex; align-items: center; gap: 8px;
 }
 .dqn-btn:hover, .dqn-btn.active { background: #FFD70018; border-color: var(--gold); color: var(--gold); }
 
@@ -2719,16 +2719,19 @@ async function carregarChipsLigas() {
 
     // ── Sidebar — "Em Alta" ──
     const sbAlta = document.getElementById('sb-ligas-em-alta');
+    window._ligasCarregadas = { alta: [], esportes: [] };
     if (sbAlta) {
       sbAlta.innerHTML = '';
       data.ligas
         .filter(l => (_LIGA_SIDEBAR[l.key] || {cat:'alta'}).cat === 'alta')
         .forEach(liga => {
           const info = _LIGA_SIDEBAR[liga.key] || {ico:'⚽', nome: liga.nome};
+          // Guardar para o drawer mobile usar
+          window._ligasCarregadas.alta.push({ key: liga.key, ico: info.ico, nome: info.nome });
           const div = document.createElement('div');
           div.className = 'sb-item';
           div.id = 'sb-' + liga.key.replace(/[^a-z0-9]/g,'_');
-          div.onclick = function(){ sbNav('apostas', liga.key); };
+          div.addEventListener('click', function(){ sbNav('apostas', liga.key); });
           div.innerHTML = `<span class="ico">${info.ico}</span>${info.nome}`;
           sbAlta.appendChild(div);
         });
@@ -2742,10 +2745,12 @@ async function carregarChipsLigas() {
         .filter(l => (_LIGA_SIDEBAR[l.key] || {cat:'alta'}).cat === 'esporte')
         .forEach(liga => {
           const info = _LIGA_SIDEBAR[liga.key] || {ico:'🏅', nome: liga.nome};
+          // Guardar para o drawer mobile usar
+          window._ligasCarregadas.esportes.push({ key: liga.key, ico: info.ico, nome: info.nome });
           const div = document.createElement('div');
           div.className = 'sb-item';
           div.id = 'sb-' + liga.key.replace(/[^a-z0-9]/g,'_');
-          div.onclick = function(){ sbNav('apostas', liga.key); };
+          div.addEventListener('click', function(){ sbNav('apostas', liga.key); });
           div.innerHTML = `<span class="ico">${info.ico}</span>${info.nome}`;
           sbEsp.appendChild(div);
         });
@@ -4953,27 +4958,38 @@ setInterval(async()=>{
     setTimeout(function() { overlay.style.display = 'none'; }, 280);
   };
 
+  // Armazena as ligas carregadas para uso no drawer
+  window._ligasCarregadas = window._ligasCarregadas || { alta: [], esportes: [] };
+
   function _sincronizarLigasDrawer() {
-    var srcEmAlta = document.getElementById('sb-ligas-em-alta');
+    // Usa os dados armazenados em _ligasCarregadas para recriar os itens
+    // com addEventListener (funciona mesmo sem atributo onclick no HTML)
     var dstEmAlta = document.getElementById('drawer-ligas-em-alta');
-    if (srcEmAlta && dstEmAlta) {
-      dstEmAlta.innerHTML = srcEmAlta.innerHTML;
-      dstEmAlta.querySelectorAll('.sb-item').forEach(function(el) {
-        var orig = el.getAttribute('onclick') || '';
-        if (orig && orig.indexOf('fecharDrawerMobile') === -1) {
-          el.setAttribute('onclick', 'fecharDrawerMobile();' + orig);
-        }
+    if (dstEmAlta) {
+      dstEmAlta.innerHTML = '';
+      window._ligasCarregadas.alta.forEach(function(item) {
+        var div = document.createElement('div');
+        div.className = 'sb-item';
+        div.innerHTML = '<span class="ico">' + item.ico + '</span>' + item.nome;
+        div.addEventListener('click', function() {
+          fecharDrawerMobile();
+          sbNav('apostas', item.key);
+        });
+        dstEmAlta.appendChild(div);
       });
     }
-    var srcEsportes = document.getElementById('sb-ligas-esportes');
     var dstEsportes = document.getElementById('drawer-ligas-esportes');
-    if (srcEsportes && dstEsportes) {
-      dstEsportes.innerHTML = srcEsportes.innerHTML;
-      dstEsportes.querySelectorAll('.sb-item').forEach(function(el) {
-        var orig = el.getAttribute('onclick') || '';
-        if (orig && orig.indexOf('fecharDrawerMobile') === -1) {
-          el.setAttribute('onclick', 'fecharDrawerMobile();' + orig);
-        }
+    if (dstEsportes) {
+      dstEsportes.innerHTML = '';
+      window._ligasCarregadas.esportes.forEach(function(item) {
+        var div = document.createElement('div');
+        div.className = 'sb-item';
+        div.innerHTML = '<span class="ico">' + item.ico + '</span>' + item.nome;
+        div.addEventListener('click', function() {
+          fecharDrawerMobile();
+          sbNav('apostas', item.key);
+        });
+        dstEsportes.appendChild(div);
       });
     }
   }
