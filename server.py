@@ -14097,6 +14097,7 @@ _ESPN_STANDINGS_BASE = 'https://site.api.espn.com/apis/v2/sports/soccer'
 
 # Mapeamento: chave frontend → (espn_slug, nome_liga)
 _ESPN_LEAGUES = {
+    # IDs numéricos ESPN (usados pelos chips da tabela)
     '71':  ('bra.1',               'Brasileirão Série A'),
     '75':  ('bra.2',               'Brasileirão Série B'),
     '13':  ('CONMEBOL.LIBERTADORES','Copa Libertadores'),
@@ -14107,6 +14108,18 @@ _ESPN_LEAGUES = {
     '135': ('ita.1',               'Serie A (Itália)'),
     '78':  ('ger.1',               'Bundesliga'),
     '61':  ('fra.1',               'Ligue 1'),
+    # Aliases por key (para chamadas diretas via key de liga)
+    'soccer_brazil_campeonato':          ('bra.1',                'Brasileirão Série A'),
+    'soccer_brazil_serie_b':             ('bra.2',                'Brasileirão Série B'),
+    'soccer_conmebol_copa_libertadores': ('CONMEBOL.LIBERTADORES', 'Copa Libertadores'),
+    'soccer_conmebol_sudamericana':      ('CONMEBOL.SUDAMERICANA', 'Copa Sul-Americana'),
+    'soccer_conmebol_sulamericana':      ('CONMEBOL.SUDAMERICANA', 'Copa Sul-Americana'),
+    'soccer_uefa_champs_league':         ('UEFA.CHAMPIONS',        'UEFA Champions League'),
+    'soccer_epl':                        ('eng.1',                 'Premier League'),
+    'soccer_spain_la_liga':              ('esp.1',                 'La Liga'),
+    'soccer_italy_serie_a':              ('ita.1',                 'Serie A (Itália)'),
+    'soccer_germany_bundesliga':         ('ger.1',                 'Bundesliga'),
+    'soccer_france_ligue_one':           ('fra.1',                 'Ligue 1'),
 }
 
 # Mapeamento reverso: league_id (ESPN) → liga_key (_ADMIN_LIGAS_MAP)
