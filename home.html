@@ -796,6 +796,92 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 /* ══════════════════════════════════════════
    RESPONSIVO — MOBILE (≤ 768px)
 ══════════════════════════════════════════ */
+/* ══ MOBILE DRAWER — CSS completo (inserido antes do @media) ══ */
+.btn-hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--text);
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.btn-hamburger:hover { background: #ffffff12; }
+.btn-hamburger span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: all .25s;
+}
+.drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  z-index: 900;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity .25s;
+}
+.drawer-overlay.open { display: block; opacity: 1; }
+.mobile-drawer {
+  position: fixed;
+  top: 0; left: 0;
+  width: 78vw;
+  max-width: 300px;
+  height: 100dvh;
+  height: 100vh;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  z-index: 901;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 0 40px;
+  transform: translateX(-100%);
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+  will-change: transform;
+}
+.mobile-drawer.open { transform: translateX(0); }
+.mobile-drawer::-webkit-scrollbar { width: 3px; }
+.mobile-drawer::-webkit-scrollbar-thumb { background: #ffffff15; border-radius: 3px; }
+.drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0;
+  background: var(--bg2); z-index: 1;
+}
+.drawer-title { font-size: 16px; font-weight: 800; color: var(--gold); }
+.btn-close-drawer {
+  background: #ffffff12; border: none; color: var(--text);
+  font-size: 18px; width: 32px; height: 32px;
+  border-radius: 8px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.btn-close-drawer:hover { background: #ffffff22; }
+.drawer-quicknav {
+  display: flex; gap: 6px; padding: 10px 12px;
+  border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.dqn-btn {
+  flex: 1; min-width: calc(50% - 3px); padding: 8px 6px;
+  background: #ffffff08; border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text2);
+  font-size: 11px; font-weight: 700; cursor: pointer;
+  text-align: center; transition: all .15s;
+}
+.dqn-btn:hover, .dqn-btn.active { background: #FFD70018; border-color: var(--gold); color: var(--gold); }
+
 @media(max-width:768px){
   :root{--sidebar:0px;--slip:95vw;--header:52px}
 
@@ -805,7 +891,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
   .header-logo{width:auto;font-size:14px;padding:0 4px 0 2px;gap:4px}
   .header-logo .ico{font-size:17px}
   .header-nav{display:none}
-  .btn-hamburger{display:flex !important}
+  .btn-hamburger{display:flex}
   .header-actions{padding:0 2px;gap:4px}
   .btn-in{padding:5px 10px;font-size:11px;border-radius:7px}
   .btn-out{padding:5px 10px;font-size:11px;border-radius:7px}
@@ -1010,137 +1096,6 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 /* Bottom nav: esconder em desktop */
 .bottom-nav{display:none}
 
-/* ══ MOBILE DRAWER — base (desktop: oculto) ══ */
-.btn-hamburger {
-  display: none !important;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 6px 8px;
-  border-radius: 8px;
-  color: var(--text);
-  flex-direction: column;
-  gap: 5px;
-  align-items: center;
-  justify-content: center;
-  transition: background .15s;
-  flex-shrink: 0;
-}
-.btn-hamburger:hover { background: #ffffff12; }
-.btn-hamburger span {
-  display: block;
-  width: 20px;
-  height: 2px;
-  background: var(--text);
-  border-radius: 2px;
-  transition: all .25s;
-}
-
-/* Overlay escuro */
-.drawer-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.65);
-  z-index: 900;
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  opacity: 0;
-  transition: opacity .25s;
-}
-.drawer-overlay.open {
-  display: block;
-  opacity: 1;
-}
-
-/* Drawer lateral */
-.mobile-drawer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 78vw;
-  max-width: 300px;
-  height: 100dvh;
-  height: 100vh;
-  background: var(--bg2);
-  border-right: 1px solid var(--border);
-  z-index: 901;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 0 0 40px;
-  transform: translateX(-100%);
-  transition: transform .28s cubic-bezier(.4,0,.2,1);
-  will-change: transform;
-}
-.mobile-drawer.open {
-  transform: translateX(0);
-}
-.mobile-drawer::-webkit-scrollbar { width: 3px; }
-.mobile-drawer::-webkit-scrollbar-thumb { background: #ffffff15; border-radius: 3px; }
-
-/* Cabeçalho do drawer */
-.drawer-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  background: var(--bg2);
-  z-index: 1;
-}
-.drawer-title {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--gold);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.btn-close-drawer {
-  background: #ffffff12;
-  border: none;
-  color: var(--text);
-  font-size: 18px;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background .15s;
-}
-.btn-close-drawer:hover { background: #ffffff22; }
-
-/* Nav rápida horizontal no topo do drawer */
-.drawer-quicknav {
-  display: flex;
-  gap: 6px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
-}
-.dqn-btn {
-  flex: 1;
-  min-width: calc(50% - 3px);
-  padding: 8px 6px;
-  background: #ffffff08;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--text2);
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  text-align: center;
-  transition: all .15s;
-}
-.dqn-btn:hover, .dqn-btn.active {
-  background: #FFD70018;
-  border-color: var(--gold);
-  color: var(--gold);
-}
 
 </style>
 </head>
