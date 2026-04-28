@@ -18142,6 +18142,26 @@ async def main():
         return web.json_response({'status': 'restarting', 'msg': 'Processo encerrando para Railway reiniciar com código novo'})
     app.router.add_get('/api/restart', route_force_restart)
 
+    # Endpoint update-self: baixa server.py novo do GitHub e reinicia
+    async def route_update_self(request):
+        secret = request.rel_url.query.get('secret', '')
+        if secret != WEBHOOK_SECRET:
+            return web.json_response({'error': 'unauthorized'}, status=401)
+        import subprocess, threading
+        def _do_update():
+            import time as _t, os as _os
+            GITHUB_BASE = 'https://raw.githubusercontent.com/gelcijosegrouptrig-cmyk/vortexpay/main'
+            files = ['server.py','admin.html','paypix.html','paypix2.html','bot2_handler.py','bot3_handler.py']
+            import time as _tt
+            ts = int(_tt.time())
+            for fname in files:
+                subprocess.run(['curl','-s','-f','-o',fname,f'{GITHUB_BASE}/{fname}?t={ts}'],
+                               capture_output=True)
+            _t.sleep(1); _os._exit(1)
+        threading.Thread(target=_do_update, daemon=True).start()
+        return web.json_response({'status': 'updating', 'msg': 'Baixando arquivos do GitHub e reiniciando...'})
+    app.router.add_get('/api/admin/update-self', route_update_self)
+
     # Endpoint para resetar o lock preso + diagnóstico completo
     async def route_lock_reset(request):
         global _lock
