@@ -12353,42 +12353,296 @@ async def route_admin_jogo_resp_set(request):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🤝  ITEM 9 — Afiliados / Indicação
 # ═══════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🤝  SISTEMA DE AFILIADOS — Admin gerencia, comissão automática
+# ═══════════════════════════════════════════════════════════════════════════════
+
 async def route_admin_afiliados_list(request):
-    """GET /api/admin/afiliados — lista afiliados com métricas."""
+    """GET /api/admin/afiliados — lista afiliados com métricas completas."""
     _ok, _staff = _staff_auth(request, 'afiliados_ver', 'relatorios_ver')
     if not _ok:
         return web.json_response({'error': 'Não autorizado'}, status=401)
     try:
         conn = _admin_db_connect(); cur = conn.cursor()
-        # Garantir coluna referido_por
-        try:
-            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS referido_por INTEGER DEFAULT NULL")
-            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS codigo_indicacao VARCHAR(20) DEFAULT NULL")
-            conn.commit()
-        except Exception: conn.rollback()
+        # Migração: garantir colunas necessárias
+        for sql in [
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS referido_por INTEGER DEFAULT NULL",
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS codigo_indicacao VARCHAR(20) DEFAULT NULL",
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS comissao_pct NUMERIC(5,2) DEFAULT 10.0",
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS afiliado_ativo BOOLEAN DEFAULT FALSE",
+            """CREATE TABLE IF NOT EXISTS comissoes_afiliados (
+                id SERIAL PRIMARY KEY,
+                afiliado_id INTEGER NOT NULL,
+                indicado_id INTEGER NOT NULL,
+                aposta_id   INTEGER,
+                valor_aposta NUMERIC(10,2) DEFAULT 0,
+                pct_comissao NUMERIC(5,2) DEFAULT 10.0,
+                valor_comissao NUMERIC(10,2) DEFAULT 0,
+                pago_em TIMESTAMP DEFAULT NOW(),
+                descricao TEXT
+            )""",
+        ]:
+            try: cur.execute(sql); conn.commit()
+            except Exception: conn.rollback()
+
         cur.execute("""
             SELECT u.id, u.nome, u.cpf, u.codigo_indicacao,
-                   COUNT(r.id) AS indicados,
+                   COALESCE(u.comissao_pct, 10.0),
+                   COALESCE(u.afiliado_ativo, FALSE),
+                   COUNT(DISTINCT r.id) AS indicados,
                    COALESCE(SUM(a_r.valor),0) AS volume_indicados,
+                   COALESCE(SUM(c.valor_comissao),0) AS total_comissao,
                    u.criado_em
             FROM usuarios u
             LEFT JOIN usuarios r ON r.referido_por=u.id
             LEFT JOIN apostas a_r ON a_r.usuario_id=r.id
+            LEFT JOIN comissoes_afiliados c ON c.afiliado_id=u.id
             WHERE u.codigo_indicacao IS NOT NULL
-            GROUP BY u.id ORDER BY COUNT(r.id) DESC LIMIT 50
+            GROUP BY u.id ORDER BY COUNT(DISTINCT r.id) DESC LIMIT 100
         """)
-        afiliados = [{'id': r[0], 'nome': r[1] or '?', 'cpf': r[2] or '',
-                      'codigo': r[3] or '', 'indicados': r[4],
-                      'volume_indicados': float(r[5] or 0),
-                      'criado_em': str(r[6])[:10] if r[6] else ''} for r in cur.fetchall()]
+        cols = ['id','nome','cpf','codigo','comissao_pct','ativo',
+                'indicados','volume_indicados','total_comissao','criado_em']
+        afiliados = []
+        for r in cur.fetchall():
+            d = dict(zip(cols, r))
+            d['comissao_pct']    = float(d['comissao_pct'] or 10)
+            d['volume_indicados']= float(d['volume_indicados'] or 0)
+            d['total_comissao']  = float(d['total_comissao'] or 0)
+            d['criado_em']       = str(d['criado_em'])[:10] if d['criado_em'] else ''
+            d['link']            = f'https://paynexbet.com/?ref={d["codigo"]}'
+            afiliados.append(d)
+
         cur.execute("SELECT COUNT(*) FROM usuarios WHERE referido_por IS NOT NULL")
         total_indicados = cur.fetchone()[0]
+        cur.execute("SELECT COALESCE(SUM(valor_comissao),0) FROM comissoes_afiliados")
+        total_comissao_pago = float(cur.fetchone()[0] or 0)
         cur.close(); conn.close()
-        return web.json_response({'ok': True, 'afiliados': afiliados,
-                                  'total_indicados': total_indicados,
-                                  'total_afiliados': len(afiliados)})
+        return web.json_response({
+            'ok': True, 'afiliados': afiliados,
+            'total_indicados': total_indicados,
+            'total_afiliados': len(afiliados),
+            'total_comissao_pago': total_comissao_pago
+        })
     except Exception as e:
         return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_afiliados_cadastrar(request):
+    """POST /api/admin/afiliados/cadastrar — Admin cadastra usuário como afiliado."""
+    _ok, _staff = _staff_auth(request, 'afiliados_ver')
+    if not _ok:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        body = await request.json()
+        usuario_id   = int(body.get('usuario_id', 0))
+        comissao_pct = float(body.get('comissao_pct', 10.0))
+        comissao_pct = max(0.1, min(99.0, comissao_pct))
+        if not usuario_id:
+            return web.json_response({'ok': False, 'error': 'usuario_id obrigatório'})
+
+        conn = _admin_db_connect(); cur = conn.cursor()
+        # Migração segura
+        for sql in [
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS codigo_indicacao VARCHAR(20) DEFAULT NULL",
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS referido_por INTEGER DEFAULT NULL",
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS comissao_pct NUMERIC(5,2) DEFAULT 10.0",
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS afiliado_ativo BOOLEAN DEFAULT FALSE",
+        ]:
+            try: cur.execute(sql); conn.commit()
+            except Exception: conn.rollback()
+
+        cur.execute("SELECT id, nome, cpf, codigo_indicacao FROM usuarios WHERE id=%s", (usuario_id,))
+        u = cur.fetchone()
+        if not u:
+            cur.close(); conn.close()
+            return web.json_response({'ok': False, 'error': 'Usuário não encontrado'})
+
+        # Gerar código único se não tem
+        import random, string
+        codigo = u[3]
+        if not codigo:
+            while True:
+                codigo = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+                cur.execute("SELECT 1 FROM usuarios WHERE codigo_indicacao=%s", (codigo,))
+                if not cur.fetchone():
+                    break
+
+        cur.execute("""
+            UPDATE usuarios SET
+                codigo_indicacao = %s,
+                comissao_pct     = %s,
+                afiliado_ativo   = TRUE
+            WHERE id = %s
+        """, (codigo, comissao_pct, usuario_id))
+        conn.commit()
+        cur.close(); conn.close()
+        return web.json_response({
+            'ok': True,
+            'codigo': codigo,
+            'comissao_pct': comissao_pct,
+            'link': f'https://paynexbet.com/?ref={codigo}',
+            'nome': u[1], 'cpf': u[2]
+        })
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_afiliados_editar(request):
+    """PATCH /api/admin/afiliados/{id} — editar % comissão e status."""
+    _ok, _staff = _staff_auth(request, 'afiliados_ver')
+    if not _ok:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        usuario_id = int(request.match_info.get('id', 0))
+        body = await request.json()
+        conn = _admin_db_connect(); cur = conn.cursor()
+        campos, vals = [], []
+        if 'comissao_pct' in body:
+            pct = max(0.1, min(99.0, float(body['comissao_pct'])))
+            campos.append('comissao_pct=%s'); vals.append(pct)
+        if 'ativo' in body:
+            campos.append('afiliado_ativo=%s'); vals.append(bool(body['ativo']))
+        if not campos:
+            return web.json_response({'ok': False, 'error': 'Nada para atualizar'})
+        vals.append(usuario_id)
+        cur.execute(f"UPDATE usuarios SET {', '.join(campos)} WHERE id=%s", vals)
+        conn.commit(); cur.close(); conn.close()
+        return web.json_response({'ok': True})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_afiliados_remover(request):
+    """DELETE /api/admin/afiliados/{id} — desativa afiliado (mantém código)."""
+    _ok, _staff = _staff_auth(request, 'afiliados_ver')
+    if not _ok:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        usuario_id = int(request.match_info.get('id', 0))
+        conn = _admin_db_connect(); cur = conn.cursor()
+        cur.execute("UPDATE usuarios SET afiliado_ativo=FALSE WHERE id=%s", (usuario_id,))
+        conn.commit(); cur.close(); conn.close()
+        return web.json_response({'ok': True})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_afiliados_buscar_usuario(request):
+    """GET /api/admin/afiliados/buscar?q=nome_ou_cpf — busca usuário para cadastrar como afiliado."""
+    _ok, _staff = _staff_auth(request, 'afiliados_ver')
+    if not _ok:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    q = request.rel_url.query.get('q', '').strip()
+    if len(q) < 2:
+        return web.json_response({'ok': False, 'usuarios': []})
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        q_like = f'%{q}%'
+        cpf_q  = ''.join(filter(str.isdigit, q))
+        cur.execute("""
+            SELECT id, nome, cpf, codigo_indicacao, COALESCE(comissao_pct,10), COALESCE(afiliado_ativo,FALSE)
+            FROM usuarios
+            WHERE nome ILIKE %s OR cpf LIKE %s
+            ORDER BY nome LIMIT 10
+        """, (q_like, f'%{cpf_q}%' if cpf_q else q_like))
+        usuarios = [{'id':r[0],'nome':r[1],'cpf':r[2],'codigo':r[3],
+                     'comissao_pct':float(r[4] or 10),'afiliado':bool(r[5])} for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return web.json_response({'ok': True, 'usuarios': usuarios})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def route_admin_afiliados_comissoes(request):
+    """GET /api/admin/afiliados/{id}/comissoes — histórico de comissões pagas."""
+    _ok, _staff = _staff_auth(request, 'afiliados_ver')
+    if not _ok:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        usuario_id = int(request.match_info.get('id', 0))
+        conn = _admin_db_connect(); cur = conn.cursor()
+        try:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS comissoes_afiliados (
+                    id SERIAL PRIMARY KEY,
+                    afiliado_id INTEGER NOT NULL,
+                    indicado_id INTEGER NOT NULL,
+                    aposta_id   INTEGER,
+                    valor_aposta NUMERIC(10,2) DEFAULT 0,
+                    pct_comissao NUMERIC(5,2) DEFAULT 10.0,
+                    valor_comissao NUMERIC(10,2) DEFAULT 0,
+                    pago_em TIMESTAMP DEFAULT NOW(),
+                    descricao TEXT
+                )
+            """); conn.commit()
+        except Exception: conn.rollback()
+        cur.execute("""
+            SELECT c.id, u.nome, c.valor_aposta, c.pct_comissao, c.valor_comissao, c.pago_em, c.descricao
+            FROM comissoes_afiliados c
+            LEFT JOIN usuarios u ON u.id=c.indicado_id
+            WHERE c.afiliado_id=%s
+            ORDER BY c.pago_em DESC LIMIT 50
+        """, (usuario_id,))
+        comissoes = [{'id':r[0],'indicado':r[1],'valor_aposta':float(r[2] or 0),
+                      'pct':float(r[3] or 0),'valor_comissao':float(r[4] or 0),
+                      'data':str(r[5])[:16] if r[5] else '','descricao':r[6] or ''} for r in cur.fetchall()]
+        cur.execute("SELECT COALESCE(SUM(valor_comissao),0) FROM comissoes_afiliados WHERE afiliado_id=%s", (usuario_id,))
+        total = float(cur.fetchone()[0] or 0)
+        cur.close(); conn.close()
+        return web.json_response({'ok': True, 'comissoes': comissoes, 'total': total})
+    except Exception as e:
+        return web.json_response({'ok': False, 'error': str(e)}, status=500)
+
+
+async def _creditar_comissao_afiliado(usuario_id: int, valor_aposta: float, aposta_id=None):
+    """Credita comissão ao afiliado quando indicado ganha uma aposta."""
+    try:
+        conn = _admin_db_connect(); cur = conn.cursor()
+        # Buscar se o usuário tem afiliado que o indicou
+        cur.execute("""
+            SELECT u_af.id, u_af.nome, COALESCE(u_af.comissao_pct,10.0)
+            FROM usuarios u_ind
+            JOIN usuarios u_af ON u_af.id = u_ind.referido_por
+            WHERE u_ind.id=%s AND COALESCE(u_af.afiliado_ativo,FALSE)=TRUE
+        """, (usuario_id,))
+        af = cur.fetchone()
+        if not af:
+            cur.close(); conn.close()
+            return
+        afiliado_id, af_nome, pct = af[0], af[1], float(af[2])
+        valor_comissao = round(valor_aposta * pct / 100.0, 2)
+        if valor_comissao <= 0:
+            cur.close(); conn.close()
+            return
+        # Creditar saldo ao afiliado
+        cur.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id=%s", (valor_comissao, afiliado_id))
+        # Registrar no histórico
+        try:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS comissoes_afiliados (
+                    id SERIAL PRIMARY KEY,
+                    afiliado_id INTEGER NOT NULL,
+                    indicado_id INTEGER NOT NULL,
+                    aposta_id   INTEGER,
+                    valor_aposta NUMERIC(10,2) DEFAULT 0,
+                    pct_comissao NUMERIC(5,2) DEFAULT 10.0,
+                    valor_comissao NUMERIC(10,2) DEFAULT 0,
+                    pago_em TIMESTAMP DEFAULT NOW(),
+                    descricao TEXT
+                )
+            """); conn.commit()
+        except Exception: conn.rollback()
+        cur.execute("""
+            INSERT INTO comissoes_afiliados
+                (afiliado_id, indicado_id, aposta_id, valor_aposta, pct_comissao, valor_comissao, descricao)
+            VALUES (%s,%s,%s,%s,%s,%s,%s)
+        """, (afiliado_id, usuario_id, aposta_id, valor_aposta, pct, valor_comissao,
+              f'Comissão {pct}% sobre aposta de R${valor_aposta:.2f}'))
+        conn.commit()
+        cur.close(); conn.close()
+        print(f'[afiliado] Comissão R${valor_comissao:.2f} creditada ao afiliado {af_nome} (id={afiliado_id})', flush=True)
+    except Exception as e:
+        print(f'[afiliado] Erro ao creditar comissão: {e}', flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔔  ITEM 8 — Notificações Telegram ao Admin
@@ -14846,6 +15100,7 @@ async def route_bet_login(request):
 
         if nome:
             # ── CADASTRO: Upsert — cria ou retorna existente, atualizando nome se vazio
+            ref_code = str(body.get('ref', '')).strip().upper()
             cur.execute("""
                 INSERT INTO usuarios (cpf, nome, saldo)
                 VALUES (%s, %s, 0)
@@ -14854,6 +15109,22 @@ async def route_bet_login(request):
                     ELSE usuarios.nome END
                 RETURNING id, nome, cpf, saldo
             """, (cpf, nome))
+            row_new = cur.fetchone()
+            # Vincular ao afiliado se vier ref e usuário novo (saldo=0 e recém criado)
+            if ref_code and row_new:
+                try:
+                    cur.execute("""
+                        SELECT id FROM usuarios
+                        WHERE codigo_indicacao=%s AND COALESCE(afiliado_ativo,FALSE)=TRUE
+                    """, (ref_code,))
+                    af = cur.fetchone()
+                    if af:
+                        cur.execute("""
+                            UPDATE usuarios SET referido_por=%s
+                            WHERE id=%s AND (referido_por IS NULL)
+                        """, (af[0], row_new[0]))
+                        conn.commit()
+                except Exception: pass
         else:
             # ── LOGIN: só CPF — busca usuário existente
             cur.execute("SELECT id, nome, cpf, saldo FROM usuarios WHERE cpf=%s", (cpf,))
@@ -17980,8 +18251,13 @@ async def main():
     # Jogo Responsável
     app.router.add_get('/api/admin/jogo-responsavel',   route_admin_jogo_resp_list)
     app.router.add_post('/api/admin/jogo-responsavel',  route_admin_jogo_resp_set)
-    # Afiliados
-    app.router.add_get('/api/admin/afiliados',          route_admin_afiliados_list)
+    # Afiliados — Sistema completo (rotas estáticas ANTES das dinâmicas com {id})
+    app.router.add_get('/api/admin/afiliados',                    route_admin_afiliados_list)
+    app.router.add_get('/api/admin/afiliados/buscar',             route_admin_afiliados_buscar_usuario)
+    app.router.add_post('/api/admin/afiliados/cadastrar',         route_admin_afiliados_cadastrar)
+    app.router.add_get('/api/admin/afiliados/{id}/comissoes',     route_admin_afiliados_comissoes)
+    app.router.add_patch('/api/admin/afiliados/{id}',             route_admin_afiliados_editar)
+    app.router.add_delete('/api/admin/afiliados/{id}',            route_admin_afiliados_remover)
     # Notificações Telegram admin
     app.router.add_post('/api/admin/notif-config',      route_admin_notif_config)
     app.router.add_get('/api/admin/notif-config',       route_admin_notif_config_get)
