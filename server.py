@@ -406,6 +406,13 @@ def init_db():
                     created_at TEXT,
                     finalizado_at TEXT,
                     observacao TEXT)""",
+                """CREATE TABLE IF NOT EXISTS cobrar_acumulo (
+                    id SERIAL PRIMARY KEY,
+                    chave_pix TEXT NOT NULL,
+                    tipo_chave TEXT NOT NULL,
+                    valor_acumulado REAL NOT NULL DEFAULT 0,
+                    tx_ids TEXT NOT NULL DEFAULT '[]',
+                    updated_at TEXT)""",
             ]
             for sql in pg_tables:
                 try:
@@ -7378,13 +7385,14 @@ async def _tentar_envio_split(item_id, val_par, chave, tipo, tx_id, tentativa_nu
 
 async def _processar_split_paypix(tx_id, valor, extra_str):
     """
-
     Fase 1 - Tenta enviar 3 vezes com 30s de intervalo.
-    Se falhar nas 3: enfileira na paypix_fila para o worker tentar a cada 5 min até conseguir.
+    Se falhar nas 3: enfileira na paypix_fila para o worker tentar a cada 5 min.
+    Para tipo 'cobrar' com val_par < R$10: acumula em cobrar_acumulo até atingir mínimo.
     """
 
     TENTATIVAS_RAPIDAS = 3
-    DELAY_RAPIDO       = 30  # segundos entre tentativas rápidas
+    DELAY_RAPIDO       = 30   # segundos entre tentativas rápidas
+    BOT_MIN_SAQUE      = 10.0 # mínimo de saque do bot VortexBank
 
     try:
         extra = json.loads(extra_str or '{}')
@@ -7395,38 +7403,89 @@ async def _processar_split_paypix(tx_id, valor, extra_str):
         pct     = float(extra.get('parceiro_pct', 0.6))
         val_par = round(valor * pct, 2)
 
-        # cobrar permite saque a partir de R$1,00 (parceiro pode cobrar R$5 → recebe R$4,25)
-        min_split = 1.0 if extra.get('tipo') == 'cobrar' else 10.0
-        if not chave or val_par < min_split:
-            print(f'[Split] bloqueado - valor parceiro R${val_par:.2f} abaixo do mínimo R${min_split:.2f} ou chave inválida. tx={tx_id}', flush=True)
+        if not chave or val_par <= 0:
+            print(f'[Split] bloqueado - chave inválida ou valor zero. tx={tx_id}', flush=True)
             return
 
-        # ── FASE 1: 3 tentativas rápidas (30s entre cada) ──
+        # ── Para cobrar: acumular se val_par < mínimo do bot ──────────────────
+        if extra.get('tipo') == 'cobrar' and val_par < BOT_MIN_SAQUE:
+            try:
+                import psycopg2 as _pg_ac
+                _conn_ac = _pg_ac.connect(DATABASE_URL, connect_timeout=8)
+                _cur_ac  = _conn_ac.cursor()
+                _cur_ac.execute("""
+                    CREATE TABLE IF NOT EXISTS cobrar_acumulo (
+                        id SERIAL PRIMARY KEY, chave_pix TEXT NOT NULL,
+                        tipo_chave TEXT NOT NULL, valor_acumulado REAL NOT NULL DEFAULT 0,
+                        tx_ids TEXT NOT NULL DEFAULT '[]', updated_at TEXT)
+                """)
+                _cur_ac.execute(
+                    "SELECT id, valor_acumulado, tx_ids FROM cobrar_acumulo WHERE chave_pix=%s AND tipo_chave=%s",
+                    (chave, tipo)
+                )
+                row_ac    = _cur_ac.fetchone()
+                novo_total = round((row_ac[1] if row_ac else 0) + val_par, 2)
+                tx_ids_list = json.loads(row_ac[2] if row_ac else '[]')
+                if tx_id not in tx_ids_list:
+                    tx_ids_list.append(tx_id)
+                now_str = datetime.now().isoformat()
+                if row_ac:
+                    _cur_ac.execute(
+                        "UPDATE cobrar_acumulo SET valor_acumulado=%s, tx_ids=%s, updated_at=%s WHERE id=%s",
+                        (novo_total, json.dumps(tx_ids_list), now_str, row_ac[0])
+                    )
+                else:
+                    _cur_ac.execute(
+                        "INSERT INTO cobrar_acumulo (chave_pix, tipo_chave, valor_acumulado, tx_ids, updated_at) VALUES (%s,%s,%s,%s,%s)",
+                        (chave, tipo, novo_total, json.dumps(tx_ids_list), now_str)
+                    )
+                _conn_ac.commit()
+                _cur_ac.close(); _conn_ac.close()
+
+                if novo_total < BOT_MIN_SAQUE:
+                    print(f'[Cobrar Acúmulo] +R${val_par:.2f} → total R${novo_total:.2f} (aguardando R${BOT_MIN_SAQUE:.2f}) chave={chave}', flush=True)
+                    return  # aguarda próximas cobranças
+                else:
+                    # Atingiu o mínimo — sacar o total e zerar acúmulo
+                    print(f'[Cobrar Acúmulo] ✅ R${novo_total:.2f} ≥ R${BOT_MIN_SAQUE:.2f} → disparando saque!', flush=True)
+                    val_par = novo_total
+                    _conn_z = _pg_ac.connect(DATABASE_URL, connect_timeout=8)
+                    _cur_z  = _conn_z.cursor()
+                    _cur_z.execute(
+                        "UPDATE cobrar_acumulo SET valor_acumulado=0, tx_ids='[]', updated_at=%s WHERE chave_pix=%s AND tipo_chave=%s",
+                        (now_str, chave, tipo)
+                    )
+                    _conn_z.commit()
+                    _cur_z.close(); _conn_z.close()
+            except Exception as e_ac:
+                print(f'[Cobrar Acúmulo] erro: {e_ac} — enfileirando para retry', flush=True)
+                _paypix_fila_inserir(tx_id, val_par, chave, tipo, pct)
+                return
+
+        # ── FASE 1: 3 tentativas rápidas (30s entre cada) ──────────────────────
         resultado = None
         for n in range(1, TENTATIVAS_RAPIDAS + 1):
             resultado = await _tentar_envio_split(0, val_par, chave, tipo, tx_id, n)
             if resultado.get('success'):
-                # ✅ Sucesso - registrar saque e sair
                 _registrar_saque_split(tx_id, val_par, chave, tipo, pct, resultado, n)
                 return
             if n < TENTATIVAS_RAPIDAS:
                 print(f'[PayPix] aguardando {DELAY_RAPIDO}s antes do retry {n+1}...', flush=True)
                 await asyncio.sleep(DELAY_RAPIDO)
 
-        # ── FASE 2: Falhou nas 3 → enfileirar para worker persistente ──
-        print(f'[PayPix] ❌ Falhou nas {TENTATIVAS_RAPIDAS} tentativas rápidas. Enfileirando para retry a cada 5min...', flush=True)
+        # ── FASE 2: Falhou nas 3 → enfileirar para worker persistente ──────────
+        print(f'[PayPix] ❌ Falhou nas {TENTATIVAS_RAPIDAS} tentativas. Enfileirando para retry a cada 5min...', flush=True)
         _paypix_fila_inserir(tx_id, val_par, chave, tipo, pct)
 
     except Exception as e:
         print(f'[PayPix] erro split (exceção): {e}', flush=True)
-        # Se exceção, tentar enfileirar para não perder o split
         try:
             extra2 = json.loads(extra_str or '{}')
-            chave2  = extra2.get('parceiro_chave', '')
-            tipo2   = extra2.get('parceiro_tipo', 'cpf')
-            pct2    = float(extra2.get('parceiro_pct', 0.6))
-            val2    = round(valor * pct2, 2)
-            if chave2 and val2 >= 10:
+            chave2 = extra2.get('parceiro_chave', '')
+            tipo2  = extra2.get('parceiro_tipo', 'cpf')
+            pct2   = float(extra2.get('parceiro_pct', 0.6))
+            val2   = round(valor * pct2, 2)
+            if chave2 and val2 >= 1:
                 _paypix_fila_inserir(tx_id, val2, chave2, tipo2, pct2)
         except Exception:
             pass

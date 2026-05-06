@@ -2100,7 +2100,7 @@ async function doCadastro(){
   if(!nome){showMsg('err-cad','Informe seu nome completo.',true);return}
   if(cpf.length!==11){showMsg('err-cad','CPF inválido (11 dígitos).',true);return}
   try{
-    const r=await fetch(BASE+'/api/bet/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,cpf})});
+    const r=await fetch(BASE+'/api/bet/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,cpf,ref:localStorage.getItem('afl_ref')||''})});
     if(!r.ok){showMsg('err-cad','Erro no servidor ('+r.status+').',true);return}
     const d=await r.json();
     if(d.error){showMsg('err-cad',d.error,true);return}
@@ -4929,7 +4929,16 @@ setInterval(async()=>{
   var _touchStartX = 0;
   var _touchStartY = 0;
 
-  window.abrirDrawerMobile = function() {
+  // Capturar código de afiliado da URL (?ref=CODIGO)
+(function(){
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var ref = params.get('ref');
+    if (ref) localStorage.setItem('afl_ref', ref.toUpperCase());
+  } catch(e){}
+})();
+
+window.abrirDrawerMobile = function() {
     _drawerOpen = true;
     var drawer = document.getElementById('mobile-drawer');
     var overlay = document.getElementById('drawer-overlay');
