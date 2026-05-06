@@ -6768,6 +6768,102 @@ async def route_cobrar_page(request):
         return web.Response(text=html, content_type='text/html', charset='utf-8')
     return web.Response(text='<h1>Cobrar via Pix</h1>', content_type='text/html')
 
+
+async def route_cobrar_config(request):
+    """
+    GET  /api/cobrar/config  — Retorna configuração da página /cobrar (%, mínimo, ativo).
+    POST /api/cobrar/config  — Salva configuração (requer X-Admin-Secret).
+    """
+    headers = {'Access-Control-Allow-Origin': '*'}
+
+    if request.method == 'POST':
+        # Autenticação básica pelo header secret
+        secret = request.headers.get('X-Admin-Secret', '') or request.headers.get('X-PaynexBet-Secret', '')
+        if secret != WEBHOOK_SECRET:
+            return web.json_response({'success': False, 'error': 'Não autorizado'}, status=403, headers=headers)
+
+        try:
+            data = await request.json()
+            pct_raw  = float(data.get('cobrar_pct', 60))
+            pct      = max(1.0, min(99.0, pct_raw)) / 100.0   # guarda como 0.0–1.0
+            minval   = float(data.get('cobrar_min', 5.0))
+            minval   = max(1.0, min(10000.0, minval))
+            ativo    = bool(data.get('cobrar_ativo', True))
+            desc     = str(data.get('cobrar_descricao', 'Gere seu Pix e receba sua % automaticamente')).strip()[:200]
+
+            import psycopg2 as _pgcc
+            conn = _pgcc.connect(DATABASE_URL, connect_timeout=8)
+            cur  = conn.cursor()
+            # Garante coluna cobrar_pct na sorteio_config
+            for col_sql in [
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_pct  REAL    DEFAULT 0.6",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_min  REAL    DEFAULT 5.0",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_ativo INTEGER DEFAULT 1",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_desc TEXT    DEFAULT ''",
+            ]:
+                try:
+                    cur.execute(col_sql)
+                except Exception:
+                    pass
+            cur.execute("""
+                UPDATE sorteio_config SET cobrar_pct=%s, cobrar_min=%s, cobrar_ativo=%s, cobrar_desc=%s WHERE id=1
+            """, (pct, minval, 1 if ativo else 0, desc))
+            if cur.rowcount == 0:
+                cur.execute("""
+                    INSERT INTO sorteio_config (id, cobrar_pct, cobrar_min, cobrar_ativo, cobrar_desc)
+                    VALUES (1, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE
+                    SET cobrar_pct=EXCLUDED.cobrar_pct, cobrar_min=EXCLUDED.cobrar_min,
+                        cobrar_ativo=EXCLUDED.cobrar_ativo, cobrar_desc=EXCLUDED.cobrar_desc
+                """, (pct, minval, 1 if ativo else 0, desc))
+            conn.commit()
+            cur.close(); conn.close()
+            return web.json_response({
+                'success':            True,
+                'cobrar_pct':         pct,
+                'cobrar_pct_display': f'{round(pct * 100, 1)}%',
+                'cobrar_min':         minval,
+                'cobrar_ativo':       ativo,
+                'cobrar_descricao':   desc,
+                'message':            f'✅ Configuração salva! Parceiros receberão {round(pct*100,1)}% a partir de agora.'
+            }, headers=headers)
+        except Exception as e:
+            return web.json_response({'success': False, 'error': str(e)}, status=500, headers=headers)
+
+    # GET — retorna config atual
+    try:
+        import psycopg2 as _pgccg
+        conn = _pgccg.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        try:
+            cur.execute("SELECT cobrar_pct, cobrar_min, cobrar_ativo, cobrar_desc FROM sorteio_config WHERE id=1")
+            row = cur.fetchone()
+        except Exception:
+            row = None
+        cur.close(); conn.close()
+        if row:
+            pct   = float(row[0]) if row[0] is not None else 0.6
+            minv  = float(row[1]) if row[1] is not None else 5.0
+            ativo = bool(row[2])  if row[2] is not None else True
+            desc  = str(row[3])   if row[3]              else 'Gere seu Pix e receba sua % automaticamente'
+            return web.json_response({
+                'cobrar_pct':         pct,
+                'cobrar_pct_display': f'{round(pct * 100, 1)}%',
+                'cobrar_min':         minv,
+                'cobrar_ativo':       ativo,
+                'cobrar_descricao':   desc,
+            }, headers=headers)
+    except Exception:
+        pass
+    # fallback
+    return web.json_response({
+        'cobrar_pct':         0.6,
+        'cobrar_pct_display': '60.0%',
+        'cobrar_min':         5.0,
+        'cobrar_ativo':       True,
+        'cobrar_descricao':   'Gere seu Pix e receba sua % automaticamente',
+    }, headers=headers)
+
+
 async def route_paypix_page(request):
     """Página pública /paypix - parceiro gera Pix e recebe 60%"""
 
@@ -18141,7 +18237,9 @@ async def main():
     app.router.add_get('/api/admin/canais',                 route_admin_status_canais)
     app.router.add_post('/api/admin/testar-canais',         route_admin_testar_canais)
     # PayPix - parceiro gera Pix e recebe 60%
-    app.router.add_get('/cobrar', route_cobrar_page)   # página exclusiva Promo Telegram
+    app.router.add_get('/cobrar',              route_cobrar_page)          # página exclusiva Promo Telegram
+    app.router.add_get('/api/cobrar/config',   route_cobrar_config)         # config % cobrar (GET)
+    app.router.add_post('/api/cobrar/config',  route_cobrar_config)         # config % cobrar (POST/save)
     app.router.add_get('/paypix', route_paypix_page)
     app.router.add_post('/api/paypix/gerar', route_paypix_gerar)
     app.router.add_get('/api/paypix/status/{tx_id}', route_paypix_status)

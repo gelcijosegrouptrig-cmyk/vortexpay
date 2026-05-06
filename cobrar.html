@@ -82,6 +82,9 @@
     box-shadow:0 0 30px rgba(74,222,128,.15)}
   .qr-box canvas,.qr-box img{display:block}
 
+  /* QR via base64 */
+  .qr-img{width:200px;height:200px;border-radius:8px;display:block}
+
   .pix-code-box{background:#0d0d14;border:1px solid #1e1e2e;border-radius:10px;
     padding:12px 14px;font-size:.7rem;color:var(--text2);word-break:break-all;
     line-height:1.5;margin-top:4px;max-height:70px;overflow:hidden}
@@ -208,7 +211,11 @@
     </div>
 
     <div class="qr-wrap">
-      <div class="qr-box"><div id="qrcode"></div></div>
+      <div class="qr-box" id="qr-container">
+        <!-- QR via base64 do MP ou gerado via lib -->
+        <div id="qrcode"></div>
+        <img id="qr-img-b64" class="qr-img" style="display:none" alt="QR Code Pix"/>
+      </div>
     </div>
 
     <div class="pix-code-box" id="pix-code-text"></div>
@@ -254,24 +261,25 @@
 // ─── BASE URL dinâmica ───
 const BASE = window.location.origin;
 
-let _txId        = null;
-let _pollTimer   = null;
-let _pixCode     = null;
-let _valor       = 0;
-let _pct         = 0.6;
-let _minValor    = 5;
+let _paymentId  = null;   // ID do pagamento MP retornado por /api/bot/gerar
+let _extRef     = null;   // external_ref (mp2_xxx) para polling
+let _pollTimer  = null;
+let _pixCode    = null;
+let _valor      = 0;
+let _pct        = 0.6;
+let _minValor   = 5;
 let _sistemaAtivo = true;
 
 function fmt(v){ return 'R$ ' + (v||0).toFixed(2).replace('.',','); }
 
-// ─── Carregar config (%) da API ───
+// ─── Carregar config (%) da API /cobrar ───
 async function carregarConfig() {
   try {
-    const r = await fetch(`${BASE}/api/paypix/config`);
+    const r = await fetch(`${BASE}/api/cobrar/config`);
     const d = await r.json();
-    _pct         = typeof d.paypix_pct === 'number' ? d.paypix_pct : 0.6;
-    _minValor    = typeof d.paypix_min === 'number' ? d.paypix_min : 5;
-    _sistemaAtivo = d.paypix_ativo !== false;
+    _pct          = typeof d.cobrar_pct  === 'number' ? d.cobrar_pct  : 0.6;
+    _minValor     = typeof d.cobrar_min  === 'number' ? d.cobrar_min  : 5;
+    _sistemaAtivo = d.cobrar_ativo !== false;
 
     const pct  = Math.round(_pct * 100) + '%';
     const plat = Math.round((1 - _pct) * 100) + '%';
@@ -280,7 +288,7 @@ async function carregarConfig() {
       `Gere seu Pix e receba ${pct} do valor automaticamente`;
     document.getElementById('lbl-valor').textContent =
       `Valor a cobrar (R$) — mínimo R$ ${_minValor.toFixed(2).replace('.',',')}`;
-    document.getElementById('valor').min = _minValor;
+    document.getElementById('valor').min         = _minValor;
     document.getElementById('valor').placeholder = `Ex: ${_minValor * 10}`;
     document.getElementById('lbl-voce').textContent = `💰 Você recebe (${pct})`;
     document.getElementById('lbl-plat').textContent = `🏦 Plataforma (${plat})`;
@@ -288,16 +296,18 @@ async function carregarConfig() {
       `O cliente escaneia o QR Code → paga → ${pct} cai na sua conta automaticamente`;
 
     if (!_sistemaAtivo) mostrarManutencao();
-  } catch(e) {}
+  } catch(e) {
+    // fallback silencioso — usa defaults
+  }
 }
 
 function mostrarManutencao() {
   _sistemaAtivo = false;
   document.getElementById('steps-header').style.display = 'none';
-  document.getElementById('step1').style.display = 'none';
-  document.getElementById('step2').style.display = 'none';
-  document.getElementById('step3').style.display = 'none';
-  document.getElementById('manut-box').style.display = 'block';
+  document.getElementById('step1').style.display        = 'none';
+  document.getElementById('step2').style.display        = 'none';
+  document.getElementById('step3').style.display        = 'none';
+  document.getElementById('manut-box').style.display    = 'block';
 }
 
 // ─── Preview split ao digitar ───
@@ -314,7 +324,7 @@ function atualizarSplit() {
   }
 }
 
-// ─── Gerar PIX ───
+// ─── Gerar PIX via /api/bot/gerar ───
 async function gerarPix() {
   if (!_sistemaAtivo) {
     alert('🔧 Sistema em manutenção. Tente novamente mais tarde.');
@@ -333,23 +343,37 @@ async function gerarPix() {
   btn.innerHTML = '<span class="loader"></span>Gerando…';
 
   try {
-    const res = await fetch(`${BASE}/api/paypix/gerar`, {
+    // Envia para /api/bot/gerar passando a chave pix como ref para split automático
+    const res = await fetch(`${BASE}/api/bot/gerar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chave_pix: chave, tipo_chave: tipo, valor })
+      body: JSON.stringify({
+        valor:      valor,
+        descricao:  'Cobrança via Pix',
+        nome:       'Cliente',
+        chave_pix:  chave,
+        tipo_chave: tipo,
+        cobrar_pct: _pct   // envia % para o backend aplicar o split
+      })
     });
     const data = await res.json();
 
     if (!data.success) {
-      alert('❌ ' + (data.error || 'Erro ao gerar Pix'));
+      alert('❌ ' + (data.error || 'Erro ao gerar Pix. Verifique a configuração do sistema.'));
       btn.disabled = false;
       btn.innerHTML = '🚀 Gerar QR Code Pix';
       return;
     }
 
-    _txId  = data.tx_id;
-    _valor = valor;
-    aguardarQrCode(btn);
+    _paymentId = data.payment_id   || data.external_ref || null;
+    _extRef    = data.external_ref || null;
+    _pixCode   = data.pix_copia_cola || '';
+    _valor     = valor;
+
+    // Exibir QR imediatamente (sem polling de geração)
+    mostrarQr(data);
+    btn.disabled = false;
+    btn.innerHTML = '🚀 Gerar QR Code Pix';
 
   } catch(e) {
     alert('❌ Erro de conexão. Tente novamente.');
@@ -358,56 +382,70 @@ async function gerarPix() {
   }
 }
 
-// ─── Polling até ter pix_code ───
-async function aguardarQrCode(btn) {
-  const msgs = ['Conectando…','Gerando QR Code…','Processando…','Quase pronto…','Aguarde…'];
-  for (let i = 0; i < 45; i++) {
-    btn.innerHTML = `<span class="loader"></span>${msgs[Math.min(Math.floor(i/9), msgs.length-1)]}`;
-    await new Promise(r => setTimeout(r, 2000));
-    try {
-      const r = await fetch(`${BASE}/api/paypix/status/${_txId}`);
-      const d = await r.json();
-      if (d.pix_code) { _pixCode = d.pix_code; mostrarQr(d.pix_code); return; }
-      if (d.status === 'erro') {
-        alert('❌ Falha ao gerar Pix. Tente novamente em instantes.');
-        btn.disabled = false; btn.innerHTML = '🚀 Gerar QR Code Pix';
-        return;
-      }
-    } catch(e) {}
-  }
-  alert('⚠️ Demorou mais que o esperado. Tente novamente.');
-  btn.disabled = false;
-  btn.innerHTML = '🚀 Gerar QR Code Pix';
-}
-
 // ─── Exibir QR Code ───
-function mostrarQr(pixCode) {
+function mostrarQr(data) {
   const voce = _valor * _pct;
   document.getElementById('valor-destaque').textContent = fmt(_valor);
   document.getElementById('voce-recebe-label').innerHTML =
     `Você recebe: <strong style="color:var(--green)">${fmt(voce)}</strong>`;
+
+  const pixCode = data.pix_copia_cola || '';
+  const qrB64   = data.qr_base64     || '';
+
   document.getElementById('pix-code-text').textContent = pixCode;
 
-  const qrEl = document.getElementById('qrcode');
-  qrEl.innerHTML = '';
-  new QRCode(qrEl, {
-    text: pixCode, width: 200, height: 200,
-    colorDark: '#000000', colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.M
-  });
+  // Usa QR base64 do MP (preferido) ou gera via lib
+  const imgEl = document.getElementById('qr-img-b64');
+  const qrEl  = document.getElementById('qrcode');
+
+  if (qrB64) {
+    // MP retorna base64 direto
+    imgEl.src          = 'data:image/png;base64,' + qrB64;
+    imgEl.style.display = 'block';
+    qrEl.style.display  = 'none';
+  } else if (pixCode) {
+    // Gera QR via qrcodejs
+    imgEl.style.display = 'none';
+    qrEl.innerHTML = '';
+    qrEl.style.display = 'block';
+    new QRCode(qrEl, {
+      text:         pixCode,
+      width:        200,
+      height:       200,
+      colorDark:    '#000000',
+      colorLight:   '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }
 
   setStep(2);
   iniciarPoll();
 }
 
-// ─── Poll pagamento ───
+// ─── Poll pagamento via /api/bot/status/{payment_id} ───
 function iniciarPoll() {
   if (_pollTimer) clearInterval(_pollTimer);
+
+  // Usa external_ref se disponível (mp2_xxx), senão payment_id numérico
+  const idParaPolling = _extRef || _paymentId;
+  if (!idParaPolling) return;
+
   _pollTimer = setInterval(async () => {
     try {
-      const r = await fetch(`${BASE}/api/paypix/status/${_txId}`);
+      const r = await fetch(`${BASE}/api/bot/status/${idParaPolling}`);
       const d = await r.json();
-      if (d.pagamento === 'pago' || d.status === 'pago') {
+
+      // Atualizar QR se ainda não tinha (raro, mas possível)
+      if (!_pixCode && d.pix_copia_cola) {
+        _pixCode = d.pix_copia_cola;
+        document.getElementById('pix-code-text').textContent = _pixCode;
+      }
+
+      const confirmado = d.confirmado || d.approved ||
+                         d.status === 'approved' || d.status === 'confirmado' ||
+                         d.pagamento === 'pago'  || d.status === 'pago';
+
+      if (confirmado) {
         clearInterval(_pollTimer);
         mostrarPago();
       }
@@ -444,11 +482,14 @@ async function copiarPix() {
 // ─── Novo QR ───
 function novoQr() {
   if (_pollTimer) clearInterval(_pollTimer);
-  _txId = null; _pixCode = null; _valor = 0;
-  document.getElementById('qrcode').innerHTML = '';
+  _paymentId = null; _extRef = null; _pixCode = null; _valor = 0;
+  document.getElementById('qrcode').innerHTML     = '';
+  document.getElementById('qr-img-b64').src       = '';
+  document.getElementById('qr-img-b64').style.display = 'none';
+  document.getElementById('qrcode').style.display = 'block';
   document.getElementById('split-preview').classList.remove('show');
-  document.getElementById('valor').value = '';
-  document.getElementById('chave_pix').value = '';
+  document.getElementById('valor').value          = '';
+  document.getElementById('chave_pix').value      = '';
   const btn = document.getElementById('btn-gerar');
   btn.disabled = false; btn.innerHTML = '🚀 Gerar QR Code Pix';
   setStep(1);

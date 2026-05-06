@@ -2632,13 +2632,81 @@ async function fazerLogin() {
                   </div>
                   <hr style="border:none;border-top:1px solid #2a2a2a;margin:2px 0">
                   <div style="font-size:11px;color:#555;text-align:center">
-                    Para alterar o %, vá em <b style="color:#aaa">PayPix → Configurações</b>
+                    Configure abaixo a % que o parceiro recebe na página <b style="color:#4ade80">/cobrar</b>
                   </div>
                 </div>
 
                 <div id="ptg-msg-link" style="font-size:12px;text-align:center;min-height:14px;color:#4ade80"></div>
               </div>
             </div><!-- /card link público -->
+
+            <!-- ── Card Configuração % /cobrar ── -->
+            <div class="table-card" style="border-color:#22c55e44">
+              <div class="table-header collapsible" onclick="colToggle('ptg-cobrar-config')" style="background:linear-gradient(135deg,#052a0520,#0a3a0a20)">
+                <h3>⚙️ Configurar % da Página /cobrar <span id="col-arrow-ptg-cobrar-config" class="collapse-arrow">▼</span></h3>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-cobrar-config">
+                <div style="display:flex;flex-direction:column;gap:16px;padding:4px 0">
+
+                  <div style="font-size:12px;color:#888;line-height:1.6;padding:8px 12px;background:#050f05;border-radius:8px;border-left:3px solid #22c55e55">
+                    💡 Define quanto o parceiro recebe de cada cobrança gerada via <b style="color:#4ade80">https://paynexbet.com/cobrar</b>.<br>
+                    O valor restante fica na plataforma. O parceiro informa a chave Pix no momento de gerar o QR Code.
+                  </div>
+
+                  <!-- % do parceiro -->
+                  <div>
+                    <label style="font-size:11px;color:#888;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">💰 % que o parceiro recebe</label>
+                    <div style="display:flex;align-items:center;gap:12px">
+                      <input type="number" id="ptg-cobrar-pct" min="1" max="99" step="1" value="60"
+                        style="width:100px;background:#0a0a14;border:2px solid #22c55e44;border-radius:10px;padding:11px 14px;color:#fff;font-size:20px;font-weight:800;text-align:center"
+                        oninput="ptgCobrarPreview()">
+                      <span style="color:#22c55e;font-weight:800;font-size:24px">%</span>
+                      <div style="flex:1;text-align:right">
+                        <div style="font-size:11px;color:#666">Plataforma retém</div>
+                        <div id="ptg-cobrar-plat-pct" style="font-size:22px;font-weight:800;color:#FFD700">40%</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Valor mínimo -->
+                  <div>
+                    <label style="font-size:11px;color:#888;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">💵 Valor mínimo (R$)</label>
+                    <input type="number" id="ptg-cobrar-min" min="1" max="9999" step="0.5" value="5"
+                      style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:16px;font-weight:700"
+                      placeholder="5.00">
+                  </div>
+
+                  <!-- Sistema ativo -->
+                  <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#0a0a14;border-radius:10px;border:1px solid #ffffff11">
+                    <label style="font-size:13px;color:#ccc;flex:1;cursor:pointer" for="ptg-cobrar-ativo">✅ Sistema ativo (desmarque para manutenção)</label>
+                    <input type="checkbox" id="ptg-cobrar-ativo" checked
+                      style="width:18px;height:18px;accent-color:#22c55e;cursor:pointer">
+                  </div>
+
+                  <!-- Preview split -->
+                  <div id="ptg-cobrar-preview" style="background:#0d1a0d;border:1px solid #2d6a2d33;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+                    <div style="font-size:11px;color:#666;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px">📊 Simulação — cobrança de R$ 100,00</div>
+                    <div style="display:flex;justify-content:space-between;font-size:13px">
+                      <span style="color:#888">💰 Parceiro recebe</span>
+                      <span id="ptg-cobrar-sim-voce" style="font-weight:700;color:#4ade80">R$ 60,00</span>
+                    </div>
+                    <hr style="border:none;border-top:1px solid #2a2a2a;margin:2px 0">
+                    <div style="display:flex;justify-content:space-between;font-size:13px">
+                      <span style="color:#888">🏦 Plataforma retém</span>
+                      <span id="ptg-cobrar-sim-plat" style="font-weight:700;color:#FFD700">R$ 40,00</span>
+                    </div>
+                  </div>
+
+                  <!-- Botão salvar -->
+                  <button onclick="ptgSalvarCobrarConfig()"
+                    style="padding:13px;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:12px;color:#000;font-size:14px;font-weight:800;cursor:pointer;width:100%">
+                    💾 Salvar Configuração
+                  </button>
+                  <div id="ptg-cobrar-msg" style="font-size:12px;text-align:center;min-height:14px"></div>
+
+                </div>
+              </div>
+            </div><!-- /card config cobrar -->
 
           </div><!-- /col esquerda -->
 
@@ -8928,6 +8996,9 @@ async function promoTgCarregar() {
 
   // ── Inicializar card Link Público PayPix ──
   ptgInicializarLinkPublico();
+
+  // ── Carregar config % do /cobrar ──
+  ptgCarregarCobrarConfig();
 }
 
 // ── Inicializar card Link Público ──
@@ -8983,6 +9054,86 @@ async function ptgCopiarLink() {
   const msg = document.getElementById('ptg-msg-link');
   if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(() => btn.textContent = '📋 Copiar', 2500); }
   if (msg) { msg.textContent = '✅ Link copiado! Compartilhe com seu parceiro.'; setTimeout(() => msg.textContent = '', 3000); }
+}
+
+// ── Config % da página /cobrar ──
+async function ptgCarregarCobrarConfig() {
+  try {
+    const r = await fetch('/api/cobrar/config');
+    const d = await r.json();
+    const pct = Math.round((d.cobrar_pct || 0.6) * 100);
+    const min = d.cobrar_min || 5;
+    const ativo = d.cobrar_ativo !== false;
+
+    const inpPct   = document.getElementById('ptg-cobrar-pct');
+    const inpMin   = document.getElementById('ptg-cobrar-min');
+    const inpAtivo = document.getElementById('ptg-cobrar-ativo');
+    if (inpPct)   inpPct.value   = pct;
+    if (inpMin)   inpMin.value   = min;
+    if (inpAtivo) inpAtivo.checked = ativo;
+
+    // Atualiza badge e split no card de link público também
+    const platPct = 100 - pct;
+    const elVoce = document.getElementById('ptg-link-pct-voce');
+    const elPlat = document.getElementById('ptg-link-pct-plat');
+    const badge  = document.getElementById('ptg-link-pct-badge');
+    if (elVoce) elVoce.textContent = pct + '% do valor cobrado';
+    if (elPlat) elPlat.textContent = platPct + '% do valor cobrado';
+    if (badge)  badge.textContent  = 'Parceiro: ' + pct + '%';
+
+    ptgCobrarPreview();
+  } catch(e) {}
+}
+
+function ptgCobrarPreview() {
+  const pct  = parseInt(document.getElementById('ptg-cobrar-pct')?.value) || 60;
+  const plat = 100 - pct;
+  const elPlat = document.getElementById('ptg-cobrar-plat-pct');
+  if (elPlat) elPlat.textContent = plat + '%';
+
+  const simVoce = document.getElementById('ptg-cobrar-sim-voce');
+  const simPlat = document.getElementById('ptg-cobrar-sim-plat');
+  if (simVoce) simVoce.textContent = 'R$ ' + (pct).toFixed(2).replace('.',',');
+  if (simPlat) simPlat.textContent = 'R$ ' + (plat).toFixed(2).replace('.',',');
+}
+
+async function ptgSalvarCobrarConfig() {
+  const pct   = parseInt(document.getElementById('ptg-cobrar-pct')?.value)   || 60;
+  const min   = parseFloat(document.getElementById('ptg-cobrar-min')?.value) || 5;
+  const ativo = document.getElementById('ptg-cobrar-ativo')?.checked !== false;
+  const msgEl = document.getElementById('ptg-cobrar-msg');
+
+  if (pct < 1 || pct > 99) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#f87171">⚠️ % deve ser entre 1 e 99.</span>';
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/cobrar/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': _adminSecret || '' },
+      body: JSON.stringify({ cobrar_pct: pct, cobrar_min: min, cobrar_ativo: ativo })
+    });
+    const d = await r.json();
+    if (d.success) {
+      if (msgEl) {
+        msgEl.innerHTML = `<span style="color:#4ade80">✅ Salvo! Parceiros receberão <b>${pct}%</b> a partir de agora.</span>`;
+        setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 4000);
+      }
+      // Atualiza badge no card de link
+      const platPct = 100 - pct;
+      const elVoce = document.getElementById('ptg-link-pct-voce');
+      const elPlat = document.getElementById('ptg-link-pct-plat');
+      const badge  = document.getElementById('ptg-link-pct-badge');
+      if (elVoce) elVoce.textContent = pct + '% do valor cobrado';
+      if (elPlat) elPlat.textContent = platPct + '% do valor cobrado';
+      if (badge)  badge.textContent  = 'Parceiro: ' + pct + '%';
+    } else {
+      if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">❌ ${d.error || 'Erro ao salvar'}</span>`;
+    }
+  } catch(e) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#f87171">❌ Erro de conexão.</span>';
+  }
 }
 
 // ── Atualizar split preview ao digitar ──
