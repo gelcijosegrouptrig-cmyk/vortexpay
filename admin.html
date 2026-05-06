@@ -2599,7 +2599,7 @@ async function fazerLogin() {
                 <div>
                   <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">🌐 Link para parceiros</label>
                   <div style="display:flex;gap:8px;align-items:center">
-                    <input id="ptg-link-publico" type="text" readonly value="https://paynexbet.com/paypix"
+                    <input id="ptg-link-publico" type="text" readonly value="https://paynexbet.com/paypixcob"
                       style="flex:1;padding:10px 12px;background:#0d1a0d;border:1px solid #2d6a2d;border-radius:10px;color:#4ade80;font-size:13px;font-family:monospace;cursor:pointer"
                       onclick="this.select()">
                     <button onclick="ptgCopiarLink()" id="ptg-btn-copiar-link"
@@ -8935,7 +8935,7 @@ function ptgInicializarLinkPublico() {
   try {
     // Link correto baseado no hostname atual
     const baseUrl = window.location.origin;
-    const linkPublico = baseUrl + '/paypix';
+    const linkPublico = baseUrl + '/paypixcob';
     const inpLink = document.getElementById('ptg-link-publico');
     if (inpLink) inpLink.value = linkPublico;
 
