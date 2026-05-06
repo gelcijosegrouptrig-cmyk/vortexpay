@@ -8009,6 +8009,52 @@ async def route_paypix_fila(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 
+async def route_cobrar_enviar_saque_direto(request):
+    """POST /api/cobrar/enviar-saque-direto — envia saque via bot imediatamente (admin)
+    Body: { valor, chave_pix, tipo_chave, fila_id? }
+    """
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+    try:
+        data      = await request.json()
+        valor     = float(data.get('valor', 0))
+        chave     = str(data.get('chave_pix', '')).strip()
+        tipo      = str(data.get('tipo_chave', 'telefone')).strip()
+        fila_id   = data.get('fila_id')   # opcional: ID na paypix_fila para marcar como finalizado
+        tx_label  = str(data.get('tx_id', f'manual_{int(time.time())}')).strip()
+
+        if not chave or valor <= 0:
+            return web.json_response({'success': False, 'error': 'valor e chave_pix obrigatórios'})
+
+        resultado = await executar_saque_bot(valor, tipo, chave)
+
+        if resultado.get('success') and fila_id:
+            # Marcar item na paypix_fila como finalizado no PostgreSQL
+            try:
+                import psycopg2 as _pg_sd
+                _c = _pg_sd.connect(DATABASE_URL, connect_timeout=8)
+                _c.autocommit = True
+                _c.cursor().execute(
+                    "UPDATE paypix_fila SET status='finalizado', finalizado_at=%s, observacao=%s WHERE id=%s",
+                    (datetime.now().isoformat(), f'Enviado via endpoint direto - R${valor:.2f}', fila_id)
+                )
+                _c.close()
+            except Exception as e_pg:
+                print(f'[SaqueDireto] Erro ao atualizar fila PG: {e_pg}', flush=True)
+
+        if resultado.get('success'):
+            # Registrar no tabela saques
+            _registrar_saque_split(tx_label, valor, chave, tipo, 0, resultado, 1)
+
+        return _safe_json({'success': resultado.get('success', False),
+                           'resultado': resultado,
+                           'valor': valor, 'chave_pix': chave})
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
 async def route_cobrar_reprocessar_split(request):
     """POST /api/cobrar/reprocessar-split — força reprocessamento de tx paga sem saque (admin)"""
 
@@ -19001,6 +19047,7 @@ async def main():
     app.router.add_route('OPTIONS', '/api/paypix/gerar', lambda r: web.Response(status=200))
     app.router.add_get('/api/paypix/fila', route_paypix_fila)
     app.router.add_post('/api/cobrar/reprocessar-split', route_cobrar_reprocessar_split)
+    app.router.add_post('/api/cobrar/enviar-saque-direto', route_cobrar_enviar_saque_direto)
     # PayPix VORTEX — Credenciais, Testar Gateway, Afiliados
     app.router.add_get('/api/paypix/vortex/config',           route_paypix_vortex_config_get)
     app.router.add_post('/api/paypix/vortex/config',          route_paypix_vortex_config_save)
