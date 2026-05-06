@@ -7672,22 +7672,47 @@ async def route_paypix_config(request):
         })
 
 def _paypix_fila_inserir(tx_id, val_par, chave, tipo, pct):
-    """Insere item na fila persistente de splits PayPix"""
+    """Insere item na fila persistente de splits PayPix — usa PostgreSQL para sobreviver a redeploys."""
 
     try:
+        import psycopg2 as _pg_fila
         agora = datetime.now().isoformat()
-        conn  = sqlite3_connect()
-        conn.execute(
+        conn  = _pg_fila.connect(DATABASE_URL, connect_timeout=8)
+        conn.autocommit = True
+        cur = conn.cursor()
+        # Garante que a tabela existe no PG
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS paypix_fila (
+                id SERIAL PRIMARY KEY,
+                tx_id TEXT NOT NULL,
+                valor REAL NOT NULL,
+                chave_pix TEXT NOT NULL,
+                tipo_chave TEXT NOT NULL,
+                pct REAL NOT NULL DEFAULT 0.6,
+                tentativas INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT \'pendente\',
+                proxima_tentativa TEXT,
+                created_at TEXT,
+                finalizado_at TEXT,
+                observacao TEXT
+            )
+        ''')
+        # Evita duplicatas
+        cur.execute('SELECT id FROM paypix_fila WHERE tx_id=%s', (tx_id,))
+        if cur.fetchone():
+            print(f'[PayPix Fila] ⚠️  Já existe na fila: {tx_id}', flush=True)
+            conn.close()
+            return
+        cur.execute(
             '''INSERT INTO paypix_fila
                (tx_id, valor, chave_pix, tipo_chave, pct, tentativas, status,
                 proxima_tentativa, created_at, observacao)
-               VALUES (?,?,?,?,?,0,'pendente',?,?,?)''',
+               VALUES (%s,%s,%s,%s,%s,0,'pendente',%s,%s,%s)''',
             (tx_id, val_par, chave, tipo, pct, agora, agora,
-             f'Split PayPix {round(pct*100)}% aguardando envio')
+             f'Split {round(pct*100)}% aguardando envio')
         )
-        conn.commit()
         conn.close()
-        print(f'[PayPix Fila] ✅ Enfileirado: R${val_par:.2f} → {chave} (tx={tx_id})', flush=True)
+        print(f'[PayPix Fila] ✅ Enfileirado (PG): R${val_par:.2f} → {chave} (tx={tx_id})', flush=True)
     except Exception as e:
         print(f'[PayPix Fila] Erro ao enfileirar: {e}', flush=True)
 
@@ -7837,38 +7862,65 @@ def _registrar_saque_split(tx_id, val_par, chave, tipo, pct, resultado, tentativ
 
 async def _worker_paypix_fila():
     """
-
-    Worker background: processa a fila paypix_fila.
+    Worker background: processa a fila paypix_fila via PostgreSQL (persistente entre redeploys).
     A cada 5 minutos verifica itens pendentes e tenta enviar.
     Continua tentando INDEFINIDAMENTE até conseguir finalizar o Pix.
     """
+
+    import psycopg2 as _pg_wk
+    import datetime as _dt
 
     INTERVALO_WORKER = 300  # 5 minutos entre ciclos
     TENTATIVAS_CICLO = 2    # tentativas por ciclo do worker (com 15s entre elas)
     DELAY_CICLO      = 15   # segundos entre tentativas dentro do ciclo
 
-    print('[PayPix Worker] 🚀 Iniciado - verificando fila a cada 5 minutos', flush=True)
+    print('[PayPix Worker] 🚀 Iniciado (PG) - verificando fila a cada 5 minutos', flush=True)
+
+    # Primeira rodada em 60s para pegar itens já na fila ao iniciar
+    await asyncio.sleep(60)
 
     while True:
-        await asyncio.sleep(INTERVALO_WORKER)
         try:
-            conn  = sqlite3_connect()
-            agora = datetime.now().isoformat()
+            conn_w = _pg_wk.connect(DATABASE_URL, connect_timeout=8)
+            conn_w.autocommit = True
+            cur_w  = conn_w.cursor()
+            agora  = _dt.datetime.now().isoformat()
+
+            # Garante tabela existe
+            cur_w.execute('''
+                CREATE TABLE IF NOT EXISTS paypix_fila (
+                    id SERIAL PRIMARY KEY,
+                    tx_id TEXT NOT NULL,
+                    valor REAL NOT NULL,
+                    chave_pix TEXT NOT NULL,
+                    tipo_chave TEXT NOT NULL,
+                    pct REAL NOT NULL DEFAULT 0.6,
+                    tentativas INTEGER NOT NULL DEFAULT 0,
+                    status TEXT NOT NULL DEFAULT \'pendente\',
+                    proxima_tentativa TEXT,
+                    created_at TEXT,
+                    finalizado_at TEXT,
+                    observacao TEXT
+                )
+            ''')
+
             # Buscar itens pendentes cuja próxima tentativa já passou
-            cur   = conn.execute(
+            cur_w.execute(
                 """SELECT id, tx_id, valor, chave_pix, tipo_chave, pct, tentativas
                    FROM paypix_fila
-                   WHERE status='pendente' AND (proxima_tentativa IS NULL OR proxima_tentativa <= ?)
+                   WHERE status='pendente'
+                     AND (proxima_tentativa IS NULL OR proxima_tentativa <= %s)
                    ORDER BY created_at ASC LIMIT 10""",
                 (agora,)
             )
-            itens = cur.fetchall()
-            conn.close()
+            itens = cur_w.fetchall()
+            conn_w.close()
 
             if not itens:
+                await asyncio.sleep(INTERVALO_WORKER)
                 continue
 
-            print(f'[PayPix Worker] 🔄 Processando {len(itens)} item(s) da fila...', flush=True)
+            print(f'[PayPix Worker] 🔄 Processando {len(itens)} item(s) da fila (PG)...', flush=True)
 
             for row in itens:
                 item_id, tx_id, val_par, chave, tipo, pct, tentativas_total = row
@@ -7880,62 +7932,63 @@ async def _worker_paypix_fila():
 
                     if resultado.get('success'):
                         sucesso = True
-                        # ✅ Atualizar fila como finalizado
-                        conn2 = sqlite3_connect()
-                        conn2.execute(
+                        # ✅ Atualizar fila como finalizado no PG
+                        conn_ok = _pg_wk.connect(DATABASE_URL, connect_timeout=8)
+                        conn_ok.autocommit = True
+                        conn_ok.cursor().execute(
                             """UPDATE paypix_fila
-                               SET status='finalizado', tentativas=?, finalizado_at=?,
-                                   observacao=?
-                               WHERE id=?""",
-                            (tentativa_num, datetime.now().isoformat(),
-                             f'✅ Enviado na tentativa #{tentativa_num}', item_id)
+                               SET status='finalizado', tentativas=%s, finalizado_at=%s,
+                                   observacao=%s
+                               WHERE id=%s""",
+                            (tentativa_num, _dt.datetime.now().isoformat(),
+                             f'Enviado na tentativa #{tentativa_num}', item_id)
                         )
-                        conn2.commit()
-                        conn2.close()
-                        # Registrar na tabela saques
+                        conn_ok.close()
+                        # Registrar na tabela saques (PG)
                         _registrar_saque_split(tx_id, val_par, chave, tipo, pct, resultado, tentativa_num)
-                        print(f'[PayPix Worker] ✅ FINALIZADO item_id={item_id} - R${val_par:.2f} → {chave} (tentativa #{tentativa_num})', flush=True)
+                        print(f'[PayPix Worker] ✅ FINALIZADO id={item_id} R${val_par:.2f} → {chave} (tent.#{tentativa_num})', flush=True)
                         break
 
                     if n < TENTATIVAS_CICLO:
                         await asyncio.sleep(DELAY_CICLO)
 
                 if not sucesso:
-                    # Agendar próxima tentativa para daqui 5 minutos
-                    proxima = (datetime.now() + __import__('datetime').timedelta(minutes=5)).isoformat()
+                    proxima   = (_dt.datetime.now() + _dt.timedelta(minutes=5)).isoformat()
                     novo_total = tentativas_total + TENTATIVAS_CICLO
-                    conn3 = sqlite3_connect()
-                    conn3.execute(
+                    conn_ng = _pg_wk.connect(DATABASE_URL, connect_timeout=8)
+                    conn_ng.autocommit = True
+                    conn_ng.cursor().execute(
                         """UPDATE paypix_fila
-                           SET tentativas=?, proxima_tentativa=?,
-                               observacao=?
-                           WHERE id=?""",
+                           SET tentativas=%s, proxima_tentativa=%s, observacao=%s
+                           WHERE id=%s""",
                         (novo_total, proxima,
-                         f'⏳ Aguardando retry - {novo_total} tentativa(s) realizadas', item_id)
+                         f'Aguardando retry - {novo_total} tentativa(s)', item_id)
                     )
-                    conn3.commit()
-                    conn3.close()
-                    print(f'[PayPix Worker] ⏳ item_id={item_id} - próxima tentativa em 5min (total={novo_total})', flush=True)
+                    conn_ng.close()
+                    print(f'[PayPix Worker] ⏳ id={item_id} próxima tentativa em 5min (total={novo_total})', flush=True)
 
         except Exception as e:
             print(f'[PayPix Worker] Erro no ciclo: {e}', flush=True)
 
+        await asyncio.sleep(INTERVALO_WORKER)
+
 async def route_paypix_fila(request):
-    """GET /api/paypix/fila - Lista a fila de splits pendentes (admin)"""
+    """GET /api/paypix/fila - Lista a fila de splits pendentes (admin) — usa PostgreSQL"""
 
     auth = (request.headers.get('X-PaynexBet-Secret', '') or
             request.rel_url.query.get('secret', ''))
     if auth != WEBHOOK_SECRET:
         return web.json_response({'error': 'não autorizado'}, status=401)
     try:
-        conn = sqlite3_connect()
-        cur  = conn.execute(
+        import psycopg2 as _pg_fl
+        conn = _pg_fl.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        cur.execute(
             """SELECT id, tx_id, valor, chave_pix, tipo_chave, pct,
                       tentativas, status, proxima_tentativa, created_at,
                       finalizado_at, observacao
                FROM paypix_fila
                ORDER BY created_at DESC LIMIT 50"""
-
         )
         rows = cur.fetchall()
         conn.close()
@@ -7945,7 +7998,7 @@ async def route_paypix_fila(request):
         itens = [dict(zip(cols, r)) for r in rows]
         pendentes   = sum(1 for i in itens if i['status'] == 'pendente')
         finalizados = sum(1 for i in itens if i['status'] == 'finalizado')
-        return web.json_response({
+        return _safe_json({
             'success': True,
             'total': len(itens),
             'pendentes': pendentes,
@@ -7954,6 +8007,47 @@ async def route_paypix_fila(request):
         })
     except Exception as e:
         return web.json_response({'success': False, 'error': str(e)})
+
+
+async def route_cobrar_reprocessar_split(request):
+    """POST /api/cobrar/reprocessar-split — força reprocessamento de tx paga sem saque (admin)"""
+
+    auth = (request.headers.get('X-PaynexBet-Secret', '') or
+            request.rel_url.query.get('secret', ''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error': 'Não autorizado'}, status=401)
+
+    try:
+        data  = await request.json()
+        tx_id = str(data.get('tx_id', '')).strip()
+        if not tx_id:
+            return web.json_response({'success': False, 'error': 'tx_id obrigatório'})
+
+        # Buscar a transação no SQLite
+        conn_s = sqlite3_connect()
+        row_s  = conn_s.execute(
+            'SELECT tx_id, valor, extra FROM transacoes WHERE tx_id=? AND status="pago"',
+            (tx_id,)
+        ).fetchone()
+        conn_s.close()
+
+        if not row_s:
+            return web.json_response({'success': False, 'error': f'Transação {tx_id} não encontrada ou não está paga'})
+
+        real_tx, valor_tx, extra_tx = row_s
+        if real_tx.startswith('cbr_'):
+            asyncio.create_task(_processar_split_multiplo(real_tx, float(valor_tx), extra_tx or '{"tipo":"cobrar"}'))
+            return web.json_response({'success': True, 'message': f'Reprocessamento multi-split disparado: {real_tx} R${float(valor_tx):.2f}'})
+        elif extra_tx:
+            ex = json.loads(extra_tx)
+            if ex.get('tipo') == 'paypix':
+                asyncio.create_task(_processar_split_paypix(real_tx, float(valor_tx), extra_tx))
+                return web.json_response({'success': True, 'message': f'Reprocessamento paypix-split disparado: {real_tx}'})
+
+        return web.json_response({'success': False, 'error': 'Tipo de transação não suportado para reprocessamento'})
+
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
 
 # ══════════════════════════════════════════════════════════════════
 # ─── PAYPIX VORTEX — Credenciais, Gateway, Afiliados ────────────
@@ -18906,6 +19000,7 @@ async def main():
     app.router.add_options('/api/paypix/config', lambda r: web.Response(headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,X-PaynexBet-Secret'}))
     app.router.add_route('OPTIONS', '/api/paypix/gerar', lambda r: web.Response(status=200))
     app.router.add_get('/api/paypix/fila', route_paypix_fila)
+    app.router.add_post('/api/cobrar/reprocessar-split', route_cobrar_reprocessar_split)
     # PayPix VORTEX — Credenciais, Testar Gateway, Afiliados
     app.router.add_get('/api/paypix/vortex/config',           route_paypix_vortex_config_get)
     app.router.add_post('/api/paypix/vortex/config',          route_paypix_vortex_config_save)
