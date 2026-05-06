@@ -2383,13 +2383,335 @@ async function fazerLogin() {
         <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid #229ed944;border-radius:12px;padding:12px 16px;margin-bottom:16px">
           <div style="font-size:28px">📢</div>
           <div style="flex:1">
-            <div style="font-weight:800;font-size:16px;color:#229ed9">Promo Telegram — Notificações de Promoções</div>
-            <div style="font-size:12px;color:#666;margin-top:2px">Envie notificações automáticas ao Telegram para Sorteio, PayPix e PayPix-Cob</div>
+            <div style="font-weight:800;font-size:16px;color:#229ed9">Promo Telegram — Notificações + PayPix</div>
+            <div style="font-size:12px;color:#666;margin-top:2px">Gere QR Code PayPix e envie notificações automáticas ao Telegram para Sorteio, PayPix e PayPix-Cob</div>
           </div>
           <button onclick="promoTgTestar()" style="padding:8px 16px;background:#229ed922;border:1px solid #229ed966;border-radius:8px;color:#229ed9;font-size:13px;font-weight:700;cursor:pointer">
-            📨 Testar Conexão
+            📨 Testar Bot
           </button>
         </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="section-grid">
+
+          <!-- ── Coluna Esquerda: Gerar QR Code PayPix ── -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- Card Gerar QR Code PayPix -->
+            <div class="table-card" style="border-color:#FFD70066">
+              <div class="table-header" style="background:linear-gradient(135deg,#1a1500,#2a2200)">
+                <h3 style="color:#FFD700">💰 Gerar QR Code PayPix</h3>
+                <span id="ptg-pix-pct-badge" style="font-size:11px;padding:3px 10px;border-radius:20px;background:#1a1200;color:#FFD700">% do admin</span>
+              </div>
+              <div style="padding:20px">
+
+                <!-- ETAPA 1: formulário -->
+                <div id="ptg-step1" style="display:flex;flex-direction:column;gap:14px">
+
+                  <!-- Dots de progresso -->
+                  <div style="display:flex;justify-content:center;gap:8px;margin-bottom:4px">
+                    <div style="width:28px;height:6px;border-radius:3px;background:#FFD700" id="ptg-dot1"></div>
+                    <div style="width:28px;height:6px;border-radius:3px;background:#2a2a2a" id="ptg-dot2"></div>
+                    <div style="width:28px;height:6px;border-radius:3px;background:#2a2a2a" id="ptg-dot3"></div>
+                  </div>
+
+                  <div>
+                    <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">Tipo da chave Pix</label>
+                    <select id="ptg-tipo-chave" style="width:100%;padding:10px 12px;background:#111;border:1px solid #333;border-radius:10px;color:#fff;font-size:14px">
+                      <option value="cpf">CPF</option>
+                      <option value="telefone">Telefone</option>
+                      <option value="email">E-mail</option>
+                      <option value="aleatoria">Chave aleatória</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">Sua chave Pix <span style="color:#666">(você vai receber aqui)</span></label>
+                    <input id="ptg-chave-pix" type="text" placeholder="Ex: 11999998888" oninput="ptgAtualizarSplit()" style="width:100%;padding:10px 12px;background:#111;border:1px solid #333;border-radius:10px;color:#fff;font-size:14px;box-sizing:border-box">
+                  </div>
+
+                  <div>
+                    <label id="ptg-lbl-valor" style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">Valor a cobrar (R$) — mínimo R$ 5,00</label>
+                    <input id="ptg-valor" type="number" min="5" step="0.5" placeholder="Ex: 50" oninput="ptgAtualizarSplit()" style="width:100%;padding:10px 12px;background:#111;border:1px solid #333;border-radius:10px;color:#fff;font-size:14px;box-sizing:border-box">
+                  </div>
+
+                  <!-- Split preview -->
+                  <div id="ptg-split-box" style="display:none;background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;flex-direction:column;gap:8px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+                      <span id="ptg-lbl-voce" style="color:#888">💰 Você recebe</span>
+                      <span id="ptg-prev-voce" style="font-weight:700;color:#4ade80">R$ 0,00</span>
+                    </div>
+                    <hr style="border:none;border-top:1px solid #2a2a2a;margin:2px 0">
+                    <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+                      <span id="ptg-lbl-plat" style="color:#888">🏦 Plataforma</span>
+                      <span id="ptg-prev-plat" style="font-weight:700;color:#FFD700">R$ 0,00</span>
+                    </div>
+                    <hr style="border:none;border-top:1px solid #2a2a2a;margin:2px 0">
+                    <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+                      <span style="color:#888">📦 Total cobrado</span>
+                      <span id="ptg-prev-total" style="font-weight:700">R$ 0,00</span>
+                    </div>
+                  </div>
+
+                  <button id="ptg-btn-gerar" onclick="promoTgGerarPix()" style="width:100%;padding:14px;background:linear-gradient(135deg,#FFD700,#FFA500);border:none;border-radius:12px;color:#000;font-size:15px;font-weight:800;cursor:pointer">
+                    🚀 Gerar QR Code Pix
+                  </button>
+                  <p id="ptg-info-tip" style="font-size:11px;color:#555;text-align:center">O cliente paga via Pix → seu % cai na sua conta automaticamente</p>
+                </div>
+
+                <!-- ETAPA 2: QR Code -->
+                <div id="ptg-step2" style="display:none;flex-direction:column;align-items:center;gap:12px">
+                  <!-- Dots -->
+                  <div style="display:flex;justify-content:center;gap:8px;margin-bottom:4px">
+                    <div style="width:28px;height:6px;border-radius:3px;background:#4ade80"></div>
+                    <div style="width:28px;height:6px;border-radius:3px;background:#FFD700"></div>
+                    <div style="width:28px;height:6px;border-radius:3px;background:#2a2a2a"></div>
+                  </div>
+                  <div style="font-size:12px;color:#888">Valor cobrado</div>
+                  <div id="ptg-valor-destaque" style="font-size:24px;font-weight:800;color:#FFD700">R$ 0,00</div>
+                  <div id="ptg-voce-recebe" style="font-size:12px;color:#888">Você recebe: <strong style="color:#4ade80">R$ 0,00</strong></div>
+
+                  <div style="background:#fff;padding:12px;border-radius:12px;display:inline-block">
+                    <div id="ptg-qrcode"></div>
+                  </div>
+
+                  <div id="ptg-pix-code-text" style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:10px 12px;font-size:11px;color:#aaa;word-break:break-all;line-height:1.5;width:100%;box-sizing:border-box;max-height:72px;overflow:hidden"></div>
+
+                  <button onclick="ptgCopiarPix()" style="width:100%;padding:11px;background:#1a3a1a;border:1px solid #2d6a2d;color:#4ade80;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer" id="ptg-btn-copiar">
+                    📋 Copiar código Pix
+                  </button>
+
+                  <div id="ptg-status-pag" style="width:100%;text-align:center;padding:14px;background:#1a1a00;border:1px solid #444400;border-radius:12px;color:#FFD700">
+                    <div style="font-size:1.5rem">⏳</div>
+                    <div style="font-weight:700;margin:4px 0">Aguardando pagamento…</div>
+                    <div style="font-size:11px;opacity:.8">O QR Code expira em 30 minutos</div>
+                  </div>
+
+                  <button onclick="promoTgNovoQr()" style="width:100%;padding:10px;background:#1a1a3a;border:1px solid #2d2d6a;color:#818cf8;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">
+                    🔄 Gerar novo QR Code
+                  </button>
+                </div>
+
+                <!-- ETAPA 3: Pago -->
+                <div id="ptg-step3" style="display:none;flex-direction:column;gap:12px">
+                  <!-- Dots -->
+                  <div style="display:flex;justify-content:center;gap:8px;margin-bottom:4px">
+                    <div style="width:28px;height:6px;border-radius:3px;background:#4ade80"></div>
+                    <div style="width:28px;height:6px;border-radius:3px;background:#4ade80"></div>
+                    <div style="width:28px;height:6px;border-radius:3px;background:#FFD700"></div>
+                  </div>
+                  <div style="text-align:center;padding:16px;background:#0a2a0a;border:1px solid #2d6a2d;border-radius:12px;color:#4ade80">
+                    <div style="font-size:2rem">✅</div>
+                    <div style="font-weight:700;font-size:16px;margin:6px 0">Pagamento confirmado!</div>
+                    <div id="ptg-msg-pago" style="font-size:12px;opacity:.85">Seu Pix foi enviado automaticamente.</div>
+                  </div>
+                  <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+                    <div style="display:flex;justify-content:space-between;font-size:13px">
+                      <span style="color:#888">💰 Enviado para você</span>
+                      <span id="ptg-conf-voce" style="font-weight:700;color:#4ade80">R$ 0,00</span>
+                    </div>
+                    <hr style="border:none;border-top:1px solid #2a2a2a">
+                    <div style="display:flex;justify-content:space-between;font-size:13px">
+                      <span style="color:#888">🏦 Plataforma</span>
+                      <span id="ptg-conf-plat" style="font-weight:700;color:#FFD700">R$ 0,00</span>
+                    </div>
+                  </div>
+                  <button onclick="promoTgNovoQr()" style="width:100%;padding:13px;background:linear-gradient(135deg,#FFD700,#FFA500);border:none;border-radius:12px;color:#000;font-size:14px;font-weight:800;cursor:pointer">
+                    💸 Gerar outro Pix
+                  </button>
+                </div>
+
+              </div>
+            </div><!-- /card gerar qr -->
+
+            <!-- Card Config Bot Telegram -->
+            <div class="table-card">
+              <div class="table-header collapsible" onclick="colToggle('ptg-config')">
+                <h3>🤖 Configuração do Bot Telegram <span id="col-arrow-ptg-config" class="collapse-arrow">▼</span></h3>
+                <span id="ptg-status-badge" style="font-size:11px;padding:3px 10px;border-radius:20px;background:#1a1a1a;color:#aaa">Verificando...</span>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-config">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+
+                <div style="padding:12px;background:rgba(34,158,217,0.08);border-radius:10px;font-size:12px;color:var(--text2);line-height:1.6">
+                  <b style="color:#229ed9">📋 Como configurar:</b><br>
+                  1. Abra <b>@BotFather</b> no Telegram → /newbot → copie o <b>Token</b><br>
+                  2. Inicie uma conversa com seu bot<br>
+                  3. Acesse: <code style="color:#4ade80">https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code><br>
+                  4. Copie o <b>chat_id</b> do campo "id" no retorno
+                </div>
+
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">🔑 Bot Token</label>
+                  <input id="ptg-token" type="text" placeholder="1234567890:ABCdef..." style="width:100%;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box;font-family:monospace">
+                </div>
+
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">💬 Chat ID (canal, grupo ou usuário)</label>
+                  <input id="ptg-chatid" type="text" placeholder="-100123456789 ou 123456789" style="width:100%;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box;font-family:monospace">
+                </div>
+
+                <div style="display:flex;gap:8px">
+                  <button onclick="promoTgSalvar(false)" style="flex:1;padding:10px;background:linear-gradient(135deg,#229ed9,#1a7db0);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+                    💾 Salvar Config
+                  </button>
+                  <button onclick="promoTgSalvar(true)" style="flex:1;padding:10px;background:rgba(74,222,128,0.15);border:1px solid #4ade80;border-radius:10px;color:#4ade80;font-size:13px;font-weight:700;cursor:pointer">
+                    📨 Salvar + Testar
+                  </button>
+                </div>
+                <div id="ptg-msg-config" style="font-size:12px;text-align:center;min-height:16px"></div>
+
+              </div></div>
+            </div><!-- /config bot -->
+
+            <!-- Card Envio Manual -->
+            <div class="table-card">
+              <div class="table-header collapsible" onclick="colToggle('ptg-manual')">
+                <h3>✍️ Envio Manual de Mensagem <span id="col-arrow-ptg-manual" class="collapse-arrow">▼</span></h3>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-manual">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Mensagem (HTML do Telegram permitido)</label>
+                  <textarea id="ptg-msg-manual" rows="5" placeholder="Digite sua mensagem aqui...&#10;Suporta &lt;b&gt;negrito&lt;/b&gt;, &lt;i&gt;itálico&lt;/i&gt;, links" style="width:100%;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box;resize:vertical;font-family:inherit"></textarea>
+                </div>
+                <button onclick="promoTgEnviarManual()" style="padding:10px;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:10px;color:#000;font-size:13px;font-weight:700;cursor:pointer">
+                  🚀 Enviar Agora
+                </button>
+                <div id="ptg-msg-manual-resp" style="font-size:12px;text-align:center;min-height:16px"></div>
+              </div></div>
+            </div><!-- /envio manual -->
+
+          </div><!-- /col esquerda -->
+
+          <!-- ── Coluna Direita: Notificações por Seção ── -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- Card Sorteio -->
+            <div class="table-card" style="border-color:#8b5cf666">
+              <div class="table-header collapsible" onclick="colToggle('ptg-sorteio')">
+                <h3>🎲 Notificações — Sorteio <span id="col-arrow-ptg-sorteio" class="collapse-arrow">▼</span></h3>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-sorteio">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(139,92,246,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Novo participante no sorteio</div>
+                    <div style="font-size:11px;color:#666">Notifica ao entrar no sorteio</div>
+                  </div>
+                  <label class="ptg-toggle"><input type="checkbox" id="ptg-sort-participante" checked onchange="promoTgSalvarNotifs()"><span class="ptg-slider"></span></label>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(139,92,246,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Sorteio realizado (ganhador)</div>
+                    <div style="font-size:11px;color:#666">Notifica resultado com ganhador</div>
+                  </div>
+                  <label class="ptg-toggle"><input type="checkbox" id="ptg-sort-resultado" checked onchange="promoTgSalvarNotifs()"><span class="ptg-slider"></span></label>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(139,92,246,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Prêmio acumulado</div>
+                    <div style="font-size:11px;color:#666">Notifica quando prêmio cresce</div>
+                  </div>
+                  <label class="ptg-toggle"><input type="checkbox" id="ptg-sort-acumulo" onchange="promoTgSalvarNotifs()"><span class="ptg-slider"></span></label>
+                </div>
+                <button onclick="promoTgTestarSorteio()" style="padding:8px;background:#8b5cf622;border:1px solid #8b5cf666;border-radius:8px;color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer">📨 Enviar Teste — Sorteio</button>
+                <div id="ptg-msg-sorteio" style="font-size:11px;text-align:center;min-height:14px"></div>
+              </div></div>
+            </div>
+
+            <!-- Card PayPix -->
+            <div class="table-card" style="border-color:#f59e0b66">
+              <div class="table-header collapsible" onclick="colToggle('ptg-paypix')">
+                <h3>💸 Notificações — PayPix <span id="col-arrow-ptg-paypix" class="collapse-arrow">▼</span></h3>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-paypix">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(245,158,11,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Pagamento recebido</div>
+                    <div style="font-size:11px;color:#666">Notifica cada PIX confirmado</div>
+                  </div>
+                  <label class="ptg-toggle"><input type="checkbox" id="ptg-pp-pagamento" checked onchange="promoTgSalvarNotifs()"><span class="ptg-slider"></span></label>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(245,158,11,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Saque de afiliado pago</div>
+                    <div style="font-size:11px;color:#666">Notifica comissão enviada</div>
+                  </div>
+                  <label class="ptg-toggle"><input type="checkbox" id="ptg-pp-saque" checked onchange="promoTgSalvarNotifs()"><span class="ptg-slider"></span></label>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(245,158,11,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Novo afiliado cadastrado</div>
+                    <div style="font-size:11px;color:#666">Notifica novo parceiro</div>
+                  </div>
+                  <label class="ptg-toggle"><input type="checkbox" id="ptg-pp-afiliado" onchange="promoTgSalvarNotifs()"><span class="ptg-slider"></span></label>
+                </div>
+                <button onclick="promoTgTestarPaypix()" style="padding:8px;background:#f59e0b22;border:1px solid #f59e0b66;border-radius:8px;color:#fbbf24;font-size:12px;font-weight:700;cursor:pointer">📨 Enviar Teste — PayPix</button>
+                <div id="ptg-msg-paypix" style="font-size:11px;text-align:center;min-height:14px"></div>
+              </div></div>
+            </div>
+
+            <!-- Card PayPix-Cob -->
+            <div class="table-card" style="border-color:#22c55e66">
+              <div class="table-header collapsible" onclick="colToggle('ptg-paypixcob')">
+                <h3>💳 Notificações — PayPix-Cob <span id="col-arrow-ptg-paypixcob" class="collapse-arrow">▼</span></h3>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-paypixcob">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(34,197,94,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Cobrança gerada</div>
+                    <div style="font-size:11px;color:#666">Notifica novo QR gerado</div>
+                  </div>
+                  <label class="ptg-toggle"><input type="checkbox" id="ptg-pc-cobranca" onchange="promoTgSalvarNotifs()"><span class="ptg-slider"></span></label>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(34,197,94,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Pagamento confirmado</div>
+                    <div style="font-size:11px;color:#666">Notifica PIX-Cob pago</div>
+                  </div>
+                  <label class="ptg-toggle"><input type="checkbox" id="ptg-pc-pago" checked onchange="promoTgSalvarNotifs()"><span class="ptg-slider"></span></label>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(34,197,94,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Saque parceiro pago</div>
+                    <div style="font-size:11px;color:#666">Notifica comissão via PIX</div>
+                  </div>
+                  <label class="ptg-toggle"><input type="checkbox" id="ptg-pc-saque" checked onchange="promoTgSalvarNotifs()"><span class="ptg-slider"></span></label>
+                </div>
+                <button onclick="promoTgTestarPaypixCob()" style="padding:8px;background:#22c55e22;border:1px solid #22c55e66;border-radius:8px;color:#4ade80;font-size:12px;font-weight:700;cursor:pointer">📨 Enviar Teste — PayPix-Cob</button>
+                <div id="ptg-msg-paypixcob" style="font-size:11px;text-align:center;min-height:14px"></div>
+              </div></div>
+            </div>
+
+            <!-- Card Preview mensagens -->
+            <div class="table-card">
+              <div class="table-header collapsible" onclick="colToggle('ptg-preview')">
+                <h3>📋 Preview dos Modelos <span id="col-arrow-ptg-preview" class="collapse-arrow">▼</span></h3>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-preview">
+              <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+                <div style="background:#0a0a14;border:1px solid #8b5cf644;border-radius:10px;padding:12px;font-size:12px">
+                  <div style="color:#a78bfa;font-weight:700;margin-bottom:6px">🎲 Sorteio — Novo Participante</div>
+                  <div style="color:#94a3b8;font-family:monospace;line-height:1.5">🎉 <b>Novo participante!</b><br>👤 João Silva<br>🏆 Prêmio: <b>R$ 500,00</b><br>🎟️ Tickets: 42</div>
+                </div>
+                <div style="background:#0a0a14;border:1px solid #f59e0b44;border-radius:10px;padding:12px;font-size:12px">
+                  <div style="color:#fbbf24;font-weight:700;margin-bottom:6px">💸 PayPix — Pagamento</div>
+                  <div style="color:#94a3b8;font-family:monospace;line-height:1.5">💰 <b>PIX recebido!</b><br>💵 R$ 150,00<br>🏦 Comissão: R$ 90,00</div>
+                </div>
+                <div style="background:#0a0a14;border:1px solid #22c55e44;border-radius:10px;padding:12px;font-size:12px">
+                  <div style="color:#4ade80;font-weight:700;margin-bottom:6px">💳 PayPix-Cob — Pago</div>
+                  <div style="color:#94a3b8;font-family:monospace;line-height:1.5">✅ <b>Cobrança paga!</b><br>💵 R$ 200,00<br>🏦 Comissão: R$ 100,00</div>
+                </div>
+              </div></div>
+            </div>
+
+          </div><!-- /col direita -->
+
+        </div><!-- /grid -->
+
+      </div><!-- /tab-promo-telegram -->
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="section-grid">
 
@@ -8707,31 +9029,51 @@ function exportarRelatorio() {
 // 📢 PROMO TELEGRAM — Notificações de Promoções
 // ═══════════════════════════════════════════════
 
-// Estado local
+// Estado local PayPix inline
+let _ptgTxId       = null;
+let _ptgPollTimer  = null;
+let _ptgPixCode    = null;
+let _ptgValor      = 0;
+let _ptgPct        = 0.6;
+let _ptgMinValor   = 5;
+
+// Estado local config Telegram
 let _ptgConfig = {
   bot_token: '',
-  chat_id: '',
-  notifs: {
-    sort_participante: true,
-    sort_resultado: true,
-    sort_acumulo: false,
-    pp_pagamento: true,
-    pp_saque: true,
-    pp_afiliado: false,
-    pc_cobranca: false,
-    pc_pago: true,
-    pc_saque: true
-  }
+  chat_id: ''
 };
 
-// Carregar config ao abrir aba
+// ── Carregar config e % ao abrir aba ──
 async function promoTgCarregar() {
+  // Carregar % do paypix
   try {
-    const r = await fetch('/api/admin/notif-config', { headers: _authHeaders() });
+    const r = await fetch('/api/paypix/config');
     const d = await r.json();
-    if (!d.ok) return;
-    const c = d.config || {};
-    // Token/chatid (reutiliza o mesmo endpoint de notif-config)
+    _ptgPct      = typeof d.paypix_pct === 'number' ? d.paypix_pct : 0.6;
+    _ptgMinValor = typeof d.paypix_min === 'number' ? d.paypix_min : 5;
+    const pctDisplay  = Math.round(_ptgPct * 100) + '%';
+    const platDisplay = Math.round((1 - _ptgPct) * 100) + '%';
+    // Atualizar badge e labels
+    const badge = document.getElementById('ptg-pix-pct-badge');
+    if (badge) { badge.textContent = 'Admin: ' + pctDisplay; }
+    const lblVal = document.getElementById('ptg-lbl-valor');
+    if (lblVal) lblVal.textContent = `Valor a cobrar (R$) — mínimo R$ ${_ptgMinValor.toFixed(2).replace('.',',')}`;
+    const lblVoce = document.getElementById('ptg-lbl-voce');
+    if (lblVoce) lblVoce.textContent = `💰 Você recebe (${pctDisplay})`;
+    const lblPlat = document.getElementById('ptg-lbl-plat');
+    if (lblPlat) lblPlat.textContent = `🏦 Plataforma (${platDisplay})`;
+    const tip = document.getElementById('ptg-info-tip');
+    if (tip) tip.textContent = `O cliente paga via Pix → ${pctDisplay} cai na sua conta automaticamente`;
+    const inp = document.getElementById('ptg-valor');
+    if (inp) { inp.min = _ptgMinValor; inp.placeholder = `Ex: ${_ptgMinValor * 10}`; }
+  } catch(e) {}
+
+  // Carregar token/chatid salvos
+  try {
+    const r2 = await fetch('/api/admin/notif-config', { headers: _authHeaders() });
+    const d2 = await r2.json();
+    if (!d2.ok) return;
+    const c = d2.config || {};
     if (c.bot_token) {
       _ptgConfig.bot_token = c.bot_token;
       const el = document.getElementById('ptg-token');
@@ -8742,7 +9084,7 @@ async function promoTgCarregar() {
       const el = document.getElementById('ptg-chatid');
       if (el) el.value = c.chat_id;
     }
-    // Notifs específicas de promo (salvas em sub-campo)
+    // Notifs checkboxes
     const n = c.promo_notifs || {};
     const checks = {
       'ptg-sort-participante': n.sort_participante !== false,
@@ -8759,31 +9101,195 @@ async function promoTgCarregar() {
       const el = document.getElementById(id);
       if (el) el.checked = val;
     });
-    // Badge status
-    const badge = document.getElementById('ptg-status-badge');
-    if (badge) {
+    // Badge status bot
+    const bdg = document.getElementById('ptg-status-badge');
+    if (bdg) {
       if (c.bot_token && c.chat_id) {
-        badge.style.background = '#0a2a0a'; badge.style.color = '#4ade80';
-        badge.textContent = '✅ Configurado';
+        bdg.style.background = '#0a2a0a'; bdg.style.color = '#4ade80';
+        bdg.textContent = '✅ Configurado';
       } else {
-        badge.style.background = '#2a0a0a'; badge.style.color = '#f87171';
-        badge.textContent = '⚠️ Não configurado';
+        bdg.style.background = '#2a0a0a'; bdg.style.color = '#f87171';
+        bdg.textContent = '⚠️ Não configurado';
       }
     }
-  } catch(e) { /* silencioso */ }
+  } catch(e) {}
 }
 
-// Salvar configuração
+// ── Atualizar split preview ao digitar ──
+function ptgAtualizarSplit() {
+  const v = parseFloat(document.getElementById('ptg-valor')?.value) || 0;
+  const box = document.getElementById('ptg-split-box');
+  if (!box) return;
+  if (v >= _ptgMinValor) {
+    const voce = v * _ptgPct;
+    const plat = v * (1 - _ptgPct);
+    document.getElementById('ptg-prev-voce').textContent  = 'R$ ' + voce.toFixed(2).replace('.',',');
+    document.getElementById('ptg-prev-plat').textContent  = 'R$ ' + plat.toFixed(2).replace('.',',');
+    document.getElementById('ptg-prev-total').textContent = 'R$ ' + v.toFixed(2).replace('.',',');
+    box.style.display = 'flex';
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+// ── Gerar QR Code ──
+async function promoTgGerarPix() {
+  const tipo  = document.getElementById('ptg-tipo-chave')?.value || 'cpf';
+  const chave = (document.getElementById('ptg-chave-pix')?.value || '').trim();
+  const valor = parseFloat(document.getElementById('ptg-valor')?.value) || 0;
+
+  if (!chave) { showToastAdmin('⚠️ Informe sua chave Pix!', 'red'); return; }
+  if (valor < _ptgMinValor) { showToastAdmin(`⚠️ Valor mínimo R$ ${_ptgMinValor.toFixed(2).replace('.',',')}`, 'red'); return; }
+  if (valor > 10000) { showToastAdmin('⚠️ Máximo R$ 10.000,00', 'red'); return; }
+
+  const btn = document.getElementById('ptg-btn-gerar');
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid #000;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px"></span>Gerando…';
+
+  try {
+    const res = await fetch('/api/paypix/gerar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chave_pix: chave, tipo_chave: tipo, valor })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      showToastAdmin('❌ ' + (data.error || 'Erro ao gerar Pix'), 'red');
+      btn.disabled = false;
+      btn.innerHTML = '🚀 Gerar QR Code Pix';
+      return;
+    }
+    _ptgTxId  = data.tx_id;
+    _ptgValor = valor;
+    await ptgAguardarQrCode(btn);
+  } catch(e) {
+    showToastAdmin('❌ Erro de conexão: ' + e.message, 'red');
+    btn.disabled = false;
+    btn.innerHTML = '🚀 Gerar QR Code Pix';
+  }
+}
+
+// ── Polling para obter pix_code ──
+async function ptgAguardarQrCode(btn) {
+  const msgs = ['Conectando…','Gerando QR Code…','Processando…','Quase pronto…','Aguarde…'];
+  for (let i = 0; i < 45; i++) {
+    btn.innerHTML = `<span style="display:inline-block;width:14px;height:14px;border:2px solid #000;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px"></span>${msgs[Math.min(Math.floor(i/9), msgs.length-1)]}`;
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const r = await fetch(`/api/paypix/status/${_ptgTxId}`);
+      const d = await r.json();
+      if (d.pix_code) {
+        _ptgPixCode = d.pix_code;
+        ptgMostrarQr(d.pix_code);
+        return;
+      }
+      if (d.status === 'erro') {
+        showToastAdmin('❌ Falha ao gerar PIX. Tente novamente.', 'red');
+        btn.disabled = false; btn.innerHTML = '🚀 Gerar QR Code Pix';
+        return;
+      }
+    } catch(e) {}
+  }
+  showToastAdmin('⚠️ Timeout. Tente novamente.', 'red');
+  btn.disabled = false; btn.innerHTML = '🚀 Gerar QR Code Pix';
+}
+
+// ── Exibir QR Code ──
+function ptgMostrarQr(pixCode) {
+  const voce = _ptgValor * _ptgPct;
+  document.getElementById('ptg-valor-destaque').textContent = 'R$ ' + _ptgValor.toFixed(2).replace('.',',');
+  document.getElementById('ptg-voce-recebe').innerHTML = `Você recebe: <strong style="color:#4ade80">R$ ${voce.toFixed(2).replace('.',',')}</strong>`;
+  document.getElementById('ptg-pix-code-text').textContent = pixCode;
+
+  // Gerar QR
+  const qrEl = document.getElementById('ptg-qrcode');
+  qrEl.innerHTML = '';
+  if (typeof QRCode !== 'undefined') {
+    new QRCode(qrEl, { text: pixCode, width: 180, height: 180, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
+  } else {
+    qrEl.innerHTML = `<div style="font-size:11px;color:#aaa;padding:8px">QR indisponível.<br>Use o código abaixo.</div>`;
+  }
+
+  ptgSetStep(2);
+  ptgIniciarPoll();
+}
+
+// ── Polling de pagamento ──
+function ptgIniciarPoll() {
+  if (_ptgPollTimer) clearInterval(_ptgPollTimer);
+  _ptgPollTimer = setInterval(async () => {
+    try {
+      const r = await fetch(`/api/paypix/status/${_ptgTxId}`);
+      const d = await r.json();
+      if (d.pagamento === 'pago' || d.status === 'pago') {
+        clearInterval(_ptgPollTimer);
+        ptgMostrarPago();
+      }
+    } catch(e) {}
+  }, 5000);
+}
+
+// ── Mostrar pagamento confirmado ──
+function ptgMostrarPago() {
+  const voce = _ptgValor * _ptgPct;
+  const plat = _ptgValor * (1 - _ptgPct);
+  document.getElementById('ptg-conf-voce').textContent = 'R$ ' + voce.toFixed(2).replace('.',',');
+  document.getElementById('ptg-conf-plat').textContent = 'R$ ' + plat.toFixed(2).replace('.',',');
+  document.getElementById('ptg-msg-pago').textContent  = `R$ ${voce.toFixed(2).replace('.',',')} enviado para sua chave Pix!`;
+  ptgSetStep(3);
+  showToastAdmin('✅ PIX pago! Comissão enviada.', 'green');
+}
+
+// ── Copiar código ──
+async function ptgCopiarPix() {
+  if (!_ptgPixCode) return;
+  try { await navigator.clipboard.writeText(_ptgPixCode); }
+  catch(e) {
+    const ta = document.createElement('textarea');
+    ta.value = _ptgPixCode;
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+  }
+  const btn = document.getElementById('ptg-btn-copiar');
+  if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(() => btn.textContent = '📋 Copiar código Pix', 2000); }
+}
+
+// ── Novo QR ──
+function promoTgNovoQr() {
+  if (_ptgPollTimer) clearInterval(_ptgPollTimer);
+  _ptgTxId = null; _ptgPixCode = null; _ptgValor = 0;
+  const qrEl = document.getElementById('ptg-qrcode');
+  if (qrEl) qrEl.innerHTML = '';
+  const splitBox = document.getElementById('ptg-split-box');
+  if (splitBox) splitBox.style.display = 'none';
+  const valEl = document.getElementById('ptg-valor');
+  if (valEl) valEl.value = '';
+  const chaveEl = document.getElementById('ptg-chave-pix');
+  if (chaveEl) chaveEl.value = '';
+  const btn = document.getElementById('ptg-btn-gerar');
+  if (btn) { btn.disabled = false; btn.innerHTML = '🚀 Gerar QR Code Pix'; }
+  ptgSetStep(1);
+}
+
+// ── Trocar etapa ──
+function ptgSetStep(n) {
+  ['ptg-step1','ptg-step2','ptg-step3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = (i + 1 === n) ? 'flex' : 'none';
+    el.style.flexDirection = 'column';
+  });
+}
+
+// ── Salvar config bot Telegram ──
 async function promoTgSalvar(testar) {
   const token  = document.getElementById('ptg-token')?.value?.trim() || '';
   const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
   const msg    = document.getElementById('ptg-msg-config');
-
   if (!token || !chatid) {
     if (msg) { msg.style.color = '#f87171'; msg.textContent = '⚠️ Preencha Token e Chat ID'; }
     return;
   }
-
   const notifs = {
     sort_participante: document.getElementById('ptg-sort-participante')?.checked,
     sort_resultado:    document.getElementById('ptg-sort-resultado')?.checked,
@@ -8795,14 +9301,10 @@ async function promoTgSalvar(testar) {
     pc_pago:           document.getElementById('ptg-pc-pago')?.checked,
     pc_saque:          document.getElementById('ptg-pc-saque')?.checked
   };
-
   try {
     const r = await fetch('/api/admin/notif-config', {
       method: 'POST', headers: _authHeaders(),
-      body: JSON.stringify({
-        bot_token: token, chat_id: chatid,
-        promo_notifs: notifs, testar
-      })
+      body: JSON.stringify({ bot_token: token, chat_id: chatid, promo_notifs: notifs, testar })
     });
     const d = await r.json();
     if (d.ok) {
@@ -8816,11 +9318,11 @@ async function promoTgSalvar(testar) {
   } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
 }
 
-// Salvar notifs ao mudar toggle
+// ── Salvar notifs ao mudar toggle ──
 async function promoTgSalvarNotifs() {
   const token  = document.getElementById('ptg-token')?.value?.trim() || '';
   const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
-  if (!token || !chatid) return; // silencioso se não configurado ainda
+  if (!token || !chatid) return;
   const notifs = {
     sort_participante: document.getElementById('ptg-sort-participante')?.checked,
     sort_resultado:    document.getElementById('ptg-sort-resultado')?.checked,
@@ -8837,156 +9339,100 @@ async function promoTgSalvarNotifs() {
       method: 'POST', headers: _authHeaders(),
       body: JSON.stringify({ bot_token: token, chat_id: chatid, promo_notifs: notifs })
     });
-  } catch(e) { /* silencioso */ }
+  } catch(e) {}
 }
 
-// Testar conexão geral
+// ── Testar conexão geral ──
 async function promoTgTestar() {
   const token  = document.getElementById('ptg-token')?.value?.trim() || '';
   const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
-  if (!token || !chatid) {
-    showToastAdmin('⚠️ Configure Token e Chat ID primeiro!', 'red'); return;
-  }
+  if (!token || !chatid) { showToastAdmin('⚠️ Configure Token e Chat ID primeiro!', 'red'); return; }
   showToastAdmin('⏳ Enviando teste...', 'green');
   try {
-    const url = `https://api.telegram.org/bot${token}/sendMessage`;
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatid,
-        parse_mode: 'HTML',
-        text: '✅ <b>PaynexBet Admin</b>\n📢 Promo Telegram conectado com sucesso!\n🎲 Sorteio · 💸 PayPix · 💳 PayPix-Cob'
-      })
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatid, parse_mode: 'HTML',
+        text: '✅ <b>PaynexBet Admin</b>\n📢 Promo Telegram conectado!\n🎲 Sorteio · 💸 PayPix · 💳 PayPix-Cob' })
     });
     const d = await r.json();
     if (d.ok) showToastAdmin('✅ Telegram conectado!', 'green');
-    else showToastAdmin('❌ Erro: ' + (d.description || 'falha'), 'red');
-  } catch(e) { showToastAdmin('❌ Erro de rede: ' + e.message, 'red'); }
+    else showToastAdmin('❌ ' + (d.description || 'Erro'), 'red');
+  } catch(e) { showToastAdmin('❌ Erro: ' + e.message, 'red'); }
 }
 
-// Envio manual de mensagem
+// ── Envio manual ──
 async function promoTgEnviarManual() {
   const token  = document.getElementById('ptg-token')?.value?.trim() || '';
   const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
   const texto  = document.getElementById('ptg-msg-manual')?.value?.trim() || '';
   const resp   = document.getElementById('ptg-msg-manual-resp');
-  if (!token || !chatid) {
-    if (resp) { resp.style.color='#f87171'; resp.textContent='⚠️ Configure Token e Chat ID primeiro'; }
-    return;
-  }
-  if (!texto) {
-    if (resp) { resp.style.color='#f87171'; resp.textContent='⚠️ Digite uma mensagem'; }
-    return;
-  }
+  if (!token || !chatid) { if(resp){resp.style.color='#f87171';resp.textContent='⚠️ Configure Token/Chat ID';} return; }
+  if (!texto) { if(resp){resp.style.color='#f87171';resp.textContent='⚠️ Digite uma mensagem';} return; }
   try {
-    const url = `https://api.telegram.org/bot${token}/sendMessage`;
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatid, parse_mode: 'HTML', text: texto })
     });
     const d = await r.json();
     if (d.ok) {
-      if (resp) { resp.style.color='#4ade80'; resp.textContent='✅ Mensagem enviada!'; }
+      if(resp){resp.style.color='#4ade80';resp.textContent='✅ Enviado!';}
       showToastAdmin('✅ Mensagem enviada!', 'green');
       document.getElementById('ptg-msg-manual').value = '';
-    } else {
-      if (resp) { resp.style.color='#f87171'; resp.textContent='❌ ' + (d.description || 'Falha'); }
-    }
-  } catch(e) {
-    if (resp) { resp.style.color='#f87171'; resp.textContent='❌ Erro: ' + e.message; }
-  }
+    } else { if(resp){resp.style.color='#f87171';resp.textContent='❌ '+(d.description||'Falha');} }
+  } catch(e) { if(resp){resp.style.color='#f87171';resp.textContent='❌ '+e.message;} }
 }
 
-// Testar mensagem de Sorteio
+// ── Testes individuais ──
 async function promoTgTestarSorteio() {
-  const token  = document.getElementById('ptg-token')?.value?.trim() || '';
-  const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
-  const msg    = document.getElementById('ptg-msg-sorteio');
-  if (!token || !chatid) {
-    if (msg) { msg.style.color='#f87171'; msg.textContent='⚠️ Configure Token/Chat ID'; }
-    return;
-  }
+  const token = document.getElementById('ptg-token')?.value?.trim()||'';
+  const chatid= document.getElementById('ptg-chatid')?.value?.trim()||'';
+  const msg   = document.getElementById('ptg-msg-sorteio');
+  if (!token||!chatid){if(msg){msg.style.color='#f87171';msg.textContent='⚠️ Configure Token/Chat ID';}return;}
   try {
-    const url = `https://api.telegram.org/bot${token}/sendMessage`;
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatid, parse_mode: 'HTML',
-        text: '🎲 <b>Sorteio PaynexBet</b>\n\n🎉 <b>Novo participante!</b>\n👤 João Teste\n🏆 Prêmio atual: <b>R$ 500,00</b>\n🎟️ Total de tickets: 42\n⏰ Sorteio em: 3 dias\n\n<i>Mensagem de teste — PaynexBet Admin</i>'
-      })
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:chatid,parse_mode:'HTML',
+        text:'🎲 <b>Sorteio PaynexBet</b>\n\n🎉 <b>Novo participante!</b>\n👤 João Teste\n🏆 Prêmio: <b>R$ 500,00</b>\n🎟️ Tickets: 42\n\n<i>Teste — PaynexBet Admin</i>'})
     });
     const d = await r.json();
-    if (d.ok) {
-      if (msg) { msg.style.color='#4ade80'; msg.textContent='✅ Teste Sorteio enviado!'; }
-    } else {
-      if (msg) { msg.style.color='#f87171'; msg.textContent='❌ ' + (d.description||'Falha'); }
-    }
-  } catch(e) {
-    if (msg) { msg.style.color='#f87171'; msg.textContent='❌ Erro: ' + e.message; }
-  }
+    if(d.ok){if(msg){msg.style.color='#4ade80';msg.textContent='✅ Enviado!';}}
+    else{if(msg){msg.style.color='#f87171';msg.textContent='❌ '+(d.description||'Falha');}}
+  }catch(e){if(msg){msg.style.color='#f87171';msg.textContent='❌ '+e.message;}}
 }
 
-// Testar mensagem de PayPix
 async function promoTgTestarPaypix() {
-  const token  = document.getElementById('ptg-token')?.value?.trim() || '';
-  const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
-  const msg    = document.getElementById('ptg-msg-paypix');
-  if (!token || !chatid) {
-    if (msg) { msg.style.color='#f87171'; msg.textContent='⚠️ Configure Token/Chat ID'; }
-    return;
-  }
+  const token = document.getElementById('ptg-token')?.value?.trim()||'';
+  const chatid= document.getElementById('ptg-chatid')?.value?.trim()||'';
+  const msg   = document.getElementById('ptg-msg-paypix');
+  if (!token||!chatid){if(msg){msg.style.color='#f87171';msg.textContent='⚠️ Configure Token/Chat ID';}return;}
+  const pctDisplay = Math.round(_ptgPct*100)+'%';
   try {
-    const url = `https://api.telegram.org/bot${token}/sendMessage`;
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatid, parse_mode: 'HTML',
-        text: '💸 <b>PayPix — PaynexBet</b>\n\n💰 <b>PIX recebido!</b>\n💵 Valor: <b>R$ 150,00</b>\n👤 Maria Teste (ref: AB12CD)\n🏦 Comissão afiliado: R$ 90,00\n✅ Status: confirmado\n\n<i>Mensagem de teste — PaynexBet Admin</i>'
-      })
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:chatid,parse_mode:'HTML',
+        text:`💸 <b>PayPix — PaynexBet</b>\n\n💰 <b>PIX recebido!</b>\n💵 R$ 150,00\n👤 Maria Teste\n🏦 Comissão (${pctDisplay}): R$ ${(150*_ptgPct).toFixed(2).replace('.',',')}\n✅ Confirmado\n\n<i>Teste — PaynexBet Admin</i>`})
     });
     const d = await r.json();
-    if (d.ok) {
-      if (msg) { msg.style.color='#4ade80'; msg.textContent='✅ Teste PayPix enviado!'; }
-    } else {
-      if (msg) { msg.style.color='#f87171'; msg.textContent='❌ ' + (d.description||'Falha'); }
-    }
-  } catch(e) {
-    if (msg) { msg.style.color='#f87171'; msg.textContent='❌ Erro: ' + e.message; }
-  }
+    if(d.ok){if(msg){msg.style.color='#4ade80';msg.textContent='✅ Enviado!';}}
+    else{if(msg){msg.style.color='#f87171';msg.textContent='❌ '+(d.description||'Falha');}}
+  }catch(e){if(msg){msg.style.color='#f87171';msg.textContent='❌ '+e.message;}}
 }
 
-// Testar mensagem de PayPix-Cob
 async function promoTgTestarPaypixCob() {
-  const token  = document.getElementById('ptg-token')?.value?.trim() || '';
-  const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
-  const msg    = document.getElementById('ptg-msg-paypixcob');
-  if (!token || !chatid) {
-    if (msg) { msg.style.color='#f87171'; msg.textContent='⚠️ Configure Token/Chat ID'; }
-    return;
-  }
+  const token = document.getElementById('ptg-token')?.value?.trim()||'';
+  const chatid= document.getElementById('ptg-chatid')?.value?.trim()||'';
+  const msg   = document.getElementById('ptg-msg-paypixcob');
+  if (!token||!chatid){if(msg){msg.style.color='#f87171';msg.textContent='⚠️ Configure Token/Chat ID';}return;}
   try {
-    const url = `https://api.telegram.org/bot${token}/sendMessage`;
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatid, parse_mode: 'HTML',
-        text: '💳 <b>PayPix-Cob — PaynexBet</b>\n\n✅ <b>Cobrança paga!</b>\n💵 Valor: <b>R$ 200,00</b>\n👤 Carlos Teste (parceiro)\n🏦 Comissão: R$ 100,00\n⏱️ Confirmado via Mercado Pago\n\n<i>Mensagem de teste — PaynexBet Admin</i>'
-      })
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:chatid,parse_mode:'HTML',
+        text:'💳 <b>PayPix-Cob — PaynexBet</b>\n\n✅ <b>Cobrança paga!</b>\n💵 R$ 200,00\n👤 Carlos Teste\n🏦 Comissão: R$ 100,00\n⏱️ Confirmado via MP\n\n<i>Teste — PaynexBet Admin</i>'})
     });
     const d = await r.json();
-    if (d.ok) {
-      if (msg) { msg.style.color='#4ade80'; msg.textContent='✅ Teste PayPix-Cob enviado!'; }
-    } else {
-      if (msg) { msg.style.color='#f87171'; msg.textContent='❌ ' + (d.description||'Falha'); }
-    }
-  } catch(e) {
-    if (msg) { msg.style.color='#f87171'; msg.textContent='❌ Erro: ' + e.message; }
-  }
+    if(d.ok){if(msg){msg.style.color='#4ade80';msg.textContent='✅ Enviado!';}}
+    else{if(msg){msg.style.color='#f87171';msg.textContent='❌ '+(d.description||'Falha');}}
+  }catch(e){if(msg){msg.style.color='#f87171';msg.textContent='❌ '+e.message;}}
 }
 
 // ═══════════════════════════════════════════════
