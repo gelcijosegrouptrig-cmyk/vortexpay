@@ -5921,6 +5921,64 @@ async def route_reconectar_db(request):
             })
         return web.json_response({'success': False, 'error': err}, status=500)
 
+async def route_injetar_session(request):
+    """Injeta uma session string diretamente no processo em memória e reconecta o bot"""
+    global client, _telegram_ready, _telegram_session_invalida, SESSION_STR
+
+    auth = (request.headers.get('X-PaynexBet-Secret','') or
+            request.rel_url.query.get('secret',''))
+    if auth != WEBHOOK_SECRET:
+        return web.json_response({'error':'Não autorizado'}, status=401)
+    try:
+        data = await request.json()
+        nova_session = str(data.get('session_str','')).strip()
+        if not nova_session or len(nova_session) < 100:
+            return web.json_response({'success': False, 'error': 'session_str inválida ou muito curta'})
+
+        from telethon.sessions import StringSession as _SS
+        # Desconectar client atual
+        try:
+            if client.is_connected():
+                await client.disconnect()
+        except:
+            pass
+
+        # Substituir client com nova session
+        SESSION_STR = nova_session
+        client.__init__(_SS(nova_session), API_ID, API_HASH)
+        await client.connect()
+
+        if not await client.is_user_authorized():
+            return web.json_response({'success': False, 'error': 'Session injetada mas não autorizada'})
+
+        me = await client.get_me()
+        _telegram_ready = True
+        _telegram_session_invalida = False
+
+        # Salvar no PostgreSQL e arquivo local
+        try:
+            _salvar_sessao_db(nova_session)
+        except:
+            pass
+        try:
+            open('session_string.txt','w').write(nova_session)
+        except:
+            pass
+
+        # Reiniciar loops
+        asyncio.create_task(_loop_verificar_pagamentos())
+        asyncio.create_task(watchdog_telegram())
+
+        print(f'✅ [InjetarSession] Bot reconectado como {me.first_name} ({me.id})', flush=True)
+        return web.json_response({
+            'success': True,
+            'message': f'✅ Bot reconectado como {me.first_name}!',
+            'user': me.first_name,
+            'user_id': me.id
+        })
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
 async def route_sessao_atual(request):
     """Retorna a sessão atual válida para salvar no Railway manualmente"""
 
@@ -18910,6 +18968,7 @@ async def main():
     app.router.add_post('/api/telegram/solicitar-codigo', route_solicitar_codigo)
     app.router.add_post('/api/telegram/confirmar-codigo', route_confirmar_codigo)
     app.router.add_get('/api/telegram/sessao-atual', route_sessao_atual)
+    app.router.add_post('/api/telegram/injetar-session', route_injetar_session)
     app.router.add_get('/api/reconectar', route_reconectar_db)
     # ── Bot 2 (@paypix_nexbot) ──────────────────────────────────────
     app.router.add_get('/api/bot2/status',                  route_bot2_status)
