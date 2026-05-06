@@ -2734,9 +2734,9 @@ async function fazerLogin() {
             </div><!-- /card config cobrar -->
 
             <!-- ── Card Parceiros do Split ── -->
-            <div class="table-card" style="border-color:#f59e0b55;margin-top:4px">
-              <div class="table-header collapsible" onclick="colToggle('ptg-parceiros-config')" style="background:linear-gradient(135deg,#2a1a0520,#3a2a0a20)">
-                <h3>👥 Parceiros do Split — Quem recebe o quê <span id="col-arrow-ptg-parceiros-config" class="collapse-arrow">▼</span></h3>
+            <div class="table-card" style="border-color:#f59e0b99;margin-top:8px;box-shadow:0 0 12px #f59e0b22">
+              <div class="table-header collapsible" onclick="colToggle('ptg-parceiros-config')" style="background:linear-gradient(135deg,#2a1a0540,#3a2a0a40);border-bottom:1px solid #f59e0b44">
+                <h3>👥 Parceiros do Split — Quem recebe o quê <span id="col-arrow-ptg-parceiros-config" class="collapse-arrow">▲</span></h3>
               </div>
               <div class="collapse-body" id="col-body-ptg-parceiros-config">
                 <div style="display:flex;flex-direction:column;gap:14px;padding:4px 0">
@@ -9102,7 +9102,7 @@ async function promoTgCarregar() {
   try {
     const r2 = await fetch('/api/admin/notif-config', { headers: _authHeaders() });
     const d2 = await r2.json();
-    if (!d2.ok) return;
+    // NÃO retornar aqui — continuar para carregar parceiros e expandir cards
     const c = d2.config || {};
     if (c.bot_token) {
       _ptgConfig.bot_token = c.bot_token;
