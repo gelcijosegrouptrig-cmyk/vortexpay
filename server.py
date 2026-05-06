@@ -6406,15 +6406,10 @@ async def route_saldo(request):
 
 async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> dict:
     """
-
-    Executa o fluxo de saque manual no bot VortexBank:
-    1. Abre menu SACAR
-    2. Clica em 'Realizar Saque (Manual)'
-    3. Envia o valor
-    4. Seleciona tipo de chave Pix
-    5. Envia a chave Pix
-    6. Captura resposta do bot
+    Executa o fluxo de saque manual no bot VortexBank.
+    Usa timestamps estritos em cada passo para evitar leitura de mensagens antigas.
     """
+    import datetime as dt
 
     if not _telegram_ready:
         for _ in range(30):
@@ -6428,91 +6423,124 @@ async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> d
         try:
             bot = await client.get_entity(BOT_USERNAME)
 
-            # ── PASSO 1: Abrir menu principal ──────────────────────
+            async def _aguardar_nova_msg(apos: dt.datetime, timeout: int = 10, keywords=None) -> str:
+                """Aguarda nova mensagem do bot após 'apos', retorna texto ou ''."""
+                for _ in range(timeout):
+                    await asyncio.sleep(1)
+                    msgs = await client.get_messages(bot, limit=3)
+                    for m in msgs:
+                        if m.date and m.date.replace(tzinfo=dt.timezone.utc) > apos:
+                            texto = m.text or ''
+                            if keywords:
+                                if any(k.lower() in texto.lower() for k in keywords):
+                                    return texto
+                            else:
+                                if texto:
+                                    return texto
+                return ''
+
+            async def _aguardar_botao(apos: dt.datetime, keywords, timeout: int = 10):
+                """Aguarda mensagem com botão contendo keyword. Retorna (msg, btn) ou (None, None)."""
+                for _ in range(timeout):
+                    await asyncio.sleep(1)
+                    msgs = await client.get_messages(bot, limit=5)
+                    for m in msgs:
+                        if m.date and m.date.replace(tzinfo=dt.timezone.utc) > apos and m.buttons:
+                            for row in m.buttons:
+                                for btn in row:
+                                    if any(k.lower() in btn.text.lower() for k in keywords):
+                                        return m, btn
+                return None, None
+
+            # ── PASSO 1: /start ─────────────────────────────────────
+            t0 = dt.datetime.now(dt.timezone.utc)
             await client.send_message(bot, '/start')
-            await asyncio.sleep(2)
+            print(f'[Saque Bot] Passo 1: /start enviado', flush=True)
 
-            # ── PASSO 2: Clicar em SACAR ──────────────────────────
-            msgs = await client.get_messages(bot, limit=5)
-            clicou_sacar = False
-            for msg in msgs:
-                if msg.buttons:
-                    for row in msg.buttons:
-                        for btn in row:
-                            if 'SACAR' in btn.text:
-                                await btn.click()
-                                await asyncio.sleep(3)
-                                clicou_sacar = True
-                                break
-                        if clicou_sacar: break
-                if clicou_sacar: break
+            # Aguardar menu principal (botão SACAR)
+            msg_menu, btn_sacar = await _aguardar_botao(t0, ['SACAR', 'SAQUES'], timeout=12)
+            if not btn_sacar:
+                return {'success': False, 'error': 'Menu principal não apareceu. Bot pode estar ocupado.'}
 
-            if not clicou_sacar:
-                return {'success': False, 'error': 'Botão SACAR não encontrado no bot.'}
+            # ── PASSO 2: Clicar em SACAR ────────────────────────────
+            t1 = dt.datetime.now(dt.timezone.utc)
+            await btn_sacar.click()
+            print(f'[Saque Bot] Passo 2: Clicou SACAR', flush=True)
 
-            # ── PASSO 3: Clicar em 'Realizar Saque (Manual)' ──────
-            msgs = await client.get_messages(bot, limit=5)
-            clicou_manual = False
-            for msg in msgs:
-                if msg.buttons:
-                    for row in msg.buttons:
-                        for btn in row:
-                            if 'Manual' in btn.text or 'Saque' in btn.text:
-                                await btn.click()
-                                await asyncio.sleep(3)
-                                clicou_manual = True
-                                break
-                        if clicou_manual: break
-                if clicou_manual: break
+            # Aguardar submenu (botão Realizar Saque Manual)
+            _, btn_manual = await _aguardar_botao(t1, ['manual', 'Realizar Saque'], timeout=12)
+            if not btn_manual:
+                return {'success': False, 'error': 'Submenu de saque não apareceu.'}
 
-            if not clicou_manual:
-                return {'success': False, 'error': 'Botão Saque Manual não encontrado.'}
+            # ── PASSO 3: Clicar em Realizar Saque (Manual) ──────────
+            t2 = dt.datetime.now(dt.timezone.utc)
+            await btn_manual.click()
+            print(f'[Saque Bot] Passo 3: Clicou Realizar Saque Manual', flush=True)
 
-            # ── PASSO 4: Enviar valor ──────────────────────────────
+            # Aguardar bot pedir o valor ("Digite o valor")
+            texto_pede_valor = await _aguardar_nova_msg(t2, timeout=12,
+                keywords=['valor', 'digitar', 'digitar o valor', 'R$', 'disponível'])
+            if not texto_pede_valor:
+                return {'success': False, 'error': 'Bot não pediu o valor para saque.'}
+            print(f'[Saque Bot] Bot pediu valor: {texto_pede_valor[:60]}', flush=True)
+
+            # ── PASSO 4: Enviar valor ────────────────────────────────
+            t3 = dt.datetime.now(dt.timezone.utc)
             valor_str = str(int(valor)) if valor == int(valor) else f"{valor:.2f}"
             await client.send_message(bot, valor_str)
-            await asyncio.sleep(4)
+            print(f'[Saque Bot] Passo 4: Enviou valor {valor_str}', flush=True)
 
-            # ── PASSO 5: Selecionar tipo de chave ─────────────────
+            # Aguardar bot apresentar opções de tipo de chave (botões CPF/Telefone/etc)
             mapa_tipo = {
-                'cpf': 'CPF',
-                'telefone': 'Telefone',
-                'email': 'E-mail',
-                'aleatoria': 'Aleatória',
-                'cnpj': 'CNPJ',
+                'cpf': 'CPF', 'telefone': 'Telefone',
+                'email': 'E-mail', 'aleatoria': 'Aleatória', 'cnpj': 'CNPJ',
             }
             texto_tipo = mapa_tipo.get(tipo_chave.lower(), 'CPF')
 
-            msgs = await client.get_messages(bot, limit=5)
-            clicou_tipo = False
-            for msg in msgs:
-                if msg.buttons:
-                    for row in msg.buttons:
+            _, btn_tipo = await _aguardar_botao(t3, ['CPF', 'Telefone', 'E-mail', 'Aleat'], timeout=15)
+            if not btn_tipo:
+                # Bot pode ter rejeitado o valor
+                erro_val = await _aguardar_nova_msg(t3, timeout=5, keywords=['inválido', 'mínimo', 'máximo', 'formato', 'erro'])
+                if erro_val:
+                    return {'success': False, 'error': f'Bot rejeitou valor: {erro_val[:80]}'}
+                return {'success': False, 'error': 'Bot não apresentou opções de tipo de chave.'}
+
+            # ── PASSO 5: Clicar no tipo correto ─────────────────────
+            # Procurar botão do tipo específico
+            t4 = dt.datetime.now(dt.timezone.utc)
+            msgs_tipo = await client.get_messages(bot, limit=5)
+            btn_tipo_correto = None
+            for m in msgs_tipo:
+                if m.date and m.date.replace(tzinfo=dt.timezone.utc) > t3 and m.buttons:
+                    for row in m.buttons:
                         for btn in row:
                             if texto_tipo.lower() in btn.text.lower():
-                                await btn.click()
-                                await asyncio.sleep(3)
-                                clicou_tipo = True
+                                btn_tipo_correto = btn
                                 break
-                        if clicou_tipo: break
-                if clicou_tipo: break
+                        if btn_tipo_correto: break
+                if btn_tipo_correto: break
 
-            if not clicou_tipo:
-                # Tentar enviar como texto se não achou botão
+            if btn_tipo_correto:
+                await btn_tipo_correto.click()
+                print(f'[Saque Bot] Passo 5: Clicou tipo {texto_tipo}', flush=True)
+            else:
                 await client.send_message(bot, texto_tipo)
-                await asyncio.sleep(3)
+                print(f'[Saque Bot] Passo 5: Enviou tipo como texto: {texto_tipo}', flush=True)
 
-            # ── PASSO 6: Enviar chave Pix ──────────────────────────
-            import datetime as dt
-            hora_envio = dt.datetime.now(dt.timezone.utc)
+            # Aguardar bot pedir a chave
+            await asyncio.sleep(2)
+            texto_pede_chave = await _aguardar_nova_msg(t4, timeout=10,
+                keywords=['chave', 'pix', 'digitar', 'número', 'DDD'])
+            if not texto_pede_chave:
+                # Tentar continuar mesmo sem confirmação
+                print(f'[Saque Bot] Aviso: bot não confirmou pedido de chave, enviando mesmo assim', flush=True)
+
+            # ── PASSO 6: Enviar chave Pix ────────────────────────────
+            t5 = dt.datetime.now(dt.timezone.utc)
             await client.send_message(bot, chave_pix)
-            print(f'⏳ Chave enviada, aguardando resposta do bot...', flush=True)
+            print(f'[Saque Bot] Passo 6: Enviou chave {chave_pix}', flush=True)
 
-            # ── PASSO 7: Polling ativo até 30s aguardando confirmação ──
-            resposta_bot = ''
-            status_saque = 'pendente'
-            saque_id_bot = None
-
+            # ── PASSO 7: Aguardar confirmação ou erro ────────────────
             padroes_sucesso = [
                 r'solicitação de saque.*enviada com sucesso',
                 r'saque.*enviado com sucesso',
@@ -6526,6 +6554,7 @@ async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> d
             padroes_erro = [
                 r'saldo insuficiente',
                 r'valor.*inválido',
+                r'formato.*inválido',
                 r'chave.*inválida',
                 r'chave pix.*não',
                 r'erro ao processar',
@@ -6533,49 +6562,43 @@ async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> d
                 r'operação.*cancelada',
             ]
 
-            # Polling: verifica a cada 2s por até 30s
-            for tentativa in range(15):
+            resposta_bot  = ''
+            status_saque  = 'pendente'
+            saque_id_bot  = None
+
+            for tentativa in range(20):
                 await asyncio.sleep(2)
                 msgs = await client.get_messages(bot, limit=5)
-
                 for msg in msgs:
-                    if not msg.text:
-                        continue
-                    # Somente mensagens APÓS o envio da chave
-                    if hasattr(msg, 'date') and msg.date:
-                        if msg.date < hora_envio:
-                            continue
+                    if not msg.text: continue
+                    if msg.date and msg.date.replace(tzinfo=dt.timezone.utc) < t5: continue
                     texto = msg.text
-
                     if any(re.search(p, texto, re.IGNORECASE) for p in padroes_sucesso):
-                        resposta_bot = texto[:400]
-                        status_saque = 'enviado'
+                        resposta_bot  = texto[:400]
+                        status_saque  = 'enviado'
                         m_id = re.search(r'saq-([a-f0-9]+)', texto)
-                        if m_id:
-                            saque_id_bot = f"saq-{m_id.group(1)}"
-                        print(f'✅ Confirmação recebida na tentativa {tentativa+1}!', flush=True)
+                        if m_id: saque_id_bot = f"saq-{m_id.group(1)}"
+                        print(f'✅ [Saque Bot] Confirmação na tentativa {tentativa+1}', flush=True)
                         break
                     if any(re.search(p, texto, re.IGNORECASE) for p in padroes_erro):
                         resposta_bot = texto[:300]
                         status_saque = 'erro'
-                        print(f'❌ Erro detectado: {texto[:80]}', flush=True)
+                        print(f'❌ [Saque Bot] Erro: {texto[:80]}', flush=True)
                         break
-
                 if status_saque != 'pendente':
                     break
 
-            # Se ainda pendente após 30s, assume enviado (saque foi feito, bot só demorou)
             if status_saque == 'pendente':
                 status_saque = 'enviado'
-                resposta_bot = f'Saque de R${valor:.2f} enviado para {chave_pix}. Processamento pode levar até 40 minutos.'
-                print(f'⚠️ Timeout aguardando bot, assumindo enviado.', flush=True)
+                resposta_bot = f'Saque de R${valor:.2f} enviado para {chave_pix}. Processamento até 40 min.'
+                print(f'⚠️ [Saque Bot] Timeout, assumindo enviado.', flush=True)
 
-            print(f'💸 Saque: R${valor:.2f} → {tipo_chave}: {chave_pix} | Status: {status_saque} | BotID: {saque_id_bot}', flush=True)
+            print(f'💸 [Saque Bot] R${valor:.2f} → {tipo_chave}: {chave_pix} | {status_saque} | ID: {saque_id_bot}', flush=True)
 
             return {
                 'success': True,
                 'status': status_saque,
-                'status_msg': '✅ Saque realizado com sucesso! Cai em até 40 minutos.' if status_saque == 'enviado' else 'Erro no saque',
+                'status_msg': '✅ Saque realizado! Cai em até 40 minutos.' if status_saque == 'enviado' else 'Erro no saque',
                 'mensagem_bot': resposta_bot,
                 'saque_id_bot': saque_id_bot,
                 'valor': valor,
@@ -6584,8 +6607,9 @@ async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> d
             }
 
         except Exception as e:
-            print(f'❌ Erro ao executar saque: {e}', flush=True)
+            print(f'❌ [Saque Bot] Exceção: {e}', flush=True)
             return {'success': False, 'error': f'Erro interno: {str(e)}'}
+
 
 
 async def route_solicitar_saque(request):
