@@ -35,12 +35,11 @@
 
   label{display:block;font-size:.78rem;color:var(--text2);margin-bottom:6px;
     font-weight:500;text-transform:uppercase;letter-spacing:.5px}
-  select,input[type=text],input[type=number]{
+  input[type=number]{
     width:100%;background:#0d0d14;border:1.5px solid #2a2a3a;border-radius:10px;
     padding:13px 14px;color:var(--text);font-size:.95rem;outline:none;
     transition:border .2s;box-sizing:border-box}
-  select:focus,input:focus{border-color:var(--green)}
-  select option{background:#0d0d14}
+  input:focus{border-color:var(--green)}
   .field{margin-bottom:18px}
 
   .split-box{background:#0d0d14;border:1px solid #1e2e1e;border-radius:12px;
@@ -102,7 +101,7 @@
     border-radius:10px;padding:10px 14px;font-size:.78rem;
     text-align:center;margin-top:10px;display:none}
 
-  .badge-wrap{text-align:center;margin-bottom:12px}
+  .badge-wrap{text-align:center;margin-bottom:16px}
   .badge-ativo{display:inline-block;background:#0a2a0a;color:var(--green);
     border:1px solid #1a4a1a;border-radius:20px;padding:4px 14px;
     font-size:.72rem;font-weight:700}
@@ -144,7 +143,7 @@
     <p>Estamos realizando melhorias.<br>Por favor, tente novamente em alguns minutos.</p>
   </div>
 
-  <!-- ─── ETAPA 1: formulário ─── -->
+  <!-- ─── ETAPA 1: só valor ─── -->
   <div class="step active" id="step1">
 
     <div class="badge-wrap">
@@ -178,7 +177,7 @@
       <div class="valor-sub" id="voce-recebe-label">Você recebe: <strong style="color:var(--green)">R$ 0,00</strong></div>
     </div>
 
-    <!-- Loading geração bot -->
+    <!-- Loading geração -->
     <div id="gerando-wrap" style="text-align:center;padding:18px 0">
       <div style="font-size:1.8rem;margin-bottom:10px">⚡</div>
       <div style="font-size:.9rem;color:var(--text2);margin-bottom:12px" id="gerando-msg">Aguarde, gerando seu QR Code…</div>
@@ -241,14 +240,13 @@ let _valor       = 0;
 let _pct         = 0.6;
 let _minValor    = 5;
 let _sistemaAtivo = true;
+let _chaveFix    = '';
+let _tipoFix     = 'cpf';
 let _progressInterval = null;
 
 function fmt(v){ return 'R$ ' + (v||0).toFixed(2).replace('.',','); }
 
-let _chaveFix  = '';
-let _tipoFix   = 'cpf';
-
-// ─── Carregar config % do /cobrar ───
+// ─── Carregar config do /cobrar ───
 async function carregarConfig() {
   try {
     const r = await fetch(`${BASE}/api/cobrar/config`);
@@ -299,31 +297,36 @@ function atualizarSplit() {
   }
 }
 
-// ─── Gerar PIX ───
+// ─── Gerar PIX usando chave pré-configurada ───
 async function gerarPix() {
   if (!_sistemaAtivo) {
     alert('🔧 Sistema em manutenção. Tente novamente mais tarde.');
     return;
   }
-  // Usa chave pré-configurada no admin
-  const chave = _chaveFix;
-  const tipo  = _tipoFix;
-  const valor = parseFloat(document.getElementById('valor').value) || 0;
+  if (!_chaveFix) {
+    alert('⚠️ Chave Pix não configurada. Fale com o administrador.');
+    return;
+  }
 
-  if (!chave) { alert('⚠️ Chave Pix não configurada. Fale com o administrador.'); return; }
-  if (valor < _minValor) { alert(`⚠️ Valor mínimo é R$ ${_minValor.toFixed(2).replace('.',',')}!`); return; }
-  if (valor > 10000)     { alert('⚠️ Valor máximo é R$ 10.000,00!'); return; }
+  const valor = parseFloat(document.getElementById('valor').value) || 0;
+  if (valor < _minValor) {
+    alert(`⚠️ Valor mínimo é R$ ${_minValor.toFixed(2).replace('.',',')}!`);
+    return;
+  }
+  if (valor > 10000) {
+    alert('⚠️ Valor máximo é R$ 10.000,00!');
+    return;
+  }
 
   const btn = document.getElementById('btn-gerar');
   btn.disabled = true;
   btn.innerHTML = '<span class="loader"></span>Enviando…';
 
   try {
-    // Chama /api/cobrar/gerar
     const res = await fetch(`${BASE}/api/cobrar/gerar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chave_pix: chave, tipo_chave: tipo, valor })
+      body: JSON.stringify({ chave_pix: _chaveFix, tipo_chave: _tipoFix, valor })
     });
     const data = await res.json();
 
@@ -339,7 +342,6 @@ async function gerarPix() {
     btn.disabled = false;
     btn.innerHTML = '🚀 Gerar QR Code Pix';
 
-    // Mostrar etapa 2 com loading
     const voce = _valor * _pct;
     document.getElementById('valor-destaque').textContent = fmt(_valor);
     document.getElementById('voce-recebe-label').innerHTML =
@@ -355,7 +357,7 @@ async function gerarPix() {
   }
 }
 
-// ─── Barra de progresso visual enquanto gera ───
+// ─── Barra de progresso visual ───
 function iniciarProgressoGeracao() {
   if (_progressInterval) clearInterval(_progressInterval);
   const msgs = [
@@ -378,9 +380,9 @@ function iniciarProgressoGeracao() {
   }, 1000);
 }
 
-// ─── Polling até ter pix_code (/api/paypix/status) ───
+// ─── Polling até ter pix_code ───
 async function aguardarQrCode() {
-  for (let i = 0; i < 60; i++) {   // até 120s (2min)
+  for (let i = 0; i < 60; i++) {
     await new Promise(r => setTimeout(r, 2000));
     try {
       const r = await fetch(`${BASE}/api/paypix/status/${_txId}`);
@@ -403,20 +405,17 @@ async function aguardarQrCode() {
       }
     } catch(e) {}
   }
-  // Timeout
   if (_progressInterval) clearInterval(_progressInterval);
   document.getElementById('status-box').className = 'status-box erro';
   document.getElementById('status-title').textContent = '⚠️ Tempo esgotado';
   document.getElementById('status-sub').textContent   = 'Demorou mais que o esperado. Tente novamente.';
 }
 
-// ─── Exibir QR Code quando pronto ───
+// ─── Exibir QR Code ───
 function mostrarQr(pixCode) {
-  // Esconder loading, mostrar QR
   document.getElementById('gerando-wrap').style.display = 'none';
   document.getElementById('qr-wrap-real').style.display = 'block';
 
-  // Atualizar status
   document.getElementById('status-box').className      = 'status-box aguardando';
   document.getElementById('status-title').textContent  = 'Aguardando pagamento…';
   document.getElementById('status-sub').textContent    = 'O QR Code expira em 30 minutos';
@@ -483,7 +482,6 @@ function novoQr() {
   if (_progressInterval) clearInterval(_progressInterval);
   _txId = null; _pixCode = null; _valor = 0;
 
-  // Reset step2
   document.getElementById('gerando-wrap').style.display  = 'block';
   document.getElementById('qr-wrap-real').style.display  = 'none';
   document.getElementById('progress-bar').style.width    = '0%';
