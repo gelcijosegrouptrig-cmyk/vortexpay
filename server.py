@@ -58,11 +58,25 @@ _SESSION_FALLBACK = ''  # Sessão fallback removida por segurança - usar apenas
 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:EfJgSbrAkQbFlQJWdxIpIZftseKsDVKs@metro.proxy.rlwy.net:53914/railway')
 
-# Carregar sessão: 1) env var SESSION_STR, 2) arquivo local session_string.txt, 3) PostgreSQL (após init_db)
+# Carregar sessão: 1) env var SESSION_STR, 2) PostgreSQL, 3) arquivo local session_string.txt
 SESSION_STR = os.environ.get('SESSION_STR', '')
 if not SESSION_STR:
     try:
+        import psycopg2 as _psycopg2_sess
+        _conn_sess = _psycopg2_sess.connect(DATABASE_URL, connect_timeout=8)
+        _cur_sess  = _conn_sess.cursor()
+        _cur_sess.execute("SELECT valor FROM configuracoes WHERE chave='session_str' LIMIT 1")
+        _row_sess  = _cur_sess.fetchone()
+        if _row_sess and _row_sess[0]:
+            SESSION_STR = _row_sess[0].strip()
+            print(f'✅ Session carregada do PostgreSQL ({len(SESSION_STR)} chars)', flush=True)
+        _conn_sess.close()
+    except Exception as _e_sess:
+        print(f'⚠️ Falha ao carregar session do PG: {_e_sess}', flush=True)
+if not SESSION_STR:
+    try:
         SESSION_STR = open('session_string.txt').read().strip()
+        print('✅ Session carregada do arquivo local', flush=True)
     except:
         pass
 if not SESSION_STR:
