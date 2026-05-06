@@ -9664,7 +9664,7 @@ async function tgLoginSolicitarCodigo() {
   const btn = event.target;
   btn.disabled = true; btn.textContent = '⏳ Enviando…';
   try {
-    const secret = sessionStorage.getItem('adminSecret') || '';
+    const secret = sessionStorage.getItem('vp_secret') || '';
     const r = await fetch(`${BASE}/api/telegram/solicitar-codigo?secret=${secret}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': secret },
@@ -9696,7 +9696,7 @@ async function tgLoginConfirmarCodigo() {
   }
   msg.innerHTML = '<span style="color:#818cf8">⏳ Confirmando…</span>';
   try {
-    const secret = sessionStorage.getItem('adminSecret') || '';
+    const secret = sessionStorage.getItem('vp_secret') || '';
     const body = { code };
     if (senha2fa) body.password = senha2fa;
     const r = await fetch(`${BASE}/api/telegram/confirmar-codigo?secret=${secret}`, {
