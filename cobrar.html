@@ -16,7 +16,6 @@
     min-height:100vh;display:flex;flex-direction:column;align-items:center;
     justify-content:flex-start;padding:clamp(14px,4vw,24px) clamp(12px,4vw,16px) 48px}
 
-  /* LOGO */
   .logo{text-align:center;margin-bottom:28px;padding-top:16px}
   .logo-icon{font-size:2.6rem;margin-bottom:6px}
   .logo h1{font-size:clamp(1.4rem,5.5vw,1.8rem);font-weight:900;
@@ -25,18 +24,15 @@
     letter-spacing:.5px}
   .logo p{color:var(--text2);font-size:clamp(.78rem,2.8vw,.88rem);margin-top:4px}
 
-  /* CARD */
   .card{background:var(--card);border:1px solid var(--border);border-radius:20px;
     padding:clamp(18px,5vw,28px);width:100%;max-width:420px;display:flex;
     flex-direction:column;align-items:stretch;gap:0}
 
-  /* STEPS */
   .steps{display:flex;justify-content:center;gap:8px;margin-bottom:22px}
   .dot{width:32px;height:5px;border-radius:3px;background:#1e1e2e;transition:.3s}
   .dot.active{background:var(--gold)}
   .dot.done{background:var(--green)}
 
-  /* FORM */
   label{display:block;font-size:.78rem;color:var(--text2);margin-bottom:6px;
     font-weight:500;text-transform:uppercase;letter-spacing:.5px}
   select,input[type=text],input[type=number]{
@@ -47,7 +43,6 @@
   select option{background:#0d0d14}
   .field{margin-bottom:18px}
 
-  /* SPLIT BOX */
   .split-box{background:#0d0d14;border:1px solid #1e2e1e;border-radius:12px;
     padding:14px 16px;margin-bottom:20px;display:none;flex-direction:column;gap:8px}
   .split-box.show{display:flex}
@@ -58,7 +53,6 @@
   .val.gold{color:var(--gold)}
   .divider{border:none;border-top:1px solid #1e1e2e;margin:2px 0}
 
-  /* BOTÕES */
   .btn{width:100%;padding:15px;border:none;border-radius:12px;
     font-size:1rem;font-weight:800;cursor:pointer;transition:.2s;letter-spacing:.3px}
   .btn-green{background:linear-gradient(135deg,var(--green),var(--green2));color:#000}
@@ -72,24 +66,18 @@
     padding:11px;border-radius:10px;font-size:.85rem;font-weight:600;
     cursor:pointer;width:100%;margin-top:8px}
 
-  /* ETAPAS */
   .step{display:none}
   .step.active{display:block}
 
-  /* QR */
   .qr-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;margin:18px 0}
   .qr-box{background:#fff;padding:12px;border-radius:14px;display:inline-block;
     box-shadow:0 0 30px rgba(74,222,128,.15)}
   .qr-box canvas,.qr-box img{display:block}
 
-  /* QR via base64 */
-  .qr-img{width:200px;height:200px;border-radius:8px;display:block}
-
   .pix-code-box{background:#0d0d14;border:1px solid #1e1e2e;border-radius:10px;
     padding:12px 14px;font-size:.7rem;color:var(--text2);word-break:break-all;
     line-height:1.5;margin-top:4px;max-height:70px;overflow:hidden}
 
-  /* STATUS */
   .status-box{text-align:center;padding:18px 14px;border-radius:14px;margin-top:14px}
   .status-box.aguardando{background:#1a1a00;border:1px solid #3a3a00;color:var(--gold)}
   .status-box.pago{background:#0a1f0a;border:1px solid #1a4a1a;color:var(--green)}
@@ -102,7 +90,6 @@
     text-align:center;margin:4px 0 8px}
   .valor-sub{text-align:center;font-size:.8rem;color:var(--text2);margin-bottom:16px}
 
-  /* LOADER */
   .loader{display:inline-block;width:16px;height:16px;border:2px solid #1e2e1e;
     border-top-color:var(--green);border-radius:50%;
     animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
@@ -115,25 +102,23 @@
     border-radius:10px;padding:10px 14px;font-size:.78rem;
     text-align:center;margin-top:10px;display:none}
 
-  /* BADGE SISTEMA */
   .badge-wrap{text-align:center;margin-bottom:12px}
   .badge-ativo{display:inline-block;background:#0a2a0a;color:var(--green);
     border:1px solid #1a4a1a;border-radius:20px;padding:4px 14px;
     font-size:.72rem;font-weight:700}
-  .badge-inativo{display:inline-block;background:#2a0a0a;color:var(--red);
-    border:1px solid #4a1a1a;border-radius:20px;padding:4px 14px;
-    font-size:.72rem;font-weight:700}
 
-  /* MANUTENCAO */
   .manut-box{display:none;text-align:center;padding:32px 20px}
   .manut-box .manut-icon{font-size:3rem;margin-bottom:12px}
   .manut-box h2{color:var(--gold);font-size:1.2rem;margin-bottom:8px}
   .manut-box p{color:var(--text2);font-size:.85rem;line-height:1.6}
 
-  @media(max-width:360px){
-    body{padding:10px 10px 32px}
-    .card{padding:16px}
-  }
+  /* Barra de progresso geração */
+  .progress-bar-wrap{background:#1e1e2e;border-radius:6px;height:6px;margin:14px 0 4px;overflow:hidden}
+  .progress-bar{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--green),var(--gold));
+    width:0%;transition:width .5s ease}
+  .progress-label{font-size:.72rem;color:var(--text3);text-align:center;margin-bottom:14px}
+
+  @media(max-width:360px){body{padding:10px 10px 32px}.card{padding:16px}}
 </style>
 </head>
 <body>
@@ -146,7 +131,6 @@
 
 <div class="card">
 
-  <!-- Steps -->
   <div class="steps" id="steps-header">
     <div class="dot active" id="dot1"></div>
     <div class="dot" id="dot2"></div>
@@ -187,7 +171,6 @@
       <input type="number" id="valor" min="5" step="0.5" placeholder="Ex: 50" oninput="atualizarSplit()"/>
     </div>
 
-    <!-- Split preview -->
     <div class="split-box" id="split-preview">
       <div class="split-row"><span class="lbl" id="lbl-voce">💰 Você recebe</span><span class="val verde" id="prev-voce">R$ 0,00</span></div>
       <hr class="divider"/>
@@ -201,7 +184,7 @@
 
   </div>
 
-  <!-- ─── ETAPA 2: QR Code ─── -->
+  <!-- ─── ETAPA 2: aguardando geração / QR Code ─── -->
   <div class="step" id="step2">
 
     <div style="text-align:center;margin-bottom:6px">
@@ -210,25 +193,31 @@
       <div class="valor-sub" id="voce-recebe-label">Você recebe: <strong style="color:var(--green)">R$ 0,00</strong></div>
     </div>
 
-    <div class="qr-wrap">
-      <div class="qr-box" id="qr-container">
-        <!-- QR via base64 do MP ou gerado via lib -->
-        <div id="qrcode"></div>
-        <img id="qr-img-b64" class="qr-img" style="display:none" alt="QR Code Pix"/>
+    <!-- Loading geração bot -->
+    <div id="gerando-wrap" style="text-align:center;padding:18px 0">
+      <div style="font-size:1.8rem;margin-bottom:10px">🤖</div>
+      <div style="font-size:.9rem;color:var(--text2);margin-bottom:12px" id="gerando-msg">Aguarde, gerando QR Code via bot…</div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+      <div class="progress-label" id="progress-label">Conectando ao bot Telegram…</div>
+    </div>
+
+    <!-- QR Code (aparece quando pronto) -->
+    <div id="qr-wrap-real" style="display:none">
+      <div class="qr-wrap">
+        <div class="qr-box"><div id="qrcode"></div></div>
       </div>
+      <div class="pix-code-box" id="pix-code-text"></div>
+      <button class="btn-copy" id="btn-copiar" onclick="copiarPix()">📋 Copiar código Pix (copia e cola)</button>
     </div>
 
-    <div class="pix-code-box" id="pix-code-text"></div>
-    <button class="btn-copy" id="btn-copiar" onclick="copiarPix()">📋 Copiar código Pix (copia e cola)</button>
-
-    <div class="status-box aguardando" id="status-box">
+    <div class="status-box aguardando" id="status-box" style="margin-top:14px">
       <div class="status-icon">⏳</div>
-      <div class="status-title">Aguardando pagamento…</div>
-      <div class="status-sub">O QR Code expira em 30 minutos</div>
+      <div class="status-title" id="status-title">Gerando QR Code…</div>
+      <div class="status-sub" id="status-sub">O bot está processando sua solicitação</div>
     </div>
 
-    <button class="btn-novo" onclick="novoQr()">🔄 Gerar novo QR Code</button>
-    <p class="info-tip">Mostre o QR Code ou envie o código copia e cola para o cliente</p>
+    <button class="btn-novo" style="margin-top:12px" onclick="novoQr()">🔄 Cancelar e gerar novo</button>
+    <p class="info-tip" id="info-tip2">Mostre o QR Code ou envie o código copia e cola para o cliente</p>
 
   </div>
 
@@ -258,21 +247,20 @@
 </div><!-- /card -->
 
 <script>
-// ─── BASE URL dinâmica ───
 const BASE = window.location.origin;
 
-let _paymentId  = null;   // ID do pagamento MP retornado por /api/bot/gerar
-let _extRef     = null;   // external_ref (mp2_xxx) para polling
-let _pollTimer  = null;
-let _pixCode    = null;
-let _valor      = 0;
-let _pct        = 0.6;
-let _minValor   = 5;
+let _txId        = null;
+let _pollTimer   = null;
+let _pixCode     = null;
+let _valor       = 0;
+let _pct         = 0.6;
+let _minValor    = 5;
 let _sistemaAtivo = true;
+let _progressInterval = null;
 
 function fmt(v){ return 'R$ ' + (v||0).toFixed(2).replace('.',','); }
 
-// ─── Carregar config (%) da API /cobrar ───
+// ─── Carregar config % do /cobrar ───
 async function carregarConfig() {
   try {
     const r = await fetch(`${BASE}/api/cobrar/config`);
@@ -296,9 +284,7 @@ async function carregarConfig() {
       `O cliente escaneia o QR Code → paga → ${pct} cai na sua conta automaticamente`;
 
     if (!_sistemaAtivo) mostrarManutencao();
-  } catch(e) {
-    // fallback silencioso — usa defaults
-  }
+  } catch(e) {}
 }
 
 function mostrarManutencao() {
@@ -310,7 +296,6 @@ function mostrarManutencao() {
   document.getElementById('manut-box').style.display    = 'block';
 }
 
-// ─── Preview split ao digitar ───
 function atualizarSplit() {
   const v   = parseFloat(document.getElementById('valor').value) || 0;
   const box = document.getElementById('split-preview');
@@ -324,7 +309,7 @@ function atualizarSplit() {
   }
 }
 
-// ─── Gerar PIX via /api/bot/gerar ───
+// ─── Gerar PIX via @VortexBank_bot ───
 async function gerarPix() {
   if (!_sistemaAtivo) {
     alert('🔧 Sistema em manutenção. Tente novamente mais tarde.');
@@ -340,40 +325,37 @@ async function gerarPix() {
 
   const btn = document.getElementById('btn-gerar');
   btn.disabled = true;
-  btn.innerHTML = '<span class="loader"></span>Gerando…';
+  btn.innerHTML = '<span class="loader"></span>Enviando…';
 
   try {
-    // Envia para /api/bot/gerar passando a chave pix como ref para split automático
-    const res = await fetch(`${BASE}/api/bot/gerar`, {
+    // Chama /api/cobrar/gerar → usa @VortexBank_bot via Telethon
+    const res = await fetch(`${BASE}/api/cobrar/gerar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        valor:      valor,
-        descricao:  'Cobrança via Pix',
-        nome:       'Cliente',
-        chave_pix:  chave,
-        tipo_chave: tipo,
-        cobrar_pct: _pct   // envia % para o backend aplicar o split
-      })
+      body: JSON.stringify({ chave_pix: chave, tipo_chave: tipo, valor })
     });
     const data = await res.json();
 
     if (!data.success) {
-      alert('❌ ' + (data.error || 'Erro ao gerar Pix. Verifique a configuração do sistema.'));
+      alert('❌ ' + (data.error || 'Erro ao iniciar geração. Tente novamente.'));
       btn.disabled = false;
       btn.innerHTML = '🚀 Gerar QR Code Pix';
       return;
     }
 
-    _paymentId = data.payment_id   || data.external_ref || null;
-    _extRef    = data.external_ref || null;
-    _pixCode   = data.pix_copia_cola || '';
-    _valor     = valor;
-
-    // Exibir QR imediatamente (sem polling de geração)
-    mostrarQr(data);
+    _txId  = data.tx_id;
+    _valor = valor;
     btn.disabled = false;
     btn.innerHTML = '🚀 Gerar QR Code Pix';
+
+    // Mostrar etapa 2 com loading
+    const voce = _valor * _pct;
+    document.getElementById('valor-destaque').textContent = fmt(_valor);
+    document.getElementById('voce-recebe-label').innerHTML =
+      `Você recebe: <strong style="color:var(--green)">${fmt(voce)}</strong>`;
+    setStep(2);
+    iniciarProgressoGeracao();
+    aguardarQrCode();
 
   } catch(e) {
     alert('❌ Erro de conexão. Tente novamente.');
@@ -382,70 +364,97 @@ async function gerarPix() {
   }
 }
 
-// ─── Exibir QR Code ───
-function mostrarQr(data) {
-  const voce = _valor * _pct;
-  document.getElementById('valor-destaque').textContent = fmt(_valor);
-  document.getElementById('voce-recebe-label').innerHTML =
-    `Você recebe: <strong style="color:var(--green)">${fmt(voce)}</strong>`;
+// ─── Barra de progresso visual enquanto bot gera ───
+function iniciarProgressoGeracao() {
+  if (_progressInterval) clearInterval(_progressInterval);
+  const msgs = [
+    'Conectando ao bot Telegram…',
+    'Bot recebendo solicitação…',
+    'Processando valor…',
+    'Gerando código Pix…',
+    'Quase pronto…',
+    'Aguardando confirmação…'
+  ];
+  let step = 0;
+  let pct  = 0;
+  const bar   = document.getElementById('progress-bar');
+  const label = document.getElementById('progress-label');
+  _progressInterval = setInterval(() => {
+    pct = Math.min(pct + 2, 90);
+    if (bar)   bar.style.width = pct + '%';
+    if (label) label.textContent = msgs[Math.min(Math.floor(step / 5), msgs.length - 1)];
+    step++;
+  }, 1000);
+}
 
-  const pixCode = data.pix_copia_cola || '';
-  const qrB64   = data.qr_base64     || '';
+// ─── Polling até ter pix_code (/api/paypix/status) ───
+async function aguardarQrCode() {
+  for (let i = 0; i < 60; i++) {   // até 120s (2min)
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const r = await fetch(`${BASE}/api/paypix/status/${_txId}`);
+      const d = await r.json();
+
+      if (d.pix_code) {
+        _pixCode = d.pix_code;
+        if (_progressInterval) clearInterval(_progressInterval);
+        document.getElementById('progress-bar').style.width = '100%';
+        document.getElementById('progress-label').textContent = '✅ QR Code gerado!';
+        setTimeout(() => mostrarQr(_pixCode), 400);
+        return;
+      }
+      if (d.status === 'erro') {
+        if (_progressInterval) clearInterval(_progressInterval);
+        document.getElementById('status-box').className = 'status-box erro';
+        document.getElementById('status-title').textContent = '❌ Falha na geração';
+        document.getElementById('status-sub').textContent   = 'O bot não respondeu. Tente novamente.';
+        return;
+      }
+    } catch(e) {}
+  }
+  // Timeout
+  if (_progressInterval) clearInterval(_progressInterval);
+  document.getElementById('status-box').className = 'status-box erro';
+  document.getElementById('status-title').textContent = '⚠️ Tempo esgotado';
+  document.getElementById('status-sub').textContent   = 'O bot demorou para responder. Tente novamente.';
+}
+
+// ─── Exibir QR Code quando pronto ───
+function mostrarQr(pixCode) {
+  // Esconder loading, mostrar QR
+  document.getElementById('gerando-wrap').style.display = 'none';
+  document.getElementById('qr-wrap-real').style.display = 'block';
+
+  // Atualizar status
+  document.getElementById('status-box').className      = 'status-box aguardando';
+  document.getElementById('status-title').textContent  = 'Aguardando pagamento…';
+  document.getElementById('status-sub').textContent    = 'O QR Code expira em 30 minutos';
 
   document.getElementById('pix-code-text').textContent = pixCode;
 
-  // Usa QR base64 do MP (preferido) ou gera via lib
-  const imgEl = document.getElementById('qr-img-b64');
-  const qrEl  = document.getElementById('qrcode');
+  const qrEl = document.getElementById('qrcode');
+  qrEl.innerHTML = '';
+  new QRCode(qrEl, {
+    text:         pixCode,
+    width:        200,
+    height:       200,
+    colorDark:    '#000000',
+    colorLight:   '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
 
-  if (qrB64) {
-    // MP retorna base64 direto
-    imgEl.src          = 'data:image/png;base64,' + qrB64;
-    imgEl.style.display = 'block';
-    qrEl.style.display  = 'none';
-  } else if (pixCode) {
-    // Gera QR via qrcodejs
-    imgEl.style.display = 'none';
-    qrEl.innerHTML = '';
-    qrEl.style.display = 'block';
-    new QRCode(qrEl, {
-      text:         pixCode,
-      width:        200,
-      height:       200,
-      colorDark:    '#000000',
-      colorLight:   '#ffffff',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-  }
-
-  setStep(2);
-  iniciarPoll();
+  iniciarPollPagamento();
 }
 
-// ─── Poll pagamento via /api/bot/status/{payment_id} ───
-function iniciarPoll() {
+// ─── Poll pagamento após QR exibido ───
+function iniciarPollPagamento() {
   if (_pollTimer) clearInterval(_pollTimer);
-
-  // Usa external_ref se disponível (mp2_xxx), senão payment_id numérico
-  const idParaPolling = _extRef || _paymentId;
-  if (!idParaPolling) return;
-
   _pollTimer = setInterval(async () => {
     try {
-      const r = await fetch(`${BASE}/api/bot/status/${idParaPolling}`);
+      const r = await fetch(`${BASE}/api/paypix/status/${_txId}`);
       const d = await r.json();
-
-      // Atualizar QR se ainda não tinha (raro, mas possível)
-      if (!_pixCode && d.pix_copia_cola) {
-        _pixCode = d.pix_copia_cola;
-        document.getElementById('pix-code-text').textContent = _pixCode;
-      }
-
-      const confirmado = d.confirmado || d.approved ||
-                         d.status === 'approved' || d.status === 'confirmado' ||
-                         d.pagamento === 'pago'  || d.status === 'pago';
-
-      if (confirmado) {
+      const pago = d.pagamento === 'pago' || d.status === 'pago';
+      if (pago) {
         clearInterval(_pollTimer);
         mostrarPago();
       }
@@ -465,7 +474,6 @@ function mostrarPago() {
   setStep(3);
 }
 
-// ─── Copiar código Pix ───
 async function copiarPix() {
   if (!_pixCode) return;
   try { await navigator.clipboard.writeText(_pixCode); }
@@ -479,23 +487,27 @@ async function copiarPix() {
   setTimeout(() => btn.textContent = '📋 Copiar código Pix (copia e cola)', 2200);
 }
 
-// ─── Novo QR ───
 function novoQr() {
-  if (_pollTimer) clearInterval(_pollTimer);
-  _paymentId = null; _extRef = null; _pixCode = null; _valor = 0;
-  document.getElementById('qrcode').innerHTML     = '';
-  document.getElementById('qr-img-b64').src       = '';
-  document.getElementById('qr-img-b64').style.display = 'none';
-  document.getElementById('qrcode').style.display = 'block';
+  if (_pollTimer)        clearInterval(_pollTimer);
+  if (_progressInterval) clearInterval(_progressInterval);
+  _txId = null; _pixCode = null; _valor = 0;
+
+  // Reset step2
+  document.getElementById('gerando-wrap').style.display  = 'block';
+  document.getElementById('qr-wrap-real').style.display  = 'none';
+  document.getElementById('progress-bar').style.width    = '0%';
+  document.getElementById('progress-label').textContent  = 'Conectando ao bot Telegram…';
+  document.getElementById('gerando-msg').textContent     = 'Aguarde, gerando QR Code via bot…';
+  document.getElementById('status-box').className        = 'status-box aguardando';
+  document.getElementById('status-title').textContent    = 'Gerando QR Code…';
+  document.getElementById('status-sub').textContent      = 'O bot está processando sua solicitação';
+  document.getElementById('qrcode').innerHTML            = '';
   document.getElementById('split-preview').classList.remove('show');
-  document.getElementById('valor').value          = '';
-  document.getElementById('chave_pix').value      = '';
-  const btn = document.getElementById('btn-gerar');
-  btn.disabled = false; btn.innerHTML = '🚀 Gerar QR Code Pix';
+  document.getElementById('valor').value                 = '';
+  document.getElementById('chave_pix').value             = '';
   setStep(1);
 }
 
-// ─── Controlar etapas ───
 function setStep(n) {
   ['step1','step2','step3'].forEach((id,i) =>
     document.getElementById(id).classList.toggle('active', i+1===n));
@@ -507,7 +519,6 @@ function setStep(n) {
   });
 }
 
-// Inicializar
 carregarConfig();
 </script>
 </body>

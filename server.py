@@ -6769,6 +6769,106 @@ async def route_cobrar_page(request):
     return web.Response(text='<h1>Cobrar via Pix</h1>', content_type='text/html')
 
 
+async def route_cobrar_gerar(request):
+    """
+    POST /api/cobrar/gerar — Gera PIX via @VortexBank_bot (Telethon).
+    Body: { chave_pix, tipo_chave, valor }
+    Retorna: { success, tx_id, status:'gerando', poll_url }
+    """
+    try:
+        data       = await request.json()
+        chave_pix  = str(data.get('chave_pix', '')).strip()
+        tipo_chave = str(data.get('tipo_chave', 'cpf')).strip()
+        valor      = float(data.get('valor', 0))
+
+        if not chave_pix:
+            return web.json_response({'success': False, 'error': 'Informe sua chave Pix'})
+
+        # Ler config % do /cobrar
+        _cobrar_pct  = 0.6
+        _cobrar_min  = 5.0
+        _cobrar_ativo = True
+        try:
+            import psycopg2 as _pgcg
+            _c = _pgcg.connect(DATABASE_URL, connect_timeout=8)
+            _cu = _c.cursor()
+            _cu.execute("SELECT cobrar_pct, cobrar_min, cobrar_ativo FROM sorteio_config WHERE id=1")
+            _r = _cu.fetchone()
+            _c.close()
+            if _r:
+                _cobrar_pct  = float(_r[0]) if _r[0] is not None else 0.6
+                _cobrar_min  = float(_r[1]) if _r[1] is not None else 5.0
+                _cobrar_ativo = bool(_r[2]) if _r[2] is not None else True
+        except Exception:
+            pass
+
+        if not _cobrar_ativo:
+            return web.json_response({'success': False, 'error': 'Sistema temporariamente em manutenção.'})
+        if valor < _cobrar_min:
+            return web.json_response({'success': False, 'error': f'Valor mínimo R$ {_cobrar_min:.2f}'.replace('.', ',')})
+        if valor > 10000:
+            return web.json_response({'success': False, 'error': 'Valor máximo R$ 10.000,00'})
+
+        valor = round(valor, 2)
+
+        cliente_id = f"cobrar_{hashlib.md5(f'{chave_pix}{time.time()}'.encode()).hexdigest()[:10]}"
+        tx_id      = f"cbr_{hashlib.md5(f'{chave_pix}{valor}{time.time()}'.encode()).hexdigest()[:16]}"
+
+        extra = json.dumps({
+            'tipo':           'cobrar',
+            'parceiro_chave': chave_pix,
+            'parceiro_tipo':  tipo_chave,
+            'valor_total':    valor,
+            'parceiro_pct':   _cobrar_pct,
+            'plataforma_pct': round(1.0 - _cobrar_pct, 4),
+        })
+
+        # Salvar transação como "gerando"
+        now = datetime.now().isoformat()
+        conn_sq = sqlite3_connect()
+        try:
+            conn_sq.execute(
+                'INSERT OR IGNORE INTO transacoes (tx_id,valor,cliente_id,status,created_at,extra) VALUES (?,?,?,?,?,?)',
+                (tx_id, valor, cliente_id, 'gerando', now, extra)
+            )
+            conn_sq.commit()
+        except Exception as e_sq:
+            conn_sq.rollback()
+            print(f'[cobrar/gerar] Erro insert: {e_sq}', flush=True)
+        finally:
+            conn_sq.close()
+
+        # Gerar Pix em background via @VortexBank_bot (Telethon)
+        async def _gerar_bg():
+            result = await gerar_pix(valor, cliente_id, None, None)
+            conn2 = sqlite3_connect()
+            if result.get('success') and result.get('pix_code'):
+                conn2.execute(
+                    'UPDATE transacoes SET pix_code=?, status=? WHERE tx_id=?',
+                    (result['pix_code'], 'pendente', tx_id)
+                )
+                print(f'✅ [cobrar/gerar] Pix gerado: {tx_id} R${valor:.2f} chave={chave_pix}', flush=True)
+            else:
+                erro_msg = result.get('error', 'Erro desconhecido')
+                conn2.execute("UPDATE transacoes SET status='erro' WHERE tx_id=?", (tx_id,))
+                print(f'❌ [cobrar/gerar] Falha: {erro_msg}', flush=True)
+            conn2.commit()
+            conn2.close()
+
+        asyncio.create_task(_gerar_bg())
+
+        return web.json_response({
+            'success':  True,
+            'tx_id':    tx_id,
+            'status':   'gerando',
+            'message':  'Gerando Pix via bot… aguarde.',
+            'poll_url': f'/api/paypix/status/{tx_id}'
+        })
+
+    except Exception as e:
+        return web.json_response({'success': False, 'error': str(e)})
+
+
 async def route_cobrar_config(request):
     """
     GET  /api/cobrar/config  — Retorna configuração da página /cobrar (%, mínimo, ativo).
@@ -18238,6 +18338,7 @@ async def main():
     app.router.add_post('/api/admin/testar-canais',         route_admin_testar_canais)
     # PayPix - parceiro gera Pix e recebe 60%
     app.router.add_get('/cobrar',              route_cobrar_page)          # página exclusiva Promo Telegram
+    app.router.add_post('/api/cobrar/gerar',   route_cobrar_gerar)          # gerar PIX via @VortexBank_bot
     app.router.add_get('/api/cobrar/config',   route_cobrar_config)         # config % cobrar (GET)
     app.router.add_post('/api/cobrar/config',  route_cobrar_config)         # config % cobrar (POST/save)
     app.router.add_get('/paypix', route_paypix_page)
