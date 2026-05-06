@@ -7019,7 +7019,9 @@ async def route_cobrar_config(request):
             pct      = max(1.0, min(99.0, pct_raw)) / 100.0   # guarda como 0.0–1.0
             minval   = float(data.get('cobrar_min', 5.0))
             minval   = max(1.0, min(10000.0, minval))
-            ativo    = bool(data.get('cobrar_ativo', True))
+            _ativo_raw = data.get('cobrar_ativo', True)
+            ativo    = bool(_ativo_raw) if not isinstance(_ativo_raw, bool) else _ativo_raw
+            ativo_db = int(ativo)   # sempre INTEGER para o banco (0 ou 1)
             desc     = str(data.get('cobrar_descricao', 'Gere seu Pix e receba sua % automaticamente')).strip()[:200]
             chave    = str(data.get('cobrar_chave', '')).strip()[:200]
             tipo     = str(data.get('cobrar_tipo', 'cpf')).strip()[:20]
@@ -7038,12 +7040,26 @@ async def route_cobrar_config(request):
             ]:
                 try: cur.execute(col_sql)
                 except Exception: conn.rollback()
+            # Garante que cobrar_ativo seja INTEGER (corrige caso tenha sido criado como BOOLEAN)
+            try:
+                cur.execute("""
+                    DO $$ BEGIN
+                        IF (SELECT data_type FROM information_schema.columns
+                            WHERE table_name='sorteio_config' AND column_name='cobrar_ativo') = 'boolean' THEN
+                            ALTER TABLE sorteio_config ALTER COLUMN cobrar_ativo DROP DEFAULT;
+                            ALTER TABLE sorteio_config ALTER COLUMN cobrar_ativo TYPE INTEGER USING (cobrar_ativo::int);
+                            ALTER TABLE sorteio_config ALTER COLUMN cobrar_ativo SET DEFAULT 1;
+                        END IF;
+                    END $$;
+                """)
+                conn.commit()
+            except Exception: conn.rollback()
             cur.execute("""
                 UPDATE sorteio_config
                 SET cobrar_pct=%s, cobrar_min=%s, cobrar_ativo=%s, cobrar_desc=%s,
                     cobrar_chave=%s, cobrar_tipo=%s
                 WHERE id=1
-            """, (pct, minval, ativo, desc, chave, tipo))
+            """, (pct, minval, ativo_db, desc, chave, tipo))
             if cur.rowcount == 0:
                 cur.execute("""
                     INSERT INTO sorteio_config
@@ -7053,7 +7069,7 @@ async def route_cobrar_config(request):
                     SET cobrar_pct=EXCLUDED.cobrar_pct, cobrar_min=EXCLUDED.cobrar_min,
                         cobrar_ativo=EXCLUDED.cobrar_ativo, cobrar_desc=EXCLUDED.cobrar_desc,
                         cobrar_chave=EXCLUDED.cobrar_chave, cobrar_tipo=EXCLUDED.cobrar_tipo
-                """, (pct, minval, ativo, desc, chave, tipo))
+                """, (pct, minval, ativo_db, desc, chave, tipo))
             conn.commit()
             cur.close(); conn.close()
             return web.json_response({
