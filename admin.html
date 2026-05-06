@@ -2668,6 +2668,31 @@ async function fazerLogin() {
                     </div>
                   </div>
 
+                  <!-- Chave Pix fixa (pré-configurada) -->
+                  <div style="background:#0a0a14;border:2px solid #22c55e55;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                    <div style="font-size:11px;color:#22c55e;text-transform:uppercase;letter-spacing:1px;font-weight:700">🔑 Chave Pix da plataforma (pré-configurada)</div>
+                    <div style="font-size:11px;color:#888;line-height:1.5">A chave fica salva aqui. Na página /cobrar o parceiro só precisa informar o <b style="color:#fff">valor</b>.</div>
+                    <!-- Tipo da chave -->
+                    <div>
+                      <label style="font-size:11px;color:#888;display:block;margin-bottom:6px">Tipo da chave</label>
+                      <select id="ptg-cobrar-tipo"
+                        style="width:100%;background:#050f05;border:1px solid #22c55e44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;cursor:pointer">
+                        <option value="cpf">CPF</option>
+                        <option value="cnpj">CNPJ</option>
+                        <option value="telefone">Telefone</option>
+                        <option value="email">E-mail</option>
+                        <option value="aleatoria">Chave Aleatória</option>
+                      </select>
+                    </div>
+                    <!-- Chave Pix -->
+                    <div>
+                      <label style="font-size:11px;color:#888;display:block;margin-bottom:6px">Chave Pix</label>
+                      <input type="text" id="ptg-cobrar-chave"
+                        style="width:100%;background:#050f05;border:1px solid #22c55e44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;box-sizing:border-box"
+                        placeholder="Ex: 27998823669 ou cpf@email.com">
+                    </div>
+                  </div>
+
                   <!-- Valor mínimo -->
                   <div>
                     <label style="font-size:11px;color:#888;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">💵 Valor mínimo (R$)</label>
@@ -9064,13 +9089,19 @@ async function ptgCarregarCobrarConfig() {
     const pct = Math.round((d.cobrar_pct || 0.6) * 100);
     const min = d.cobrar_min || 5;
     const ativo = d.cobrar_ativo !== false;
+    const chave = d.cobrar_chave || '';
+    const tipo  = d.cobrar_tipo  || 'cpf';
 
     const inpPct   = document.getElementById('ptg-cobrar-pct');
     const inpMin   = document.getElementById('ptg-cobrar-min');
     const inpAtivo = document.getElementById('ptg-cobrar-ativo');
-    if (inpPct)   inpPct.value   = pct;
-    if (inpMin)   inpMin.value   = min;
+    const inpChave = document.getElementById('ptg-cobrar-chave');
+    const inpTipo  = document.getElementById('ptg-cobrar-tipo');
+    if (inpPct)   inpPct.value     = pct;
+    if (inpMin)   inpMin.value     = min;
     if (inpAtivo) inpAtivo.checked = ativo;
+    if (inpChave) inpChave.value   = chave;
+    if (inpTipo)  inpTipo.value    = tipo;
 
     // Atualiza badge e split no card de link público também
     const platPct = 100 - pct;
@@ -9101,23 +9132,32 @@ async function ptgSalvarCobrarConfig() {
   const pct   = parseInt(document.getElementById('ptg-cobrar-pct')?.value)   || 60;
   const min   = parseFloat(document.getElementById('ptg-cobrar-min')?.value) || 5;
   const ativo = document.getElementById('ptg-cobrar-ativo')?.checked !== false;
+  const chave = (document.getElementById('ptg-cobrar-chave')?.value || '').trim();
+  const tipo  = document.getElementById('ptg-cobrar-tipo')?.value || 'cpf';
   const msgEl = document.getElementById('ptg-cobrar-msg');
+  const sec   = sessionStorage.getItem('vp_secret') || '';
 
   if (pct < 1 || pct > 99) {
     if (msgEl) msgEl.innerHTML = '<span style="color:#f87171">⚠️ % deve ser entre 1 e 99.</span>';
     return;
   }
+  if (!sec) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#f87171">⚠️ Faça login novamente.</span>';
+    return;
+  }
 
   try {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#aaa">⏳ Salvando...</span>';
     const r = await fetch('/api/cobrar/config', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': _adminSecret || '' },
-      body: JSON.stringify({ cobrar_pct: pct, cobrar_min: min, cobrar_ativo: ativo })
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': sec },
+      body: JSON.stringify({ cobrar_pct: pct, cobrar_min: min, cobrar_ativo: ativo,
+                             cobrar_chave: chave, cobrar_tipo: tipo })
     });
     const d = await r.json();
     if (d.success) {
       if (msgEl) {
-        msgEl.innerHTML = `<span style="color:#4ade80">✅ Salvo! Parceiros receberão <b>${pct}%</b> a partir de agora.</span>`;
+        msgEl.innerHTML = `<span style="color:#4ade80">✅ Salvo! Parceiros receberão <b>${pct}%</b>.</span>`;
         setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 4000);
       }
       // Atualiza badge no card de link
@@ -9132,7 +9172,7 @@ async function ptgSalvarCobrarConfig() {
       if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">❌ ${d.error || 'Erro ao salvar'}</span>`;
     }
   } catch(e) {
-    if (msgEl) msgEl.innerHTML = '<span style="color:#f87171">❌ Erro de conexão.</span>';
+    if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">❌ Erro: ${e.message}</span>`;
   }
 }
 

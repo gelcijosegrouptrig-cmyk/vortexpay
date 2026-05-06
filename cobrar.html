@@ -152,21 +152,6 @@
     </div>
 
     <div class="field">
-      <label>Tipo da sua chave Pix</label>
-      <select id="tipo_chave">
-        <option value="cpf">CPF</option>
-        <option value="telefone">Telefone</option>
-        <option value="email">E-mail</option>
-        <option value="aleatoria">Chave aleatória</option>
-      </select>
-    </div>
-
-    <div class="field">
-      <label>Sua chave Pix <span style="color:var(--text3);font-size:.72rem;text-transform:none">(você vai receber aqui)</span></label>
-      <input type="text" id="chave_pix" placeholder="Ex: 11999998888" oninput="atualizarSplit()"/>
-    </div>
-
-    <div class="field">
       <label id="lbl-valor">Valor a cobrar (R$) — mínimo R$ 5,00</label>
       <input type="number" id="valor" min="5" step="0.5" placeholder="Ex: 50" oninput="atualizarSplit()"/>
     </div>
@@ -260,6 +245,9 @@ let _progressInterval = null;
 
 function fmt(v){ return 'R$ ' + (v||0).toFixed(2).replace('.',','); }
 
+let _chaveFix  = '';
+let _tipoFix   = 'cpf';
+
 // ─── Carregar config % do /cobrar ───
 async function carregarConfig() {
   try {
@@ -268,6 +256,8 @@ async function carregarConfig() {
     _pct          = typeof d.cobrar_pct  === 'number' ? d.cobrar_pct  : 0.6;
     _minValor     = typeof d.cobrar_min  === 'number' ? d.cobrar_min  : 5;
     _sistemaAtivo = d.cobrar_ativo !== false;
+    _chaveFix     = d.cobrar_chave || '';
+    _tipoFix      = d.cobrar_tipo  || 'cpf';
 
     const pct  = Math.round(_pct * 100) + '%';
     const plat = Math.round((1 - _pct) * 100) + '%';
@@ -315,11 +305,12 @@ async function gerarPix() {
     alert('🔧 Sistema em manutenção. Tente novamente mais tarde.');
     return;
   }
-  const tipo  = document.getElementById('tipo_chave').value;
-  const chave = document.getElementById('chave_pix').value.trim();
+  // Usa chave pré-configurada no admin
+  const chave = _chaveFix;
+  const tipo  = _tipoFix;
   const valor = parseFloat(document.getElementById('valor').value) || 0;
 
-  if (!chave) { alert('⚠️ Informe sua chave Pix!'); return; }
+  if (!chave) { alert('⚠️ Chave Pix não configurada. Fale com o administrador.'); return; }
   if (valor < _minValor) { alert(`⚠️ Valor mínimo é R$ ${_minValor.toFixed(2).replace('.',',')}!`); return; }
   if (valor > 10000)     { alert('⚠️ Valor máximo é R$ 10.000,00!'); return; }
 
@@ -504,7 +495,6 @@ function novoQr() {
   document.getElementById('qrcode').innerHTML            = '';
   document.getElementById('split-preview').classList.remove('show');
   document.getElementById('valor').value                 = '';
-  document.getElementById('chave_pix').value             = '';
   setStep(1);
 }
 

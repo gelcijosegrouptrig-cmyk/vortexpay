@@ -7000,14 +7000,16 @@ async def route_cobrar_gerar(request):
 
 async def route_cobrar_config(request):
     """
-    GET  /api/cobrar/config  — Retorna configuração da página /cobrar (%, mínimo, ativo).
-    POST /api/cobrar/config  — Salva configuração (requer X-Admin-Secret).
+    GET  /api/cobrar/config  — Retorna configuração da página /cobrar (%, mínimo, ativo, chave_pix fixa).
+    POST /api/cobrar/config  — Salva configuração (requer X-PaynexBet-Secret).
     """
     headers = {'Access-Control-Allow-Origin': '*'}
 
     if request.method == 'POST':
-        # Autenticação básica pelo header secret
-        secret = request.headers.get('X-Admin-Secret', '') or request.headers.get('X-PaynexBet-Secret', '')
+        # Autenticação — aceita X-PaynexBet-Secret ou X-Admin-Secret
+        secret = (request.headers.get('X-PaynexBet-Secret', '')
+                  or request.headers.get('X-Admin-Secret', '')
+                  or request.rel_url.query.get('secret', ''))
         if secret != WEBHOOK_SECRET:
             return web.json_response({'success': False, 'error': 'Não autorizado'}, status=403, headers=headers)
 
@@ -7019,31 +7021,39 @@ async def route_cobrar_config(request):
             minval   = max(1.0, min(10000.0, minval))
             ativo    = bool(data.get('cobrar_ativo', True))
             desc     = str(data.get('cobrar_descricao', 'Gere seu Pix e receba sua % automaticamente')).strip()[:200]
+            chave    = str(data.get('cobrar_chave', '')).strip()[:200]
+            tipo     = str(data.get('cobrar_tipo', 'cpf')).strip()[:20]
 
             import psycopg2 as _pgcc
             conn = _pgcc.connect(DATABASE_URL, connect_timeout=8)
             cur  = conn.cursor()
-            # Garante coluna cobrar_pct na sorteio_config
+            # Garante colunas necessárias
             for col_sql in [
-                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_pct  REAL    DEFAULT 0.6",
-                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_min  REAL    DEFAULT 5.0",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_pct   REAL    DEFAULT 0.6",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_min   REAL    DEFAULT 5.0",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_ativo INTEGER DEFAULT 1",
-                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_desc TEXT    DEFAULT ''",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_desc  TEXT    DEFAULT ''",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_chave TEXT    DEFAULT ''",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_tipo  TEXT    DEFAULT 'cpf'",
             ]:
-                try:
-                    cur.execute(col_sql)
-                except Exception:
-                    pass
+                try: cur.execute(col_sql)
+                except Exception: conn.rollback()
             cur.execute("""
-                UPDATE sorteio_config SET cobrar_pct=%s, cobrar_min=%s, cobrar_ativo=%s, cobrar_desc=%s WHERE id=1
-            """, (pct, minval, 1 if ativo else 0, desc))
+                UPDATE sorteio_config
+                SET cobrar_pct=%s, cobrar_min=%s, cobrar_ativo=%s, cobrar_desc=%s,
+                    cobrar_chave=%s, cobrar_tipo=%s
+                WHERE id=1
+            """, (pct, minval, 1 if ativo else 0, desc, chave, tipo))
             if cur.rowcount == 0:
                 cur.execute("""
-                    INSERT INTO sorteio_config (id, cobrar_pct, cobrar_min, cobrar_ativo, cobrar_desc)
-                    VALUES (1, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE
+                    INSERT INTO sorteio_config
+                        (id, cobrar_pct, cobrar_min, cobrar_ativo, cobrar_desc, cobrar_chave, cobrar_tipo)
+                    VALUES (1, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE
                     SET cobrar_pct=EXCLUDED.cobrar_pct, cobrar_min=EXCLUDED.cobrar_min,
-                        cobrar_ativo=EXCLUDED.cobrar_ativo, cobrar_desc=EXCLUDED.cobrar_desc
-                """, (pct, minval, 1 if ativo else 0, desc))
+                        cobrar_ativo=EXCLUDED.cobrar_ativo, cobrar_desc=EXCLUDED.cobrar_desc,
+                        cobrar_chave=EXCLUDED.cobrar_chave, cobrar_tipo=EXCLUDED.cobrar_tipo
+                """, (pct, minval, 1 if ativo else 0, desc, chave, tipo))
             conn.commit()
             cur.close(); conn.close()
             return web.json_response({
@@ -7053,9 +7063,12 @@ async def route_cobrar_config(request):
                 'cobrar_min':         minval,
                 'cobrar_ativo':       ativo,
                 'cobrar_descricao':   desc,
+                'cobrar_chave':       chave,
+                'cobrar_tipo':        tipo,
                 'message':            f'✅ Configuração salva! Parceiros receberão {round(pct*100,1)}% a partir de agora.'
             }, headers=headers)
         except Exception as e:
+            import traceback; traceback.print_exc()
             return web.json_response({'success': False, 'error': str(e)}, status=500, headers=headers)
 
     # GET — retorna config atual
@@ -7064,7 +7077,10 @@ async def route_cobrar_config(request):
         conn = _pgccg.connect(DATABASE_URL, connect_timeout=8)
         cur  = conn.cursor()
         try:
-            cur.execute("SELECT cobrar_pct, cobrar_min, cobrar_ativo, cobrar_desc FROM sorteio_config WHERE id=1")
+            cur.execute("""
+                SELECT cobrar_pct, cobrar_min, cobrar_ativo, cobrar_desc, cobrar_chave, cobrar_tipo
+                FROM sorteio_config WHERE id=1
+            """)
             row = cur.fetchone()
         except Exception:
             row = None
@@ -7074,12 +7090,16 @@ async def route_cobrar_config(request):
             minv  = float(row[1]) if row[1] is not None else 5.0
             ativo = bool(row[2])  if row[2] is not None else True
             desc  = str(row[3])   if row[3]              else 'Gere seu Pix e receba sua % automaticamente'
+            chave = str(row[4])   if row[4]              else ''
+            tipo  = str(row[5])   if row[5]              else 'cpf'
             return web.json_response({
                 'cobrar_pct':         pct,
                 'cobrar_pct_display': f'{round(pct * 100, 1)}%',
                 'cobrar_min':         minv,
                 'cobrar_ativo':       ativo,
                 'cobrar_descricao':   desc,
+                'cobrar_chave':       chave,
+                'cobrar_tipo':        tipo,
             }, headers=headers)
     except Exception:
         pass
