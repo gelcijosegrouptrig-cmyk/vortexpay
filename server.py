@@ -6095,11 +6095,11 @@ async def route_health(request):
         'suitpay_ci_preview': (os.environ.get('SUITPAY_CI','')[:8] + '...' if os.environ.get('SUITPAY_CI','') else 'NÃO CONFIGURADA'),
         'suit_ci_parsed': _SUIT_CI[:4] + '...' if _SUIT_CI else 'vazio',
         'suit_cs_parsed': _SUIT_CS[:6] + '...' if _SUIT_CS else 'vazio',
-        # Mantém compatibilidade retroativa
-        'telegram': False,
+        # Status real do Telegram
+        'telegram': _telegram_ready,
         'telegram_motivo': None,
-        'tentativas': 0,
-        'ultimo_ping_seg': None,
+        'tentativas': _telegram_tentativas,
+        'ultimo_ping_seg': round(time.time() - _telegram_ultimo_ping, 1) if _telegram_ultimo_ping else None,
         'bot': '@paypix_nexbot',
     })
 
