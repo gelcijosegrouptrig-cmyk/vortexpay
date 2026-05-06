@@ -7397,13 +7397,14 @@ async def _processar_split_multiplo(tx_id: str, valor: float, extra_str: str):
     """
     import psycopg2 as _pgms
 
-    BOT_MIN       = 10.0   # mínimo do bot VortexBank
+    BOT_MIN        = 10.0   # mínimo do bot VortexBank
     MAX_TENTATIVAS = 3
-    DELAY_RETRY   = 30     # segundos entre tentativas do mesmo parceiro
-    DELAY_NEXT    = 10     # segundos entre parceiros (evita colisão no bot)
+    DELAY_RETRY    = 30     # segundos entre tentativas do mesmo parceiro
+    DELAY_NEXT     = 15     # segundos entre parceiros (tempo bot respirar após unlock)
 
-    print(f'\n[Multi-Split] ══════════════════════════════', flush=True)
+    print(f'\n[Multi-Split] ══════════════════════════════════════════════', flush=True)
     print(f'[Multi-Split] tx={tx_id}  valor=R${valor:.2f}', flush=True)
+    print(f'[Multi-Split] Timings: retry={DELAY_RETRY}s | entre_parceiros={DELAY_NEXT}s', flush=True)
 
     # ── 1. Buscar parceiros ativos ordenados ──────────────────────────────────
     try:
