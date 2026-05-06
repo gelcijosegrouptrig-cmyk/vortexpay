@@ -398,6 +398,25 @@
   #toast.success { border-color: rgba(74,222,128,0.3); color: var(--green); }
   #toast.error { border-color: rgba(248,113,113,0.3); color: var(--red); }
 
+  /* ── PROMO TELEGRAM TOGGLES ──────────────────────── */
+  .ptg-toggle {
+    position: relative; display: inline-block;
+    width: 44px; height: 24px; flex-shrink: 0;
+  }
+  .ptg-toggle input { opacity: 0; width: 0; height: 0; }
+  .ptg-slider {
+    position: absolute; cursor: pointer;
+    inset: 0; background: #333;
+    border-radius: 24px; transition: 0.3s;
+  }
+  .ptg-slider:before {
+    content: ''; position: absolute;
+    width: 18px; height: 18px; left: 3px; bottom: 3px;
+    background: #fff; border-radius: 50%; transition: 0.3s;
+  }
+  .ptg-toggle input:checked + .ptg-slider { background: #229ed9; }
+  .ptg-toggle input:checked + .ptg-slider:before { transform: translateX(20px); }
+
   /* ── MOBILE ──────────────────────────────────────── */
   .menu-toggle {
     display: none; background: none; border: none;
@@ -1005,6 +1024,9 @@ async function fazerLogin() {
       </div>
       <div class="nav-item" onclick="showTab('paypixcob')">
         💳 <span>PayPix-Cob</span>
+      </div>
+      <div class="nav-item" onclick="showTab('promo-telegram')" id="nav-promo-telegram">
+        📢 <span>Promo Telegram</span>
       </div>
       <!-- Bots ocultos (mantidos para uso interno) -->
       <!-- <div class="nav-section">Bots</div>
@@ -2353,6 +2375,268 @@ async function fazerLogin() {
         </div>
 
       </div><!-- /tab-multi -->
+
+      <!-- ═══ PROMO TELEGRAM ═══ -->
+      <div id="tab-promo-telegram" class="tab-content">
+
+        <!-- Banner topo -->
+        <div style="display:flex;align-items:center;gap:12px;background:#0a0a1a;border:1px solid #229ed944;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+          <div style="font-size:28px">📢</div>
+          <div style="flex:1">
+            <div style="font-weight:800;font-size:16px;color:#229ed9">Promo Telegram — Notificações de Promoções</div>
+            <div style="font-size:12px;color:#666;margin-top:2px">Envie notificações automáticas ao Telegram para Sorteio, PayPix e PayPix-Cob</div>
+          </div>
+          <button onclick="promoTgTestar()" style="padding:8px 16px;background:#229ed922;border:1px solid #229ed966;border-radius:8px;color:#229ed9;font-size:13px;font-weight:700;cursor:pointer">
+            📨 Testar Conexão
+          </button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="section-grid">
+
+          <!-- ── Coluna Esquerda: Config Bot ── -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- Card Config Bot Telegram -->
+            <div class="table-card">
+              <div class="table-header collapsible" onclick="colToggle('ptg-config')">
+                <h3>🤖 Configuração do Bot Telegram <span id="col-arrow-ptg-config" class="collapse-arrow">▼</span></h3>
+                <span id="ptg-status-badge" style="font-size:11px;padding:3px 10px;border-radius:20px;background:#1a1a1a;color:#aaa">Verificando...</span>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-config">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+
+                <div style="padding:12px;background:rgba(34,158,217,0.08);border-radius:10px;font-size:12px;color:var(--text2);line-height:1.6">
+                  <b style="color:#229ed9">📋 Como configurar:</b><br>
+                  1. Abra <b>@BotFather</b> no Telegram → /newbot → copie o <b>Token</b><br>
+                  2. Inicie uma conversa com seu bot<br>
+                  3. Acesse: <code style="color:#4ade80">https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code><br>
+                  4. Copie o <b>chat_id</b> do campo "id" no retorno
+                </div>
+
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">🔑 Bot Token</label>
+                  <input id="ptg-token" type="text" placeholder="1234567890:ABCdef..." style="width:100%;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box;font-family:monospace">
+                </div>
+
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">💬 Chat ID (canal, grupo ou usuário)</label>
+                  <input id="ptg-chatid" type="text" placeholder="-100123456789 ou 123456789" style="width:100%;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box;font-family:monospace">
+                </div>
+
+                <div style="display:flex;gap:8px">
+                  <button onclick="promoTgSalvar(false)" style="flex:1;padding:10px;background:linear-gradient(135deg,#229ed9,#1a7db0);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+                    💾 Salvar Config
+                  </button>
+                  <button onclick="promoTgSalvar(true)" style="flex:1;padding:10px;background:rgba(74,222,128,0.15);border:1px solid #4ade80;border-radius:10px;color:#4ade80;font-size:13px;font-weight:700;cursor:pointer">
+                    📨 Salvar + Testar
+                  </button>
+                </div>
+                <div id="ptg-msg-config" style="font-size:12px;text-align:center;min-height:16px"></div>
+
+              </div></div>
+            </div><!-- /config bot -->
+
+            <!-- Card Envio Manual -->
+            <div class="table-card">
+              <div class="table-header collapsible" onclick="colToggle('ptg-manual')">
+                <h3>✍️ Envio Manual de Mensagem <span id="col-arrow-ptg-manual" class="collapse-arrow">▼</span></h3>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-manual">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Mensagem (HTML do Telegram permitido)</label>
+                  <textarea id="ptg-msg-manual" rows="5" placeholder="Digite sua mensagem aqui...&#10;Suporta <b>negrito</b>, <i>itálico</i>, <a href=''>links</a>" style="width:100%;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box;resize:vertical;font-family:inherit"></textarea>
+                </div>
+                <button onclick="promoTgEnviarManual()" style="padding:10px;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:10px;color:#000;font-size:13px;font-weight:700;cursor:pointer">
+                  🚀 Enviar Agora
+                </button>
+                <div id="ptg-msg-manual-resp" style="font-size:12px;text-align:center;min-height:16px"></div>
+              </div></div>
+            </div><!-- /envio manual -->
+
+          </div><!-- /col esquerda -->
+
+          <!-- ── Coluna Direita: Notificações por Seção ── -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- Card Sorteio -->
+            <div class="table-card" style="border-color:#8b5cf666">
+              <div class="table-header collapsible" onclick="colToggle('ptg-sorteio')">
+                <h3>🎲 Notificações — Sorteio <span id="col-arrow-ptg-sorteio" class="collapse-arrow">▼</span></h3>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-sorteio">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(139,92,246,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Novo participante no sorteio</div>
+                    <div style="font-size:11px;color:#666">Notifica ao entrar no sorteio</div>
+                  </div>
+                  <label class="ptg-toggle">
+                    <input type="checkbox" id="ptg-sort-participante" checked onchange="promoTgSalvarNotifs()">
+                    <span class="ptg-slider"></span>
+                  </label>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(139,92,246,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Sorteio realizado (ganhador)</div>
+                    <div style="font-size:11px;color:#666">Notifica resultado com ganhador</div>
+                  </div>
+                  <label class="ptg-toggle">
+                    <input type="checkbox" id="ptg-sort-resultado" checked onchange="promoTgSalvarNotifs()">
+                    <span class="ptg-slider"></span>
+                  </label>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(139,92,246,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Prêmio acumulado</div>
+                    <div style="font-size:11px;color:#666">Notifica quando prêmio cresce</div>
+                  </div>
+                  <label class="ptg-toggle">
+                    <input type="checkbox" id="ptg-sort-acumulo" onchange="promoTgSalvarNotifs()">
+                    <span class="ptg-slider"></span>
+                  </label>
+                </div>
+
+                <button onclick="promoTgTestarSorteio()" style="padding:8px;background:#8b5cf622;border:1px solid #8b5cf666;border-radius:8px;color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer">
+                  📨 Enviar Teste — Sorteio
+                </button>
+                <div id="ptg-msg-sorteio" style="font-size:11px;text-align:center;min-height:14px"></div>
+
+              </div></div>
+            </div><!-- /sorteio -->
+
+            <!-- Card PayPix -->
+            <div class="table-card" style="border-color:#f59e0b66">
+              <div class="table-header collapsible" onclick="colToggle('ptg-paypix')">
+                <h3>💸 Notificações — PayPix <span id="col-arrow-ptg-paypix" class="collapse-arrow">▼</span></h3>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-paypix">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(245,158,11,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Pagamento recebido</div>
+                    <div style="font-size:11px;color:#666">Notifica cada PIX confirmado</div>
+                  </div>
+                  <label class="ptg-toggle">
+                    <input type="checkbox" id="ptg-pp-pagamento" checked onchange="promoTgSalvarNotifs()">
+                    <span class="ptg-slider"></span>
+                  </label>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(245,158,11,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Saque de afiliado pago</div>
+                    <div style="font-size:11px;color:#666">Notifica comissão enviada</div>
+                  </div>
+                  <label class="ptg-toggle">
+                    <input type="checkbox" id="ptg-pp-saque" checked onchange="promoTgSalvarNotifs()">
+                    <span class="ptg-slider"></span>
+                  </label>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(245,158,11,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Novo afiliado cadastrado</div>
+                    <div style="font-size:11px;color:#666">Notifica novo parceiro</div>
+                  </div>
+                  <label class="ptg-toggle">
+                    <input type="checkbox" id="ptg-pp-afiliado" onchange="promoTgSalvarNotifs()">
+                    <span class="ptg-slider"></span>
+                  </label>
+                </div>
+
+                <button onclick="promoTgTestarPaypix()" style="padding:8px;background:#f59e0b22;border:1px solid #f59e0b66;border-radius:8px;color:#fbbf24;font-size:12px;font-weight:700;cursor:pointer">
+                  📨 Enviar Teste — PayPix
+                </button>
+                <div id="ptg-msg-paypix" style="font-size:11px;text-align:center;min-height:14px"></div>
+
+              </div></div>
+            </div><!-- /paypix -->
+
+            <!-- Card PayPix-Cob -->
+            <div class="table-card" style="border-color:#22c55e66">
+              <div class="table-header collapsible" onclick="colToggle('ptg-paypixcob')">
+                <h3>💳 Notificações — PayPix-Cob <span id="col-arrow-ptg-paypixcob" class="collapse-arrow">▼</span></h3>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-paypixcob">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(34,197,94,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Cobrança gerada</div>
+                    <div style="font-size:11px;color:#666">Notifica novo QR gerado</div>
+                  </div>
+                  <label class="ptg-toggle">
+                    <input type="checkbox" id="ptg-pc-cobranca" onchange="promoTgSalvarNotifs()">
+                    <span class="ptg-slider"></span>
+                  </label>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(34,197,94,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Pagamento confirmado</div>
+                    <div style="font-size:11px;color:#666">Notifica PIX-Cob pago</div>
+                  </div>
+                  <label class="ptg-toggle">
+                    <input type="checkbox" id="ptg-pc-pago" checked onchange="promoTgSalvarNotifs()">
+                    <span class="ptg-slider"></span>
+                  </label>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(34,197,94,0.08);border-radius:10px">
+                  <div>
+                    <div style="font-size:13px;font-weight:600">Saque parceiro pago</div>
+                    <div style="font-size:11px;color:#666">Notifica comissão via PIX</div>
+                  </div>
+                  <label class="ptg-toggle">
+                    <input type="checkbox" id="ptg-pc-saque" checked onchange="promoTgSalvarNotifs()">
+                    <span class="ptg-slider"></span>
+                  </label>
+                </div>
+
+                <button onclick="promoTgTestarPaypixCob()" style="padding:8px;background:#22c55e22;border:1px solid #22c55e66;border-radius:8px;color:#4ade80;font-size:12px;font-weight:700;cursor:pointer">
+                  📨 Enviar Teste — PayPix-Cob
+                </button>
+                <div id="ptg-msg-paypixcob" style="font-size:11px;text-align:center;min-height:14px"></div>
+
+              </div></div>
+            </div><!-- /paypixcob -->
+
+          </div><!-- /col direita -->
+
+        </div><!-- /grid 2 colunas -->
+
+        <!-- Card Preview Mensagens -->
+        <div class="table-card" style="margin-top:16px">
+          <div class="table-header collapsible" onclick="colToggle('ptg-preview')">
+            <h3>📋 Preview dos Modelos de Mensagem <span id="col-arrow-ptg-preview" class="collapse-arrow">▼</span></h3>
+          </div>
+          <div class="collapse-body" id="col-body-ptg-preview">
+          <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px" class="section-grid">
+
+            <div style="background:#0a0a14;border:1px solid #8b5cf644;border-radius:10px;padding:12px;font-size:12px">
+              <div style="color:#a78bfa;font-weight:700;margin-bottom:6px">🎲 Sorteio — Novo Participante</div>
+              <div style="color:#94a3b8;font-family:monospace;line-height:1.5">🎉 <b>Novo participante!</b><br>👤 João Silva<br>🏆 Prêmio atual: <b>R$ 500,00</b><br>🎟️ Total de tickets: 42<br>⏰ Sorteio em: 3 dias</div>
+            </div>
+
+            <div style="background:#0a0a14;border:1px solid #f59e0b44;border-radius:10px;padding:12px;font-size:12px">
+              <div style="color:#fbbf24;font-weight:700;margin-bottom:6px">💸 PayPix — Pagamento Recebido</div>
+              <div style="color:#94a3b8;font-family:monospace;line-height:1.5">💰 <b>PIX recebido!</b><br>💵 Valor: <b>R$ 150,00</b><br>👤 Maria (ref: AB12CD)<br>🏦 Comissão: R$ 90,00<br>✅ Status: confirmado</div>
+            </div>
+
+            <div style="background:#0a0a14;border:1px solid #22c55e44;border-radius:10px;padding:12px;font-size:12px">
+              <div style="color:#4ade80;font-weight:700;margin-bottom:6px">💳 PayPix-Cob — Pago</div>
+              <div style="color:#94a3b8;font-family:monospace;line-height:1.5">✅ <b>Cobrança paga!</b><br>💵 Valor: <b>R$ 200,00</b><br>👤 Carlos (parceiro)<br>🏦 Comissão: R$ 100,00<br>⏱️ Confirmado via MP</div>
+            </div>
+
+          </div></div>
+        </div><!-- /preview -->
+
+      </div><!-- /tab-promo-telegram -->
 
       <!-- ═══ NOTIFICAÇÕES TELEGRAM ═══ -->
       <div id="tab-notificacoes" class="tab-content">
@@ -7749,6 +8033,7 @@ function showTab(tab) {
       'jogo-responsavel':   _permsStaff.includes('jogo_responsavel_ver'),
       'afiliados':          _permsStaff.includes('afiliados_ver'),
       'notificacoes':       _permsStaff.includes('notificacoes_ver'),
+      'promo-telegram':     _permsStaff.includes('notificacoes_ver'),
       'paypix':             _permsStaff.includes('paypix_ver'),
       'paypixcob':          _permsStaff.includes('paypix_ver'),
       'bot2':               _permsStaff.includes('paypix_ver'),
@@ -7826,6 +8111,7 @@ function showTab(tab) {
     multi: '🎰 Aposta Múltipla / Acumuladora',
     bolao: '🎯 Bolão Placar Exato',
     notificacoes: '🔔 Notificações Telegram',
+    'promo-telegram': '📢 Promo Telegram',
   };
   document.getElementById('page-title').textContent = titles[tab] || tab;
   fecharSidebar();
@@ -7852,12 +8138,13 @@ function showTab(tab) {
   if (tab === 'multi') loadMultiAdmin();
   if (tab === 'bolao') { loadBolaoAdmin(); carregarSelectLigasAtivas(); }
   if (tab === 'notificacoes') loadNotifConfig();
+  if (tab === 'promo-telegram') promoTgCarregar();
   if (tab === 'dashboard') { loadAll(); loadCharts(); }
   if (tab === 'carteira') { loadSaldo(); loadStats(); }
 }
 
 function tabName(tab) {
-  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api', bot2:'mercado pago', bot3:'bot mp2', paypix:'paypix', paypixcob:'paypix-cob', campeonatos:'campeonato', 'usuarios-mgr':'usuários', 'config-pagamento':'config', 'apostas-mgr':'apostas & lucro' };
+  const map = { dashboard:'dashboard', carteira:'carteira', depositos:'depósit', saques:'saques', sorteio:'sorteio', sistema:'sistema', api:'api', bot2:'mercado pago', bot3:'bot mp2', paypix:'paypix', paypixcob:'paypix-cob', campeonatos:'campeonato', 'usuarios-mgr':'usuários', 'config-pagamento':'config', 'apostas-mgr':'apostas & lucro', 'promo-telegram':'promo telegram' };
   return map[tab] || tab;
 }
 
@@ -8414,6 +8701,292 @@ function exportarRelatorio() {
   const params = new URLSearchParams({...(inicio ? {inicio} : {}), ...(fim ? {fim} : {})});
   const expQuery = _authQuery() + (params.toString() ? '&' + params.toString() : '');
   window.open(`/api/admin/export/apostas.csv?${expQuery}`, '_blank');
+}
+
+// ═══════════════════════════════════════════════
+// 📢 PROMO TELEGRAM — Notificações de Promoções
+// ═══════════════════════════════════════════════
+
+// Estado local
+let _ptgConfig = {
+  bot_token: '',
+  chat_id: '',
+  notifs: {
+    sort_participante: true,
+    sort_resultado: true,
+    sort_acumulo: false,
+    pp_pagamento: true,
+    pp_saque: true,
+    pp_afiliado: false,
+    pc_cobranca: false,
+    pc_pago: true,
+    pc_saque: true
+  }
+};
+
+// Carregar config ao abrir aba
+async function promoTgCarregar() {
+  try {
+    const r = await fetch('/api/admin/notif-config', { headers: _authHeaders() });
+    const d = await r.json();
+    if (!d.ok) return;
+    const c = d.config || {};
+    // Token/chatid (reutiliza o mesmo endpoint de notif-config)
+    if (c.bot_token) {
+      _ptgConfig.bot_token = c.bot_token;
+      const el = document.getElementById('ptg-token');
+      if (el) el.value = c.bot_token;
+    }
+    if (c.chat_id) {
+      _ptgConfig.chat_id = c.chat_id;
+      const el = document.getElementById('ptg-chatid');
+      if (el) el.value = c.chat_id;
+    }
+    // Notifs específicas de promo (salvas em sub-campo)
+    const n = c.promo_notifs || {};
+    const checks = {
+      'ptg-sort-participante': n.sort_participante !== false,
+      'ptg-sort-resultado':    n.sort_resultado !== false,
+      'ptg-sort-acumulo':      !!n.sort_acumulo,
+      'ptg-pp-pagamento':      n.pp_pagamento !== false,
+      'ptg-pp-saque':          n.pp_saque !== false,
+      'ptg-pp-afiliado':       !!n.pp_afiliado,
+      'ptg-pc-cobranca':       !!n.pc_cobranca,
+      'ptg-pc-pago':           n.pc_pago !== false,
+      'ptg-pc-saque':          n.pc_saque !== false
+    };
+    Object.entries(checks).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = val;
+    });
+    // Badge status
+    const badge = document.getElementById('ptg-status-badge');
+    if (badge) {
+      if (c.bot_token && c.chat_id) {
+        badge.style.background = '#0a2a0a'; badge.style.color = '#4ade80';
+        badge.textContent = '✅ Configurado';
+      } else {
+        badge.style.background = '#2a0a0a'; badge.style.color = '#f87171';
+        badge.textContent = '⚠️ Não configurado';
+      }
+    }
+  } catch(e) { /* silencioso */ }
+}
+
+// Salvar configuração
+async function promoTgSalvar(testar) {
+  const token  = document.getElementById('ptg-token')?.value?.trim() || '';
+  const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
+  const msg    = document.getElementById('ptg-msg-config');
+
+  if (!token || !chatid) {
+    if (msg) { msg.style.color = '#f87171'; msg.textContent = '⚠️ Preencha Token e Chat ID'; }
+    return;
+  }
+
+  const notifs = {
+    sort_participante: document.getElementById('ptg-sort-participante')?.checked,
+    sort_resultado:    document.getElementById('ptg-sort-resultado')?.checked,
+    sort_acumulo:      document.getElementById('ptg-sort-acumulo')?.checked,
+    pp_pagamento:      document.getElementById('ptg-pp-pagamento')?.checked,
+    pp_saque:          document.getElementById('ptg-pp-saque')?.checked,
+    pp_afiliado:       document.getElementById('ptg-pp-afiliado')?.checked,
+    pc_cobranca:       document.getElementById('ptg-pc-cobranca')?.checked,
+    pc_pago:           document.getElementById('ptg-pc-pago')?.checked,
+    pc_saque:          document.getElementById('ptg-pc-saque')?.checked
+  };
+
+  try {
+    const r = await fetch('/api/admin/notif-config', {
+      method: 'POST', headers: _authHeaders(),
+      body: JSON.stringify({
+        bot_token: token, chat_id: chatid,
+        promo_notifs: notifs, testar
+      })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      if (msg) { msg.style.color = '#4ade80'; msg.textContent = '✅ ' + (d.msg || 'Salvo!'); }
+      showToastAdmin('📢 Config Telegram salva!', 'green');
+      const badge = document.getElementById('ptg-status-badge');
+      if (badge) { badge.style.background='#0a2a0a'; badge.style.color='#4ade80'; badge.textContent='✅ Configurado'; }
+    } else {
+      if (msg) { msg.style.color = '#f87171'; msg.textContent = '❌ ' + (d.error || 'Falha'); }
+    }
+  } catch(e) { showToastAdmin('Erro: ' + e.message, 'red'); }
+}
+
+// Salvar notifs ao mudar toggle
+async function promoTgSalvarNotifs() {
+  const token  = document.getElementById('ptg-token')?.value?.trim() || '';
+  const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
+  if (!token || !chatid) return; // silencioso se não configurado ainda
+  const notifs = {
+    sort_participante: document.getElementById('ptg-sort-participante')?.checked,
+    sort_resultado:    document.getElementById('ptg-sort-resultado')?.checked,
+    sort_acumulo:      document.getElementById('ptg-sort-acumulo')?.checked,
+    pp_pagamento:      document.getElementById('ptg-pp-pagamento')?.checked,
+    pp_saque:          document.getElementById('ptg-pp-saque')?.checked,
+    pp_afiliado:       document.getElementById('ptg-pp-afiliado')?.checked,
+    pc_cobranca:       document.getElementById('ptg-pc-cobranca')?.checked,
+    pc_pago:           document.getElementById('ptg-pc-pago')?.checked,
+    pc_saque:          document.getElementById('ptg-pc-saque')?.checked
+  };
+  try {
+    await fetch('/api/admin/notif-config', {
+      method: 'POST', headers: _authHeaders(),
+      body: JSON.stringify({ bot_token: token, chat_id: chatid, promo_notifs: notifs })
+    });
+  } catch(e) { /* silencioso */ }
+}
+
+// Testar conexão geral
+async function promoTgTestar() {
+  const token  = document.getElementById('ptg-token')?.value?.trim() || '';
+  const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
+  if (!token || !chatid) {
+    showToastAdmin('⚠️ Configure Token e Chat ID primeiro!', 'red'); return;
+  }
+  showToastAdmin('⏳ Enviando teste...', 'green');
+  try {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatid,
+        parse_mode: 'HTML',
+        text: '✅ <b>PaynexBet Admin</b>\n📢 Promo Telegram conectado com sucesso!\n🎲 Sorteio · 💸 PayPix · 💳 PayPix-Cob'
+      })
+    });
+    const d = await r.json();
+    if (d.ok) showToastAdmin('✅ Telegram conectado!', 'green');
+    else showToastAdmin('❌ Erro: ' + (d.description || 'falha'), 'red');
+  } catch(e) { showToastAdmin('❌ Erro de rede: ' + e.message, 'red'); }
+}
+
+// Envio manual de mensagem
+async function promoTgEnviarManual() {
+  const token  = document.getElementById('ptg-token')?.value?.trim() || '';
+  const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
+  const texto  = document.getElementById('ptg-msg-manual')?.value?.trim() || '';
+  const resp   = document.getElementById('ptg-msg-manual-resp');
+  if (!token || !chatid) {
+    if (resp) { resp.style.color='#f87171'; resp.textContent='⚠️ Configure Token e Chat ID primeiro'; }
+    return;
+  }
+  if (!texto) {
+    if (resp) { resp.style.color='#f87171'; resp.textContent='⚠️ Digite uma mensagem'; }
+    return;
+  }
+  try {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatid, parse_mode: 'HTML', text: texto })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      if (resp) { resp.style.color='#4ade80'; resp.textContent='✅ Mensagem enviada!'; }
+      showToastAdmin('✅ Mensagem enviada!', 'green');
+      document.getElementById('ptg-msg-manual').value = '';
+    } else {
+      if (resp) { resp.style.color='#f87171'; resp.textContent='❌ ' + (d.description || 'Falha'); }
+    }
+  } catch(e) {
+    if (resp) { resp.style.color='#f87171'; resp.textContent='❌ Erro: ' + e.message; }
+  }
+}
+
+// Testar mensagem de Sorteio
+async function promoTgTestarSorteio() {
+  const token  = document.getElementById('ptg-token')?.value?.trim() || '';
+  const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
+  const msg    = document.getElementById('ptg-msg-sorteio');
+  if (!token || !chatid) {
+    if (msg) { msg.style.color='#f87171'; msg.textContent='⚠️ Configure Token/Chat ID'; }
+    return;
+  }
+  try {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatid, parse_mode: 'HTML',
+        text: '🎲 <b>Sorteio PaynexBet</b>\n\n🎉 <b>Novo participante!</b>\n👤 João Teste\n🏆 Prêmio atual: <b>R$ 500,00</b>\n🎟️ Total de tickets: 42\n⏰ Sorteio em: 3 dias\n\n<i>Mensagem de teste — PaynexBet Admin</i>'
+      })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      if (msg) { msg.style.color='#4ade80'; msg.textContent='✅ Teste Sorteio enviado!'; }
+    } else {
+      if (msg) { msg.style.color='#f87171'; msg.textContent='❌ ' + (d.description||'Falha'); }
+    }
+  } catch(e) {
+    if (msg) { msg.style.color='#f87171'; msg.textContent='❌ Erro: ' + e.message; }
+  }
+}
+
+// Testar mensagem de PayPix
+async function promoTgTestarPaypix() {
+  const token  = document.getElementById('ptg-token')?.value?.trim() || '';
+  const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
+  const msg    = document.getElementById('ptg-msg-paypix');
+  if (!token || !chatid) {
+    if (msg) { msg.style.color='#f87171'; msg.textContent='⚠️ Configure Token/Chat ID'; }
+    return;
+  }
+  try {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatid, parse_mode: 'HTML',
+        text: '💸 <b>PayPix — PaynexBet</b>\n\n💰 <b>PIX recebido!</b>\n💵 Valor: <b>R$ 150,00</b>\n👤 Maria Teste (ref: AB12CD)\n🏦 Comissão afiliado: R$ 90,00\n✅ Status: confirmado\n\n<i>Mensagem de teste — PaynexBet Admin</i>'
+      })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      if (msg) { msg.style.color='#4ade80'; msg.textContent='✅ Teste PayPix enviado!'; }
+    } else {
+      if (msg) { msg.style.color='#f87171'; msg.textContent='❌ ' + (d.description||'Falha'); }
+    }
+  } catch(e) {
+    if (msg) { msg.style.color='#f87171'; msg.textContent='❌ Erro: ' + e.message; }
+  }
+}
+
+// Testar mensagem de PayPix-Cob
+async function promoTgTestarPaypixCob() {
+  const token  = document.getElementById('ptg-token')?.value?.trim() || '';
+  const chatid = document.getElementById('ptg-chatid')?.value?.trim() || '';
+  const msg    = document.getElementById('ptg-msg-paypixcob');
+  if (!token || !chatid) {
+    if (msg) { msg.style.color='#f87171'; msg.textContent='⚠️ Configure Token/Chat ID'; }
+    return;
+  }
+  try {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatid, parse_mode: 'HTML',
+        text: '💳 <b>PayPix-Cob — PaynexBet</b>\n\n✅ <b>Cobrança paga!</b>\n💵 Valor: <b>R$ 200,00</b>\n👤 Carlos Teste (parceiro)\n🏦 Comissão: R$ 100,00\n⏱️ Confirmado via Mercado Pago\n\n<i>Mensagem de teste — PaynexBet Admin</i>'
+      })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      if (msg) { msg.style.color='#4ade80'; msg.textContent='✅ Teste PayPix-Cob enviado!'; }
+    } else {
+      if (msg) { msg.style.color='#f87171'; msg.textContent='❌ ' + (d.description||'Falha'); }
+    }
+  } catch(e) {
+    if (msg) { msg.style.color='#f87171'; msg.textContent='❌ Erro: ' + e.message; }
+  }
 }
 
 // ═══════════════════════════════════════════════
