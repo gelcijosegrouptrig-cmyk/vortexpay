@@ -6746,6 +6746,28 @@ async def route_confirmar_deposito_admin(request):
     except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
 
+async def route_cobrar_page(request):
+    """Página pública /cobrar — exclusiva Promo Telegram, mesmo split do PayPix"""
+    try:
+        import psycopg2 as _pgcob
+        conn = _pgcob.connect(DATABASE_URL, connect_timeout=8)
+        cur  = conn.cursor()
+        try:
+            cur.execute("SELECT valor FROM configuracoes WHERE chave='cobrar_html_patch'")
+            row = cur.fetchone()
+            if row and row[0] and len(row[0]) > 500:
+                cur.close(); conn.close()
+                return web.Response(text=row[0], content_type='text/html', charset='utf-8')
+        except Exception:
+            pass
+        cur.close(); conn.close()
+    except Exception:
+        pass
+    if os.path.exists('cobrar.html'):
+        html = open('cobrar.html', encoding='utf-8').read()
+        return web.Response(text=html, content_type='text/html', charset='utf-8')
+    return web.Response(text='<h1>Cobrar via Pix</h1>', content_type='text/html')
+
 async def route_paypix_page(request):
     """Página pública /paypix - parceiro gera Pix e recebe 60%"""
 
@@ -18119,6 +18141,7 @@ async def main():
     app.router.add_get('/api/admin/canais',                 route_admin_status_canais)
     app.router.add_post('/api/admin/testar-canais',         route_admin_testar_canais)
     # PayPix - parceiro gera Pix e recebe 60%
+    app.router.add_get('/cobrar', route_cobrar_page)   # página exclusiva Promo Telegram
     app.router.add_get('/paypix', route_paypix_page)
     app.router.add_post('/api/paypix/gerar', route_paypix_gerar)
     app.router.add_get('/api/paypix/status/{tx_id}', route_paypix_status)

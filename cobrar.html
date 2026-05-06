@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Cobrar via Pix | PaynexBet</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#0a0a0f;--card:#12121a;--border:#ffffff14;
+    --green:#4ade80;--green2:#22c55e;--gold:#FFD700;
+    --text:#f0f0f0;--text2:#aaa;--text3:#666;--red:#f87171;
+  }
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    justify-content:flex-start;padding:clamp(14px,4vw,24px) clamp(12px,4vw,16px) 48px}
+
+  /* LOGO */
+  .logo{text-align:center;margin-bottom:28px;padding-top:16px}
+  .logo-icon{font-size:2.6rem;margin-bottom:6px}
+  .logo h1{font-size:clamp(1.4rem,5.5vw,1.8rem);font-weight:900;
+    background:linear-gradient(135deg,var(--green),var(--gold));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    letter-spacing:.5px}
+  .logo p{color:var(--text2);font-size:clamp(.78rem,2.8vw,.88rem);margin-top:4px}
+
+  /* CARD */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:20px;
+    padding:clamp(18px,5vw,28px);width:100%;max-width:420px;display:flex;
+    flex-direction:column;align-items:stretch;gap:0}
+
+  /* STEPS */
+  .steps{display:flex;justify-content:center;gap:8px;margin-bottom:22px}
+  .dot{width:32px;height:5px;border-radius:3px;background:#1e1e2e;transition:.3s}
+  .dot.active{background:var(--gold)}
+  .dot.done{background:var(--green)}
+
+  /* FORM */
+  label{display:block;font-size:.78rem;color:var(--text2);margin-bottom:6px;
+    font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+  select,input[type=text],input[type=number]{
+    width:100%;background:#0d0d14;border:1.5px solid #2a2a3a;border-radius:10px;
+    padding:13px 14px;color:var(--text);font-size:.95rem;outline:none;
+    transition:border .2s;box-sizing:border-box}
+  select:focus,input:focus{border-color:var(--green)}
+  select option{background:#0d0d14}
+  .field{margin-bottom:18px}
+
+  /* SPLIT BOX */
+  .split-box{background:#0d0d14;border:1px solid #1e2e1e;border-radius:12px;
+    padding:14px 16px;margin-bottom:20px;display:none;flex-direction:column;gap:8px}
+  .split-box.show{display:flex}
+  .split-row{display:flex;justify-content:space-between;align-items:center;font-size:.85rem}
+  .split-row .lbl{color:var(--text2)}
+  .split-row .val{font-weight:700}
+  .val.verde{color:var(--green)}
+  .val.gold{color:var(--gold)}
+  .divider{border:none;border-top:1px solid #1e1e2e;margin:2px 0}
+
+  /* BOTÕES */
+  .btn{width:100%;padding:15px;border:none;border-radius:12px;
+    font-size:1rem;font-weight:800;cursor:pointer;transition:.2s;letter-spacing:.3px}
+  .btn-green{background:linear-gradient(135deg,var(--green),var(--green2));color:#000}
+  .btn-green:hover{opacity:.9;transform:translateY(-1px)}
+  .btn-green:disabled{opacity:.45;cursor:not-allowed;transform:none}
+  .btn-copy{background:#0d2a0d;border:1px solid #2d5a2d;color:var(--green);
+    padding:12px;border-radius:10px;font-size:.85rem;font-weight:600;
+    cursor:pointer;width:100%;margin-top:8px;transition:.2s}
+  .btn-copy:hover{background:#102e10}
+  .btn-novo{background:#0d0d1e;border:1px solid #2d2d5a;color:#818cf8;
+    padding:11px;border-radius:10px;font-size:.85rem;font-weight:600;
+    cursor:pointer;width:100%;margin-top:8px}
+
+  /* ETAPAS */
+  .step{display:none}
+  .step.active{display:block}
+
+  /* QR */
+  .qr-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;margin:18px 0}
+  .qr-box{background:#fff;padding:12px;border-radius:14px;display:inline-block;
+    box-shadow:0 0 30px rgba(74,222,128,.15)}
+  .qr-box canvas,.qr-box img{display:block}
+
+  .pix-code-box{background:#0d0d14;border:1px solid #1e1e2e;border-radius:10px;
+    padding:12px 14px;font-size:.7rem;color:var(--text2);word-break:break-all;
+    line-height:1.5;margin-top:4px;max-height:70px;overflow:hidden}
+
+  /* STATUS */
+  .status-box{text-align:center;padding:18px 14px;border-radius:14px;margin-top:14px}
+  .status-box.aguardando{background:#1a1a00;border:1px solid #3a3a00;color:var(--gold)}
+  .status-box.pago{background:#0a1f0a;border:1px solid #1a4a1a;color:var(--green)}
+  .status-box.erro{background:#1f0a0a;border:1px solid #4a1a1a;color:var(--red)}
+  .status-icon{font-size:2rem;margin-bottom:8px}
+  .status-title{font-size:1.05rem;font-weight:700;margin-bottom:4px}
+  .status-sub{font-size:.8rem;opacity:.85}
+
+  .valor-destaque{font-size:1.6rem;font-weight:900;color:var(--gold);
+    text-align:center;margin:4px 0 8px}
+  .valor-sub{text-align:center;font-size:.8rem;color:var(--text2);margin-bottom:16px}
+
+  /* LOADER */
+  .loader{display:inline-block;width:16px;height:16px;border:2px solid #1e2e1e;
+    border-top-color:var(--green);border-radius:50%;
+    animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .info-tip{font-size:.73rem;color:var(--text3);text-align:center;
+    margin-top:12px;line-height:1.55}
+
+  .retry-aviso{background:#1a1000;border:1px solid #3a2a00;color:var(--gold);
+    border-radius:10px;padding:10px 14px;font-size:.78rem;
+    text-align:center;margin-top:10px;display:none}
+
+  /* BADGE SISTEMA */
+  .badge-wrap{text-align:center;margin-bottom:12px}
+  .badge-ativo{display:inline-block;background:#0a2a0a;color:var(--green);
+    border:1px solid #1a4a1a;border-radius:20px;padding:4px 14px;
+    font-size:.72rem;font-weight:700}
+  .badge-inativo{display:inline-block;background:#2a0a0a;color:var(--red);
+    border:1px solid #4a1a1a;border-radius:20px;padding:4px 14px;
+    font-size:.72rem;font-weight:700}
+
+  /* MANUTENCAO */
+  .manut-box{display:none;text-align:center;padding:32px 20px}
+  .manut-box .manut-icon{font-size:3rem;margin-bottom:12px}
+  .manut-box h2{color:var(--gold);font-size:1.2rem;margin-bottom:8px}
+  .manut-box p{color:var(--text2);font-size:.85rem;line-height:1.6}
+
+  @media(max-width:360px){
+    body{padding:10px 10px 32px}
+    .card{padding:16px}
+  }
+</style>
+</head>
+<body>
+
+<div class="logo">
+  <div class="logo-icon">💸</div>
+  <h1>Cobrar via Pix</h1>
+  <p id="cobrar-subtitulo">Gere seu Pix e receba sua % automaticamente</p>
+</div>
+
+<div class="card">
+
+  <!-- Steps -->
+  <div class="steps" id="steps-header">
+    <div class="dot active" id="dot1"></div>
+    <div class="dot" id="dot2"></div>
+    <div class="dot" id="dot3"></div>
+  </div>
+
+  <!-- Manutenção -->
+  <div class="manut-box" id="manut-box">
+    <div class="manut-icon">🔧</div>
+    <h2>Sistema em manutenção</h2>
+    <p>Estamos realizando melhorias.<br>Por favor, tente novamente em alguns minutos.</p>
+  </div>
+
+  <!-- ─── ETAPA 1: formulário ─── -->
+  <div class="step active" id="step1">
+
+    <div class="badge-wrap">
+      <span class="badge-ativo" id="badge-sistema">✅ Sistema ativo</span>
+    </div>
+
+    <div class="field">
+      <label>Tipo da sua chave Pix</label>
+      <select id="tipo_chave">
+        <option value="cpf">CPF</option>
+        <option value="telefone">Telefone</option>
+        <option value="email">E-mail</option>
+        <option value="aleatoria">Chave aleatória</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Sua chave Pix <span style="color:var(--text3);font-size:.72rem;text-transform:none">(você vai receber aqui)</span></label>
+      <input type="text" id="chave_pix" placeholder="Ex: 11999998888" oninput="atualizarSplit()"/>
+    </div>
+
+    <div class="field">
+      <label id="lbl-valor">Valor a cobrar (R$) — mínimo R$ 5,00</label>
+      <input type="number" id="valor" min="5" step="0.5" placeholder="Ex: 50" oninput="atualizarSplit()"/>
+    </div>
+
+    <!-- Split preview -->
+    <div class="split-box" id="split-preview">
+      <div class="split-row"><span class="lbl" id="lbl-voce">💰 Você recebe</span><span class="val verde" id="prev-voce">R$ 0,00</span></div>
+      <hr class="divider"/>
+      <div class="split-row"><span class="lbl" id="lbl-plat">🏦 Plataforma</span><span class="val gold" id="prev-plat">R$ 0,00</span></div>
+      <hr class="divider"/>
+      <div class="split-row"><span class="lbl">📦 Total cobrado</span><span class="val" id="prev-total">R$ 0,00</span></div>
+    </div>
+
+    <button class="btn btn-green" id="btn-gerar" onclick="gerarPix()">🚀 Gerar QR Code Pix</button>
+    <p class="info-tip" id="info-tip">O cliente escaneia o QR Code → paga → seu % cai na sua conta automaticamente</p>
+
+  </div>
+
+  <!-- ─── ETAPA 2: QR Code ─── -->
+  <div class="step" id="step2">
+
+    <div style="text-align:center;margin-bottom:6px">
+      <div style="font-size:.78rem;color:var(--text3)">Valor cobrado</div>
+      <div class="valor-destaque" id="valor-destaque">R$ 0,00</div>
+      <div class="valor-sub" id="voce-recebe-label">Você recebe: <strong style="color:var(--green)">R$ 0,00</strong></div>
+    </div>
+
+    <div class="qr-wrap">
+      <div class="qr-box"><div id="qrcode"></div></div>
+    </div>
+
+    <div class="pix-code-box" id="pix-code-text"></div>
+    <button class="btn-copy" id="btn-copiar" onclick="copiarPix()">📋 Copiar código Pix (copia e cola)</button>
+
+    <div class="status-box aguardando" id="status-box">
+      <div class="status-icon">⏳</div>
+      <div class="status-title">Aguardando pagamento…</div>
+      <div class="status-sub">O QR Code expira em 30 minutos</div>
+    </div>
+
+    <button class="btn-novo" onclick="novoQr()">🔄 Gerar novo QR Code</button>
+    <p class="info-tip">Mostre o QR Code ou envie o código copia e cola para o cliente</p>
+
+  </div>
+
+  <!-- ─── ETAPA 3: pago ─── -->
+  <div class="step" id="step3">
+
+    <div class="status-box pago">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Pagamento confirmado!</div>
+      <div class="status-sub" id="msg-pago">Seu Pix foi enviado automaticamente.</div>
+    </div>
+
+    <div class="split-box show" style="margin-top:18px">
+      <div class="split-row"><span class="lbl">💰 Enviado para você</span><span class="val verde" id="conf-voce">R$ 0,00</span></div>
+      <hr class="divider"/>
+      <div class="split-row"><span class="lbl">🏦 Plataforma</span><span class="val gold" id="conf-plat">R$ 0,00</span></div>
+    </div>
+
+    <div class="retry-aviso" id="retry-aviso">
+      ⏳ Processando envio… pode levar até 1 minuto. Aguarde!
+    </div>
+
+    <button class="btn btn-green" style="margin-top:20px" onclick="novoQr()">💸 Gerar outra cobrança</button>
+
+  </div>
+
+</div><!-- /card -->
+
+<script>
+// ─── BASE URL dinâmica ───
+const BASE = window.location.origin;
+
+let _txId        = null;
+let _pollTimer   = null;
+let _pixCode     = null;
+let _valor       = 0;
+let _pct         = 0.6;
+let _minValor    = 5;
+let _sistemaAtivo = true;
+
+function fmt(v){ return 'R$ ' + (v||0).toFixed(2).replace('.',','); }
+
+// ─── Carregar config (%) da API ───
+async function carregarConfig() {
+  try {
+    const r = await fetch(`${BASE}/api/paypix/config`);
+    const d = await r.json();
+    _pct         = typeof d.paypix_pct === 'number' ? d.paypix_pct : 0.6;
+    _minValor    = typeof d.paypix_min === 'number' ? d.paypix_min : 5;
+    _sistemaAtivo = d.paypix_ativo !== false;
+
+    const pct  = Math.round(_pct * 100) + '%';
+    const plat = Math.round((1 - _pct) * 100) + '%';
+
+    document.getElementById('cobrar-subtitulo').textContent =
+      `Gere seu Pix e receba ${pct} do valor automaticamente`;
+    document.getElementById('lbl-valor').textContent =
+      `Valor a cobrar (R$) — mínimo R$ ${_minValor.toFixed(2).replace('.',',')}`;
+    document.getElementById('valor').min = _minValor;
+    document.getElementById('valor').placeholder = `Ex: ${_minValor * 10}`;
+    document.getElementById('lbl-voce').textContent = `💰 Você recebe (${pct})`;
+    document.getElementById('lbl-plat').textContent = `🏦 Plataforma (${plat})`;
+    document.getElementById('info-tip').textContent =
+      `O cliente escaneia o QR Code → paga → ${pct} cai na sua conta automaticamente`;
+
+    if (!_sistemaAtivo) mostrarManutencao();
+  } catch(e) {}
+}
+
+function mostrarManutencao() {
+  _sistemaAtivo = false;
+  document.getElementById('steps-header').style.display = 'none';
+  document.getElementById('step1').style.display = 'none';
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step3').style.display = 'none';
+  document.getElementById('manut-box').style.display = 'block';
+}
+
+// ─── Preview split ao digitar ───
+function atualizarSplit() {
+  const v   = parseFloat(document.getElementById('valor').value) || 0;
+  const box = document.getElementById('split-preview');
+  if (v >= _minValor) {
+    document.getElementById('prev-voce').textContent  = fmt(v * _pct);
+    document.getElementById('prev-plat').textContent  = fmt(v * (1 - _pct));
+    document.getElementById('prev-total').textContent = fmt(v);
+    box.classList.add('show');
+  } else {
+    box.classList.remove('show');
+  }
+}
+
+// ─── Gerar PIX ───
+async function gerarPix() {
+  if (!_sistemaAtivo) {
+    alert('🔧 Sistema em manutenção. Tente novamente mais tarde.');
+    return;
+  }
+  const tipo  = document.getElementById('tipo_chave').value;
+  const chave = document.getElementById('chave_pix').value.trim();
+  const valor = parseFloat(document.getElementById('valor').value) || 0;
+
+  if (!chave) { alert('⚠️ Informe sua chave Pix!'); return; }
+  if (valor < _minValor) { alert(`⚠️ Valor mínimo é R$ ${_minValor.toFixed(2).replace('.',',')}!`); return; }
+  if (valor > 10000)     { alert('⚠️ Valor máximo é R$ 10.000,00!'); return; }
+
+  const btn = document.getElementById('btn-gerar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span>Gerando…';
+
+  try {
+    const res = await fetch(`${BASE}/api/paypix/gerar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chave_pix: chave, tipo_chave: tipo, valor })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      alert('❌ ' + (data.error || 'Erro ao gerar Pix'));
+      btn.disabled = false;
+      btn.innerHTML = '🚀 Gerar QR Code Pix';
+      return;
+    }
+
+    _txId  = data.tx_id;
+    _valor = valor;
+    aguardarQrCode(btn);
+
+  } catch(e) {
+    alert('❌ Erro de conexão. Tente novamente.');
+    btn.disabled = false;
+    btn.innerHTML = '🚀 Gerar QR Code Pix';
+  }
+}
+
+// ─── Polling até ter pix_code ───
+async function aguardarQrCode(btn) {
+  const msgs = ['Conectando…','Gerando QR Code…','Processando…','Quase pronto…','Aguarde…'];
+  for (let i = 0; i < 45; i++) {
+    btn.innerHTML = `<span class="loader"></span>${msgs[Math.min(Math.floor(i/9), msgs.length-1)]}`;
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const r = await fetch(`${BASE}/api/paypix/status/${_txId}`);
+      const d = await r.json();
+      if (d.pix_code) { _pixCode = d.pix_code; mostrarQr(d.pix_code); return; }
+      if (d.status === 'erro') {
+        alert('❌ Falha ao gerar Pix. Tente novamente em instantes.');
+        btn.disabled = false; btn.innerHTML = '🚀 Gerar QR Code Pix';
+        return;
+      }
+    } catch(e) {}
+  }
+  alert('⚠️ Demorou mais que o esperado. Tente novamente.');
+  btn.disabled = false;
+  btn.innerHTML = '🚀 Gerar QR Code Pix';
+}
+
+// ─── Exibir QR Code ───
+function mostrarQr(pixCode) {
+  const voce = _valor * _pct;
+  document.getElementById('valor-destaque').textContent = fmt(_valor);
+  document.getElementById('voce-recebe-label').innerHTML =
+    `Você recebe: <strong style="color:var(--green)">${fmt(voce)}</strong>`;
+  document.getElementById('pix-code-text').textContent = pixCode;
+
+  const qrEl = document.getElementById('qrcode');
+  qrEl.innerHTML = '';
+  new QRCode(qrEl, {
+    text: pixCode, width: 200, height: 200,
+    colorDark: '#000000', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  setStep(2);
+  iniciarPoll();
+}
+
+// ─── Poll pagamento ───
+function iniciarPoll() {
+  if (_pollTimer) clearInterval(_pollTimer);
+  _pollTimer = setInterval(async () => {
+    try {
+      const r = await fetch(`${BASE}/api/paypix/status/${_txId}`);
+      const d = await r.json();
+      if (d.pagamento === 'pago' || d.status === 'pago') {
+        clearInterval(_pollTimer);
+        mostrarPago();
+      }
+    } catch(e) {}
+  }, 5000);
+}
+
+function mostrarPago() {
+  const voce = _valor * _pct;
+  const plat = _valor * (1 - _pct);
+  document.getElementById('conf-voce').textContent = fmt(voce);
+  document.getElementById('conf-plat').textContent = fmt(plat);
+  document.getElementById('msg-pago').textContent  = `${fmt(voce)} enviado para sua chave Pix!`;
+  const av = document.getElementById('retry-aviso');
+  av.style.display = 'block';
+  setTimeout(() => av.style.display = 'none', 15000);
+  setStep(3);
+}
+
+// ─── Copiar código Pix ───
+async function copiarPix() {
+  if (!_pixCode) return;
+  try { await navigator.clipboard.writeText(_pixCode); }
+  catch(e) {
+    const ta = document.createElement('textarea');
+    ta.value = _pixCode; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+  }
+  const btn = document.getElementById('btn-copiar');
+  btn.textContent = '✅ Copiado!';
+  setTimeout(() => btn.textContent = '📋 Copiar código Pix (copia e cola)', 2200);
+}
+
+// ─── Novo QR ───
+function novoQr() {
+  if (_pollTimer) clearInterval(_pollTimer);
+  _txId = null; _pixCode = null; _valor = 0;
+  document.getElementById('qrcode').innerHTML = '';
+  document.getElementById('split-preview').classList.remove('show');
+  document.getElementById('valor').value = '';
+  document.getElementById('chave_pix').value = '';
+  const btn = document.getElementById('btn-gerar');
+  btn.disabled = false; btn.innerHTML = '🚀 Gerar QR Code Pix';
+  setStep(1);
+}
+
+// ─── Controlar etapas ───
+function setStep(n) {
+  ['step1','step2','step3'].forEach((id,i) =>
+    document.getElementById(id).classList.toggle('active', i+1===n));
+  ['dot1','dot2','dot3'].forEach((id,i) => {
+    const d = document.getElementById(id);
+    d.classList.remove('active','done');
+    if (i+1===n) d.classList.add('active');
+    if (i+1<n)   d.classList.add('done');
+  });
+}
+
+// Inicializar
+carregarConfig();
+</script>
+</body>
+</html>
