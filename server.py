@@ -7286,14 +7286,31 @@ async def route_cobrar_parceiros_delete(request):
 
 async def _processar_split_multiplo(tx_id: str, valor: float, extra_str: str):
     """
-    Processa split para MÚLTIPLOS parceiros cadastrados em cobrar_parceiros.
-    Cada parceiro ativo recebe sua % via executar_saque_bot, com acumulação
-    individual caso o valor seja inferior ao mínimo do bot (R$10).
-    """
-    print(f'[Multi-Split] Iniciando para tx={tx_id} R${valor:.2f}', flush=True)
+    Processa split SEQUENCIAL para múltiplos parceiros em cobrar_parceiros.
 
+    REGRA: um parceiro por vez, em ordem (ordem ASC, id ASC).
+    Só avança para o próximo APÓS o saque do anterior ser confirmado (sucesso ou falha).
+    Valores < R$10 entram em acúmulo individual por chave — saque dispara ao atingir R$10.
+
+    Fluxo por parceiro:
+      1. Calcular val_par = valor * pct
+      2. Se val_par < R$10 → acumula em cobrar_acumulo, aguarda próximas cobranças
+      3. Se val_par >= R$10 → tenta executar_saque_bot até 3x (30s entre cada)
+      4. Se falhar nas 3 → enfileira na paypix_fila para retry a cada 5min
+      5. Aguarda 10s antes de iniciar o próximo parceiro
+    """
+    import psycopg2 as _pgms
+
+    BOT_MIN       = 10.0   # mínimo do bot VortexBank
+    MAX_TENTATIVAS = 3
+    DELAY_RETRY   = 30     # segundos entre tentativas do mesmo parceiro
+    DELAY_NEXT    = 10     # segundos entre parceiros (evita colisão no bot)
+
+    print(f'\n[Multi-Split] ══════════════════════════════', flush=True)
+    print(f'[Multi-Split] tx={tx_id}  valor=R${valor:.2f}', flush=True)
+
+    # ── 1. Buscar parceiros ativos ordenados ──────────────────────────────────
     try:
-        import psycopg2 as _pgms
         conn_ms = _pgms.connect(DATABASE_URL, connect_timeout=8)
         conn_ms.autocommit = True
         cur_ms  = conn_ms.cursor()
@@ -7303,23 +7320,29 @@ async def _processar_split_multiplo(tx_id: str, valor: float, extra_str: str):
         parceiros = cur_ms.fetchall()
         conn_ms.close()
     except Exception as e:
-        print(f'[Multi-Split] Erro ao buscar parceiros: {e}', flush=True)
+        print(f'[Multi-Split] ❌ Erro ao buscar parceiros: {e}', flush=True)
         return
 
     if not parceiros:
-        print(f'[Multi-Split] Nenhum parceiro ativo cadastrado.', flush=True)
+        print(f'[Multi-Split] Nenhum parceiro ativo — sem split.', flush=True)
         return
 
-    BOT_MIN = 10.0
+    total_parc = len(parceiros)
+    print(f'[Multi-Split] {total_parc} parceiro(s) ativo(s) para processar', flush=True)
 
-    for (pid, nome, chave, tipo, pct) in parceiros:
+    # ── 2. Processar UM POR UM sequencialmente ────────────────────────────────
+    for idx, (pid, nome, chave, tipo, pct) in enumerate(parceiros, start=1):
+
         val_par = round(valor * pct, 2)
+        label   = nome or f'Parceiro #{pid}'
+
+        print(f'\n[Multi-Split] [{idx}/{total_parc}] {label} — R${val_par:.2f} ({round(pct*100,1)}%)', flush=True)
+
         if val_par <= 0:
+            print(f'[Multi-Split] [{idx}/{total_parc}] Valor zero, pulando.', flush=True)
             continue
 
-        print(f'[Multi-Split] Parceiro #{pid} {nome} → R${val_par:.2f} ({round(pct*100,1)}%) chave={chave}', flush=True)
-
-        # Acumulação individual por parceiro
+        # ── 2a. Acumulação se val_par < mínimo do bot ─────────────────────────
         if val_par < BOT_MIN:
             try:
                 conn_ac = _pgms.connect(DATABASE_URL, connect_timeout=8)
@@ -7329,12 +7352,13 @@ async def _processar_split_multiplo(tx_id: str, valor: float, extra_str: str):
                     "SELECT id, valor_acumulado, tx_ids FROM cobrar_acumulo WHERE chave_pix=%s AND tipo_chave=%s",
                     (chave, tipo)
                 )
-                row_ac = cur_ac.fetchone()
+                row_ac     = cur_ac.fetchone()
                 novo_total = round((row_ac[1] if row_ac else 0) + val_par, 2)
                 txs_list   = json.loads(row_ac[2] if row_ac else '[]')
                 if tx_id not in txs_list:
                     txs_list.append(tx_id)
                 now_s = datetime.now().isoformat()
+
                 if row_ac:
                     cur_ac.execute(
                         "UPDATE cobrar_acumulo SET valor_acumulado=%s, tx_ids=%s, updated_at=%s WHERE id=%s",
@@ -7348,48 +7372,69 @@ async def _processar_split_multiplo(tx_id: str, valor: float, extra_str: str):
                 conn_ac.close()
 
                 if novo_total < BOT_MIN:
-                    print(f'[Multi-Split] #{pid} Acúmulo: R${novo_total:.2f}/R${BOT_MIN:.2f} (falta R${BOT_MIN-novo_total:.2f})', flush=True)
-                    continue
-                else:
-                    print(f'[Multi-Split] #{pid} ✅ Acúmulo atingiu R${novo_total:.2f} → disparando saque!', flush=True)
-                    val_par = novo_total
-                    # Zera acúmulo
-                    conn_z  = _pgms.connect(DATABASE_URL, connect_timeout=8)
-                    conn_z.autocommit = True
-                    conn_z.cursor().execute(
-                        "UPDATE cobrar_acumulo SET valor_acumulado=0, tx_ids='[]', updated_at=%s WHERE chave_pix=%s AND tipo_chave=%s",
-                        (now_s, chave, tipo)
-                    )
-                    conn_z.close()
+                    falta = round(BOT_MIN - novo_total, 2)
+                    print(f'[Multi-Split] [{idx}/{total_parc}] 💰 Acúmulo: R${novo_total:.2f} / R${BOT_MIN:.2f} (falta R${falta:.2f})', flush=True)
+                    continue   # próximo parceiro, este ainda não saca
+
+                # Atingiu o mínimo — usa o total acumulado e zera
+                print(f'[Multi-Split] [{idx}/{total_parc}] ✅ Acúmulo R${novo_total:.2f} ≥ R${BOT_MIN:.2f} → sacando!', flush=True)
+                val_par = novo_total
+                conn_z  = _pgms.connect(DATABASE_URL, connect_timeout=8)
+                conn_z.autocommit = True
+                conn_z.cursor().execute(
+                    "UPDATE cobrar_acumulo SET valor_acumulado=0, tx_ids='[]', updated_at=%s WHERE chave_pix=%s AND tipo_chave=%s",
+                    (now_s, chave, tipo)
+                )
+                conn_z.close()
+
             except Exception as e_ac:
-                print(f'[Multi-Split] #{pid} Erro acúmulo: {e_ac}', flush=True)
+                print(f'[Multi-Split] [{idx}/{total_parc}] ⚠️ Erro acúmulo: {e_ac} — enfileirando', flush=True)
+                _paypix_fila_inserir(f'{tx_id}_p{pid}', val_par, chave, tipo, pct)
+                await asyncio.sleep(DELAY_NEXT)
                 continue
 
-        # Tenta enviar o saque (3 tentativas rápidas)
-        resultado = None
-        for n in range(1, 4):
+        # ── 2b. Executar saque — até MAX_TENTATIVAS, aguardando cada resultado ─
+        resultado  = None
+        n_tent     = 0
+        saque_ok   = False
+
+        for n in range(1, MAX_TENTATIVAS + 1):
+            n_tent = n
+            print(f'[Multi-Split] [{idx}/{total_parc}] ⚡ Tentativa {n}/{MAX_TENTATIVAS}: saque R${val_par:.2f} → {tipo.upper()} {chave}', flush=True)
+
             try:
                 resultado = await executar_saque_bot(val_par, tipo, chave)
-            except Exception as ex:
-                resultado = {'success': False, 'error': str(ex), 'status': 'erro'}
-            print(f'[Multi-Split] #{pid} Tentativa {n}: {resultado}', flush=True)
-            if resultado.get('success'):
-                break
-            if n < 3:
-                await asyncio.sleep(30)
+            except Exception as ex_saque:
+                resultado = {'success': False, 'error': str(ex_saque), 'status': 'erro'}
 
-        if resultado and resultado.get('success'):
+            print(f'[Multi-Split] [{idx}/{total_parc}] Resultado tent.{n}: success={resultado.get("success")} status={resultado.get("status")} msg={str(resultado.get("msg",""))[:60]}', flush=True)
+
+            if resultado.get('success'):
+                saque_ok = True
+                break  # ✅ saque confirmado — não tenta mais
+
+            # Falhou — aguarda antes do próximo retry (exceto na última tentativa)
+            if n < MAX_TENTATIVAS:
+                print(f'[Multi-Split] [{idx}/{total_parc}] ⏳ Aguardando {DELAY_RETRY}s antes da tentativa {n+1}...', flush=True)
+                await asyncio.sleep(DELAY_RETRY)
+
+        # ── 2c. Registrar resultado ───────────────────────────────────────────
+        if saque_ok:
             _registrar_saque_split(
                 f'{tx_id}_p{pid}', val_par, chave, tipo, pct,
-                resultado, n
+                resultado, n_tent
             )
-            print(f'[Multi-Split] #{pid} ✅ Saque R${val_par:.2f} → {chave} OK', flush=True)
+            print(f'[Multi-Split] [{idx}/{total_parc}] ✅ CONCLUÍDO: R${val_par:.2f} → {chave} (tent.{n_tent})', flush=True)
         else:
-            # Enfileira para worker de 5min
             _paypix_fila_inserir(f'{tx_id}_p{pid}', val_par, chave, tipo, pct)
-            print(f'[Multi-Split] #{pid} ❌ Falhou — enfileirado para retry', flush=True)
+            print(f'[Multi-Split] [{idx}/{total_parc}] ❌ FALHOU nas {MAX_TENTATIVAS} tentativas → enfileirado para retry a cada 5min', flush=True)
 
-        await asyncio.sleep(5)  # pausa entre parceiros para não sobrecarregar o bot
+        # ── 2d. Pausa entre parceiros (não inicia o próximo imediatamente) ─────
+        if idx < total_parc:
+            print(f'[Multi-Split] [{idx}/{total_parc}] ⏸️  Aguardando {DELAY_NEXT}s antes do próximo parceiro...', flush=True)
+            await asyncio.sleep(DELAY_NEXT)
+
+    print(f'[Multi-Split] ══════ FINALIZADO tx={tx_id} ══════\n', flush=True)
 
 
 async def route_paypix_page(request):
