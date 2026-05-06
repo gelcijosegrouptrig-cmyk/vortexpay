@@ -7392,15 +7392,17 @@ async def _processar_split_multiplo(tx_id: str, valor: float, extra_str: str):
       1. Calcular val_par = valor * pct
       2. Se val_par < R$10 → acumula em cobrar_acumulo, aguarda próximas cobranças
       3. Se val_par >= R$10 → tenta executar_saque_bot até 3x (30s entre cada)
-      4. Se falhar nas 3 → enfileira na paypix_fila para retry a cada 5min
+      4. Se falhar nas 6 → enfileira na paypix_fila para retry a cada 5min
+      5. Erro fatal (saldo insuficiente) → para imediatamente e enfileira
       5. Aguarda 10s antes de iniciar o próximo parceiro
     """
     import psycopg2 as _pgms
 
     BOT_MIN        = 10.0   # mínimo do bot VortexBank
-    MAX_TENTATIVAS = 3
+    MAX_TENTATIVAS = 6
     DELAY_RETRY    = 30     # segundos entre tentativas do mesmo parceiro
     DELAY_NEXT     = 15     # segundos entre parceiros (tempo bot respirar após unlock)
+    ERROS_FATAIS   = ['saldo insuficiente', 'chave inválida', 'chave pix não', 'formato inválido', 'valor inválido']  # para imediatamente
 
     print(f'\n[Multi-Split] ══════════════════════════════════════════════', flush=True)
     print(f'[Multi-Split] tx={tx_id}  valor=R${valor:.2f}', flush=True)
@@ -7495,6 +7497,8 @@ async def _processar_split_multiplo(tx_id: str, valor: float, extra_str: str):
         n_tent     = 0
         saque_ok   = False
 
+        erro_fatal_detectado = False
+
         for n in range(1, MAX_TENTATIVAS + 1):
             n_tent = n
             print(f'[Multi-Split] [{idx}/{total_parc}] ⚡ Tentativa {n}/{MAX_TENTATIVAS}: saque R${val_par:.2f} → {tipo.upper()} {chave}', flush=True)
@@ -7504,13 +7508,25 @@ async def _processar_split_multiplo(tx_id: str, valor: float, extra_str: str):
             except Exception as ex_saque:
                 resultado = {'success': False, 'error': str(ex_saque), 'status': 'erro'}
 
-            print(f'[Multi-Split] [{idx}/{total_parc}] Resultado tent.{n}: success={resultado.get("success")} status={resultado.get("status")} msg={str(resultado.get("msg",""))[:60]}', flush=True)
+            # Checar status real (bot pode retornar success=True mas status='erro' p/ saldo insuficiente)
+            status_real  = str(resultado.get('status', '')).lower()
+            msg_bot      = str(resultado.get('mensagem_bot', '') or resultado.get('error', '')).lower()
+            saque_ok_bot = resultado.get('success') and status_real not in ('erro', 'error')
 
-            if resultado.get('success'):
+            print(f'[Multi-Split] [{idx}/{total_parc}] Resultado tent.{n}: success={resultado.get("success")} status={status_real} msg={msg_bot[:80]}', flush=True)
+
+            # ── Verificar erro FATAL (saldo insuficiente) — parar imediatamente ──
+            erro_fatal = any(p in msg_bot for p in ERROS_FATAIS)
+            if not saque_ok_bot and erro_fatal:
+                print(f'[Multi-Split] [{idx}/{total_parc}] 🛑 ERRO FATAL detectado: "{msg_bot[:80]}" — parando tentativas imediatamente!', flush=True)
+                erro_fatal_detectado = True
+                break
+
+            if saque_ok_bot:
                 saque_ok = True
                 break  # ✅ saque confirmado — não tenta mais
 
-            # Falhou — aguarda antes do próximo retry (exceto na última tentativa)
+            # Falhou mas não fatal — aguarda antes do próximo retry (exceto na última tentativa)
             if n < MAX_TENTATIVAS:
                 print(f'[Multi-Split] [{idx}/{total_parc}] ⏳ Aguardando {DELAY_RETRY}s antes da tentativa {n+1}...', flush=True)
                 await asyncio.sleep(DELAY_RETRY)
@@ -7522,6 +7538,10 @@ async def _processar_split_multiplo(tx_id: str, valor: float, extra_str: str):
                 resultado, n_tent
             )
             print(f'[Multi-Split] [{idx}/{total_parc}] ✅ CONCLUÍDO: R${val_par:.2f} → {chave} (tent.{n_tent})', flush=True)
+        elif erro_fatal_detectado:
+            # Saldo insuficiente ou erro irrecuperável — enfileira para retry quando houver saldo
+            _paypix_fila_inserir(f'{tx_id}_p{pid}', val_par, chave, tipo, pct)
+            print(f'[Multi-Split] [{idx}/{total_parc}] 🛑 ERRO FATAL — enfileirado para retry (aguarda saldo suficiente)', flush=True)
         else:
             _paypix_fila_inserir(f'{tx_id}_p{pid}', val_par, chave, tipo, pct)
             print(f'[Multi-Split] [{idx}/{total_parc}] ❌ FALHOU nas {MAX_TENTATIVAS} tentativas → enfileirado para retry a cada 5min', flush=True)
