@@ -7043,7 +7043,7 @@ async def route_cobrar_config(request):
                 SET cobrar_pct=%s, cobrar_min=%s, cobrar_ativo=%s, cobrar_desc=%s,
                     cobrar_chave=%s, cobrar_tipo=%s
                 WHERE id=1
-            """, (pct, minval, 1 if ativo else 0, desc, chave, tipo))
+            """, (pct, minval, ativo, desc, chave, tipo))
             if cur.rowcount == 0:
                 cur.execute("""
                     INSERT INTO sorteio_config
@@ -7053,7 +7053,7 @@ async def route_cobrar_config(request):
                     SET cobrar_pct=EXCLUDED.cobrar_pct, cobrar_min=EXCLUDED.cobrar_min,
                         cobrar_ativo=EXCLUDED.cobrar_ativo, cobrar_desc=EXCLUDED.cobrar_desc,
                         cobrar_chave=EXCLUDED.cobrar_chave, cobrar_tipo=EXCLUDED.cobrar_tipo
-                """, (pct, minval, 1 if ativo else 0, desc, chave, tipo))
+                """, (pct, minval, ativo, desc, chave, tipo))
             conn.commit()
             cur.close(); conn.close()
             return web.json_response({
