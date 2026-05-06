@@ -156,11 +156,9 @@
     </div>
 
     <div class="split-box" id="split-preview">
-      <div class="split-row"><span class="lbl" id="lbl-voce">💰 Você recebe</span><span class="val verde" id="prev-voce">R$ 0,00</span></div>
+      <div class="split-row"><span class="lbl">📦 Total cobrado do cliente</span><span class="val" id="prev-total">R$ 0,00</span></div>
       <hr class="divider"/>
-      <div class="split-row"><span class="lbl" id="lbl-plat">🏦 Plataforma</span><span class="val gold" id="prev-plat">R$ 0,00</span></div>
-      <hr class="divider"/>
-      <div class="split-row"><span class="lbl">📦 Total cobrado</span><span class="val" id="prev-total">R$ 0,00</span></div>
+      <div class="split-row"><span class="lbl">💸 Distribuição automática</span><span class="val verde">3 parceiros via bot</span></div>
     </div>
 
     <button class="btn btn-green" id="btn-gerar" onclick="gerarPix()">🚀 Gerar QR Code Pix</button>
@@ -174,7 +172,7 @@
     <div style="text-align:center;margin-bottom:6px">
       <div style="font-size:.78rem;color:var(--text3)">Valor cobrado</div>
       <div class="valor-destaque" id="valor-destaque">R$ 0,00</div>
-      <div class="valor-sub" id="voce-recebe-label">Você recebe: <strong style="color:var(--green)">R$ 0,00</strong></div>
+      <div class="valor-sub" id="voce-recebe-label">Distribuição automática aos parceiros ✅</div>
     </div>
 
     <!-- Loading geração -->
@@ -215,9 +213,9 @@
     </div>
 
     <div class="split-box show" style="margin-top:18px">
-      <div class="split-row"><span class="lbl">💰 Enviado para você</span><span class="val verde" id="conf-voce">R$ 0,00</span></div>
+      <div class="split-row"><span class="lbl">📦 Total recebido</span><span class="val verde" id="conf-voce">R$ 0,00</span></div>
       <hr class="divider"/>
-      <div class="split-row"><span class="lbl">🏦 Plataforma</span><span class="val gold" id="conf-plat">R$ 0,00</span></div>
+      <div class="split-row"><span class="lbl">💸 Split automático</span><span class="val gold">Distribuindo aos 3 parceiros…</span></div>
     </div>
 
     <div class="retry-aviso" id="retry-aviso">
@@ -237,7 +235,7 @@ let _txId        = null;
 let _pollTimer   = null;
 let _pixCode     = null;
 let _valor       = 0;
-let _pct         = 0.6;
+let _pct         = 1.0;   // 100% distribuído entre parceiros
 let _minValor    = 5;
 let _sistemaAtivo = true;
 let _chaveFix    = '';
@@ -251,25 +249,20 @@ async function carregarConfig() {
   try {
     const r = await fetch(`${BASE}/api/cobrar/config`);
     const d = await r.json();
-    _pct          = typeof d.cobrar_pct  === 'number' ? d.cobrar_pct  : 0.6;
+    _pct          = typeof d.cobrar_pct  === 'number' ? d.cobrar_pct  : 1.0;
     _minValor     = typeof d.cobrar_min  === 'number' ? d.cobrar_min  : 5;
     _sistemaAtivo = d.cobrar_ativo !== false;
     _chaveFix     = d.cobrar_chave || '';
-    _tipoFix      = d.cobrar_tipo  || 'cpf';
-
-    const pct  = Math.round(_pct * 100) + '%';
-    const plat = Math.round((1 - _pct) * 100) + '%';
+    _tipoFix      = d.cobrar_tipo  || 'email';
 
     document.getElementById('cobrar-subtitulo').textContent =
-      `Gere seu Pix e receba ${pct} do valor automaticamente`;
+      `Gere seu Pix — pagamento distribuído automaticamente entre os parceiros`;
     document.getElementById('lbl-valor').textContent =
       `Valor a cobrar (R$) — mínimo R$ ${_minValor.toFixed(2).replace('.',',')}`;
     document.getElementById('valor').min         = _minValor;
     document.getElementById('valor').placeholder = `Ex: ${_minValor * 10}`;
-    document.getElementById('lbl-voce').textContent = `💰 Você recebe (${pct})`;
-    document.getElementById('lbl-plat').textContent = `🏦 Plataforma (${plat})`;
     document.getElementById('info-tip').textContent =
-      `O cliente escaneia o QR Code → paga → ${pct} cai na sua conta automaticamente`;
+      `O cliente escaneia o QR Code → paga → distribuição automática para os 3 parceiros`;
 
     if (!_sistemaAtivo) mostrarManutencao();
   } catch(e) {}
@@ -288,8 +281,6 @@ function atualizarSplit() {
   const v   = parseFloat(document.getElementById('valor').value) || 0;
   const box = document.getElementById('split-preview');
   if (v >= _minValor) {
-    document.getElementById('prev-voce').textContent  = fmt(v * _pct);
-    document.getElementById('prev-plat').textContent  = fmt(v * (1 - _pct));
     document.getElementById('prev-total').textContent = fmt(v);
     box.classList.add('show');
   } else {
@@ -342,10 +333,8 @@ async function gerarPix() {
     btn.disabled = false;
     btn.innerHTML = '🚀 Gerar QR Code Pix';
 
-    const voce = _valor * _pct;
     document.getElementById('valor-destaque').textContent = fmt(_valor);
-    document.getElementById('voce-recebe-label').innerHTML =
-      `Você recebe: <strong style="color:var(--green)">${fmt(voce)}</strong>`;
+    document.getElementById('voce-recebe-label').textContent = 'Distribuição automática aos parceiros ✅';
     setStep(2);
     iniciarProgressoGeracao();
     aguardarQrCode();
@@ -453,14 +442,11 @@ function iniciarPollPagamento() {
 }
 
 function mostrarPago() {
-  const voce = _valor * _pct;
-  const plat = _valor * (1 - _pct);
-  document.getElementById('conf-voce').textContent = fmt(voce);
-  document.getElementById('conf-plat').textContent = fmt(plat);
-  document.getElementById('msg-pago').textContent  = `${fmt(voce)} enviado para sua chave Pix!`;
+  document.getElementById('conf-voce').textContent = fmt(_valor);
+  document.getElementById('msg-pago').textContent  = `Pagamento de ${fmt(_valor)} confirmado! Distribuindo para os parceiros...`;
   const av = document.getElementById('retry-aviso');
   av.style.display = 'block';
-  setTimeout(() => av.style.display = 'none', 15000);
+  setTimeout(() => av.style.display = 'none', 20000);
   setStep(3);
 }
 
