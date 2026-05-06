@@ -71,6 +71,7 @@ if not SESSION_STR:
 client = TelegramClient(StringSession(SESSION_STR), API_ID, API_HASH)
 _lock = asyncio.Lock()
 _saque_lock = asyncio.Lock()
+_cobrar_lock = asyncio.Lock()   # lock exclusivo para /cobrar (independente do /paypix)
 _telegram_ready = False
 _telegram_tentativas = 0
 _telegram_session_invalida = False
@@ -2280,6 +2281,94 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados
             _lock.release()
         except Exception:
             pass
+
+
+async def gerar_pix_cobrar(valor, tx_id_override=None):
+    """
+    Gera Pix via @VortexBank_bot para a página /cobrar.
+    Usa _cobrar_lock INDEPENDENTE do _lock do /paypix — nunca conflita.
+    """
+    # Espera Telegram ficar pronto (até 30s)
+    for _ in range(30):
+        if _telegram_ready:
+            break
+        await asyncio.sleep(1)
+    if not _telegram_ready:
+        return {'success': False, 'error': 'Serviço temporariamente indisponível. Tente novamente.'}
+
+    # Lock exclusivo /cobrar — timeout 120s
+    try:
+        await asyncio.wait_for(_cobrar_lock.acquire(), timeout=120)
+    except asyncio.TimeoutError:
+        return {'success': False, 'error': 'Sistema ocupado. Tente novamente em instantes.'}
+
+    try:
+        bot = await client.get_entity(BOT_USERNAME)
+
+        # Sempre /start para estado limpo
+        await client.send_message(bot, '/start')
+        await asyncio.sleep(2)
+
+        # Clicar DEPOSITAR
+        messages = await client.get_messages(bot, limit=5)
+        clicou = False
+        for msg in messages:
+            if msg.buttons:
+                for row in msg.buttons:
+                    for btn in row:
+                        if 'DEPOSITAR' in btn.text:
+                            await btn.click()
+                            await asyncio.sleep(2)
+                            clicou = True; break
+                    if clicou: break
+            if clicou: break
+
+        if not clicou:
+            return {'success': False, 'error': 'Botão DEPOSITAR não encontrado. Tente novamente.'}
+
+        # Enviar valor
+        valor_str = str(int(valor)) if valor == int(valor) else f"{valor:.2f}"
+        import datetime as _dt2
+        hora_envio = _dt2.datetime.now(_dt2.timezone.utc)
+        cutoff     = hora_envio - _dt2.timedelta(seconds=3)
+        await client.send_message(bot, valor_str)
+        print(f'[cobrar/gerar_pix] Valor {valor_str} enviado, aguardando...', flush=True)
+
+        # Polling: até 60s (30 tentativas × 2s)
+        for tentativa in range(30):
+            await asyncio.sleep(2)
+            msgs = await client.get_messages(bot, limit=10)
+            for msg in msgs:
+                if not msg.text:
+                    continue
+                if msg.date and msg.date < cutoff:
+                    continue
+                txt = msg.text or ''
+                print(f'[cobrar/gerar_pix] [{tentativa}] {txt[:80]}', flush=True)
+                if '00020101' in txt:
+                    pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', txt)
+                    pix_code  = pix_match.group(1) if pix_match else None
+                    tx_match  = re.search(r'txn_([a-f0-9]+)', txt)
+                    tx_id     = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
+                    val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', txt)
+                    valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
+                    if pix_code:
+                        print(f'✅ [cobrar] Pix gerado: {tx_id} R${valor}', flush=True)
+                        return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
+                                'valor': f"R$ {valor_conf}", 'status': 'pendente'}
+
+        print(f'[cobrar/gerar_pix] Timeout — nenhum código Pix recebido', flush=True)
+        return {'success': False, 'error': 'Bot demorou para responder. Tente novamente.'}
+
+    except Exception as e:
+        print(f'❌ Erro gerar_pix_cobrar: {e}', flush=True)
+        return {'success': False, 'error': str(e)}
+    finally:
+        try:
+            _cobrar_lock.release()
+        except Exception:
+            pass
+
 
 # ─── MIDDLEWARE ────────────────────────────────────────────
 @web.middleware
@@ -6838,9 +6927,9 @@ async def route_cobrar_gerar(request):
         finally:
             conn_sq.close()
 
-        # Gerar Pix em background via @VortexBank_bot (Telethon)
+        # Gerar Pix em background via @VortexBank_bot — lock EXCLUSIVO /cobrar
         async def _gerar_bg():
-            result = await gerar_pix(valor, cliente_id, None, None)
+            result = await gerar_pix_cobrar(valor, tx_id_override=tx_id)
             conn2 = sqlite3_connect()
             if result.get('success') and result.get('pix_code'):
                 conn2.execute(

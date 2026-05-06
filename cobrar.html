@@ -195,10 +195,10 @@
 
     <!-- Loading geração bot -->
     <div id="gerando-wrap" style="text-align:center;padding:18px 0">
-      <div style="font-size:1.8rem;margin-bottom:10px">🤖</div>
-      <div style="font-size:.9rem;color:var(--text2);margin-bottom:12px" id="gerando-msg">Aguarde, gerando QR Code via bot…</div>
+      <div style="font-size:1.8rem;margin-bottom:10px">⚡</div>
+      <div style="font-size:.9rem;color:var(--text2);margin-bottom:12px" id="gerando-msg">Aguarde, gerando seu QR Code…</div>
       <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
-      <div class="progress-label" id="progress-label">Conectando ao bot Telegram…</div>
+      <div class="progress-label" id="progress-label">Iniciando geração…</div>
     </div>
 
     <!-- QR Code (aparece quando pronto) -->
@@ -213,7 +213,7 @@
     <div class="status-box aguardando" id="status-box" style="margin-top:14px">
       <div class="status-icon">⏳</div>
       <div class="status-title" id="status-title">Gerando QR Code…</div>
-      <div class="status-sub" id="status-sub">O bot está processando sua solicitação</div>
+      <div class="status-sub" id="status-sub">Processando sua solicitação…</div>
     </div>
 
     <button class="btn-novo" style="margin-top:12px" onclick="novoQr()">🔄 Cancelar e gerar novo</button>
@@ -309,7 +309,7 @@ function atualizarSplit() {
   }
 }
 
-// ─── Gerar PIX via @VortexBank_bot ───
+// ─── Gerar PIX ───
 async function gerarPix() {
   if (!_sistemaAtivo) {
     alert('🔧 Sistema em manutenção. Tente novamente mais tarde.');
@@ -328,7 +328,7 @@ async function gerarPix() {
   btn.innerHTML = '<span class="loader"></span>Enviando…';
 
   try {
-    // Chama /api/cobrar/gerar → usa @VortexBank_bot via Telethon
+    // Chama /api/cobrar/gerar
     const res = await fetch(`${BASE}/api/cobrar/gerar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -364,13 +364,13 @@ async function gerarPix() {
   }
 }
 
-// ─── Barra de progresso visual enquanto bot gera ───
+// ─── Barra de progresso visual enquanto gera ───
 function iniciarProgressoGeracao() {
   if (_progressInterval) clearInterval(_progressInterval);
   const msgs = [
-    'Conectando ao bot Telegram…',
-    'Bot recebendo solicitação…',
-    'Processando valor…',
+    'Iniciando geração…',
+    'Processando solicitação…',
+    'Validando dados…',
     'Gerando código Pix…',
     'Quase pronto…',
     'Aguardando confirmação…'
@@ -407,7 +407,7 @@ async function aguardarQrCode() {
         if (_progressInterval) clearInterval(_progressInterval);
         document.getElementById('status-box').className = 'status-box erro';
         document.getElementById('status-title').textContent = '❌ Falha na geração';
-        document.getElementById('status-sub').textContent   = 'O bot não respondeu. Tente novamente.';
+        document.getElementById('status-sub').textContent   = 'Falha ao gerar. Tente novamente.';
         return;
       }
     } catch(e) {}
@@ -416,7 +416,7 @@ async function aguardarQrCode() {
   if (_progressInterval) clearInterval(_progressInterval);
   document.getElementById('status-box').className = 'status-box erro';
   document.getElementById('status-title').textContent = '⚠️ Tempo esgotado';
-  document.getElementById('status-sub').textContent   = 'O bot demorou para responder. Tente novamente.';
+  document.getElementById('status-sub').textContent   = 'Demorou mais que o esperado. Tente novamente.';
 }
 
 // ─── Exibir QR Code quando pronto ───
@@ -496,11 +496,11 @@ function novoQr() {
   document.getElementById('gerando-wrap').style.display  = 'block';
   document.getElementById('qr-wrap-real').style.display  = 'none';
   document.getElementById('progress-bar').style.width    = '0%';
-  document.getElementById('progress-label').textContent  = 'Conectando ao bot Telegram…';
-  document.getElementById('gerando-msg').textContent     = 'Aguarde, gerando QR Code via bot…';
+  document.getElementById('progress-label').textContent  = 'Iniciando geração…';
+  document.getElementById('gerando-msg').textContent     = 'Aguarde, gerando seu QR Code…';
   document.getElementById('status-box').className        = 'status-box aguardando';
   document.getElementById('status-title').textContent    = 'Gerando QR Code…';
-  document.getElementById('status-sub').textContent      = 'O bot está processando sua solicitação';
+  document.getElementById('status-sub').textContent      = 'Processando sua solicitação…';
   document.getElementById('qrcode').innerHTML            = '';
   document.getElementById('split-preview').classList.remove('show');
   document.getElementById('valor').value                 = '';
