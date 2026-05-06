@@ -2581,6 +2581,65 @@ async function fazerLogin() {
               </div></div>
             </div><!-- /envio manual -->
 
+            <!-- Card Link Público PayPix -->
+            <div class="table-card" style="border-color:#4ade8066">
+              <div class="table-header" style="background:linear-gradient(135deg,#0a2a0a,#0d3d1a)">
+                <h3 style="color:#4ade80">🔗 Link Público PayPix</h3>
+                <span id="ptg-link-pct-badge" style="font-size:11px;padding:3px 10px;border-radius:20px;background:#0a2a0a;color:#4ade80">carregando…</span>
+              </div>
+              <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+
+                <!-- Explicação -->
+                <div style="padding:12px;background:rgba(74,222,128,0.07);border:1px solid #4ade8033;border-radius:10px;font-size:12px;color:var(--text2);line-height:1.7">
+                  <b style="color:#4ade80">Como funciona:</b><br>
+                  Compartilhe este link com o parceiro. Ele acessa, coloca a <b>chave Pix</b> e o <b>valor</b>, gera o QR Code → o cliente paga → o <b>% configurado</b> vai automaticamente para a chave Pix informada. O restante fica na plataforma.
+                </div>
+
+                <!-- Link copiável -->
+                <div>
+                  <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">🌐 Link para parceiros</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input id="ptg-link-publico" type="text" readonly value="https://paynexbet.com/paypix"
+                      style="flex:1;padding:10px 12px;background:#0d1a0d;border:1px solid #2d6a2d;border-radius:10px;color:#4ade80;font-size:13px;font-family:monospace;cursor:pointer"
+                      onclick="this.select()">
+                    <button onclick="ptgCopiarLink()" id="ptg-btn-copiar-link"
+                      style="padding:10px 14px;background:#1a3a1a;border:1px solid #2d6a2d;border-radius:10px;color:#4ade80;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+                      📋 Copiar
+                    </button>
+                  </div>
+                </div>
+
+                <!-- QR Code do link -->
+                <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+                  <div style="font-size:12px;color:#666">QR Code do link (parceiro escaneia para abrir)</div>
+                  <div style="background:#fff;padding:10px;border-radius:12px;display:inline-block">
+                    <div id="ptg-link-qrcode"></div>
+                  </div>
+                  <div style="font-size:11px;color:#555;text-align:center">Escaneie para abrir o formulário PayPix</div>
+                </div>
+
+                <!-- Split atual -->
+                <div style="background:#0d1a0d;border:1px solid #2d6a2d33;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+                  <div style="font-size:11px;color:#666;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px">Divisão atual configurada</div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+                    <span style="color:#888">💰 Parceiro recebe</span>
+                    <span id="ptg-link-pct-voce" style="font-weight:700;color:#4ade80">—</span>
+                  </div>
+                  <hr style="border:none;border-top:1px solid #2a2a2a;margin:2px 0">
+                  <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+                    <span style="color:#888">🏦 Plataforma retém</span>
+                    <span id="ptg-link-pct-plat" style="font-weight:700;color:#FFD700">—</span>
+                  </div>
+                  <hr style="border:none;border-top:1px solid #2a2a2a;margin:2px 0">
+                  <div style="font-size:11px;color:#555;text-align:center">
+                    Para alterar o %, vá em <b style="color:#aaa">PayPix → Configurações</b>
+                  </div>
+                </div>
+
+                <div id="ptg-msg-link" style="font-size:12px;text-align:center;min-height:14px;color:#4ade80"></div>
+              </div>
+            </div><!-- /card link público -->
+
           </div><!-- /col esquerda -->
 
           <!-- ── Coluna Direita: Notificações por Seção ── -->
@@ -9113,6 +9172,64 @@ async function promoTgCarregar() {
       }
     }
   } catch(e) {}
+
+  // ── Inicializar card Link Público PayPix ──
+  ptgInicializarLinkPublico();
+}
+
+// ── Inicializar card Link Público ──
+function ptgInicializarLinkPublico() {
+  try {
+    // Link correto baseado no hostname atual
+    const baseUrl = window.location.origin;
+    const linkPublico = baseUrl + '/paypix';
+    const inpLink = document.getElementById('ptg-link-publico');
+    if (inpLink) inpLink.value = linkPublico;
+
+    // Atualizar badge e percentuais
+    const pctDisplay  = Math.round(_ptgPct * 100) + '%';
+    const platDisplay = Math.round((1 - _ptgPct) * 100) + '%';
+    const badge = document.getElementById('ptg-link-pct-badge');
+    if (badge) badge.textContent = 'Parceiro: ' + pctDisplay;
+    const elVoce = document.getElementById('ptg-link-pct-voce');
+    if (elVoce) elVoce.textContent = pctDisplay + ' do valor cobrado';
+    const elPlat = document.getElementById('ptg-link-pct-plat');
+    if (elPlat) elPlat.textContent = platDisplay + ' do valor cobrado';
+
+    // Gerar QR Code do link público
+    const qrEl = document.getElementById('ptg-link-qrcode');
+    if (qrEl && typeof QRCode !== 'undefined') {
+      qrEl.innerHTML = '';
+      new QRCode(qrEl, {
+        text: linkPublico,
+        width: 160,
+        height: 160,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+  } catch(e) {}
+}
+
+// ── Copiar link público ──
+async function ptgCopiarLink() {
+  const inp = document.getElementById('ptg-link-publico');
+  const url = inp ? inp.value : (window.location.origin + '/paypix');
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch(e) {
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  const btn = document.getElementById('ptg-btn-copiar-link');
+  const msg = document.getElementById('ptg-msg-link');
+  if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(() => btn.textContent = '📋 Copiar', 2500); }
+  if (msg) { msg.textContent = '✅ Link copiado! Compartilhe com seu parceiro.'; setTimeout(() => msg.textContent = '', 3000); }
 }
 
 // ── Atualizar split preview ao digitar ──
