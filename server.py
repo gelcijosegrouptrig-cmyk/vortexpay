@@ -1391,9 +1391,10 @@ async def _loop_verificar_pagamentos():
                         if extra_p:
                             try:
                                 ex = json.loads(extra_p)
-                                if ex.get('tipo') == 'paypix':
+                                if ex.get('tipo') in ('paypix', 'cobrar'):
                                     asyncio.create_task(_processar_split_paypix(tx_id_p, valor_p, extra_p))
-                                    print(f'💸 [Loop] Split disparado: R${valor_p * 0.6:.2f} → {ex.get("parceiro_chave")}', flush=True)
+                                    val_par = round(valor_p * float(ex.get('parceiro_pct', 0.6)), 2)
+                                    print(f'💸 [Loop] Split disparado ({ex["tipo"]}): R${val_par:.2f} → {ex.get("parceiro_chave")}', flush=True)
                             except Exception as ex_err:
                                 print(f'[Loop] Erro split: {ex_err}', flush=True)
                         break
@@ -1443,8 +1444,10 @@ def _registrar_handler_telegram():
                     if extra_p:
                         try:
                             extra_d = json.loads(extra_p)
-                            if extra_d.get('tipo') == 'paypix':
+                            if extra_d.get('tipo') in ('paypix', 'cobrar'):
                                 asyncio.create_task(_processar_split_paypix(tx_id_p, valor_p, extra_p))
+                                val_par = round(valor_p * float(extra_d.get('parceiro_pct', 0.6)), 2)
+                                print(f'💸 [Handler] Split disparado ({extra_d["tipo"]}): R${val_par:.2f} → {extra_d.get("parceiro_chave")}', flush=True)
                         except Exception as ex:
                             print(f'Erro split handler: {ex}', flush=True)
                     break
@@ -6221,7 +6224,7 @@ async def route_webhook(request):
                     valor_w, extra_w = row_w
                     if extra_w:
                         ex = json.loads(extra_w)
-                        if ex.get('tipo') == 'paypix':
+                        if ex.get('tipo') in ('paypix', 'cobrar'):
                             asyncio.create_task(_processar_split_paypix(tx_id, valor_w, extra_w))
             except Exception as e_w:
                 print(f'[webhook] erro split check: {e_w}', flush=True)
@@ -7385,15 +7388,17 @@ async def _processar_split_paypix(tx_id, valor, extra_str):
 
     try:
         extra = json.loads(extra_str or '{}')
-        if extra.get('tipo') != 'paypix':
+        if extra.get('tipo') not in ('paypix', 'cobrar'):
             return
         chave   = extra.get('parceiro_chave', '')
         tipo    = extra.get('parceiro_tipo', 'cpf')
         pct     = float(extra.get('parceiro_pct', 0.6))
         val_par = round(valor * pct, 2)
 
-        if not chave or val_par < 10:
-            print(f'[PayPix] split bloqueado - valor parceiro R${val_par:.2f} abaixo do mínimo R$10,00 ou chave inválida. tx={tx_id}', flush=True)
+        # cobrar permite saque a partir de R$1,00 (parceiro pode cobrar R$5 → recebe R$4,25)
+        min_split = 1.0 if extra.get('tipo') == 'cobrar' else 10.0
+        if not chave or val_par < min_split:
+            print(f'[Split] bloqueado - valor parceiro R${val_par:.2f} abaixo do mínimo R${min_split:.2f} ou chave inválida. tx={tx_id}', flush=True)
             return
 
         # ── FASE 1: 3 tentativas rápidas (30s entre cada) ──
