@@ -1394,19 +1394,19 @@ async def _loop_verificar_pagamentos():
                         # Confirmar pagamento
                         confirmar_pagamento(tx_id_p)
                         print(f'✅ [Loop] Confirmado: {tx_id_p} R${valor_p:.2f}', flush=True)
-                        # Split PayPix automático
-                        if extra_p:
-                            try:
+                        # Split automático
+                        try:
+                            if tx_id_p.startswith('cbr_'):
+                                asyncio.create_task(_processar_split_multiplo(tx_id_p, valor_p, extra_p or '{"tipo":"cobrar"}'))
+                                print(f'💸 [Loop] Multi-split cobrar: R${valor_p:.2f}', flush=True)
+                            elif extra_p:
                                 ex = json.loads(extra_p)
-                                if ex.get('tipo') == 'cobrar':
-                                    asyncio.create_task(_processar_split_multiplo(tx_id_p, valor_p, extra_p))
-                                    print(f'💸 [Loop] Multi-split cobrar disparado: R${valor_p:.2f}', flush=True)
-                                elif ex.get('tipo') == 'paypix':
+                                if ex.get('tipo') == 'paypix':
                                     asyncio.create_task(_processar_split_paypix(tx_id_p, valor_p, extra_p))
                                     val_par = round(valor_p * float(ex.get('parceiro_pct', 0.6)), 2)
                                     print(f'💸 [Loop] Split paypix: R${val_par:.2f} → {ex.get("parceiro_chave")}', flush=True)
-                            except Exception as ex_err:
-                                print(f'[Loop] Erro split: {ex_err}', flush=True)
+                        except Exception as ex_err:
+                            print(f'[Loop] Erro split: {ex_err}', flush=True)
                         break
 
         except Exception as e:
@@ -1451,18 +1451,18 @@ def _registrar_handler_telegram():
                 if valor_msg is None or abs(valor_p - valor_msg) < 0.05 or len(pendentes) == 1:
                     confirmar_pagamento(tx_id_p)
                     print(f'✅ Pago confirmado: {tx_id_p} R${valor_p}', flush=True)
-                    if extra_p:
-                        try:
+                    try:
+                        if tx_id_p.startswith('cbr_'):
+                            asyncio.create_task(_processar_split_multiplo(tx_id_p, valor_p, extra_p or '{"tipo":"cobrar"}'))
+                            print(f'💸 [Handler] Multi-split cobrar: R${valor_p:.2f}', flush=True)
+                        elif extra_p:
                             extra_d = json.loads(extra_p)
-                            if extra_d.get('tipo') == 'cobrar':
-                                asyncio.create_task(_processar_split_multiplo(tx_id_p, valor_p, extra_p))
-                                print(f'💸 [Handler] Multi-split cobrar: R${valor_p:.2f}', flush=True)
-                            elif extra_d.get('tipo') == 'paypix':
+                            if extra_d.get('tipo') == 'paypix':
                                 asyncio.create_task(_processar_split_paypix(tx_id_p, valor_p, extra_p))
                                 val_par = round(valor_p * float(extra_d.get('parceiro_pct', 0.6)), 2)
                                 print(f'💸 [Handler] Split paypix: R${val_par:.2f} → {extra_d.get("parceiro_chave")}', flush=True)
-                        except Exception as ex:
-                            print(f'Erro split handler: {ex}', flush=True)
+                    except Exception as ex:
+                        print(f'Erro split handler: {ex}', flush=True)
                     break
 
 # ─── TELEGRAM - Ping de keepalive ───────────────────────────
@@ -6226,7 +6226,7 @@ async def route_webhook(request):
         tx_id = data.get('tx_id')
         if data.get('status') == 'pago' and tx_id:
             confirmar_pagamento(tx_id)
-            # Verificar se é uma transação PayPix e disparar split 60/40
+            # Disparar split automático
             try:
                 conn_w = sqlite3_connect()
                 cw = conn_w.cursor()
@@ -6235,11 +6235,13 @@ async def route_webhook(request):
                 conn_w.close()
                 if row_w:
                     valor_w, extra_w = row_w
-                    if extra_w:
+                    # Transação cobrar → multi-split pelos parceiros cadastrados
+                    if tx_id.startswith('cbr_'):
+                        asyncio.create_task(_processar_split_multiplo(tx_id, valor_w, extra_w or '{"tipo":"cobrar"}'))
+                        print(f'[webhook] Multi-split cobrar disparado: {tx_id} R${valor_w:.2f}', flush=True)
+                    elif extra_w:
                         ex = json.loads(extra_w)
-                        if ex.get('tipo') == 'cobrar':
-                            asyncio.create_task(_processar_split_multiplo(tx_id, valor_w, extra_w))
-                        elif ex.get('tipo') == 'paypix':
+                        if ex.get('tipo') == 'paypix':
                             asyncio.create_task(_processar_split_paypix(tx_id, valor_w, extra_w))
             except Exception as e_w:
                 print(f'[webhook] erro split check: {e_w}', flush=True)
