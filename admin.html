@@ -2641,91 +2641,192 @@ async function fazerLogin() {
             </div><!-- /card link público -->
 
             <!-- ── Card Configuração % /cobrar ── -->
-            <div class="table-card" style="border-color:#22c55e44">
-              <div class="table-header collapsible" onclick="colToggle('ptg-cobrar-config')" style="background:linear-gradient(135deg,#052a0520,#0a3a0a20)">
-                <h3>⚙️ Configurar % da Página /cobrar <span id="col-arrow-ptg-cobrar-config" class="collapse-arrow">▼</span></h3>
+            <div class="table-card" style="border-color:#22c55e66">
+              <div class="table-header collapsible" onclick="colToggle('ptg-cobrar-config')" style="background:linear-gradient(135deg,#052a0530,#0a3a0a30)">
+                <h3>⚙️ Parceiros & Saques Automáticos — /cobrar <span id="col-arrow-ptg-cobrar-config" class="collapse-arrow">▼</span></h3>
               </div>
               <div class="collapse-body" id="col-body-ptg-cobrar-config">
                 <div style="display:flex;flex-direction:column;gap:16px;padding:4px 0">
 
-                  <div style="font-size:12px;color:#888;line-height:1.6;padding:8px 12px;background:#050f05;border-radius:8px;border-left:3px solid #22c55e55">
-                    💡 Define quanto o parceiro recebe de cada cobrança gerada via <b style="color:#4ade80">https://paynexbet.com/cobrar</b>.<br>
-                    O valor restante fica na plataforma. O parceiro informa a chave Pix no momento de gerar o QR Code.
+                  <div style="font-size:12px;color:#888;line-height:1.7;padding:10px 14px;background:#050f05;border-radius:8px;border-left:3px solid #22c55e77">
+                    💡 Cada cobrança confirmada é <b style="color:#4ade80">dividida automaticamente</b> entre os parceiros abaixo.<br>
+                    O bot VortexBank faz o saque para cada chave Pix cadastrada. Valores &lt; R$10 ficam em <b style="color:#60a5fa">acúmulo</b> até atingir o mínimo do bot.
                   </div>
 
-                  <!-- % do parceiro -->
-                  <div>
-                    <label style="font-size:11px;color:#888;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">💰 % que o parceiro recebe</label>
-                    <div style="display:flex;align-items:center;gap:12px">
-                      <input type="number" id="ptg-cobrar-pct" min="1" max="99" step="1" value="60"
-                        style="width:100px;background:#0a0a14;border:2px solid #22c55e44;border-radius:10px;padding:11px 14px;color:#fff;font-size:20px;font-weight:800;text-align:center"
-                        oninput="ptgCobrarPreview()">
-                      <span style="color:#22c55e;font-weight:800;font-size:24px">%</span>
-                      <div style="flex:1;text-align:right">
-                        <div style="font-size:11px;color:#666">Plataforma retém</div>
-                        <div id="ptg-cobrar-plat-pct" style="font-size:22px;font-weight:800;color:#FFD700">40%</div>
+                  <!-- ── PARCEIRO 1 ── -->
+                  <div style="background:#0a0a14;border:2px solid #4ade8055;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <span style="font-size:20px">🥇</span>
+                      <div style="flex:1">
+                        <div style="font-size:14px;font-weight:800;color:#4ade80">Parceiro 1</div>
+                        <div style="font-size:11px;color:#555">Saque automático ao confirmar pagamento</div>
+                      </div>
+                      <div id="ptg-p1-pct-display" style="font-size:22px;font-weight:800;color:#4ade80">70%</div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:90px 1fr 1fr;gap:10px;align-items:end">
+                      <div>
+                        <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">% Recebe</label>
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <input type="number" id="ptg-p1-pct" min="1" max="99" step="1" value="70"
+                            style="width:100%;background:#050f05;border:1px solid #4ade8044;border-radius:8px;padding:9px 6px;color:#4ade80;font-size:16px;font-weight:800;text-align:center"
+                            oninput="ptgCobrarPreview()">
+                          <span style="color:#4ade80;font-weight:700">%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">Tipo da Chave</label>
+                        <select id="ptg-p1-tipo" style="width:100%;background:#050f05;border:1px solid #4ade8033;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;cursor:pointer">
+                          <option value="cpf">CPF</option><option value="cnpj">CNPJ</option>
+                          <option value="telefone">Telefone</option><option value="email">E-mail</option>
+                          <option value="aleatoria">Aleatória</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">Chave Pix</label>
+                        <input type="text" id="ptg-p1-chave" placeholder="Chave Pix do Parceiro 1"
+                          style="width:100%;background:#050f05;border:1px solid #4ade8033;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;box-sizing:border-box">
                       </div>
                     </div>
-                  </div>
-
-                  <!-- Chave Pix fixa (pré-configurada) -->
-                  <div style="background:#0a0a14;border:2px solid #22c55e55;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
-                    <div style="font-size:11px;color:#22c55e;text-transform:uppercase;letter-spacing:1px;font-weight:700">🔑 Chave Pix da plataforma (pré-configurada)</div>
-                    <div style="font-size:11px;color:#888;line-height:1.5">A chave fica salva aqui. Na página /cobrar o parceiro só precisa informar o <b style="color:#fff">valor</b>.</div>
-                    <!-- Tipo da chave -->
-                    <div>
-                      <label style="font-size:11px;color:#888;display:block;margin-bottom:6px">Tipo da chave</label>
-                      <select id="ptg-cobrar-tipo"
-                        style="width:100%;background:#050f05;border:1px solid #22c55e44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;cursor:pointer">
-                        <option value="cpf">CPF</option>
-                        <option value="cnpj">CNPJ</option>
-                        <option value="telefone">Telefone</option>
-                        <option value="email">E-mail</option>
-                        <option value="aleatoria">Chave Aleatória</option>
-                      </select>
-                    </div>
-                    <!-- Chave Pix -->
-                    <div>
-                      <label style="font-size:11px;color:#888;display:block;margin-bottom:6px">Chave Pix</label>
-                      <input type="text" id="ptg-cobrar-chave"
-                        style="width:100%;background:#050f05;border:1px solid #22c55e44;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;box-sizing:border-box"
-                        placeholder="Ex: 27998823669 ou cpf@email.com">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <input type="checkbox" id="ptg-p1-ativo" checked style="width:15px;height:15px;accent-color:#4ade80;cursor:pointer">
+                      <label for="ptg-p1-ativo" style="font-size:12px;color:#888;cursor:pointer">Parceiro ativo</label>
+                      <span id="ptg-p1-status" style="margin-left:auto;font-size:11px;color:#4ade80;font-weight:700">✅ ATIVO</span>
                     </div>
                   </div>
 
-                  <!-- Valor mínimo -->
-                  <div>
-                    <label style="font-size:11px;color:#888;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">💵 Valor mínimo (R$)</label>
-                    <input type="number" id="ptg-cobrar-min" min="1" max="9999" step="0.5" value="5"
-                      style="width:100%;background:#0a0a14;border:2px solid #ffffff22;border-radius:10px;padding:11px 14px;color:#fff;font-size:16px;font-weight:700"
-                      placeholder="5.00">
+                  <!-- ── PARCEIRO 2 ── -->
+                  <div style="background:#0a0a14;border:2px solid #60a5fa55;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <span style="font-size:20px">🥈</span>
+                      <div style="flex:1">
+                        <div style="font-size:14px;font-weight:800;color:#60a5fa">Parceiro 2</div>
+                        <div style="font-size:11px;color:#555">Saque automático ao confirmar pagamento</div>
+                      </div>
+                      <div id="ptg-p2-pct-display" style="font-size:22px;font-weight:800;color:#60a5fa">15%</div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:90px 1fr 1fr;gap:10px;align-items:end">
+                      <div>
+                        <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">% Recebe</label>
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <input type="number" id="ptg-p2-pct" min="1" max="99" step="1" value="15"
+                            style="width:100%;background:#050f05;border:1px solid #60a5fa44;border-radius:8px;padding:9px 6px;color:#60a5fa;font-size:16px;font-weight:800;text-align:center"
+                            oninput="ptgCobrarPreview()">
+                          <span style="color:#60a5fa;font-weight:700">%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">Tipo da Chave</label>
+                        <select id="ptg-p2-tipo" style="width:100%;background:#050f05;border:1px solid #60a5fa33;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;cursor:pointer">
+                          <option value="cpf">CPF</option><option value="cnpj">CNPJ</option>
+                          <option value="telefone">Telefone</option><option value="email">E-mail</option>
+                          <option value="aleatoria">Aleatória</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">Chave Pix</label>
+                        <input type="text" id="ptg-p2-chave" placeholder="Chave Pix do Parceiro 2"
+                          style="width:100%;background:#050f05;border:1px solid #60a5fa33;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;box-sizing:border-box">
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <input type="checkbox" id="ptg-p2-ativo" checked style="width:15px;height:15px;accent-color:#60a5fa;cursor:pointer">
+                      <label for="ptg-p2-ativo" style="font-size:12px;color:#888;cursor:pointer">Parceiro ativo</label>
+                      <span id="ptg-p2-status" style="margin-left:auto;font-size:11px;color:#4ade80;font-weight:700">✅ ATIVO</span>
+                    </div>
                   </div>
 
-                  <!-- Sistema ativo -->
-                  <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#0a0a14;border-radius:10px;border:1px solid #ffffff11">
-                    <label style="font-size:13px;color:#ccc;flex:1;cursor:pointer" for="ptg-cobrar-ativo">✅ Sistema ativo (desmarque para manutenção)</label>
-                    <input type="checkbox" id="ptg-cobrar-ativo" checked
-                      style="width:18px;height:18px;accent-color:#22c55e;cursor:pointer">
+                  <!-- ── PARCEIRO 3 ── -->
+                  <div style="background:#0a0a14;border:2px solid #a78bfa55;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <span style="font-size:20px">🥉</span>
+                      <div style="flex:1">
+                        <div style="font-size:14px;font-weight:800;color:#a78bfa">Parceiro 3</div>
+                        <div style="font-size:11px;color:#555">Saque automático ao confirmar pagamento</div>
+                      </div>
+                      <div id="ptg-p3-pct-display" style="font-size:22px;font-weight:800;color:#a78bfa">15%</div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:90px 1fr 1fr;gap:10px;align-items:end">
+                      <div>
+                        <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">% Recebe</label>
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <input type="number" id="ptg-p3-pct" min="1" max="99" step="1" value="15"
+                            style="width:100%;background:#050f05;border:1px solid #a78bfa44;border-radius:8px;padding:9px 6px;color:#a78bfa;font-size:16px;font-weight:800;text-align:center"
+                            oninput="ptgCobrarPreview()">
+                          <span style="color:#a78bfa;font-weight:700">%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">Tipo da Chave</label>
+                        <select id="ptg-p3-tipo" style="width:100%;background:#050f05;border:1px solid #a78bfa33;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;cursor:pointer">
+                          <option value="cpf">CPF</option><option value="cnpj">CNPJ</option>
+                          <option value="telefone">Telefone</option><option value="email">E-mail</option>
+                          <option value="aleatoria">Aleatória</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">Chave Pix</label>
+                        <input type="text" id="ptg-p3-chave" placeholder="Chave Pix do Parceiro 3"
+                          style="width:100%;background:#050f05;border:1px solid #a78bfa33;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;box-sizing:border-box">
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <input type="checkbox" id="ptg-p3-ativo" checked style="width:15px;height:15px;accent-color:#a78bfa;cursor:pointer">
+                      <label for="ptg-p3-ativo" style="font-size:12px;color:#888;cursor:pointer">Parceiro ativo</label>
+                      <span id="ptg-p3-status" style="margin-left:auto;font-size:11px;color:#4ade80;font-weight:700">✅ ATIVO</span>
+                    </div>
                   </div>
 
-                  <!-- Preview split -->
-                  <div id="ptg-cobrar-preview" style="background:#0d1a0d;border:1px solid #2d6a2d33;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
-                    <div style="font-size:11px;color:#666;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px">📊 Simulação — cobrança de R$ 100,00</div>
+                  <!-- Simulação split -->
+                  <div id="ptg-cobrar-preview" style="background:#0d1a0d;border:1px solid #2d6a2d44;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+                    <div style="font-size:11px;color:#666;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px">📊 Simulação para cobrança de R$ 100,00</div>
                     <div style="display:flex;justify-content:space-between;font-size:13px">
-                      <span style="color:#888">💰 Parceiro recebe</span>
-                      <span id="ptg-cobrar-sim-voce" style="font-weight:700;color:#4ade80">R$ 60,00</span>
+                      <span style="color:#4ade80">🥇 Parceiro 1</span>
+                      <span id="ptg-cobrar-sim-p1" style="font-weight:700;color:#4ade80">R$ 70,00</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:13px">
+                      <span style="color:#60a5fa">🥈 Parceiro 2</span>
+                      <span id="ptg-cobrar-sim-p2" style="font-weight:700;color:#60a5fa">R$ 15,00</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:13px">
+                      <span style="color:#a78bfa">🥉 Parceiro 3</span>
+                      <span id="ptg-cobrar-sim-p3" style="font-weight:700;color:#a78bfa">R$ 15,00</span>
                     </div>
                     <hr style="border:none;border-top:1px solid #2a2a2a;margin:2px 0">
                     <div style="display:flex;justify-content:space-between;font-size:13px">
                       <span style="color:#888">🏦 Plataforma retém</span>
-                      <span id="ptg-cobrar-sim-plat" style="font-weight:700;color:#FFD700">R$ 40,00</span>
+                      <span id="ptg-cobrar-sim-plat" style="font-weight:700;color:#FFD700">R$ 0,00</span>
+                    </div>
+                    <div style="font-size:11px;color:#555;margin-top:2px;text-align:right">
+                      Parceiros: <span id="ptg-cobrar-total-pct" style="color:#fbbf24;font-weight:700">100%</span>
+                      &nbsp;|&nbsp; Plataforma: <span id="ptg-cobrar-plat-pct" style="color:#22c55e;font-weight:700">0%</span>
                     </div>
                   </div>
 
+                  <!-- Config geral -->
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div>
+                      <label style="font-size:11px;color:#888;display:block;margin-bottom:6px">💵 Valor mínimo da cobrança (R$)</label>
+                      <input type="number" id="ptg-cobrar-min" min="1" max="9999" step="0.5" value="50"
+                        style="width:100%;background:#0a0a14;border:1px solid #ffffff22;border-radius:10px;padding:10px 12px;color:#fff;font-size:15px;font-weight:700;box-sizing:border-box"
+                        placeholder="50.00">
+                    </div>
+                    <div style="display:flex;flex-direction:column;justify-content:flex-end">
+                      <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;background:#0a0a14;border-radius:10px;border:1px solid #ffffff11;height:100%;box-sizing:border-box">
+                        <label style="font-size:12px;color:#ccc;flex:1;cursor:pointer" for="ptg-cobrar-ativo">✅ Sistema ativo</label>
+                        <input type="checkbox" id="ptg-cobrar-ativo" checked style="width:17px;height:17px;accent-color:#22c55e;cursor:pointer">
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Campos hidden para retrocompatibilidade -->
+                  <input type="hidden" id="ptg-cobrar-pct" value="100">
+                  <input type="hidden" id="ptg-cobrar-chave" value="">
+                  <input type="hidden" id="ptg-cobrar-tipo" value="telefone">
+
                   <!-- Botão salvar -->
-                  <button onclick="ptgSalvarCobrarConfig()"
-                    style="padding:13px;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:12px;color:#000;font-size:14px;font-weight:800;cursor:pointer;width:100%">
-                    💾 Salvar Configuração Principal
+                  <button onclick="ptgSalvarTodosParceiros()"
+                    style="padding:14px;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:12px;color:#000;font-size:15px;font-weight:800;cursor:pointer;width:100%;letter-spacing:.3px">
+                    💾 Salvar Todos os Parceiros + Config
                   </button>
                   <div id="ptg-cobrar-msg" style="font-size:12px;text-align:center;min-height:14px"></div>
 
@@ -9221,100 +9322,198 @@ async function ptgCopiarLink() {
   if (msg) { msg.textContent = '✅ Link copiado! Compartilhe com seu parceiro.'; setTimeout(() => msg.textContent = '', 3000); }
 }
 
-// ── Config % da página /cobrar ──
+// ── Config % da página /cobrar — carrega parceiros nos campos ──
 async function ptgCarregarCobrarConfig() {
   try {
-    const r = await fetch('/api/cobrar/config');
-    const d = await r.json();
-    const pct = Math.round((d.cobrar_pct || 0.6) * 100);
-    const min = d.cobrar_min || 5;
-    const ativo = d.cobrar_ativo !== false;
-    const chave = d.cobrar_chave || '';
-    const tipo  = d.cobrar_tipo  || 'cpf';
-
-    const inpPct   = document.getElementById('ptg-cobrar-pct');
+    // Carregar config geral
+    const r1 = await fetch('/api/cobrar/config');
+    const d1 = await r1.json();
+    const min   = d1.cobrar_min  || 50;
+    const ativo = d1.cobrar_ativo !== false;
     const inpMin   = document.getElementById('ptg-cobrar-min');
     const inpAtivo = document.getElementById('ptg-cobrar-ativo');
-    const inpChave = document.getElementById('ptg-cobrar-chave');
-    const inpTipo  = document.getElementById('ptg-cobrar-tipo');
-    if (inpPct)   inpPct.value     = pct;
     if (inpMin)   inpMin.value     = min;
     if (inpAtivo) inpAtivo.checked = ativo;
-    if (inpChave) inpChave.value   = chave;
-    if (inpTipo)  inpTipo.value    = tipo;
 
-    // Atualiza badge e split no card de link público também
-    const platPct = 100 - pct;
-    const elVoce = document.getElementById('ptg-link-pct-voce');
-    const elPlat = document.getElementById('ptg-link-pct-plat');
-    const badge  = document.getElementById('ptg-link-pct-badge');
-    if (elVoce) elVoce.textContent = pct + '% do valor cobrado';
-    if (elPlat) elPlat.textContent = platPct + '% do valor cobrado';
-    if (badge)  badge.textContent  = 'Parceiro: ' + pct + '%';
-
+    // Carregar parceiros e popular campos individuais
+    const r2 = await fetch('/api/cobrar/parceiros');
+    const d2 = await r2.json();
+    if (d2.success && d2.parceiros) {
+      const parc = d2.parceiros;
+      const ordem = ['ptg-p1','ptg-p2','ptg-p3'];
+      parc.forEach((p, i) => {
+        if (i >= 3) return;
+        const pfx = ordem[i];
+        const pct = Math.round((p.pct || 0) * 100);
+        const el_pct   = document.getElementById(pfx + '-pct');
+        const el_chave = document.getElementById(pfx + '-chave');
+        const el_tipo  = document.getElementById(pfx + '-tipo');
+        const el_ativo = document.getElementById(pfx + '-ativo');
+        const el_disp  = document.getElementById(pfx + '-pct-display');
+        const el_status= document.getElementById(pfx + '-status');
+        if (el_pct)    el_pct.value     = pct;
+        if (el_chave)  el_chave.value   = p.chave_pix || '';
+        if (el_tipo)   el_tipo.value    = p.tipo_chave || 'email';
+        if (el_ativo)  el_ativo.checked = p.ativo;
+        if (el_disp)   el_disp.textContent = pct + '%';
+        if (el_status) {
+          el_status.textContent  = p.ativo ? '✅ ATIVO' : '⛔ INATIVO';
+          el_status.style.color  = p.ativo ? '#4ade80' : '#f87171';
+        }
+        // Guardar id do parceiro no campo hidden
+        const el_id = document.getElementById(pfx + '-id');
+        if (el_id) el_id.value = p.id;
+      });
+    }
     ptgCobrarPreview();
   } catch(e) {}
 }
 
 function ptgCobrarPreview() {
-  const pct  = parseInt(document.getElementById('ptg-cobrar-pct')?.value) || 60;
-  const plat = 100 - pct;
-  const elPlat = document.getElementById('ptg-cobrar-plat-pct');
-  if (elPlat) elPlat.textContent = plat + '%';
+  const p1 = parseInt(document.getElementById('ptg-p1-pct')?.value) || 0;
+  const p2 = parseInt(document.getElementById('ptg-p2-pct')?.value) || 0;
+  const p3 = parseInt(document.getElementById('ptg-p3-pct')?.value) || 0;
+  const total = p1 + p2 + p3;
+  const plat  = Math.max(0, 100 - total);
 
-  const simVoce = document.getElementById('ptg-cobrar-sim-voce');
-  const simPlat = document.getElementById('ptg-cobrar-sim-plat');
-  if (simVoce) simVoce.textContent = 'R$ ' + (pct).toFixed(2).replace('.',',');
-  if (simPlat) simPlat.textContent = 'R$ ' + (plat).toFixed(2).replace('.',',');
+  const d1 = document.getElementById('ptg-p1-pct-display');
+  const d2 = document.getElementById('ptg-p2-pct-display');
+  const d3 = document.getElementById('ptg-p3-pct-display');
+  if (d1) d1.textContent = p1 + '%';
+  if (d2) d2.textContent = p2 + '%';
+  if (d3) d3.textContent = p3 + '%';
+
+  const s1 = document.getElementById('ptg-cobrar-sim-p1');
+  const s2 = document.getElementById('ptg-cobrar-sim-p2');
+  const s3 = document.getElementById('ptg-cobrar-sim-p3');
+  const sp = document.getElementById('ptg-cobrar-sim-plat');
+  const tp = document.getElementById('ptg-cobrar-total-pct');
+  const pp = document.getElementById('ptg-cobrar-plat-pct');
+  if (s1) s1.textContent = 'R$ ' + p1.toFixed(2).replace('.',',');
+  if (s2) s2.textContent = 'R$ ' + p2.toFixed(2).replace('.',',');
+  if (s3) s3.textContent = 'R$ ' + p3.toFixed(2).replace('.',',');
+  if (sp) sp.textContent = 'R$ ' + plat.toFixed(2).replace('.',',');
+  if (tp) tp.textContent = total + '%';
+  if (pp) pp.textContent = plat + '%';
+
+  // Atualizar badge no card de link público
+  const badge  = document.getElementById('ptg-link-pct-badge');
+  const elVoce = document.getElementById('ptg-link-pct-voce');
+  const elPlat = document.getElementById('ptg-link-pct-plat');
+  if (badge)  badge.textContent  = 'Parceiros: ' + total + '%';
+  if (elVoce) elVoce.textContent = total + '% do valor cobrado';
+  if (elPlat) elPlat.textContent = plat  + '% do valor cobrado';
 }
 
 async function ptgSalvarCobrarConfig() {
-  const pct   = parseInt(document.getElementById('ptg-cobrar-pct')?.value)   || 60;
-  const min   = parseFloat(document.getElementById('ptg-cobrar-min')?.value) || 5;
-  const ativo = document.getElementById('ptg-cobrar-ativo')?.checked !== false;
-  const chave = (document.getElementById('ptg-cobrar-chave')?.value || '').trim();
-  const tipo  = document.getElementById('ptg-cobrar-tipo')?.value || 'cpf';
-  const msgEl = document.getElementById('ptg-cobrar-msg');
-  const sec   = sessionStorage.getItem('vp_secret') || '';
+  // mantido por compatibilidade — redireciona para a nova função
+  await ptgSalvarTodosParceiros();
+}
 
-  if (pct < 1 || pct > 99) {
-    if (msgEl) msgEl.innerHTML = '<span style="color:#f87171">⚠️ % deve ser entre 1 e 99.</span>';
-    return;
-  }
+async function ptgSalvarTodosParceiros() {
+  const sec   = sessionStorage.getItem('vp_secret') || '';
+  const msgEl = document.getElementById('ptg-cobrar-msg');
+
   if (!sec) {
     if (msgEl) msgEl.innerHTML = '<span style="color:#f87171">⚠️ Faça login novamente.</span>';
     return;
   }
 
+  const p1_pct   = parseInt(document.getElementById('ptg-p1-pct')?.value)   || 0;
+  const p2_pct   = parseInt(document.getElementById('ptg-p2-pct')?.value)   || 0;
+  const p3_pct   = parseInt(document.getElementById('ptg-p3-pct')?.value)   || 0;
+  const total    = p1_pct + p2_pct + p3_pct;
+
+  if (total > 100) {
+    if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">⚠️ Soma dos % é ${total}% — máximo 100%.</span>`;
+    return;
+  }
+  if (p1_pct < 1) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#f87171">⚠️ Parceiro 1 precisa ter % ≥ 1.</span>';
+    return;
+  }
+
+  const parceiros = [
+    { ordem: 1, pct: p1_pct, chave: (document.getElementById('ptg-p1-chave')?.value||'').trim(), tipo: document.getElementById('ptg-p1-tipo')?.value||'email', ativo: document.getElementById('ptg-p1-ativo')?.checked !== false, nome: 'Parceiro 1' },
+    { ordem: 2, pct: p2_pct, chave: (document.getElementById('ptg-p2-chave')?.value||'').trim(), tipo: document.getElementById('ptg-p2-tipo')?.value||'email', ativo: document.getElementById('ptg-p2-ativo')?.checked !== false, nome: 'Parceiro 2' },
+    { ordem: 3, pct: p3_pct, chave: (document.getElementById('ptg-p3-chave')?.value||'').trim(), tipo: document.getElementById('ptg-p3-tipo')?.value||'email', ativo: document.getElementById('ptg-p3-ativo')?.checked !== false, nome: 'Parceiro 3' },
+  ];
+
+  // Verificar chaves obrigatórias para parceiros ativos
+  for (const p of parceiros) {
+    if (p.ativo && p.pct > 0 && !p.chave) {
+      if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">⚠️ Informe a chave Pix do ${p.nome}.</span>`;
+      return;
+    }
+  }
+
+  if (msgEl) msgEl.innerHTML = '<span style="color:#aaa">⏳ Salvando parceiros...</span>';
+
   try {
-    if (msgEl) msgEl.innerHTML = '<span style="color:#aaa">⏳ Salvando...</span>';
-    const r = await fetch('/api/cobrar/config', {
+    // Buscar parceiros atuais para pegar os IDs
+    const r0 = await fetch('/api/cobrar/parceiros');
+    const d0 = await r0.json();
+    const parcAtual = (d0.success && d0.parceiros) ? d0.parceiros : [];
+
+    let erros = [];
+    let salvos = 0;
+
+    for (let i = 0; i < parceiros.length; i++) {
+      const p   = parceiros[i];
+      const cur = parcAtual[i];
+
+      // Se % = 0 e não tem chave, pular
+      if (p.pct === 0 && !p.chave) continue;
+
+      const body = {
+        nome:      p.nome,
+        pct:       p.pct,
+        chave_pix: p.chave,
+        tipo_chave: p.tipo,
+        ativo:     p.ativo,
+        ordem:     p.ordem,
+      };
+      if (cur && cur.id) body.id = cur.id;
+
+      const r = await fetch('/api/cobrar/parceiros', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': sec },
+        body: JSON.stringify(body)
+      });
+      const d = await r.json();
+      if (d.success) {
+        salvos++;
+      } else {
+        erros.push(`${p.nome}: ${d.error||'erro'}`);
+      }
+    }
+
+    // Salvar config geral (mínimo e ativo)
+    const minVal = parseFloat(document.getElementById('ptg-cobrar-min')?.value) || 50;
+    const ativoSist = document.getElementById('ptg-cobrar-ativo')?.checked !== false;
+    await fetch('/api/cobrar/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': sec },
-      body: JSON.stringify({ cobrar_pct: pct, cobrar_min: min, cobrar_ativo: ativo,
-                             cobrar_chave: chave, cobrar_tipo: tipo })
+      body: JSON.stringify({ cobrar_pct: total, cobrar_min: minVal, cobrar_ativo: ativoSist,
+                             cobrar_chave: parceiros[0].chave, cobrar_tipo: parceiros[0].tipo })
     });
-    const d = await r.json();
-    if (d.success) {
+
+    if (erros.length === 0) {
       if (msgEl) {
-        msgEl.innerHTML = `<span style="color:#4ade80">✅ Salvo! Parceiros receberão <b>${pct}%</b>.</span>`;
-        setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 4000);
+        msgEl.innerHTML = `<span style="color:#4ade80">✅ ${salvos} parceiro(s) salvos! Split ${total}% configurado.</span>`;
+        setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 5000);
       }
-      // Atualiza badge no card de link
-      const platPct = 100 - pct;
-      const elVoce = document.getElementById('ptg-link-pct-voce');
-      const elPlat = document.getElementById('ptg-link-pct-plat');
-      const badge  = document.getElementById('ptg-link-pct-badge');
-      if (elVoce) elVoce.textContent = pct + '% do valor cobrado';
-      if (elPlat) elPlat.textContent = platPct + '% do valor cobrado';
-      if (badge)  badge.textContent  = 'Parceiro: ' + pct + '%';
+      // Recarregar lista de parceiros no card inferior também
+      if (typeof ptgCarregarParceiros === 'function') ptgCarregarParceiros();
+      ptgCobrarPreview();
     } else {
-      if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">❌ ${d.error || 'Erro ao salvar'}</span>`;
+      if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">⚠️ ${erros.join(' | ')}</span>`;
     }
   } catch(e) {
     if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">❌ Erro: ${e.message}</span>`;
   }
 }
+
 
 // ── PARCEIROS DO SPLIT /cobrar ──────────────────────────────────────────────
 const PARC_CORES = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#f97316','#84cc16'];
