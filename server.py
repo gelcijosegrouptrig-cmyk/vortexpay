@@ -2242,9 +2242,9 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados
                 txt = msg.text or ''
                 # Log para debug
                 print(f'[gerar_pix] [{tentativa}] {txt[:100]}', flush=True)
-                # Procurar código Pix - padrão primário
-                if '00020101' in txt:
-                    pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', txt)
+                # Procurar código Pix - padrão primário (aceita 000201xx — bot usa 00020126)
+                if '000201' in txt:
+                    pix_match = re.search(r'`?(000201[^\s`\n]{20,})`?', txt)
                     pix_code = pix_match.group(1) if pix_match else None
                     tx_match = re.search(r'txn_([a-f0-9]+)', txt)
                     tx_id = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
@@ -2256,9 +2256,9 @@ async def gerar_pix(valor, cliente_id=None, webhook_url=None, participante_dados
                         print(f'✅ Pix gerado: {tx_id} R${valor}', flush=True)
                         return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
                                 'valor': f"R$ {valor_conf}", 'status': 'pendente'}
-                # Padrão secundário: "PIX Copia e Cola" sem código 00020101
+                # Padrão secundário: "PIX Copia e Cola"
                 if 'PIX Copia e Cola' in txt or 'Copia e Cola' in txt:
-                    pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', txt)
+                    pix_match = re.search(r'`?(000201[^\s`\n]{20,})`?', txt)
                     pix_code = pix_match.group(1) if pix_match else None
                     tx_match = re.search(r'txn_([a-f0-9]+)', txt)
                     tx_id = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
@@ -2345,15 +2345,32 @@ async def gerar_pix_cobrar(valor, tx_id_override=None):
                     continue
                 txt = msg.text or ''
                 print(f'[cobrar/gerar_pix] [{tentativa}] {txt[:80]}', flush=True)
-                if '00020101' in txt:
-                    pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', txt)
+                # Aceita qualquer código PIX EMV (começa com 000201)
+                if '000201' in txt:
+                    pix_match = re.search(r'`?(000201[^\s`\n]{20,})`?', txt)
                     pix_code  = pix_match.group(1) if pix_match else None
+                    # Fallback: busca "PIX Copia e Cola" seguido do código
+                    if not pix_code:
+                        pix_match2 = re.search(r'(?:Copia e Cola|pix)[:\s\n]+`?(000201[^\s`\n]{20,})`?', txt, re.IGNORECASE)
+                        pix_code = pix_match2.group(1) if pix_match2 else None
                     tx_match  = re.search(r'txn_([a-f0-9]+)', txt)
-                    tx_id     = f"txn_{tx_match.group(1)}" if tx_match else f"txn_{int(time.time())}"
+                    tx_id     = f"txn_{tx_match.group(1)}" if tx_match else (tx_id_override or f"txn_{int(time.time())}")
                     val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', txt)
                     valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
                     if pix_code:
-                        print(f'✅ [cobrar] Pix gerado: {tx_id} R${valor}', flush=True)
+                        print(f'✅ [cobrar] Pix gerado: {tx_id} R${valor} code={pix_code[:30]}', flush=True)
+                        return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
+                                'valor': f"R$ {valor_conf}", 'status': 'pendente'}
+                # Fallback: detecta mensagem de sucesso com "PIX Gerado com Sucesso"
+                if 'PIX Gerado com Sucesso' in txt or 'Pix Gerado' in txt:
+                    pix_match = re.search(r'`(000201[^\s`\n]{20,})`', txt)
+                    pix_code  = pix_match.group(1) if pix_match else None
+                    tx_match  = re.search(r'txn_([a-f0-9]+)', txt)
+                    tx_id     = f"txn_{tx_match.group(1)}" if tx_match else (tx_id_override or f"txn_{int(time.time())}")
+                    val_match = re.search(r'Valor[:\s*]+R\$\s*([\d,.]+)', txt)
+                    valor_conf = val_match.group(1) if val_match else f"{valor:.2f}"
+                    if pix_code:
+                        print(f'✅ [cobrar] Pix (fallback PIX Gerado): {tx_id} R${valor}', flush=True)
                         return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
                                 'valor': f"R$ {valor_conf}", 'status': 'pendente'}
 
