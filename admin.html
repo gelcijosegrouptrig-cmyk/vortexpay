@@ -2741,6 +2741,34 @@ async function fazerLogin() {
               <div class="collapse-body" id="col-body-ptg-parceiros-config">
                 <div style="display:flex;flex-direction:column;gap:14px;padding:4px 0">
 
+                  <!-- Resumo rápido dos parceiros pré-carregado -->
+                  <div id="ptg-parc-resumo-rapido" style="display:flex;flex-direction:column;gap:6px">
+                    <div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:#0a0a14;border:1px solid #f59e0b33;border-radius:9px">
+                      <span style="font-size:15px">🥇</span>
+                      <div style="flex:1">
+                        <div style="font-size:12px;font-weight:700;color:#fbbf24">Parceiro 1 — 70%</div>
+                        <div style="font-size:11px;color:#888">EMAIL &nbsp;•&nbsp; <span style="color:#ccc">Ativacao@neoprosperity.com.br</span></div>
+                      </div>
+                      <span style="font-size:13px;font-weight:800;color:#4ade80">70%</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:#0a0a14;border:1px solid #60a5fa33;border-radius:9px">
+                      <span style="font-size:15px">🥈</span>
+                      <div style="flex:1">
+                        <div style="font-size:12px;font-weight:700;color:#60a5fa">Parceiro 2 — 15%</div>
+                        <div style="font-size:11px;color:#888">EMAIL &nbsp;•&nbsp; <span style="color:#ccc">ismael_sjd@hotmail.com</span></div>
+                      </div>
+                      <span style="font-size:13px;font-weight:800;color:#4ade80">15%</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:#0a0a14;border:1px solid #a78bfa33;border-radius:9px">
+                      <span style="font-size:15px">🥉</span>
+                      <div style="flex:1">
+                        <div style="font-size:12px;font-weight:700;color:#a78bfa">Parceiro 3 — 15%</div>
+                        <div style="font-size:11px;color:#888">EMAIL &nbsp;•&nbsp; <span style="color:#ccc">corretora@corretoracorporate.com.br</span></div>
+                      </div>
+                      <span style="font-size:13px;font-weight:800;color:#4ade80">15%</span>
+                    </div>
+                  </div>
+
                   <!-- Info -->
                   <div style="font-size:12px;color:#888;line-height:1.6;padding:8px 12px;background:#050f05;border-radius:8px;border-left:3px solid #f59e0b88">
                     💡 Cada cobrança confirmada é <b style="color:#fbbf24">dividida automaticamente</b> entre os parceiros cadastrados abaixo.<br>
@@ -9124,6 +9152,18 @@ async function promoTgCarregar() {
 
   // ── Carregar parceiros do split /cobrar ──
   ptgCarregarParceiros();
+
+  // ── Expandir cards principais por padrão ──
+  ['ptg-cobrar-config','ptg-parceiros-config'].forEach(id => {
+    const body   = document.getElementById('col-body-'  + id);
+    const arrow  = document.getElementById('col-arrow-' + id);
+    const header = document.getElementById('col-hdr-'   + id);
+    if (body) {
+      body.classList.remove('collapsed');
+      if (arrow)  arrow.textContent  = '▲';
+      if (header) header.classList.remove('is-collapsed');
+    }
+  });
 }
 
 // ── Inicializar card Link Público ──
