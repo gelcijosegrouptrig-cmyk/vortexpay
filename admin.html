@@ -2725,13 +2725,110 @@ async function fazerLogin() {
                   <!-- Botão salvar -->
                   <button onclick="ptgSalvarCobrarConfig()"
                     style="padding:13px;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:12px;color:#000;font-size:14px;font-weight:800;cursor:pointer;width:100%">
-                    💾 Salvar Configuração
+                    💾 Salvar Configuração Principal
                   </button>
                   <div id="ptg-cobrar-msg" style="font-size:12px;text-align:center;min-height:14px"></div>
 
                 </div>
               </div>
             </div><!-- /card config cobrar -->
+
+            <!-- ── Card Parceiros do Split ── -->
+            <div class="table-card" style="border-color:#f59e0b55;margin-top:4px">
+              <div class="table-header collapsible" onclick="colToggle('ptg-parceiros-config')" style="background:linear-gradient(135deg,#2a1a0520,#3a2a0a20)">
+                <h3>👥 Parceiros do Split — Quem recebe o quê <span id="col-arrow-ptg-parceiros-config" class="collapse-arrow">▼</span></h3>
+              </div>
+              <div class="collapse-body" id="col-body-ptg-parceiros-config">
+                <div style="display:flex;flex-direction:column;gap:14px;padding:4px 0">
+
+                  <!-- Info -->
+                  <div style="font-size:12px;color:#888;line-height:1.6;padding:8px 12px;background:#050f05;border-radius:8px;border-left:3px solid #f59e0b88">
+                    💡 Cada cobrança confirmada é <b style="color:#fbbf24">dividida automaticamente</b> entre os parceiros cadastrados abaixo.<br>
+                    A soma das % não pode ultrapassar 99%. O restante fica na plataforma. Parceiros com valor acumulado abaixo de R$10 ficam em <b style="color:#60a5fa">fila de acúmulo</b> até atingir o mínimo do bot.
+                  </div>
+
+                  <!-- Barra de distribuição -->
+                  <div id="ptg-parc-barra-wrap" style="background:#0a0a14;border-radius:10px;padding:12px 14px;border:1px solid #ffffff11">
+                    <div style="font-size:11px;color:#888;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">📊 Distribuição atual</div>
+                    <div style="display:flex;height:22px;border-radius:8px;overflow:hidden;gap:1px" id="ptg-parc-barra"></div>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px" id="ptg-parc-barra-legend"></div>
+                    <div style="margin-top:8px;font-size:12px;color:#888">
+                      Parceiros: <span id="ptg-parc-total-pct" style="color:#fbbf24;font-weight:700">0%</span>
+                      &nbsp;|&nbsp; Plataforma retém: <span id="ptg-parc-plat-pct" style="color:#4ade80;font-weight:700">100%</span>
+                    </div>
+                  </div>
+
+                  <!-- Lista de parceiros -->
+                  <div id="ptg-parc-lista" style="display:flex;flex-direction:column;gap:10px">
+                    <div style="text-align:center;color:#555;font-size:13px;padding:20px">⏳ Carregando parceiros...</div>
+                  </div>
+
+                  <!-- Botão adicionar -->
+                  <button onclick="ptgAbrirFormParceiro(null)"
+                    style="padding:11px;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:10px;color:#000;font-size:13px;font-weight:800;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px">
+                    ➕ Adicionar Novo Parceiro
+                  </button>
+
+                  <!-- Formulário inline de parceiro -->
+                  <div id="ptg-parc-form" style="display:none;background:#0a0a14;border:2px solid #f59e0b55;border-radius:12px;padding:16px;display:none;flex-direction:column;gap:12px">
+                    <div style="font-size:13px;font-weight:700;color:#fbbf24" id="ptg-parc-form-title">➕ Novo Parceiro</div>
+                    <input type="hidden" id="ptg-parc-form-id">
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                      <div>
+                        <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">Nome / Apelido</label>
+                        <input type="text" id="ptg-parc-form-nome" placeholder="Ex: Parceiro 1"
+                          style="width:100%;background:#050f05;border:1px solid #f59e0b44;border-radius:8px;padding:9px 11px;color:#fff;font-size:13px;box-sizing:border-box">
+                      </div>
+                      <div>
+                        <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">% que recebe</label>
+                        <div style="display:flex;align-items:center;gap:6px">
+                          <input type="number" id="ptg-parc-form-pct" min="1" max="99" step="1" placeholder="10"
+                            style="flex:1;background:#050f05;border:1px solid #f59e0b44;border-radius:8px;padding:9px 11px;color:#fbbf24;font-size:16px;font-weight:800;text-align:center;box-sizing:border-box">
+                          <span style="color:#f59e0b;font-weight:800;font-size:18px">%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">Tipo da Chave Pix</label>
+                      <select id="ptg-parc-form-tipo"
+                        style="width:100%;background:#050f05;border:1px solid #f59e0b44;border-radius:8px;padding:9px 11px;color:#fff;font-size:13px;cursor:pointer">
+                        <option value="cpf">CPF</option>
+                        <option value="cnpj">CNPJ</option>
+                        <option value="telefone">Telefone</option>
+                        <option value="email">E-mail</option>
+                        <option value="aleatoria">Chave Aleatória</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">Chave Pix</label>
+                      <input type="text" id="ptg-parc-form-chave" placeholder="Ex: 27998823669"
+                        style="width:100%;background:#050f05;border:1px solid #f59e0b44;border-radius:8px;padding:9px 11px;color:#fff;font-size:13px;box-sizing:border-box">
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#0d0d0d;border-radius:8px">
+                      <label style="font-size:13px;color:#ccc;flex:1;cursor:pointer" for="ptg-parc-form-ativo">Parceiro ativo</label>
+                      <input type="checkbox" id="ptg-parc-form-ativo" checked style="width:16px;height:16px;accent-color:#f59e0b;cursor:pointer">
+                    </div>
+
+                    <div style="display:flex;gap:8px">
+                      <button onclick="ptgSalvarParceiro()"
+                        style="flex:1;padding:10px;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:9px;color:#000;font-size:13px;font-weight:800;cursor:pointer">
+                        💾 Salvar Parceiro
+                      </button>
+                      <button onclick="ptgFecharFormParceiro()"
+                        style="padding:10px 16px;background:#1a1a1a;border:1px solid #444;border-radius:9px;color:#aaa;font-size:13px;cursor:pointer">
+                        ✕ Cancelar
+                      </button>
+                    </div>
+                    <div id="ptg-parc-form-msg" style="font-size:12px;text-align:center;min-height:14px"></div>
+                  </div>
+
+                </div>
+              </div>
+            </div><!-- /card parceiros split -->
 
           </div><!-- /col esquerda -->
 
@@ -9024,6 +9121,9 @@ async function promoTgCarregar() {
 
   // ── Carregar config % do /cobrar ──
   ptgCarregarCobrarConfig();
+
+  // ── Carregar parceiros do split /cobrar ──
+  ptgCarregarParceiros();
 }
 
 // ── Inicializar card Link Público ──
@@ -9174,6 +9274,170 @@ async function ptgSalvarCobrarConfig() {
   } catch(e) {
     if (msgEl) msgEl.innerHTML = `<span style="color:#f87171">❌ Erro: ${e.message}</span>`;
   }
+}
+
+// ── PARCEIROS DO SPLIT /cobrar ──────────────────────────────────────────────
+const PARC_CORES = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#f97316','#84cc16'];
+let _parceiros = [];
+
+async function ptgCarregarParceiros() {
+  try {
+    const r = await fetch('/api/cobrar/parceiros');
+    const d = await r.json();
+    if (!d.success) return;
+    _parceiros = d.parceiros || [];
+    _ptgRenderParceiros();
+    _ptgRenderBarra(d.total_pct || 0);
+  } catch(e) {}
+}
+
+function _ptgRenderParceiros() {
+  const el = document.getElementById('ptg-parc-lista');
+  if (!el) return;
+  if (!_parceiros.length) {
+    el.innerHTML = '<div style="text-align:center;color:#555;font-size:13px;padding:20px">Nenhum parceiro cadastrado ainda.<br><span style="color:#888;font-size:11px">Adicione parceiros abaixo para ativar o split automático.</span></div>';
+    return;
+  }
+  el.innerHTML = _parceiros.map((p, i) => {
+    const cor  = PARC_CORES[i % PARC_CORES.length];
+    const pctN = Math.round(p.pct * 100);
+    const ativoLabel = p.ativo ? '<span style="color:#4ade80;font-size:10px;font-weight:700;background:#052a05;padding:2px 7px;border-radius:20px">● ATIVO</span>'
+                                : '<span style="color:#888;font-size:10px;background:#1a1a1a;padding:2px 7px;border-radius:20px">○ INATIVO</span>';
+    return `
+    <div style="background:#0a0a14;border:1px solid ${cor}44;border-radius:12px;padding:13px 15px;display:flex;align-items:center;gap:12px">
+      <div style="width:40px;height:40px;background:${cor}22;border:2px solid ${cor};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;color:${cor};flex-shrink:0">${pctN}%</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">${p.nome || 'Parceiro #'+p.id} ${ativoLabel}</div>
+        <div style="font-size:11px;color:#888">${p.tipo_chave.toUpperCase()} &nbsp;•&nbsp; <span style="color:#ccc">${p.chave_pix}</span></div>
+        <div style="font-size:11px;color:#aaa;margin-top:2px">Recebe <b style="color:${cor}">${pctN}%</b> de cada cobrança confirmada</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+        <button onclick="ptgAbrirFormParceiro(${p.id})"
+          style="padding:6px 12px;background:#1a1a1a;border:1px solid #444;border-radius:7px;color:#ccc;font-size:11px;cursor:pointer">✏️ Editar</button>
+        <button onclick="ptgRemoverParceiro(${p.id},'${(p.nome||'Parceiro #'+p.id).replace(/'/g,'')}')"
+          style="padding:6px 12px;background:#1a0a0a;border:1px solid #ef444444;border-radius:7px;color:#f87171;font-size:11px;cursor:pointer">🗑️ Remover</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _ptgRenderBarra(totalPct) {
+  const barra  = document.getElementById('ptg-parc-barra');
+  const legend = document.getElementById('ptg-parc-barra-legend');
+  const elTot  = document.getElementById('ptg-parc-total-pct');
+  const elPlat = document.getElementById('ptg-parc-plat-pct');
+  if (!barra) return;
+
+  const platPct = Math.max(0, 1 - totalPct);
+  const parAtivos = _parceiros.filter(p => p.ativo);
+
+  let barHTML = '', legHTML = '';
+  parAtivos.forEach((p, i) => {
+    const cor = PARC_CORES[i % PARC_CORES.length];
+    const pctN = Math.round(p.pct * 100);
+    barHTML += `<div style="flex:${pctN};background:${cor};min-width:2px;transition:flex .3s" title="${p.nome||'P#'+p.id}: ${pctN}%"></div>`;
+    legHTML += `<div style="display:flex;align-items:center;gap:4px;font-size:11px"><span style="width:10px;height:10px;background:${cor};border-radius:2px;display:inline-block"></span><span style="color:#ccc">${p.nome||'P#'+p.id} <b style="color:${cor}">${pctN}%</b></span></div>`;
+  });
+  const platPctN = Math.round(platPct * 100);
+  barHTML += `<div style="flex:${platPctN};background:#22c55e44;min-width:2px" title="Plataforma: ${platPctN}%"></div>`;
+  legHTML += `<div style="display:flex;align-items:center;gap:4px;font-size:11px"><span style="width:10px;height:10px;background:#22c55e44;border:1px solid #22c55e;border-radius:2px;display:inline-block"></span><span style="color:#4ade80">Plataforma <b>${platPctN}%</b></span></div>`;
+
+  barra.innerHTML  = barHTML;
+  legend.innerHTML = legHTML;
+  if (elTot)  elTot.textContent  = Math.round(totalPct * 100) + '%';
+  if (elPlat) elPlat.textContent = platPctN + '%';
+}
+
+function ptgAbrirFormParceiro(id) {
+  const form = document.getElementById('ptg-parc-form');
+  const title = document.getElementById('ptg-parc-form-title');
+  if (!form) return;
+  form.style.display = 'flex';
+  document.getElementById('ptg-parc-form-msg').textContent = '';
+
+  if (id) {
+    const p = _parceiros.find(x => x.id === id);
+    if (!p) return;
+    title.textContent = `✏️ Editar Parceiro — ${p.nome || '#'+id}`;
+    document.getElementById('ptg-parc-form-id').value    = id;
+    document.getElementById('ptg-parc-form-nome').value  = p.nome || '';
+    document.getElementById('ptg-parc-form-pct').value   = Math.round(p.pct * 100);
+    document.getElementById('ptg-parc-form-chave').value = p.chave_pix;
+    document.getElementById('ptg-parc-form-tipo').value  = p.tipo_chave;
+    document.getElementById('ptg-parc-form-ativo').checked = p.ativo;
+  } else {
+    title.textContent = '➕ Novo Parceiro';
+    document.getElementById('ptg-parc-form-id').value    = '';
+    document.getElementById('ptg-parc-form-nome').value  = '';
+    document.getElementById('ptg-parc-form-pct').value   = '';
+    document.getElementById('ptg-parc-form-chave').value = '';
+    document.getElementById('ptg-parc-form-tipo').value  = 'cpf';
+    document.getElementById('ptg-parc-form-ativo').checked = true;
+  }
+  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function ptgFecharFormParceiro() {
+  const form = document.getElementById('ptg-parc-form');
+  if (form) form.style.display = 'none';
+}
+
+async function ptgSalvarParceiro() {
+  const sec   = sessionStorage.getItem('vp_secret') || '';
+  const msgEl = document.getElementById('ptg-parc-form-msg');
+  const id    = document.getElementById('ptg-parc-form-id')?.value;
+  const nome  = (document.getElementById('ptg-parc-form-nome')?.value || '').trim();
+  const pct   = parseFloat(document.getElementById('ptg-parc-form-pct')?.value);
+  const chave = (document.getElementById('ptg-parc-form-chave')?.value || '').trim();
+  const tipo  = document.getElementById('ptg-parc-form-tipo')?.value || 'cpf';
+  const ativo = document.getElementById('ptg-parc-form-ativo')?.checked !== false;
+
+  if (!chave) { if(msgEl) msgEl.innerHTML = '<span style="color:#f87171">⚠️ Informe a chave Pix.</span>'; return; }
+  if (!pct || pct < 1 || pct > 99) { if(msgEl) msgEl.innerHTML = '<span style="color:#f87171">⚠️ % deve ser entre 1 e 99.</span>'; return; }
+
+  // Verificar soma total
+  const outrosPct = _parceiros.filter(p => p.ativo && p.id !== parseInt(id)).reduce((s, p) => s + Math.round(p.pct*100), 0);
+  if (outrosPct + pct > 99) {
+    if(msgEl) msgEl.innerHTML = `<span style="color:#f87171">⚠️ Soma das % ultrapassa 99%. Outros parceiros já ocupam ${outrosPct}%.</span>`;
+    return;
+  }
+
+  try {
+    if(msgEl) msgEl.innerHTML = '<span style="color:#aaa">⏳ Salvando...</span>';
+    const body = { nome, pct, chave_pix: chave, tipo_chave: tipo, ativo };
+    if (id) body.id = parseInt(id);
+    const r = await fetch('/api/cobrar/parceiros', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': sec },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (d.success) {
+      if(msgEl) msgEl.innerHTML = `<span style="color:#4ade80">✅ ${d.message}</span>`;
+      setTimeout(() => { ptgFecharFormParceiro(); ptgCarregarParceiros(); }, 1200);
+    } else {
+      if(msgEl) msgEl.innerHTML = `<span style="color:#f87171">❌ ${d.error || 'Erro ao salvar'}</span>`;
+    }
+  } catch(e) {
+    if(msgEl) msgEl.innerHTML = `<span style="color:#f87171">❌ ${e.message}</span>`;
+  }
+}
+
+async function ptgRemoverParceiro(id, nome) {
+  if (!confirm(`Remover parceiro "${nome}"?\n\nEle deixará de receber splits automáticos.`)) return;
+  const sec = sessionStorage.getItem('vp_secret') || '';
+  try {
+    const r = await fetch(`/api/cobrar/parceiros/${id}`, {
+      method: 'DELETE',
+      headers: { 'X-PaynexBet-Secret': sec }
+    });
+    const d = await r.json();
+    if (d.success) {
+      ptgCarregarParceiros();
+    } else {
+      alert('Erro: ' + (d.error || 'Falha ao remover'));
+    }
+  } catch(e) { alert('Erro: ' + e.message); }
 }
 
 // ── Atualizar split preview ao digitar ──

@@ -1398,10 +1398,13 @@ async def _loop_verificar_pagamentos():
                         if extra_p:
                             try:
                                 ex = json.loads(extra_p)
-                                if ex.get('tipo') in ('paypix', 'cobrar'):
+                                if ex.get('tipo') == 'cobrar':
+                                    asyncio.create_task(_processar_split_multiplo(tx_id_p, valor_p, extra_p))
+                                    print(f'💸 [Loop] Multi-split cobrar disparado: R${valor_p:.2f}', flush=True)
+                                elif ex.get('tipo') == 'paypix':
                                     asyncio.create_task(_processar_split_paypix(tx_id_p, valor_p, extra_p))
                                     val_par = round(valor_p * float(ex.get('parceiro_pct', 0.6)), 2)
-                                    print(f'💸 [Loop] Split disparado ({ex["tipo"]}): R${val_par:.2f} → {ex.get("parceiro_chave")}', flush=True)
+                                    print(f'💸 [Loop] Split paypix: R${val_par:.2f} → {ex.get("parceiro_chave")}', flush=True)
                             except Exception as ex_err:
                                 print(f'[Loop] Erro split: {ex_err}', flush=True)
                         break
@@ -1451,10 +1454,13 @@ def _registrar_handler_telegram():
                     if extra_p:
                         try:
                             extra_d = json.loads(extra_p)
-                            if extra_d.get('tipo') in ('paypix', 'cobrar'):
+                            if extra_d.get('tipo') == 'cobrar':
+                                asyncio.create_task(_processar_split_multiplo(tx_id_p, valor_p, extra_p))
+                                print(f'💸 [Handler] Multi-split cobrar: R${valor_p:.2f}', flush=True)
+                            elif extra_d.get('tipo') == 'paypix':
                                 asyncio.create_task(_processar_split_paypix(tx_id_p, valor_p, extra_p))
                                 val_par = round(valor_p * float(extra_d.get('parceiro_pct', 0.6)), 2)
-                                print(f'💸 [Handler] Split disparado ({extra_d["tipo"]}): R${val_par:.2f} → {extra_d.get("parceiro_chave")}', flush=True)
+                                print(f'💸 [Handler] Split paypix: R${val_par:.2f} → {extra_d.get("parceiro_chave")}', flush=True)
                         except Exception as ex:
                             print(f'Erro split handler: {ex}', flush=True)
                     break
@@ -6231,7 +6237,9 @@ async def route_webhook(request):
                     valor_w, extra_w = row_w
                     if extra_w:
                         ex = json.loads(extra_w)
-                        if ex.get('tipo') in ('paypix', 'cobrar'):
+                        if ex.get('tipo') == 'cobrar':
+                            asyncio.create_task(_processar_split_multiplo(tx_id, valor_w, extra_w))
+                        elif ex.get('tipo') == 'paypix':
                             asyncio.create_task(_processar_split_paypix(tx_id, valor_w, extra_w))
             except Exception as e_w:
                 print(f'[webhook] erro split check: {e_w}', flush=True)
@@ -7137,6 +7145,249 @@ async def route_cobrar_config(request):
         'cobrar_ativo':       True,
         'cobrar_descricao':   'Gere seu Pix e receba sua % automaticamente',
     }, headers=headers)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COBRAR PARCEIROS — CRUD multi-split
+# Tabela: cobrar_parceiros (id, nome, chave_pix, tipo_chave, pct, ativo, ordem)
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def route_cobrar_parceiros(request):
+    """
+    GET  /api/cobrar/parceiros          — lista todos os parceiros
+    POST /api/cobrar/parceiros          — cria/atualiza parceiro
+    DELETE /api/cobrar/parceiros/{id}   — remove parceiro
+    """
+    headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type,X-PaynexBet-Secret,X-Admin-Secret',
+    }
+
+    def _pg():
+        import psycopg2 as _p
+        c = _p.connect(DATABASE_URL, connect_timeout=8)
+        c.autocommit = True
+        c.cursor().execute("""CREATE TABLE IF NOT EXISTS cobrar_parceiros (
+            id SERIAL PRIMARY KEY,
+            nome TEXT NOT NULL DEFAULT '',
+            chave_pix TEXT NOT NULL,
+            tipo_chave TEXT NOT NULL DEFAULT 'cpf',
+            pct REAL NOT NULL DEFAULT 0.1,
+            ativo INTEGER NOT NULL DEFAULT 1,
+            ordem INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT,
+            updated_at TEXT)""")
+        return c
+
+    # ── OPTIONS ──────────────────────────────────────────────────────────────
+    if request.method == 'OPTIONS':
+        return web.Response(status=200, headers=headers)
+
+    # ── Autenticação para POST/DELETE ────────────────────────────────────────
+    if request.method in ('POST', 'DELETE'):
+        secret = (request.headers.get('X-PaynexBet-Secret', '')
+                  or request.headers.get('X-Admin-Secret', '')
+                  or request.rel_url.query.get('secret', ''))
+        if secret != WEBHOOK_SECRET:
+            return web.json_response({'success': False, 'error': 'Não autorizado'}, status=403, headers=headers)
+
+    # ── GET: listar parceiros ─────────────────────────────────────────────────
+    if request.method == 'GET':
+        try:
+            conn = _pg()
+            cur  = conn.cursor()
+            cur.execute("""SELECT id, nome, chave_pix, tipo_chave, pct, ativo, ordem
+                           FROM cobrar_parceiros ORDER BY ordem ASC, id ASC""")
+            rows = cur.fetchall()
+            conn.close()
+            parceiros = [
+                {'id': r[0], 'nome': r[1], 'chave_pix': r[2], 'tipo_chave': r[3],
+                 'pct': r[4], 'pct_display': f'{round(r[4]*100,1)}%',
+                 'ativo': bool(r[5]), 'ordem': r[6]}
+                for r in rows
+            ]
+            total_pct = round(sum(p['pct'] for p in parceiros if p['ativo']), 4)
+            return web.json_response({
+                'success': True, 'parceiros': parceiros,
+                'total_pct': total_pct,
+                'total_pct_display': f'{round(total_pct*100,1)}%',
+                'plataforma_pct': round(1.0 - total_pct, 4),
+                'plataforma_pct_display': f'{round((1.0-total_pct)*100,1)}%',
+            }, headers=headers)
+        except Exception as e:
+            return web.json_response({'success': False, 'error': str(e)}, headers=headers)
+
+    # ── POST: criar ou atualizar parceiro ─────────────────────────────────────
+    if request.method == 'POST':
+        try:
+            data      = await request.json()
+            pid       = data.get('id')          # se informado → UPDATE, senão → INSERT
+            nome      = str(data.get('nome', '')).strip()[:100]
+            chave     = str(data.get('chave_pix', '')).strip()[:200]
+            tipo      = str(data.get('tipo_chave', 'cpf')).strip()[:20]
+            pct_raw   = float(data.get('pct', 10))
+            pct       = max(0.1, min(99.9, pct_raw)) / 100.0
+            ativo     = int(bool(data.get('ativo', True)))
+            ordem     = int(data.get('ordem', 0))
+            now       = datetime.now().isoformat()
+
+            if not chave:
+                return web.json_response({'success': False, 'error': 'Chave Pix obrigatória'}, headers=headers)
+
+            conn = _pg()
+            cur  = conn.cursor()
+
+            if pid:
+                cur.execute("""UPDATE cobrar_parceiros
+                               SET nome=%s, chave_pix=%s, tipo_chave=%s, pct=%s,
+                                   ativo=%s, ordem=%s, updated_at=%s
+                               WHERE id=%s""",
+                            (nome, chave, tipo, pct, ativo, ordem, now, int(pid)))
+                msg = f'Parceiro #{pid} atualizado'
+            else:
+                cur.execute("""INSERT INTO cobrar_parceiros
+                               (nome, chave_pix, tipo_chave, pct, ativo, ordem, created_at, updated_at)
+                               VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
+                            (nome, chave, tipo, pct, ativo, ordem, now, now))
+                pid = cur.fetchone()[0]
+                msg = f'Parceiro #{pid} criado'
+
+            conn.close()
+            print(f'[Cobrar Parceiros] {msg} — {nome} {round(pct*100,1)}% chave={chave}', flush=True)
+            return web.json_response({'success': True, 'message': msg, 'id': pid}, headers=headers)
+
+        except Exception as e:
+            return web.json_response({'success': False, 'error': str(e)}, headers=headers)
+
+    # ── DELETE: remover parceiro ──────────────────────────────────────────────
+    if request.method == 'DELETE':
+        try:
+            pid = request.match_info.get('id') or (await request.json()).get('id')
+            if not pid:
+                return web.json_response({'success': False, 'error': 'ID não informado'}, headers=headers)
+            conn = _pg()
+            conn.cursor().execute("DELETE FROM cobrar_parceiros WHERE id=%s", (int(pid),))
+            conn.close()
+            return web.json_response({'success': True, 'message': f'Parceiro #{pid} removido'}, headers=headers)
+        except Exception as e:
+            return web.json_response({'success': False, 'error': str(e)}, headers=headers)
+
+    return web.json_response({'success': False, 'error': 'Método não suportado'}, status=405, headers=headers)
+
+
+async def route_cobrar_parceiros_delete(request):
+    """DELETE /api/cobrar/parceiros/{id}"""
+    request._match_info = request.match_info
+    return await route_cobrar_parceiros(request)
+
+
+async def _processar_split_multiplo(tx_id: str, valor: float, extra_str: str):
+    """
+    Processa split para MÚLTIPLOS parceiros cadastrados em cobrar_parceiros.
+    Cada parceiro ativo recebe sua % via executar_saque_bot, com acumulação
+    individual caso o valor seja inferior ao mínimo do bot (R$10).
+    """
+    print(f'[Multi-Split] Iniciando para tx={tx_id} R${valor:.2f}', flush=True)
+
+    try:
+        import psycopg2 as _pgms
+        conn_ms = _pgms.connect(DATABASE_URL, connect_timeout=8)
+        conn_ms.autocommit = True
+        cur_ms  = conn_ms.cursor()
+        cur_ms.execute("""SELECT id, nome, chave_pix, tipo_chave, pct
+                          FROM cobrar_parceiros
+                          WHERE ativo=1 ORDER BY ordem ASC, id ASC""")
+        parceiros = cur_ms.fetchall()
+        conn_ms.close()
+    except Exception as e:
+        print(f'[Multi-Split] Erro ao buscar parceiros: {e}', flush=True)
+        return
+
+    if not parceiros:
+        print(f'[Multi-Split] Nenhum parceiro ativo cadastrado.', flush=True)
+        return
+
+    BOT_MIN = 10.0
+
+    for (pid, nome, chave, tipo, pct) in parceiros:
+        val_par = round(valor * pct, 2)
+        if val_par <= 0:
+            continue
+
+        print(f'[Multi-Split] Parceiro #{pid} {nome} → R${val_par:.2f} ({round(pct*100,1)}%) chave={chave}', flush=True)
+
+        # Acumulação individual por parceiro
+        if val_par < BOT_MIN:
+            try:
+                conn_ac = _pgms.connect(DATABASE_URL, connect_timeout=8)
+                conn_ac.autocommit = True
+                cur_ac  = conn_ac.cursor()
+                cur_ac.execute(
+                    "SELECT id, valor_acumulado, tx_ids FROM cobrar_acumulo WHERE chave_pix=%s AND tipo_chave=%s",
+                    (chave, tipo)
+                )
+                row_ac = cur_ac.fetchone()
+                novo_total = round((row_ac[1] if row_ac else 0) + val_par, 2)
+                txs_list   = json.loads(row_ac[2] if row_ac else '[]')
+                if tx_id not in txs_list:
+                    txs_list.append(tx_id)
+                now_s = datetime.now().isoformat()
+                if row_ac:
+                    cur_ac.execute(
+                        "UPDATE cobrar_acumulo SET valor_acumulado=%s, tx_ids=%s, updated_at=%s WHERE id=%s",
+                        (novo_total, json.dumps(txs_list), now_s, row_ac[0])
+                    )
+                else:
+                    cur_ac.execute(
+                        "INSERT INTO cobrar_acumulo (chave_pix,tipo_chave,valor_acumulado,tx_ids,updated_at) VALUES(%s,%s,%s,%s,%s)",
+                        (chave, tipo, novo_total, json.dumps(txs_list), now_s)
+                    )
+                conn_ac.close()
+
+                if novo_total < BOT_MIN:
+                    print(f'[Multi-Split] #{pid} Acúmulo: R${novo_total:.2f}/R${BOT_MIN:.2f} (falta R${BOT_MIN-novo_total:.2f})', flush=True)
+                    continue
+                else:
+                    print(f'[Multi-Split] #{pid} ✅ Acúmulo atingiu R${novo_total:.2f} → disparando saque!', flush=True)
+                    val_par = novo_total
+                    # Zera acúmulo
+                    conn_z  = _pgms.connect(DATABASE_URL, connect_timeout=8)
+                    conn_z.autocommit = True
+                    conn_z.cursor().execute(
+                        "UPDATE cobrar_acumulo SET valor_acumulado=0, tx_ids='[]', updated_at=%s WHERE chave_pix=%s AND tipo_chave=%s",
+                        (now_s, chave, tipo)
+                    )
+                    conn_z.close()
+            except Exception as e_ac:
+                print(f'[Multi-Split] #{pid} Erro acúmulo: {e_ac}', flush=True)
+                continue
+
+        # Tenta enviar o saque (3 tentativas rápidas)
+        resultado = None
+        for n in range(1, 4):
+            try:
+                resultado = await executar_saque_bot(val_par, tipo, chave)
+            except Exception as ex:
+                resultado = {'success': False, 'error': str(ex), 'status': 'erro'}
+            print(f'[Multi-Split] #{pid} Tentativa {n}: {resultado}', flush=True)
+            if resultado.get('success'):
+                break
+            if n < 3:
+                await asyncio.sleep(30)
+
+        if resultado and resultado.get('success'):
+            _registrar_saque_split(
+                f'{tx_id}_p{pid}', val_par, chave, tipo, pct,
+                resultado, n
+            )
+            print(f'[Multi-Split] #{pid} ✅ Saque R${val_par:.2f} → {chave} OK', flush=True)
+        else:
+            # Enfileira para worker de 5min
+            _paypix_fila_inserir(f'{tx_id}_p{pid}', val_par, chave, tipo, pct)
+            print(f'[Multi-Split] #{pid} ❌ Falhou — enfileirado para retry', flush=True)
+
+        await asyncio.sleep(5)  # pausa entre parceiros para não sobrecarregar o bot
 
 
 async def route_paypix_page(request):
@@ -18571,6 +18822,11 @@ async def main():
     app.router.add_post('/api/cobrar/gerar',   route_cobrar_gerar)          # gerar PIX via @VortexBank_bot
     app.router.add_get('/api/cobrar/config',   route_cobrar_config)         # config % cobrar (GET)
     app.router.add_post('/api/cobrar/config',  route_cobrar_config)         # config % cobrar (POST/save)
+    app.router.add_get('/api/cobrar/parceiros',           route_cobrar_parceiros)          # listar parceiros
+    app.router.add_post('/api/cobrar/parceiros',          route_cobrar_parceiros)          # criar/editar parceiro
+    app.router.add_delete('/api/cobrar/parceiros/{id}',   route_cobrar_parceiros_delete)   # remover parceiro
+    app.router.add_options('/api/cobrar/parceiros',       lambda r: web.Response(status=200, headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,X-PaynexBet-Secret,X-Admin-Secret'}))
+    app.router.add_options('/api/cobrar/parceiros/{id}',  lambda r: web.Response(status=200, headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,X-PaynexBet-Secret,X-Admin-Secret'}))
     app.router.add_get('/paypix', route_paypix_page)
     app.router.add_post('/api/paypix/gerar', route_paypix_gerar)
     app.router.add_get('/api/paypix/status/{tx_id}', route_paypix_status)
