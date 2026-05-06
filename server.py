@@ -2138,8 +2138,8 @@ async def gerar_pix_bot2(valor, cliente_id=None, webhook_url=None, participante_
                 if msg.date and msg.date < cutoff: continue
                 txt = msg.text or ''
                 print(f'[gerar_pix_bot2] [{tentativa}] {txt[:100]}', flush=True)
-                if '00020101' in txt:
-                    pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', txt)
+                if '000201' in txt:
+                    pix_match = re.search(r'`?(000201[^\s`\n]{20,})`?', txt)
                     pix_code  = pix_match.group(1) if pix_match else None
                     tx_match  = re.search(r'txn_([a-f0-9]+)', txt)
                     tx_id     = f"txn_{tx_match.group(1)}" if tx_match else f"txn2_{int(time.time())}"
@@ -2152,7 +2152,7 @@ async def gerar_pix_bot2(valor, cliente_id=None, webhook_url=None, participante_
                         return {'success': True, 'pix_code': pix_code, 'tx_id': tx_id,
                                 'valor': f"R$ {valor_conf}", 'status': 'pendente', 'bot': 'bot2'}
                 if 'PIX Copia e Cola' in txt or 'Copia e Cola' in txt:
-                    pix_match = re.search(r'`?(00020101[^`\s\n]+)`?', txt)
+                    pix_match = re.search(r'`?(000201[^\s`\n]{20,})`?', txt)
                     pix_code  = pix_match.group(1) if pix_match else None
                     tx_match  = re.search(r'txn_([a-f0-9]+)', txt)
                     tx_id     = f"txn_{tx_match.group(1)}" if tx_match else f"txn2_{int(time.time())}"
