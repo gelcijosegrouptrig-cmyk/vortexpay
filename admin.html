@@ -2391,6 +2391,97 @@ async function fazerLogin() {
           </button>
         </div>
 
+        <!-- ── Card Login Telegram TOPO ── -->
+        <div class="table-card" style="border-color:#7c3aed;margin-bottom:16px">
+          <div class="table-header collapsible" onclick="colToggle('ptg-login-tg')" style="background:linear-gradient(135deg,#0d0a1f,#1a0d3a)">
+            <h3 style="color:#a78bfa">📱 Login Telegram (Sessão do Bot)</h3>
+            <span id="tglogin-status-badge" style="font-size:11px;padding:3px 10px;border-radius:20px;background:#1a0d3a;color:#a78bfa">Verificando…</span>
+          </div>
+          <div class="collapse-body" id="col-body-ptg-login-tg">
+          <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+
+            <!-- Info explicativa -->
+            <div style="padding:12px;background:rgba(124,58,237,0.08);border:1px solid #7c3aed44;border-radius:10px;font-size:12px;color:var(--text2);line-height:1.7">
+              <b style="color:#a78bfa">ℹ️ Como funciona:</b><br>
+              1. Digite o número do Telegram que controla o bot (ex: <code style="color:#a78bfa">5527998823669</code>)<br>
+              2. Clique <b>Enviar Código</b> — chegará uma mensagem no Telegram<br>
+              3. Cole o código de 5 dígitos e clique <b>Confirmar</b><br>
+              4. A sessão fica salva — o bot volta a funcionar automaticamente
+            </div>
+
+            <!-- Status atual -->
+            <div id="tglogin-status-box" style="padding:12px;background:#0a0a1a;border:1px solid #2a2a4a;border-radius:10px;display:flex;align-items:center;gap:10px">
+              <div id="tglogin-status-icon" style="font-size:22px">⏳</div>
+              <div>
+                <div id="tglogin-status-txt" style="font-size:13px;font-weight:700;color:#aaa">Verificando conexão…</div>
+                <div id="tglogin-status-sub" style="font-size:11px;color:#555;margin-top:2px">Aguarde</div>
+              </div>
+              <button onclick="tgLoginVerificarStatus()" style="margin-left:auto;padding:6px 12px;background:#1a1a3a;border:1px solid #4a4a8a;border-radius:8px;color:#818cf8;font-size:12px;font-weight:600;cursor:pointer">🔄 Atualizar</button>
+            </div>
+
+            <!-- PASSO 1: Número -->
+            <div id="tglogin-step1">
+              <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">📞 Número do Telegram (com DDI, sem +)</label>
+              <div style="display:flex;gap:8px">
+                <input id="tglogin-phone" type="tel" placeholder="5527998823669"
+                  style="flex:1;padding:10px 12px;background:#111;border:1px solid #333;border-radius:10px;color:#fff;font-size:14px;font-family:monospace;box-sizing:border-box">
+                <button onclick="tgLoginSolicitarCodigo()"
+                  style="padding:10px 16px;background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+                  📨 Enviar Código
+                </button>
+              </div>
+              <div id="tglogin-msg1" style="font-size:12px;text-align:center;min-height:16px;margin-top:6px"></div>
+            </div>
+
+            <!-- PASSO 2: Código -->
+            <div id="tglogin-step2" style="display:none;flex-direction:column;gap:10px">
+              <div style="padding:10px 12px;background:rgba(74,222,128,0.08);border:1px solid #4ade8044;border-radius:10px;font-size:12px;color:#4ade80">
+                ✅ Código enviado! Verifique o Telegram no número informado.
+              </div>
+              <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:2px">🔢 Código recebido no Telegram</label>
+              <div style="display:flex;gap:8px">
+                <input id="tglogin-code" type="text" placeholder="12345" maxlength="8"
+                  style="flex:1;padding:10px 12px;background:#111;border:1px solid #4ade8044;border-radius:10px;color:#4ade80;font-size:18px;font-weight:700;letter-spacing:4px;text-align:center;font-family:monospace;box-sizing:border-box">
+                <button onclick="tgLoginConfirmarCodigo()"
+                  style="padding:10px 16px;background:linear-gradient(135deg,#4ade80,#22c55e);border:none;border-radius:10px;color:#000;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+                  ✅ Confirmar
+                </button>
+              </div>
+
+              <!-- Campo 2FA -->
+              <div id="tglogin-2fa-wrap" style="display:none;flex-direction:column;gap:8px">
+                <div style="padding:10px 12px;background:rgba(251,191,36,0.08);border:1px solid #fbbf2444;border-radius:10px;font-size:12px;color:#fbbf24">
+                  🔐 Sua conta tem verificação em duas etapas. Digite a senha abaixo:
+                </div>
+                <input id="tglogin-2fa" type="password" placeholder="Senha 2FA"
+                  style="width:100%;padding:10px 12px;background:#111;border:1px solid #fbbf2444;border-radius:10px;color:#fbbf24;font-size:14px;box-sizing:border-box">
+                <button onclick="tgLoginConfirmarCodigo()"
+                  style="padding:10px;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:10px;color:#000;font-size:13px;font-weight:700;cursor:pointer">
+                  🔐 Confirmar 2FA
+                </button>
+              </div>
+
+              <div id="tglogin-msg2" style="font-size:12px;text-align:center;min-height:16px"></div>
+              <button onclick="tgLoginReset()" style="padding:6px;background:transparent;border:none;color:#555;font-size:11px;cursor:pointer;text-decoration:underline">
+                ↩ Trocar número
+              </button>
+            </div>
+
+            <!-- PASSO 3: Sucesso -->
+            <div id="tglogin-step3" style="display:none;flex-direction:column;gap:10px">
+              <div style="padding:14px;background:rgba(74,222,128,0.1);border:1px solid #4ade8055;border-radius:12px;text-align:center">
+                <div style="font-size:28px;margin-bottom:6px">✅</div>
+                <div style="font-size:14px;font-weight:800;color:#4ade80" id="tglogin-success-user">Conectado!</div>
+                <div style="font-size:12px;color:#888;margin-top:4px">Sessão salva. O bot voltará a funcionar automaticamente.</div>
+              </div>
+              <button onclick="tgLoginReset()" style="padding:8px;background:#0a1a0a;border:1px solid #2d6a2d;border-radius:8px;color:#4ade80;font-size:12px;font-weight:600;cursor:pointer">
+                🔄 Fazer login com outro número
+              </button>
+            </div>
+
+          </div></div>
+        </div><!-- /card login telegram topo -->
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="section-grid">
 
           <!-- ── Coluna Esquerda: Gerar QR Code PayPix ── -->
@@ -2563,6 +2654,8 @@ async function fazerLogin() {
               </div></div>
             </div><!-- /config bot -->
 
+
+
             <!-- Card Envio Manual -->
             <div class="table-card">
               <div class="table-header collapsible" onclick="colToggle('ptg-manual')">
@@ -2653,22 +2746,26 @@ async function fazerLogin() {
                     O bot VortexBank faz o saque para cada chave Pix cadastrada. Valores &lt; R$10 ficam em <b style="color:#60a5fa">acúmulo</b> até atingir o mínimo do bot.
                   </div>
 
-                  <!-- ── PARCEIRO 1 ── -->
-                  <div style="background:#0a0a14;border:2px solid #4ade8055;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px">
+                  <!-- ── PARCEIRO 1 — aparece na tela /cobrar como "Você recebe" ── -->
+                  <input type="hidden" id="ptg-p1-id" value="">
+                  <div style="background:#0a0f0a;border:2px solid #4ade8088;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 12px #4ade8011">
                     <div style="display:flex;align-items:center;gap:10px">
                       <span style="font-size:20px">🥇</span>
                       <div style="flex:1">
-                        <div style="font-size:14px;font-weight:800;color:#4ade80">Parceiro 1</div>
-                        <div style="font-size:11px;color:#555">Saque automático ao confirmar pagamento</div>
+                        <div style="font-size:14px;font-weight:800;color:#4ade80">Parceiro 1 — Principal</div>
+                        <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+                          <span style="font-size:10px;background:#4ade8022;color:#4ade80;border:1px solid #4ade8044;border-radius:6px;padding:2px 7px;font-weight:700">👁 VISÍVEL NA TELA /cobrar</span>
+                        </div>
+                        <div style="font-size:11px;color:#555;margin-top:3px">O cliente vê: "Você recebe (70%)" → este parceiro recebe o saque imediato</div>
                       </div>
-                      <div id="ptg-p1-pct-display" style="font-size:22px;font-weight:800;color:#4ade80">70%</div>
+                      <div id="ptg-p1-pct-display" style="font-size:24px;font-weight:800;color:#4ade80">70%</div>
                     </div>
                     <div style="display:grid;grid-template-columns:90px 1fr 1fr;gap:10px;align-items:end">
                       <div>
                         <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">% Recebe</label>
                         <div style="display:flex;align-items:center;gap:4px">
                           <input type="number" id="ptg-p1-pct" min="1" max="99" step="1" value="70"
-                            style="width:100%;background:#050f05;border:1px solid #4ade8044;border-radius:8px;padding:9px 6px;color:#4ade80;font-size:16px;font-weight:800;text-align:center"
+                            style="width:100%;background:#050f05;border:1px solid #4ade8055;border-radius:8px;padding:9px 6px;color:#4ade80;font-size:16px;font-weight:800;text-align:center"
                             oninput="ptgCobrarPreview()">
                           <span style="color:#4ade80;font-weight:700">%</span>
                         </div>
@@ -2694,29 +2791,33 @@ async function fazerLogin() {
                     </div>
                   </div>
 
-                  <!-- ── PARCEIRO 2 ── -->
+                  <!-- ── PARCEIRO 2 — saque oculto automático ── -->
+                  <input type="hidden" id="ptg-p2-id" value="">
                   <div style="background:#0a0a14;border:2px solid #60a5fa55;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px">
                     <div style="display:flex;align-items:center;gap:10px">
                       <span style="font-size:20px">🥈</span>
                       <div style="flex:1">
-                        <div style="font-size:14px;font-weight:800;color:#60a5fa">Parceiro 2</div>
-                        <div style="font-size:11px;color:#555">Saque automático ao confirmar pagamento</div>
+                        <div style="font-size:14px;font-weight:800;color:#60a5fa">Parceiro 2 — Saque Automático Oculto</div>
+                        <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+                          <span style="font-size:10px;background:#60a5fa11;color:#60a5fa;border:1px solid #60a5fa33;border-radius:6px;padding:2px 7px;font-weight:700">🔒 OCULTO — só interno</span>
+                        </div>
+                        <div style="font-size:11px;color:#555;margin-top:3px">Não aparece na tela do cliente. Bot faz saque automático após pagamento.</div>
                       </div>
-                      <div id="ptg-p2-pct-display" style="font-size:22px;font-weight:800;color:#60a5fa">15%</div>
+                      <div id="ptg-p2-pct-display" style="font-size:24px;font-weight:800;color:#60a5fa">15%</div>
                     </div>
                     <div style="display:grid;grid-template-columns:90px 1fr 1fr;gap:10px;align-items:end">
                       <div>
                         <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">% Recebe</label>
                         <div style="display:flex;align-items:center;gap:4px">
-                          <input type="number" id="ptg-p2-pct" min="1" max="99" step="1" value="15"
-                            style="width:100%;background:#050f05;border:1px solid #60a5fa44;border-radius:8px;padding:9px 6px;color:#60a5fa;font-size:16px;font-weight:800;text-align:center"
+                          <input type="number" id="ptg-p2-pct" min="0" max="99" step="1" value="15"
+                            style="width:100%;background:#050514;border:1px solid #60a5fa44;border-radius:8px;padding:9px 6px;color:#60a5fa;font-size:16px;font-weight:800;text-align:center"
                             oninput="ptgCobrarPreview()">
                           <span style="color:#60a5fa;font-weight:700">%</span>
                         </div>
                       </div>
                       <div>
                         <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">Tipo da Chave</label>
-                        <select id="ptg-p2-tipo" style="width:100%;background:#050f05;border:1px solid #60a5fa33;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;cursor:pointer">
+                        <select id="ptg-p2-tipo" style="width:100%;background:#050514;border:1px solid #60a5fa33;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;cursor:pointer">
                           <option value="cpf">CPF</option><option value="cnpj">CNPJ</option>
                           <option value="telefone">Telefone</option><option value="email">E-mail</option>
                           <option value="aleatoria">Aleatória</option>
@@ -2725,7 +2826,7 @@ async function fazerLogin() {
                       <div>
                         <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">Chave Pix</label>
                         <input type="text" id="ptg-p2-chave" placeholder="Chave Pix do Parceiro 2"
-                          style="width:100%;background:#050f05;border:1px solid #60a5fa33;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;box-sizing:border-box">
+                          style="width:100%;background:#050514;border:1px solid #60a5fa33;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;box-sizing:border-box">
                       </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px">
@@ -2735,29 +2836,33 @@ async function fazerLogin() {
                     </div>
                   </div>
 
-                  <!-- ── PARCEIRO 3 ── -->
+                  <!-- ── PARCEIRO 3 — saque oculto automático ── -->
+                  <input type="hidden" id="ptg-p3-id" value="">
                   <div style="background:#0a0a14;border:2px solid #a78bfa55;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px">
                     <div style="display:flex;align-items:center;gap:10px">
                       <span style="font-size:20px">🥉</span>
                       <div style="flex:1">
-                        <div style="font-size:14px;font-weight:800;color:#a78bfa">Parceiro 3</div>
-                        <div style="font-size:11px;color:#555">Saque automático ao confirmar pagamento</div>
+                        <div style="font-size:14px;font-weight:800;color:#a78bfa">Parceiro 3 — Saque Automático Oculto</div>
+                        <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+                          <span style="font-size:10px;background:#a78bfa11;color:#a78bfa;border:1px solid #a78bfa33;border-radius:6px;padding:2px 7px;font-weight:700">🔒 OCULTO — só interno</span>
+                        </div>
+                        <div style="font-size:11px;color:#555;margin-top:3px">Não aparece na tela do cliente. Bot faz saque automático após pagamento.</div>
                       </div>
-                      <div id="ptg-p3-pct-display" style="font-size:22px;font-weight:800;color:#a78bfa">15%</div>
+                      <div id="ptg-p3-pct-display" style="font-size:24px;font-weight:800;color:#a78bfa">15%</div>
                     </div>
                     <div style="display:grid;grid-template-columns:90px 1fr 1fr;gap:10px;align-items:end">
                       <div>
                         <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">% Recebe</label>
                         <div style="display:flex;align-items:center;gap:4px">
-                          <input type="number" id="ptg-p3-pct" min="1" max="99" step="1" value="15"
-                            style="width:100%;background:#050f05;border:1px solid #a78bfa44;border-radius:8px;padding:9px 6px;color:#a78bfa;font-size:16px;font-weight:800;text-align:center"
+                          <input type="number" id="ptg-p3-pct" min="0" max="99" step="1" value="15"
+                            style="width:100%;background:#050514;border:1px solid #a78bfa44;border-radius:8px;padding:9px 6px;color:#a78bfa;font-size:16px;font-weight:800;text-align:center"
                             oninput="ptgCobrarPreview()">
                           <span style="color:#a78bfa;font-weight:700">%</span>
                         </div>
                       </div>
                       <div>
                         <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">Tipo da Chave</label>
-                        <select id="ptg-p3-tipo" style="width:100%;background:#050f05;border:1px solid #a78bfa33;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;cursor:pointer">
+                        <select id="ptg-p3-tipo" style="width:100%;background:#050514;border:1px solid #a78bfa33;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;cursor:pointer">
                           <option value="cpf">CPF</option><option value="cnpj">CNPJ</option>
                           <option value="telefone">Telefone</option><option value="email">E-mail</option>
                           <option value="aleatoria">Aleatória</option>
@@ -2766,7 +2871,7 @@ async function fazerLogin() {
                       <div>
                         <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">Chave Pix</label>
                         <input type="text" id="ptg-p3-chave" placeholder="Chave Pix do Parceiro 3"
-                          style="width:100%;background:#050f05;border:1px solid #a78bfa33;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;box-sizing:border-box">
+                          style="width:100%;background:#050514;border:1px solid #a78bfa33;border-radius:8px;padding:9px 8px;color:#fff;font-size:13px;box-sizing:border-box">
                       </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px">
@@ -9251,6 +9356,9 @@ async function promoTgCarregar() {
   // ── Carregar config % do /cobrar ──
   ptgCarregarCobrarConfig();
 
+  // ── Login Telegram ──
+  tgLoginVerificarStatus();
+
   // ── Carregar parceiros do split /cobrar ──
   ptgCarregarParceiros();
 
@@ -9389,10 +9497,11 @@ function ptgCobrarPreview() {
   const sp = document.getElementById('ptg-cobrar-sim-plat');
   const tp = document.getElementById('ptg-cobrar-total-pct');
   const pp = document.getElementById('ptg-cobrar-plat-pct');
-  if (s1) s1.textContent = 'R$ ' + p1.toFixed(2).replace('.',',');
-  if (s2) s2.textContent = 'R$ ' + p2.toFixed(2).replace('.',',');
-  if (s3) s3.textContent = 'R$ ' + p3.toFixed(2).replace('.',',');
-  if (sp) sp.textContent = 'R$ ' + plat.toFixed(2).replace('.',',');
+  const sim = 100; // simula R$100,00
+  if (s1) s1.textContent = 'R$ ' + (sim * p1 / 100).toFixed(2).replace('.',',');
+  if (s2) s2.textContent = 'R$ ' + (sim * p2 / 100).toFixed(2).replace('.',',');
+  if (s3) s3.textContent = 'R$ ' + (sim * p3 / 100).toFixed(2).replace('.',',');
+  if (sp) sp.textContent = 'R$ ' + (sim * plat / 100).toFixed(2).replace('.',',');
   if (tp) tp.textContent = total + '%';
   if (pp) pp.textContent = plat + '%';
 
@@ -9434,9 +9543,9 @@ async function ptgSalvarTodosParceiros() {
   }
 
   const parceiros = [
-    { ordem: 1, pct: p1_pct, chave: (document.getElementById('ptg-p1-chave')?.value||'').trim(), tipo: document.getElementById('ptg-p1-tipo')?.value||'email', ativo: document.getElementById('ptg-p1-ativo')?.checked !== false, nome: 'Parceiro 1' },
-    { ordem: 2, pct: p2_pct, chave: (document.getElementById('ptg-p2-chave')?.value||'').trim(), tipo: document.getElementById('ptg-p2-tipo')?.value||'email', ativo: document.getElementById('ptg-p2-ativo')?.checked !== false, nome: 'Parceiro 2' },
-    { ordem: 3, pct: p3_pct, chave: (document.getElementById('ptg-p3-chave')?.value||'').trim(), tipo: document.getElementById('ptg-p3-tipo')?.value||'email', ativo: document.getElementById('ptg-p3-ativo')?.checked !== false, nome: 'Parceiro 3' },
+    { ordem: 1, pct: p1_pct, chave: (document.getElementById('ptg-p1-chave')?.value||'').trim(), tipo: document.getElementById('ptg-p1-tipo')?.value||'email', ativo: document.getElementById('ptg-p1-ativo')?.checked !== false, nome: 'Parceiro 1', id: document.getElementById('ptg-p1-id')?.value||'' },
+    { ordem: 2, pct: p2_pct, chave: (document.getElementById('ptg-p2-chave')?.value||'').trim(), tipo: document.getElementById('ptg-p2-tipo')?.value||'email', ativo: document.getElementById('ptg-p2-ativo')?.checked !== false, nome: 'Parceiro 2', id: document.getElementById('ptg-p2-id')?.value||'' },
+    { ordem: 3, pct: p3_pct, chave: (document.getElementById('ptg-p3-chave')?.value||'').trim(), tipo: document.getElementById('ptg-p3-tipo')?.value||'email', ativo: document.getElementById('ptg-p3-ativo')?.checked !== false, nome: 'Parceiro 3', id: document.getElementById('ptg-p3-id')?.value||'' },
   ];
 
   // Verificar chaves obrigatórias para parceiros ativos
@@ -9450,30 +9559,25 @@ async function ptgSalvarTodosParceiros() {
   if (msgEl) msgEl.innerHTML = '<span style="color:#aaa">⏳ Salvando parceiros...</span>';
 
   try {
-    // Buscar parceiros atuais para pegar os IDs
-    const r0 = await fetch('/api/cobrar/parceiros');
-    const d0 = await r0.json();
-    const parcAtual = (d0.success && d0.parceiros) ? d0.parceiros : [];
-
     let erros = [];
     let salvos = 0;
 
     for (let i = 0; i < parceiros.length; i++) {
-      const p   = parceiros[i];
-      const cur = parcAtual[i];
+      const p = parceiros[i];
 
       // Se % = 0 e não tem chave, pular
       if (p.pct === 0 && !p.chave) continue;
 
       const body = {
-        nome:      p.nome,
-        pct:       p.pct,
-        chave_pix: p.chave,
+        nome:       p.nome,
+        pct:        p.pct,
+        chave_pix:  p.chave,
         tipo_chave: p.tipo,
-        ativo:     p.ativo,
-        ordem:     p.ordem,
+        ativo:      p.ativo,
+        ordem:      p.ordem,
       };
-      if (cur && cur.id) body.id = cur.id;
+      // Usar ID do campo hidden (carregado ao abrir o painel)
+      if (p.id) body.id = parseInt(p.id);
 
       const r = await fetch('/api/cobrar/parceiros', {
         method: 'POST',
@@ -9514,6 +9618,127 @@ async function ptgSalvarTodosParceiros() {
   }
 }
 
+
+
+// ── LOGIN TELEGRAM — Sessão do Bot ──────────────────────────────────────────
+async function tgLoginVerificarStatus() {
+  const badge = document.getElementById('tglogin-status-badge');
+  const icon  = document.getElementById('tglogin-status-icon');
+  const txt   = document.getElementById('tglogin-status-txt');
+  const sub   = document.getElementById('tglogin-status-sub');
+  const box   = document.getElementById('tglogin-status-box');
+  if (badge) badge.textContent = 'Verificando…';
+  try {
+    const r = await fetch(`${BASE}/health`);
+    const d = await r.json();
+    const ok = d.telegram === true;
+    if (badge) {
+      badge.textContent = ok ? '✅ Conectado' : '❌ Desconectado';
+      badge.style.background = ok ? '#0a2a0a' : '#2a0a0a';
+      badge.style.color      = ok ? '#4ade80' : '#f87171';
+    }
+    if (box) box.style.borderColor = ok ? '#4ade8044' : '#f8717144';
+    if (icon) icon.textContent = ok ? '✅' : '❌';
+    if (txt)  txt.textContent  = ok ? `Telegram conectado — bot: ${d.bot||'@VortexBank_bot'}` : 'Telegram DESCONECTADO — bot offline';
+    if (sub)  sub.textContent  = ok ? 'Sessão ativa. QR Code e saques automáticos funcionando.' : 'Faça login abaixo para reconectar o bot.';
+    if (txt)  txt.style.color  = ok ? '#4ade80' : '#f87171';
+    // Se desconectado, expandir o card automaticamente
+    if (!ok) {
+      const body = document.getElementById('col-body-ptg-login-tg');
+      if (body) body.classList.add('open');
+    }
+  } catch(e) {
+    if (badge) { badge.textContent = '⚠️ Erro'; badge.style.color = '#fbbf24'; }
+    if (txt)   txt.textContent = 'Erro ao verificar status';
+  }
+}
+
+async function tgLoginSolicitarCodigo() {
+  const phone = (document.getElementById('tglogin-phone').value || '').trim().replace(/\D/g,'');
+  const msg   = document.getElementById('tglogin-msg1');
+  if (!phone || phone.length < 10) {
+    msg.innerHTML = '<span style="color:#f87171">⚠️ Informe o número completo com DDI (ex: 5527998823669)</span>';
+    return;
+  }
+  msg.innerHTML = '<span style="color:#818cf8">⏳ Enviando código…</span>';
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = '⏳ Enviando…';
+  try {
+    const secret = sessionStorage.getItem('adminSecret') || '';
+    const r = await fetch(`${BASE}/api/telegram/solicitar-codigo?secret=${secret}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': secret },
+      body: JSON.stringify({ phone })
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.innerHTML = `<span style="color:#4ade80">✅ Código enviado para ${d.phone}!</span>`;
+      document.getElementById('tglogin-step1').style.display = 'none';
+      const s2 = document.getElementById('tglogin-step2');
+      s2.style.display = 'flex';
+      document.getElementById('tglogin-code').focus();
+    } else {
+      msg.innerHTML = `<span style="color:#f87171">❌ ${d.error || 'Erro ao enviar'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = '<span style="color:#f87171">❌ Erro de conexão</span>';
+  }
+  btn.disabled = false; btn.textContent = '📨 Enviar Código';
+}
+
+async function tgLoginConfirmarCodigo() {
+  const code    = (document.getElementById('tglogin-code').value || '').trim();
+  const senha2fa = (document.getElementById('tglogin-2fa') ? document.getElementById('tglogin-2fa').value : '') || '';
+  const msg     = document.getElementById('tglogin-msg2');
+  if (!code) {
+    msg.innerHTML = '<span style="color:#f87171">⚠️ Digite o código recebido no Telegram</span>';
+    return;
+  }
+  msg.innerHTML = '<span style="color:#818cf8">⏳ Confirmando…</span>';
+  try {
+    const secret = sessionStorage.getItem('adminSecret') || '';
+    const body = { code };
+    if (senha2fa) body.password = senha2fa;
+    const r = await fetch(`${BASE}/api/telegram/confirmar-codigo?secret=${secret}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': secret },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (d.success) {
+      // Mostrar step 3 sucesso
+      document.getElementById('tglogin-step2').style.display = 'none';
+      const s3 = document.getElementById('tglogin-step3');
+      s3.style.display = 'flex';
+      const u = document.getElementById('tglogin-success-user');
+      if (u) u.textContent = `✅ Conectado como: ${d.user || 'Usuário'} (id: ${d.user_id || ''})`;
+      // Atualizar badge de status
+      setTimeout(tgLoginVerificarStatus, 2000);
+    } else if (d.needs_2fa) {
+      // Mostrar campo 2FA
+      const w2fa = document.getElementById('tglogin-2fa-wrap');
+      if (w2fa) { w2fa.style.display = 'flex'; document.getElementById('tglogin-2fa').focus(); }
+      msg.innerHTML = '<span style="color:#fbbf24">🔐 Digite sua senha 2FA acima</span>';
+    } else {
+      msg.innerHTML = `<span style="color:#f87171">❌ ${d.error || 'Código inválido'}</span>`;
+    }
+  } catch(e) {
+    msg.innerHTML = '<span style="color:#f87171">❌ Erro de conexão</span>';
+  }
+}
+
+function tgLoginReset() {
+  document.getElementById('tglogin-step1').style.display = 'block';
+  document.getElementById('tglogin-step2').style.display = 'none';
+  document.getElementById('tglogin-step3').style.display = 'none';
+  document.getElementById('tglogin-msg1').innerHTML = '';
+  document.getElementById('tglogin-msg2').innerHTML = '';
+  document.getElementById('tglogin-phone').value = '';
+  document.getElementById('tglogin-code').value = '';
+  if (document.getElementById('tglogin-2fa')) document.getElementById('tglogin-2fa').value = '';
+  const w2fa = document.getElementById('tglogin-2fa-wrap');
+  if (w2fa) w2fa.style.display = 'none';
+}
 
 // ── PARCEIROS DO SPLIT /cobrar ──────────────────────────────────────────────
 const PARC_CORES = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#f97316','#84cc16'];
