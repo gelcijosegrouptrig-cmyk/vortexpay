@@ -8026,7 +8026,7 @@ async def route_cobrar_reprocessar_split(request):
         # Buscar a transação no SQLite
         conn_s = sqlite3_connect()
         row_s  = conn_s.execute(
-            'SELECT tx_id, valor, extra FROM transacoes WHERE tx_id=? AND status="pago"',
+            "SELECT tx_id, valor, extra FROM transacoes WHERE tx_id=? AND status='pago'",
             (tx_id,)
         ).fetchone()
         conn_s.close()
