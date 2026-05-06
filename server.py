@@ -6011,6 +6011,29 @@ async def route_check_auth(request):
         'provided_len': len(secret),         # tamanho do que foi enviado
     })
 
+async def route_debug_bot_msgs(request):
+    """Debug: lê últimas mensagens do @VortexBank_bot para ver o que ele responde"""
+    secret = request.headers.get('X-PaynexBet-Secret','') or request.rel_url.query.get('secret','')
+    if secret != WEBHOOK_SECRET:
+        return web.json_response({'error':'Não autorizado'}, status=401)
+    try:
+        if not _telegram_ready:
+            return web.json_response({'ready': False, 'msgs': [], 'error': 'Telegram offline'})
+        bot = await client.get_entity(BOT_USERNAME)
+        msgs = await client.get_messages(bot, limit=10)
+        saida = []
+        for m in msgs:
+            saida.append({
+                'id': m.id,
+                'date': str(m.date),
+                'text': (m.text or '')[:300],
+                'has_buttons': bool(m.buttons),
+                'buttons': [[btn.text for btn in row] for row in (m.buttons or [])],
+            })
+        return web.json_response({'ready': True, 'bot': BOT_USERNAME, 'msgs': saida})
+    except Exception as e:
+        return web.json_response({'error': str(e)})
+
 async def route_debug_pix(request):
     """Endpoint de diagnóstico - testa DBConn e INSERT diretamente"""
 
@@ -18264,6 +18287,7 @@ async def main():
     app.router.add_post('/api/pix', route_pix)
     app.router.add_get('/api/pix/status/{tx_id}', route_pix_status)
     app.router.add_get('/api/debug-pix', route_debug_pix)
+    app.router.add_get('/api/debug/bot-msgs', route_debug_bot_msgs)
     app.router.add_get('/api/check-auth', route_check_auth)
     app.router.add_route('OPTIONS', '/api/pix', lambda r: web.Response(status=200))
     app.router.add_get('/api/status/{tx_id}', route_status_tx)
