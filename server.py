@@ -6089,7 +6089,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260507-fix-tg-timeout',
+        'version': 'v20260507-fix-saque-timeout',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -6485,15 +6485,15 @@ async def route_saldo(request):
     except Exception as e:
         return web.json_response({'success': False, 'saldo': 0, 'disponivel': 0, 'error': str(e)})
 
-async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> dict:
+async def _executar_saque_bot_interno(valor: float, tipo_chave: str, chave_pix: str) -> dict:
     """
-    Executa o fluxo de saque manual no bot VortexBank.
+    Implementação interna — chamada via executar_saque_bot com timeout global de 150s.
     Usa timestamps estritos em cada passo para evitar leitura de mensagens antigas.
     """
     import datetime as dt
 
     if not _telegram_ready:
-        for _ in range(30):
+        for _ in range(15):  # máx 15s esperando Telegram ficar pronto
             await asyncio.sleep(1)
             if _telegram_ready:
                 break
@@ -6691,6 +6691,23 @@ async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> d
             print(f'❌ [Saque Bot] Exceção: {e}', flush=True)
             return {'success': False, 'error': f'Erro interno: {str(e)}'}
 
+
+async def executar_saque_bot(valor: float, tipo_chave: str, chave_pix: str) -> dict:
+    """
+    Wrapper com timeout global de 150s para evitar crash do event loop.
+    Se o bot não responder em 150s, retorna erro sem travar o servidor.
+    """
+    try:
+        return await asyncio.wait_for(
+            _executar_saque_bot_interno(valor, tipo_chave, chave_pix),
+            timeout=150
+        )
+    except asyncio.TimeoutError:
+        print(f'⏰ [Saque Bot] TIMEOUT 150s — R${valor:.2f} → {chave_pix}. Retornando erro.', flush=True)
+        return {'success': False, 'error': 'Timeout 150s: bot não respondeu a tempo. Saque enfileirado para retry.'}
+    except Exception as e:
+        print(f'❌ [Saque Bot] Exceção no wrapper: {e}', flush=True)
+        return {'success': False, 'error': f'Erro inesperado: {str(e)}'}
 
 
 async def route_solicitar_saque(request):
