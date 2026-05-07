@@ -7153,6 +7153,7 @@ async def route_cobrar_config(request):
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_desc  TEXT    DEFAULT ''",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_chave TEXT    DEFAULT ''",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_tipo  TEXT    DEFAULT 'cpf'",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_max_tent INTEGER DEFAULT 6",
             ]:
                 try: cur.execute(col_sql)
                 except Exception: conn.rollback()
@@ -7170,22 +7171,26 @@ async def route_cobrar_config(request):
                 """)
                 conn.commit()
             except Exception: conn.rollback()
+            max_tent = int(data.get('cobrar_max_tentativas', 6))
+            max_tent = max(1, min(20, max_tent))  # limita 1..20
+
             cur.execute("""
                 UPDATE sorteio_config
                 SET cobrar_pct=%s, cobrar_min=%s, cobrar_ativo=%s, cobrar_desc=%s,
-                    cobrar_chave=%s, cobrar_tipo=%s
+                    cobrar_chave=%s, cobrar_tipo=%s, cobrar_max_tent=%s
                 WHERE id=1
-            """, (pct, minval, ativo_db, desc, chave, tipo))
+            """, (pct, minval, ativo_db, desc, chave, tipo, max_tent))
             if cur.rowcount == 0:
                 cur.execute("""
                     INSERT INTO sorteio_config
-                        (id, cobrar_pct, cobrar_min, cobrar_ativo, cobrar_desc, cobrar_chave, cobrar_tipo)
-                    VALUES (1, %s, %s, %s, %s, %s, %s)
+                        (id, cobrar_pct, cobrar_min, cobrar_ativo, cobrar_desc, cobrar_chave, cobrar_tipo, cobrar_max_tent)
+                    VALUES (1, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (id) DO UPDATE
                     SET cobrar_pct=EXCLUDED.cobrar_pct, cobrar_min=EXCLUDED.cobrar_min,
                         cobrar_ativo=EXCLUDED.cobrar_ativo, cobrar_desc=EXCLUDED.cobrar_desc,
-                        cobrar_chave=EXCLUDED.cobrar_chave, cobrar_tipo=EXCLUDED.cobrar_tipo
-                """, (pct, minval, ativo_db, desc, chave, tipo))
+                        cobrar_chave=EXCLUDED.cobrar_chave, cobrar_tipo=EXCLUDED.cobrar_tipo,
+                        cobrar_max_tent=EXCLUDED.cobrar_max_tent
+                """, (pct, minval, ativo_db, desc, chave, tipo, max_tent))
             conn.commit()
             cur.close(); conn.close()
             return web.json_response({
@@ -7197,6 +7202,7 @@ async def route_cobrar_config(request):
                 'cobrar_descricao':   desc,
                 'cobrar_chave':       chave,
                 'cobrar_tipo':        tipo,
+                'cobrar_max_tentativas': max_tent,
                 'message':            f'✅ Configuração salva! Parceiros receberão {round(pct*100,1)}% a partir de agora.'
             }, headers=headers)
         except Exception as e:
@@ -7210,7 +7216,8 @@ async def route_cobrar_config(request):
         cur  = conn.cursor()
         try:
             cur.execute("""
-                SELECT cobrar_pct, cobrar_min, cobrar_ativo, cobrar_desc, cobrar_chave, cobrar_tipo
+                SELECT cobrar_pct, cobrar_min, cobrar_ativo, cobrar_desc, cobrar_chave, cobrar_tipo,
+                       COALESCE(cobrar_max_tent, 6)
                 FROM sorteio_config WHERE id=1
             """)
             row = cur.fetchone()
@@ -7223,15 +7230,17 @@ async def route_cobrar_config(request):
             ativo = bool(row[2])  if row[2] is not None else True
             desc  = str(row[3])   if row[3]              else 'Gere seu Pix e receba sua % automaticamente'
             chave = str(row[4])   if row[4]              else ''
-            tipo  = str(row[5])   if row[5]              else 'cpf'
+            tipo     = str(row[5])   if row[5]              else 'cpf'
+            max_tent = int(row[6])    if row[6] is not None  else 6
             return web.json_response({
-                'cobrar_pct':         pct,
-                'cobrar_pct_display': f'{round(pct * 100, 1)}%',
-                'cobrar_min':         minv,
-                'cobrar_ativo':       ativo,
-                'cobrar_descricao':   desc,
-                'cobrar_chave':       chave,
-                'cobrar_tipo':        tipo,
+                'cobrar_pct':             pct,
+                'cobrar_pct_display':     f'{round(pct * 100, 1)}%',
+                'cobrar_min':             minv,
+                'cobrar_ativo':           ativo,
+                'cobrar_descricao':       desc,
+                'cobrar_chave':           chave,
+                'cobrar_tipo':            tipo,
+                'cobrar_max_tentativas':  max_tent,
             }, headers=headers)
     except Exception:
         pass
@@ -7399,7 +7408,16 @@ async def _processar_split_multiplo(tx_id: str, valor: float, extra_str: str):
     import psycopg2 as _pgms
 
     BOT_MIN        = 10.0   # mínimo do bot VortexBank
-    MAX_TENTATIVAS = 6
+    # Ler MAX_TENTATIVAS do banco (configurável pelo admin, padrão 6)
+    try:
+        _conn_mt = _pgms.connect(DATABASE_URL, connect_timeout=5)
+        _cur_mt  = _conn_mt.cursor()
+        _cur_mt.execute("SELECT COALESCE(cobrar_max_tent, 6) FROM sorteio_config WHERE id=1")
+        _row_mt  = _cur_mt.fetchone()
+        MAX_TENTATIVAS = int(_row_mt[0]) if _row_mt else 6
+        _cur_mt.close(); _conn_mt.close()
+    except Exception:
+        MAX_TENTATIVAS = 6
     DELAY_RETRY    = 30     # segundos entre tentativas do mesmo parceiro
     DELAY_NEXT     = 15     # segundos entre parceiros (tempo bot respirar após unlock)
     ERROS_FATAIS   = ['saldo insuficiente', 'chave inválida', 'chave pix não', 'formato inválido', 'valor inválido']  # para imediatamente

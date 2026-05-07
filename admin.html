@@ -2908,16 +2908,28 @@ async function fazerLogin() {
                   </div>
 
                   <!-- Config geral -->
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
                     <div>
                       <label style="font-size:11px;color:#888;display:block;margin-bottom:6px">💵 Valor mínimo da cobrança (R$)</label>
                       <input type="number" id="ptg-cobrar-min" min="1" max="9999" step="0.5" value="50"
                         style="width:100%;background:#0a0a14;border:1px solid #ffffff22;border-radius:10px;padding:10px 12px;color:#fff;font-size:15px;font-weight:700;box-sizing:border-box"
                         placeholder="50.00">
                     </div>
-                    <div style="display:flex;flex-direction:column;justify-content:flex-end">
-                      <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;background:#0a0a14;border-radius:10px;border:1px solid #ffffff11;height:100%;box-sizing:border-box">
-                        <label style="font-size:12px;color:#ccc;flex:1;cursor:pointer" for="ptg-cobrar-ativo">✅ Sistema ativo</label>
+                    <div>
+                      <label style="font-size:11px;color:#f59e0b;display:block;margin-bottom:6px">🔁 Tentativas por parceiro</label>
+                      <div style="display:flex;align-items:center;gap:6px">
+                        <input type="number" id="ptg-cobrar-max-tent" min="1" max="20" step="1" value="6"
+                          style="width:100%;background:#0a0a14;border:1px solid #f59e0b55;border-radius:10px;padding:10px 12px;color:#f59e0b;font-size:15px;font-weight:700;box-sizing:border-box;text-align:center"
+                          placeholder="6">
+                      </div>
+                      <div style="font-size:10px;color:#555;margin-top:4px;line-height:1.4">
+                        Quantas vezes o bot tenta o saque antes de enfileirar (1–20). Padrão: 6
+                      </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;justify-content:flex-start;padding-top:2px">
+                      <label style="font-size:11px;color:#888;display:block;margin-bottom:6px">⚙️ Sistema</label>
+                      <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;background:#0a0a14;border-radius:10px;border:1px solid #ffffff11;box-sizing:border-box">
+                        <label style="font-size:12px;color:#ccc;flex:1;cursor:pointer" for="ptg-cobrar-ativo">✅ Ativo</label>
                         <input type="checkbox" id="ptg-cobrar-ativo" checked style="width:17px;height:17px;accent-color:#22c55e;cursor:pointer">
                       </div>
                     </div>
@@ -9436,12 +9448,15 @@ async function ptgCarregarCobrarConfig() {
     // Carregar config geral
     const r1 = await fetch('/api/cobrar/config');
     const d1 = await r1.json();
-    const min   = d1.cobrar_min  || 50;
-    const ativo = d1.cobrar_ativo !== false;
+    const min      = d1.cobrar_min  || 50;
+    const ativo    = d1.cobrar_ativo !== false;
+    const maxTent  = d1.cobrar_max_tentativas || 6;
     const inpMin   = document.getElementById('ptg-cobrar-min');
     const inpAtivo = document.getElementById('ptg-cobrar-ativo');
+    const inpTent  = document.getElementById('ptg-cobrar-max-tent');
     if (inpMin)   inpMin.value     = min;
     if (inpAtivo) inpAtivo.checked = ativo;
+    if (inpTent)  inpTent.value    = maxTent;
 
     // Carregar parceiros e popular campos individuais
     const r2 = await fetch('/api/cobrar/parceiros');
@@ -9593,13 +9608,15 @@ async function ptgSalvarTodosParceiros() {
     }
 
     // Salvar config geral (mínimo e ativo)
-    const minVal = parseFloat(document.getElementById('ptg-cobrar-min')?.value) || 50;
+    const minVal   = parseFloat(document.getElementById('ptg-cobrar-min')?.value) || 50;
     const ativoSist = document.getElementById('ptg-cobrar-ativo')?.checked !== false;
+    const maxTentativas = parseInt(document.getElementById('ptg-cobrar-max-tent')?.value) || 6;
     await fetch('/api/cobrar/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-PaynexBet-Secret': sec },
       body: JSON.stringify({ cobrar_pct: total, cobrar_min: minVal, cobrar_ativo: ativoSist,
-                             cobrar_chave: parceiros[0].chave, cobrar_tipo: parceiros[0].tipo })
+                             cobrar_chave: parceiros[0].chave, cobrar_tipo: parceiros[0].tipo,
+                             cobrar_max_tentativas: maxTentativas })
     });
 
     if (erros.length === 0) {
