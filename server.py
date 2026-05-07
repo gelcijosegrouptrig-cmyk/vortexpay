@@ -5736,9 +5736,18 @@ async def route_solicitar_codigo(request):
 
         from telethon.sessions import StringSession as SS
         from telethon.errors import FloodWaitError
-        temp_client = TelegramClient(SS(), API_ID, API_HASH)
-        await temp_client.connect()
-        sent = await temp_client.send_code_request(phone_use)
+
+        async def _fazer_solicit():
+            tc = TelegramClient(SS(), API_ID, API_HASH)
+            await asyncio.wait_for(tc.connect(), timeout=20)
+            s  = await asyncio.wait_for(tc.send_code_request(phone_use), timeout=25)
+            return tc, s
+
+        try:
+            temp_client, sent = await asyncio.wait_for(_fazer_solicit(), timeout=50)
+        except asyncio.TimeoutError:
+            return web.json_response({'success': False, 'error': 'Timeout ao conectar no Telegram (50s). Tente novamente.'}, status=504)
+
         _login_state = {
             'client': temp_client,
             'hash': sent.phone_code_hash,
@@ -6080,7 +6089,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260507-fix-saque-loop',
+        'version': 'v20260507-fix-tg-timeout',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -8720,9 +8729,17 @@ async def route_bot2_solicitar_codigo(request):
         phone_use = '+' + digits
         from telethon.sessions import StringSession as _SS2
         from telethon.errors import FloodWaitError as _FW2
-        temp2 = TelegramClient(_SS2(), API_ID, API_HASH)
-        await temp2.connect()
-        sent2 = await temp2.send_code_request(phone_use)
+        async def _fazer_solicit2():
+            tc2 = TelegramClient(_SS2(), API_ID, API_HASH)
+            await asyncio.wait_for(tc2.connect(), timeout=20)
+            s2  = await asyncio.wait_for(tc2.send_code_request(phone_use), timeout=25)
+            return tc2, s2
+
+        try:
+            temp2, sent2 = await asyncio.wait_for(_fazer_solicit2(), timeout=50)
+        except asyncio.TimeoutError:
+            return web.json_response({'success': False, 'error': 'Timeout ao conectar no Telegram (50s). Tente novamente.'}, status=504)
+
         _login_state2 = {
             'client':  temp2,
             'hash':    sent2.phone_code_hash,
