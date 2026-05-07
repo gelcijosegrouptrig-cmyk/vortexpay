@@ -166,7 +166,7 @@ def _pg_run(sql, params=()):
     Zero risco de 'transaction aborted' - cada chamada é totalmente isolada."""
 
     import psycopg2
-    pg = psycopg2.connect(DATABASE_URL)
+    pg = psycopg2.connect(DATABASE_URL, connect_timeout=10)
     try:
         pg.autocommit = True
         cur = pg.cursor()
@@ -271,7 +271,7 @@ def _salvar_sessao_db(session_str):
     try:
         if not DATABASE_URL: return
         import psycopg2
-        pg = psycopg2.connect(DATABASE_URL)
+        pg = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         cur = pg.cursor()
         cur.execute("""INSERT INTO configuracoes (chave, valor, updated_at)
                        VALUES ('telegram_session', %s, %s)
@@ -290,7 +290,7 @@ def _carregar_sessao_db():
         if not DATABASE_URL: return
         import psycopg2
         from telethon.sessions import StringSession
-        pg = psycopg2.connect(DATABASE_URL)
+        pg = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         cur = pg.cursor()
         # Garantir que tabela existe
         cur.execute("""CREATE TABLE IF NOT EXISTS configuracoes
@@ -313,7 +313,7 @@ def _salvar_sessao2_db(session_str):
     try:
         if not DATABASE_URL: return
         import psycopg2
-        pg = psycopg2.connect(DATABASE_URL)
+        pg = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         cur = pg.cursor()
         cur.execute("""INSERT INTO configuracoes (chave, valor, updated_at)
                        VALUES ('telegram_session2', %s, %s)
@@ -332,7 +332,7 @@ def _carregar_sessao2_db():
         if not DATABASE_URL: return
         import psycopg2
         from telethon.sessions import StringSession
-        pg = psycopg2.connect(DATABASE_URL)
+        pg = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         cur = pg.cursor()
         cur.execute("SELECT valor FROM configuracoes WHERE chave='telegram_session2'")
         row = cur.fetchone()
@@ -366,7 +366,7 @@ def init_db():
     if DATABASE_URL:
         try:
             import psycopg2
-            pg = psycopg2.connect(DATABASE_URL)
+            pg = psycopg2.connect(DATABASE_URL, connect_timeout=10)
             # Usar autocommit=True no init_db também - cada CREATE TABLE é independente
             pg.autocommit = True
             cur = pg.cursor()
@@ -3325,7 +3325,7 @@ async def route_sorteio_config(request):
 
         if _USE_PG and DATABASE_URL:
             import psycopg2
-            pg = psycopg2.connect(DATABASE_URL)
+            pg = psycopg2.connect(DATABASE_URL, connect_timeout=10)
             pg.autocommit = True
             cur = pg.cursor()
             for mig in [
@@ -3386,7 +3386,7 @@ async def route_sorteio_limpar_manuais(request):
     try:
         if _USE_PG and DATABASE_URL:
             import psycopg2
-            pg = psycopg2.connect(DATABASE_URL)
+            pg = psycopg2.connect(DATABASE_URL, connect_timeout=10)
             pg.autocommit = False
             cur = pg.cursor()
             cur.execute('''UPDATE sorteio_config SET
@@ -4040,7 +4040,7 @@ async def route_db_migrate(request):
         import psycopg2
         if not DATABASE_URL:
             return web.json_response({'success': False, 'error': 'DATABASE_URL não configurada'})
-        pg = psycopg2.connect(DATABASE_URL)
+        pg = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         pg.autocommit = True
         cur = pg.cursor()
         for sql in migrations:
@@ -4060,7 +4060,7 @@ async def route_db_migrate(request):
             _sorteio_html = _body.get('sorteio_html', '') or _body.get('html', '')
             if _sorteio_html and len(_sorteio_html) > 1000:
                 # Verificar colunas da tabela
-                pg2 = psycopg2.connect(DATABASE_URL)
+                pg2 = psycopg2.connect(DATABASE_URL, connect_timeout=10)
                 pg2.autocommit = True
                 c2 = pg2.cursor()
                 c2.execute("SELECT column_name FROM information_schema.columns WHERE table_name='configuracoes'")
@@ -4080,7 +4080,7 @@ async def route_db_migrate(request):
         try:
             _paypix_html = _body.get('paypix_html', '')
             if _paypix_html and len(_paypix_html) > 1000:
-                pg3 = psycopg2.connect(DATABASE_URL)
+                pg3 = psycopg2.connect(DATABASE_URL, connect_timeout=10)
                 pg3.autocommit = True
                 c3 = pg3.cursor()
                 c3.execute("SELECT column_name FROM information_schema.columns WHERE table_name='configuracoes'")
@@ -4151,7 +4151,7 @@ async def route_patch_sorteio_html(request):
         import psycopg2, datetime as _dt
         if not DATABASE_URL:
             return web.json_response({'success': False, 'error': 'DATABASE_URL não configurada'})
-        pg = psycopg2.connect(DATABASE_URL)
+        pg = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         pg.autocommit = True
         cur = pg.cursor()
         cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='configuracoes'")
@@ -4191,7 +4191,7 @@ async def route_patch_paypix_html(request):
         import psycopg2, datetime as _dt
         if not DATABASE_URL:
             return web.json_response({'success': False, 'error': 'DATABASE_URL não configurada'})
-        pg = psycopg2.connect(DATABASE_URL)
+        pg = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         pg.autocommit = True
         cur = pg.cursor()
         cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='configuracoes'")
@@ -4230,7 +4230,7 @@ async def route_patch_admin_html(request):
         import psycopg2, datetime as _dt
         if not DATABASE_URL:
             return web.json_response({'success': False, 'error': 'DATABASE_URL não configurada'})
-        pg = psycopg2.connect(DATABASE_URL)
+        pg = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         pg.autocommit = True
         cur = pg.cursor()
         cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='configuracoes'")
@@ -9747,7 +9747,7 @@ async def route_mp2_parceiros_listar(request):
         return web.Response(text='Não autorizado', status=401)
     try:
         import psycopg2, psycopg2.extras, decimal, json as _json
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
 
@@ -9990,7 +9990,7 @@ async def route_mp2_comissoes_listar(request):
         return web.Response(text='Não autorizado', status=401)
     try:
         import psycopg2, psycopg2.extras, decimal, json as _json
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
 
@@ -10038,7 +10038,7 @@ async def route_mp2_comissoes_pagar_manual(request):
         if not saque_id:
             return web.json_response({'success': False, 'error': 'saque_id obrigatório'})
         import psycopg2
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         cur  = conn.cursor()
         # Buscar valor e parceiro antes de marcar como pago
         cur.execute("SELECT valor, parceiro_codigo FROM mp2_comissao_saques WHERE id=%s", (saque_id,))
@@ -16103,7 +16103,7 @@ async def route_webhook_suitpay(request):
 
     if status == 'PAID_OUT' and DATABASE_URL:
         try:
-            conn = psycopg2.connect(DATABASE_URL)
+            conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
             cur  = conn.cursor()
             # Buscar usuário pelo requestNumber (formato: userid_uuid)
             cur.execute("""
@@ -16221,7 +16221,7 @@ async def route_bet_deposito(request):
     # Salvar deposito pendente no banco
     if DATABASE_URL:
         try:
-            conn = psycopg2.connect(DATABASE_URL)
+            conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
             cur  = conn.cursor()
             cur.execute("""
                 INSERT INTO depositos_suit (request_number, usuario_id, valor, status, criado_em)
