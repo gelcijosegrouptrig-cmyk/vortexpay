@@ -6080,7 +6080,7 @@ async def route_health(request):
 
     return web.json_response({
         'status': 'online',
-        'version': 'v20260507-admin-tentativas',
+        'version': 'v20260507-fix-saque-loop',
         'gateway': 'mercado_pago',
         'mp2_ativo': mp2_ativo,
         'mp2_token_configurado': mp2_ativo,
@@ -7422,6 +7422,51 @@ async def _processar_split_multiplo(tx_id: str, valor: float, extra_str: str):
     DELAY_NEXT     = 15     # segundos entre parceiros (tempo bot respirar após unlock)
     ERROS_FATAIS   = ['saldo insuficiente', 'chave inválida', 'chave pix não', 'formato inválido', 'valor inválido']  # para imediatamente
 
+    # ── GUARD ANTI-DUPLICATA: bloqueia split duplo para o mesmo tx_id ──────────
+    # Regra: só processa se o tx estiver com status='pago' no SQLite
+    # E nunca processa duas vezes o mesmo tx_id (lock atômico no PostgreSQL)
+    try:
+        _conn_sq_gd = sqlite3_connect()
+        _row_sq_gd  = _conn_sq_gd.execute(
+            "SELECT status FROM transacoes WHERE tx_id=?", (tx_id,)
+        ).fetchone()
+        _conn_sq_gd.close()
+        if not _row_sq_gd:
+            print(f'[Multi-Split] ⚠️  tx={tx_id} não encontrado no banco — abortando.', flush=True)
+            return
+        _status_tx = _row_sq_gd[0]
+        if _status_tx not in ('pago', 'confirmado'):
+            print(f'[Multi-Split] 🚫 tx={tx_id} status="{_status_tx}" — saque só ocorre após CONFIRMAÇÃO do depósito. Abortando.', flush=True)
+            return
+    except Exception as _e_sq:
+        print(f'[Multi-Split] ⚠️  Verificação de status falhou: {_e_sq} — continuando', flush=True)
+
+    # Lock atômico no PostgreSQL: impede processamento duplicado do mesmo tx_id
+    try:
+        _conn_gd = _pgms.connect(DATABASE_URL, connect_timeout=5)
+        _conn_gd.autocommit = False
+        _cur_gd  = _conn_gd.cursor()
+        _cur_gd.execute('''CREATE TABLE IF NOT EXISTS cobrar_splits_lock (
+            tx_id TEXT PRIMARY KEY,
+            iniciado_at TEXT,
+            status TEXT DEFAULT 'em_processamento'
+        )''')
+        _conn_gd.commit()
+        _cur_gd.execute(
+            "INSERT INTO cobrar_splits_lock (tx_id, iniciado_at, status) VALUES (%s, %s, 'em_processamento') ON CONFLICT (tx_id) DO NOTHING",
+            (tx_id, datetime.now().isoformat())
+        )
+        _inserido_gd = _cur_gd.rowcount
+        _conn_gd.commit()
+        _cur_gd.close(); _conn_gd.close()
+        if _inserido_gd == 0:
+            print(f'[Multi-Split] 🔒 DUPLICATA BLOQUEADA: tx={tx_id} já está em processamento ou foi finalizado. Ignorando.', flush=True)
+            return
+        print(f'[Multi-Split] 🔓 Lock OK para tx={tx_id} (status={_status_tx})', flush=True)
+    except Exception as _e_gd:
+        print(f'[Multi-Split] ⚠️  Lock PG falhou: {_e_gd} — continuando sem lock', flush=True)
+    # ── FIM DO GUARD ────────────────────────────────────────────────────────────
+
     print(f'\n[Multi-Split] ══════════════════════════════════════════════', flush=True)
     print(f'[Multi-Split] tx={tx_id}  valor=R${valor:.2f}', flush=True)
     print(f'[Multi-Split] Timings: retry={DELAY_RETRY}s | entre_parceiros={DELAY_NEXT}s', flush=True)
@@ -7985,7 +8030,18 @@ async def _worker_paypix_fila():
     TENTATIVAS_CICLO = 2    # tentativas por ciclo do worker (com 15s entre elas)
     DELAY_CICLO      = 15   # segundos entre tentativas dentro do ciclo
 
-    print('[PayPix Worker] 🚀 Iniciado (PG) - verificando fila a cada 5 minutos', flush=True)
+    # Ler MAX_TENTATIVAS do banco (definido pelo admin, padrão 6)
+    try:
+        _conn_wk_mt = _pg_wk.connect(DATABASE_URL, connect_timeout=5)
+        _cur_wk_mt  = _conn_wk_mt.cursor()
+        _cur_wk_mt.execute("SELECT COALESCE(cobrar_max_tent, 6) FROM sorteio_config WHERE id=1")
+        _row_wk_mt  = _cur_wk_mt.fetchone()
+        WORKER_MAX_TENTATIVAS = int(_row_wk_mt[0]) if _row_wk_mt else 6
+        _cur_wk_mt.close(); _conn_wk_mt.close()
+    except Exception:
+        WORKER_MAX_TENTATIVAS = 6
+
+    print(f'[PayPix Worker] 🚀 Iniciado (PG) - verificando fila a cada 5 minutos | MAX_TENTATIVAS={WORKER_MAX_TENTATIVAS}', flush=True)
 
     # Primeira rodada em 60s para pegar itens já na fila ao iniciar
     await asyncio.sleep(60)
@@ -8033,13 +8089,44 @@ async def _worker_paypix_fila():
 
             print(f'[PayPix Worker] 🔄 Processando {len(itens)} item(s) da fila (PG)...', flush=True)
 
+            # Re-ler MAX_TENTATIVAS a cada ciclo (admin pode ter alterado)
+            try:
+                _c_mt2 = _pg_wk.connect(DATABASE_URL, connect_timeout=5)
+                _c_mt2.cursor().execute("SELECT COALESCE(cobrar_max_tent, 6) FROM sorteio_config WHERE id=1")
+                _r_mt2 = _c_mt2.cursor().fetchone()
+                WORKER_MAX_TENTATIVAS = int(_r_mt2[0]) if _r_mt2 else WORKER_MAX_TENTATIVAS
+                _c_mt2.close()
+            except Exception:
+                pass  # mantém valor anterior
+
             for row in itens:
                 item_id, tx_id, val_par, chave, tipo, pct, tentativas_total = row
+
+                # ── PARAR se já atingiu o limite máximo de tentativas ─────────
+                if tentativas_total >= WORKER_MAX_TENTATIVAS:
+                    conn_ab = _pg_wk.connect(DATABASE_URL, connect_timeout=8)
+                    conn_ab.autocommit = True
+                    conn_ab.cursor().execute(
+                        """UPDATE paypix_fila
+                           SET status='abandonado', finalizado_at=%s, observacao=%s
+                           WHERE id=%s""",
+                        (_dt.datetime.now().isoformat(),
+                         f'Limite de {WORKER_MAX_TENTATIVAS} tentativas atingido — abandonado', item_id)
+                    )
+                    conn_ab.close()
+                    print(f'[PayPix Worker] 🛑 id={item_id} ABANDONADO após {tentativas_total} tentativas (limite={WORKER_MAX_TENTATIVAS})', flush=True)
+                    continue
 
                 sucesso = False
                 for n in range(1, TENTATIVAS_CICLO + 1):
                     tentativa_num = tentativas_total + n
-                    resultado     = await _tentar_envio_split(item_id, val_par, chave, tipo, tx_id, tentativa_num)
+
+                    # Verificar se com esse ciclo passa do limite
+                    if tentativa_num > WORKER_MAX_TENTATIVAS:
+                        print(f'[PayPix Worker] ⛔ id={item_id} alcançou limite máximo ({WORKER_MAX_TENTATIVAS}) — parando.', flush=True)
+                        break
+
+                    resultado = await _tentar_envio_split(item_id, val_par, chave, tipo, tx_id, tentativa_num)
 
                     if resultado.get('success'):
                         sucesso = True
@@ -8064,19 +8151,35 @@ async def _worker_paypix_fila():
                         await asyncio.sleep(DELAY_CICLO)
 
                 if not sucesso:
-                    proxima   = (_dt.datetime.now() + _dt.timedelta(minutes=5)).isoformat()
                     novo_total = tentativas_total + TENTATIVAS_CICLO
-                    conn_ng = _pg_wk.connect(DATABASE_URL, connect_timeout=8)
-                    conn_ng.autocommit = True
-                    conn_ng.cursor().execute(
-                        """UPDATE paypix_fila
-                           SET tentativas=%s, proxima_tentativa=%s, observacao=%s
-                           WHERE id=%s""",
-                        (novo_total, proxima,
-                         f'Aguardando retry - {novo_total} tentativa(s)', item_id)
-                    )
-                    conn_ng.close()
-                    print(f'[PayPix Worker] ⏳ id={item_id} próxima tentativa em 5min (total={novo_total})', flush=True)
+                    if novo_total >= WORKER_MAX_TENTATIVAS:
+                        # Atingiu o limite — abandonar definitivamente
+                        conn_ng = _pg_wk.connect(DATABASE_URL, connect_timeout=8)
+                        conn_ng.autocommit = True
+                        conn_ng.cursor().execute(
+                            """UPDATE paypix_fila
+                               SET status='abandonado', tentativas=%s, finalizado_at=%s, observacao=%s
+                               WHERE id=%s""",
+                            (novo_total, _dt.datetime.now().isoformat(),
+                             f'Limite de {WORKER_MAX_TENTATIVAS} tentativas atingido — ABANDONADO', item_id)
+                        )
+                        conn_ng.close()
+                        print(f'[PayPix Worker] 🛑 id={item_id} LIMITE ATINGIDO ({novo_total}/{WORKER_MAX_TENTATIVAS}) — abandonando definitivamente.', flush=True)
+                    else:
+                        # Ainda tem tentativas restantes — agendar próximo retry
+                        proxima    = (_dt.datetime.now() + _dt.timedelta(minutes=5)).isoformat()
+                        restantes  = WORKER_MAX_TENTATIVAS - novo_total
+                        conn_ng = _pg_wk.connect(DATABASE_URL, connect_timeout=8)
+                        conn_ng.autocommit = True
+                        conn_ng.cursor().execute(
+                            """UPDATE paypix_fila
+                               SET tentativas=%s, proxima_tentativa=%s, observacao=%s
+                               WHERE id=%s""",
+                            (novo_total, proxima,
+                             f'Aguardando retry - {novo_total}/{WORKER_MAX_TENTATIVAS} tentativas ({restantes} restantes)', item_id)
+                        )
+                        conn_ng.close()
+                        print(f'[PayPix Worker] ⏳ id={item_id} retry em 5min ({novo_total}/{WORKER_MAX_TENTATIVAS}, restam {restantes})', flush=True)
 
         except Exception as e:
             print(f'[PayPix Worker] Erro no ciclo: {e}', flush=True)
