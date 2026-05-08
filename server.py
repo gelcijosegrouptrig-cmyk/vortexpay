@@ -472,8 +472,18 @@ def init_db():
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_pct REAL DEFAULT 0.6",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_ativo INTEGER DEFAULT 1",
                 "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS paypix_descricao TEXT DEFAULT 'Gere seu Pix e receba sua % do valor'",
+                # Colunas do módulo /cobrar
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_pct    REAL    DEFAULT 0.6",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_min    REAL    DEFAULT 5.0",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_ativo  INTEGER DEFAULT 1",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_desc   TEXT    DEFAULT ''",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_chave  TEXT    DEFAULT ''",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_tipo   TEXT    DEFAULT 'cpf'",
+                "ALTER TABLE sorteio_config ADD COLUMN IF NOT EXISTS cobrar_max_tent INTEGER DEFAULT 6",
                 # Corrigir valor_por_numero se ainda estiver com valor errado de migração anterior
                 "UPDATE sorteio_config SET valor_por_numero=5.0 WHERE id=1 AND valor_por_numero=10.0",
+                # Garantir cobrar_max_tent >= 6 (mínimo operacional)
+                "UPDATE sorteio_config SET cobrar_max_tent=6 WHERE id=1 AND (cobrar_max_tent IS NULL OR cobrar_max_tent < 6)",
             ]
             # Migrações: cada uma em conexão própria com timeout curto (evita lock de tabela)
             for mig_sql in pg_migrations:
@@ -19617,10 +19627,7 @@ async def main():
     try:
         from mp2_api import init_mp2_db
         init_mp2_db()
-        # build_bot2_app não existe neste bot2_handler (usa webhook direto)
-        build_bot2_app = None
-        _bot2_post_startup = None
-
+        # bot2_handler usa webhook direto — não há build_bot2_app()
         # Carrega chaves MP2 salvas no banco (substitui vars de ambiente se existirem)
         try:
             import mp2_api, psycopg2 as _pg2
@@ -19637,25 +19644,8 @@ async def main():
             _cur.close(); _conn.close()
         except Exception as _e:
             print(f'⚠️ [mp2] Erro ao carregar chaves do banco: {_e}', flush=True)
-        bot2_app = build_bot2_app()
-        if bot2_app:
-            async def _rodar_bot2():
-                try:
-                    await bot2_app.initialize()
-                    await bot2_app.start()
-                    await bot2_app.updater.start_polling(
-                        drop_pending_updates=True,
-                        allowed_updates=['message', 'callback_query']
-                    )
-                    print('✅ [Bot2] @paypix_nexbot polling ativo!', flush=True)
-                    # Cria canal automaticamente após iniciar
-                    asyncio.create_task(_bot2_post_startup(bot2_app))
-                    await asyncio.Event().wait()  # manter vivo
-                except Exception as e:
-                    print(f'❌ [Bot2] Erro no polling: {e}', flush=True)
-            asyncio.create_task(_rodar_bot2())
-        else:
-            print('⚠️ [Bot2 Real] BOT2_TOKEN não configurado - bot desativado', flush=True)
+        # Bot2 (@paypix_nexbot) opera via webhook — polling não é necessário aqui
+        print('✅ [Bot2] @paypix_nexbot configurado (modo webhook direto)', flush=True)
     except Exception as e_bot2:
         print(f'⚠️ [Bot2 Real] Erro ao iniciar: {e_bot2}', flush=True)
 
