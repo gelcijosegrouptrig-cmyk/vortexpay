@@ -82,7 +82,13 @@ if not SESSION_STR:
 if not SESSION_STR:
     print('⚠️ Nenhuma sessão Telegram encontrada - reconexão necessária pelo admin', flush=True)
 
-client = TelegramClient(StringSession(SESSION_STR), API_ID, API_HASH)
+# TelegramClient criado com connection_retries=0 e timeout reduzido para não bloquear o startup
+client = TelegramClient(
+    StringSession(SESSION_STR), API_ID, API_HASH,
+    connection_retries=0,
+    timeout=5,
+    request_retries=0,
+)
 _lock = asyncio.Lock()
 _saque_lock = asyncio.Lock()
 _cobrar_lock = asyncio.Lock()   # lock exclusivo para /cobrar (independente do /paypix)
@@ -370,6 +376,12 @@ def init_db():
             # Usar autocommit=True no init_db também - cada CREATE TABLE é independente
             pg.autocommit = True
             cur = pg.cursor()
+            # ⚡ Timeout para DDL: evita travar indefinidamente em lock de tabela
+            try:
+                cur.execute("SET statement_timeout = '8000'")   # 8s por statement
+                cur.execute("SET lock_timeout = '5000'")        # 5s aguardando lock
+            except Exception:
+                pass
             pg_tables = [
                 """CREATE TABLE IF NOT EXISTS transacoes (
                     id SERIAL PRIMARY KEY, tx_id TEXT UNIQUE NOT NULL,
