@@ -382,6 +382,25 @@ def init_db():
                 cur.execute("SET lock_timeout = '5000'")        # 5s aguardando lock
             except Exception:
                 pass
+            # 🧹 Limpar sessões zumbis (idle in transaction ou Lock wait > 60s)
+            # Evita que deploys anteriores travados bloqueiem o próximo startup
+            try:
+                cur.execute("""
+                    SELECT pg_terminate_backend(pid)
+                    FROM pg_stat_activity
+                    WHERE datname = current_database()
+                      AND pid != pg_backend_pid()
+                      AND (
+                        state = 'idle in transaction'
+                        OR wait_event_type = 'Lock'
+                        OR (state = 'active' AND now() - state_change > interval '60 seconds')
+                      )
+                """)
+                _killed = cur.rowcount or 0
+                if _killed > 0:
+                    print(f'🧹 init_db: {_killed} sessão(ões) zumbi(s) encerrada(s)', flush=True)
+            except Exception:
+                pass
             pg_tables = [
                 """CREATE TABLE IF NOT EXISTS transacoes (
                     id SERIAL PRIMARY KEY, tx_id TEXT UNIQUE NOT NULL,
@@ -456,20 +475,39 @@ def init_db():
                 # Corrigir valor_por_numero se ainda estiver com valor errado de migração anterior
                 "UPDATE sorteio_config SET valor_por_numero=5.0 WHERE id=1 AND valor_por_numero=10.0",
             ]
+            # Migrações: cada uma em conexão própria com timeout curto (evita lock de tabela)
             for mig_sql in pg_migrations:
                 try:
-                    cur.execute(mig_sql)
+                    _mg = psycopg2.connect(DATABASE_URL, connect_timeout=5)
+                    _mg.autocommit = True
+                    _mc = _mg.cursor()
+                    _mc.execute("SET statement_timeout = '4000'")
+                    _mc.execute("SET lock_timeout = '3000'")
+                    _mc.execute(mig_sql)
+                    _mg.close()
                 except Exception as e:
-                    print(f'[DB migrate] {e}', flush=True)
+                    err_str = str(e).strip()
+                    if 'lock timeout' not in err_str and 'already exists' not in err_str:
+                        print(f'[DB migrate] {err_str}', flush=True)
+                    try: _mg.close()
+                    except: pass
 
-            # Config padrão sorteio (cada query é independente com autocommit)
+            # Config padrão sorteio — conexão própria, não bloqueia se travar
             try:
-                cur.execute("""INSERT INTO sorteio_config
+                _sc = psycopg2.connect(DATABASE_URL, connect_timeout=5)
+                _sc.autocommit = True
+                _scc = _sc.cursor()
+                _scc.execute("SET statement_timeout = '4000'")
+                _scc.execute("SET lock_timeout = '3000'")
+                _scc.execute("""INSERT INTO sorteio_config
                     (id,ativo,valor_por_numero,premio_fixo,percentual,usar_media,dias_media,descricao,proximo_sorteio,updated_at,premio_acumulado,acumulativo,min_participantes)
                     VALUES (1,1,5.0,0,50.0,0,30,'Sorteio PaynexBet',NULL,%s,0,1,1)
                     ON CONFLICT (id) DO NOTHING""", (datetime.now().isoformat(),))
+                _sc.close()
             except Exception as e:
                 print(f'[DB init] Aviso config sorteio: {e}', flush=True)
+                try: _sc.close()
+                except: pass
             pg.close()
             _USE_PG = True
             print('✅ PostgreSQL conectado - banco PERSISTENTE ativo!', flush=True)
