@@ -1836,29 +1836,12 @@ async def watchdog_telegram():
                         await asyncio.sleep(PING_INTERVAL)
                         continue
 
-                    # Passo 2: verificar FloodWait antes de tentar auto-login
-                    agora_fw = time.time()
-                    if _floodwait_ate > agora_fw:
-                        mins_rest = int((_floodwait_ate - agora_fw) / 60)
-                        print(f'⏳ [Watchdog] FloodWait ativo - aguardando mais {mins_rest}min para tentar auto-login', flush=True)
-                        await asyncio.sleep(min(300, _floodwait_ate - agora_fw))
-                        continue
-
-                    # Passo 3: sessão DB inválida → tentar auto-login com código
-                    print('🤖 [Watchdog] Sessão DB inválida → iniciando AUTO-LOGIN...', flush=True)
-                    sucesso = await _auto_login_telegram()
-                    if sucesso:
-                        print('🤖 [Watchdog] Auto-login bem-sucedido! Retomando operação normal.', flush=True)
-                        _telegram_session_invalida = False
-                        falhas_seguidas = 0
-                        await asyncio.sleep(PING_INTERVAL)
-                        continue
-                    else:
-                        print('🤖 [Watchdog] Auto-login falhou. Tentando novamente em 3min...', flush=True)
-                        await asyncio.sleep(180)
-                        continue
+                    # Passo 2: sessão DB inválida → aguardar login manual pelo admin
+                    # AUTO-LOGIN DESATIVADO: causava FloodWait ao tentar código repetidamente
+                    print('⚠️ [Watchdog] Sessão inválida — aguardando login manual pelo admin (painel Admin → Telegram)', flush=True)
+                    await asyncio.sleep(300)  # checar novamente em 5min
+                    continue
                 else:
-                    print('🤖 [Watchdog] Auto-login em progresso, aguardando...', flush=True)
                     await asyncio.sleep(30)
                     continue
 
@@ -1903,18 +1886,13 @@ async def conectar_telegram():
     while True:
         if _telegram_session_invalida:
             if not _auto_login_em_progresso:
-                print('🤖 [ConectarTG] Sessão inválida → tentando AUTO-LOGIN...', flush=True)
-                sucesso = await _auto_login_telegram()
-                if sucesso:
-                    print('🤖 [ConectarTG] Auto-login bem-sucedido!', flush=True)
-                    _telegram_session_invalida = False
-                    continue
-                else:
-                    print('🤖 [ConectarTG] Auto-login falhou, tentando em 3min...', flush=True)
-                    await asyncio.sleep(180)
-                    continue
+                # AUTO-LOGIN DESATIVADO: causava FloodWait no Telegram
+                # Admin deve reconectar manualmente via painel Admin → Telegram
+                print('⚠️ [ConectarTG] Sessão inválida — aguardando login manual pelo admin', flush=True)
+                await asyncio.sleep(300)
+                continue
             else:
-                print('🤖 [ConectarTG] Auto-login em progresso, aguardando 30s...', flush=True)
+                print('⚠️ [ConectarTG] Auto-login em progresso, aguardando 30s...', flush=True)
                 await asyncio.sleep(30)
                 continue
 
